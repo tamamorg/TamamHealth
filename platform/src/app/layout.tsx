@@ -55,6 +55,7 @@ const ibmPlexSans = IBM_Plex_Sans({
 import { ToastProvider } from "@/components/Toast";
 import TextareaAutoResize from "@/components/TextareaAutoResize";
 import BootIntegrityGuard from "@/components/BootIntegrityGuard";
+import ReloadPrompt from "@/components/unsaved/ReloadPrompt";
 
 export const metadata: Metadata = {
   title: "Tamam Health",
@@ -123,6 +124,7 @@ export default async function RootLayout({
         <AppProvider>
           <ToastProvider>
             <TextareaAutoResize />
+            <ReloadPrompt />
             {children}
           </ToastProvider>
         </AppProvider>

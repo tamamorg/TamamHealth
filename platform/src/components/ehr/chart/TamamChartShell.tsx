@@ -49,6 +49,8 @@ import { getDefaultDashboard } from '@/lib/role-routes';
 import type { ChartPanelRouter, ChartPanelUser } from './panels/types';
 import './tamam-chart.css';
 import { isAnyModalOpen } from '@/components/Modal';
+import { useDraftKeeper } from '@/components/unsaved/useDraftKeeper';
+import { pageDraftScope } from '@/lib/unsaved/draft-scope';
 
 export interface OmrsRailItem {
   id: string;
@@ -335,7 +337,18 @@ export default function TamamChartShell({
 
   // A rail button opens its panel on top of the stack; pressing the button of
   // the panel already showing closes it (back to the one beneath).
+  const drawerRef = useRef<HTMLDivElement>(null);
+  // What is typed in a drawer panel survives a refresh, and a refresh or a
+  // link away asks first while anything is unsaved (lib/unsaved). Leaving a
+  // panel by X, Back, Escape or another rail button keeps its text for when it
+  // is reopened; a panel that saves and closes itself clears it.
+  const { markDismissed: markDrawerDismissed } = useDraftKeeper(drawerRef, {
+    active: !!activePanel,
+    resetKey: activePanel?.id,
+    scope: () => (activePanel ? `${pageDraftScope()}|drawer|${activePanel.id}` : null),
+  });
   const togglePanel = async (id: string) => {
+    markDrawerDismissed();
     if (openPanel === id) { void closeDrawer(); return; }
     if (!await leaveOrderForm()) return;
     notifyIfNoteClosing(id);
@@ -363,7 +376,6 @@ export default function TamamChartShell({
   // usable, so there is no backdrop and Tab is not confined — a clinician can
   // read the chart while filling the panel. Escape still closes it, focus
   // moves in on open, and it goes back to whatever opened the drawer.
-  const drawerRef = useRef<HTMLDivElement>(null);
   // The docked drawer is as tall as the area the chart scrolls in (below the
   // top rail AND the breadcrumb bar), so its footer is never pushed under the
   // window's bottom edge. CSS alone only knows the top rail's height.
@@ -392,6 +404,7 @@ export default function TamamChartShell({
       // A popup open over the workspace (prescribe, lab order, a confirm)
       // takes Escape itself; closing it must not also close the panel.
       if (isAnyModalOpen() || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+      markDrawerDismissed();
       closeDrawerRef.current();
     };
     const previouslyFocused = document.activeElement as HTMLElement | null;
@@ -407,7 +420,7 @@ export default function TamamChartShell({
     };
     // closeDrawer is recreated each render; keying on the open panel is what
     // actually decides whether the listener should be attached.
-  }, [openPanel, hasWorkspace]);
+  }, [openPanel, hasWorkspace, markDrawerDismissed]);
 
   const goToRecallTab = () => {
     // Recall reminders render on the Care plan tab (RemindersPanel), not
@@ -646,7 +659,7 @@ export default function TamamChartShell({
                   open underneath to go back to, on the title's side of the bar. A
                   basket order form has its own "Back to order basket" instead. */}
               {stack.length > 1 && !(activePanel.id === 'order-basket' && basketTitle) && (
-                <button type="button" className="tamam-drawer-back" title="Back" aria-label="Back to the previous panel" onClick={closeDrawer}><ArrowLeft /></button>
+                <button type="button" className="tamam-drawer-back" title="Back" aria-label="Back to the previous panel" onClick={() => { markDrawerDismissed(); void closeDrawer(); }}><ArrowLeft /></button>
               )}
               <span className="tamam-drawer-title">{activePanel.title}</span>
               <div className="tamam-drawer-controls">
@@ -659,7 +672,7 @@ export default function TamamChartShell({
                 >
                   {drawerMaximized ? <Minimize2 /> : <Maximize2 />}
                 </button>
-                <button type="button" title="Close" aria-label="Close" onClick={closeAllWorkspaces}><X /></button>
+                <button type="button" title="Close" aria-label="Close" onClick={() => { markDrawerDismissed(); void closeAllWorkspaces(); }}><X /></button>
               </div>
             </div>
             {renderPanelBody(activePanel.id)}

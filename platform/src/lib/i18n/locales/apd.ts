@@ -9626,6 +9626,13 @@ const apd: TranslationMap = {
   'dup.visitWarning': 'الزيارة بدت في سجل مكرّر. استخدم {{name}} لو تقدر، وراجع الحساسية في السجلين.',
   'dup.visitPanelWarning': 'ده سجل مكرّر. بدء الزيارة هنا مسموح في الطوارئ. غير كده استخدم {{name}}.',
   'dup.keptUnknown': 'السجل البفضل',
+  'drafts.restored': 'الكلام الما اتحفظ رجع من {{time}}.',
+  'drafts.discard': 'تجاهل',
+  'unsaved.leave': 'التغييرات ما اتحفظت. تطلع من الصفحة دي برضو؟',
+  'reload.reason.update': 'في تحديث جاهز.',
+  'reload.reason.chartArrived': 'الملف المحوّل وصل.',
+  'reload.keepTyping': 'حدّث الصفحة لما تكون جاهز. الكتبته محفوظ في الجهاز ده.',
+  'reload.now': 'حدّث هسع',
 };
 
 export default apd;

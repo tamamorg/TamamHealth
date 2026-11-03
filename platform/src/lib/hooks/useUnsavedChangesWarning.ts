@@ -1,11 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
+import { registerUnsavedSource } from '@/lib/unsaved/unsaved-registry';
 
 const DEFAULT_MESSAGE = 'This clinical entry still has unsaved changes. Leave this page?';
 
 /**
- * Protect an active form from browser reloads and ordinary in-app links.
+ * Protect an active form from browser reloads and in-app links to another
+ * page. The prompts themselves live in lib/unsaved/unsaved-registry, shared
+ * with every form's draft keeper, so the app asks once however many forms
+ * hold work.
  *
  * `isDirty` may be a function so debounce queues held in refs can be checked
  * at navigation time without forcing a render for every keystroke.
@@ -16,10 +20,8 @@ export function useUnsavedChangesWarning(
 ) {
   const dirtyRef = useRef(isDirty);
   const messageRef = useRef(message);
-  // Refreshed after each render rather than during it. The listener below is
-  // registered once and reads these refs when the browser asks — a beforeunload
-  // can only arrive on a user gesture, long after the commit, so it never sees
-  // the one-render-old value this defers by.
+  // Refreshed after each render rather than during it. The registry reads
+  // these when the browser asks — on a user gesture, long after the commit.
   useEffect(() => {
     dirtyRef.current = isDirty;
     messageRef.current = message;
@@ -30,49 +32,12 @@ export function useUnsavedChangesWarning(
     return typeof value === 'function' ? value() : value;
   }, []);
 
+  /** For a navigation the form starts itself (router.push). */
   const confirmNavigation = useCallback(() => (
     !hasUnsavedChanges() || window.confirm(messageRef.current)
   ), [hasUnsavedChanges]);
 
-  useEffect(() => {
-    const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!hasUnsavedChanges()) return;
-      event.preventDefault();
-      // Required by older browsers; modern browsers deliberately show their
-      // own localized text rather than exposing clinical content here.
-      event.returnValue = '';
-    };
-
-    const onDocumentClick = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0
-        || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
-        || !hasUnsavedChanges()) return;
-
-      const target = event.target;
-      const link = target instanceof Element ? target.closest<HTMLAnchorElement>('a[href]') : null;
-      if (!link || link.target === '_blank' || link.hasAttribute('download')) return;
-
-      const destination = new URL(link.href, window.location.href);
-      const current = new URL(window.location.href);
-      if (destination.href === current.href
-        || (destination.origin === current.origin
-          && destination.pathname === current.pathname
-          && destination.search === current.search)) return;
-
-      if (!window.confirm(messageRef.current)) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-      }
-    };
-
-    window.addEventListener('beforeunload', onBeforeUnload);
-    document.addEventListener('click', onDocumentClick, true);
-    return () => {
-      window.removeEventListener('beforeunload', onBeforeUnload);
-      document.removeEventListener('click', onDocumentClick, true);
-    };
-  }, [hasUnsavedChanges]);
+  useEffect(() => registerUnsavedSource(hasUnsavedChanges), [hasUnsavedChanges]);
 
   return { confirmNavigation, hasUnsavedChanges };
 }
-

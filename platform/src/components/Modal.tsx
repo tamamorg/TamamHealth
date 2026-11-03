@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { useHistoryLayer } from '@/lib/navigation/history-layer';
+import { useDraftKeeper } from '@/components/unsaved/useDraftKeeper';
+import { DraftDismissContext } from '@/components/unsaved/draft-dismiss-context';
+import { popupDraftScope } from '@/lib/unsaved/draft-scope';
 
 /**
  * Named widths, so two dialogs holding the same kind of content are the same
@@ -108,7 +111,10 @@ export default function Modal({
   // Back (phone, tablet, browser) closes this dialog or slider: it holds one
   // history entry while open, removed again when it closes by its own
   // controls (lib/navigation/history-layer.ts).
-  useHistoryLayer(true, onClose);
+  // Back, like Escape, X and a click outside, dismisses: text typed here is
+  // kept for when the form is reopened (see useDraftKeeper below).
+  const markDismissedRef = useRef<() => void>(() => {});
+  useHistoryLayer(true, () => { markDismissedRef.current(); onClose(); });
   const isDrawer = variant === 'drawer' || isSlider;
   const [mounted, setMounted] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -125,6 +131,14 @@ export default function Modal({
 
   // Portals require the DOM — only render after mount (also keeps SSR happy).
   useEffect(() => { setMounted(true); }, []);
+
+  // What is typed in the popup survives a refresh, and a refresh or a link
+  // away asks first while anything is unsaved (lib/unsaved).
+  const { markDismissed } = useDraftKeeper(dialogRef, {
+    active: mounted,
+    scope: () => popupDraftScope(dialogRef.current, labelledBy, describedBy),
+  });
+  useEffect(() => { markDismissedRef.current = markDismissed; }, [markDismissed]);
 
   // Lock background scroll while any modal is open. Counted rather than
   // saved-and-restored: with two modals stacked, the lower one closing first
@@ -181,6 +195,7 @@ export default function Modal({
       if (!isTopModal(sequence)) return;
       if (e.key === 'Escape') {
         e.preventDefault();
+        markDismissedRef.current();
         onClose();
         return;
       }
@@ -267,6 +282,7 @@ export default function Modal({
           });
           if (dirty) return;
         }
+        markDismissedRef.current();
         onClose();
       }}
       style={{
@@ -354,7 +370,9 @@ export default function Modal({
           margin: 0,
         }}
       >
-        {children}
+        <DraftDismissContext.Provider value={markDismissed}>
+          {children}
+        </DraftDismissContext.Provider>
       </div>
     </div>,
     document.body,

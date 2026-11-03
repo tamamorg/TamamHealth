@@ -255,6 +255,13 @@ export async function wipeLocalData(
     } catch {
       // Never block a wipe on this.
     }
+    // Unsaved form drafts go too; they are sealed, but nobody else needs them.
+    try {
+      const { clearAllDrafts } = await import('../unsaved/draft-store');
+      clearAllDrafts();
+    } catch {
+      // Never block a wipe on this.
+    }
   }
 
   const candidates = options.only ?? (await listLocalDatabases());

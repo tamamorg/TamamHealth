@@ -11,6 +11,7 @@
 // fully self-contained, inline-styled error screen — never the unstyled page.
 
 import { useEffect, useState } from 'react';
+import { requestReload } from '@/lib/unsaved/unsaved-registry';
 
 // Timestamp (ms) of the last recovery reload, kept in sessionStorage so it
 // survives that reload — the whole point of the cap.
@@ -104,7 +105,8 @@ export default function BootIntegrityGuard() {
         return;
       }
       try { sessionStorage.setItem(RELOAD_FLAG, String(now)); } catch { /* ignore */ }
-      window.location.reload();
+      // Asks first while a form holds unsaved text (lib/unsaved).
+      requestReload('reload.reason.update');
     };
 
     // Resource load failures bubble to window only in the capture phase.

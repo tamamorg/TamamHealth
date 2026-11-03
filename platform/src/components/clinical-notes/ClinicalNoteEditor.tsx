@@ -74,6 +74,7 @@ import './note-workspace.css';
 import Select from '@/components/Select';
 import InlineBanner from '@/components/overlay/InlineBanner';
 import { useUnsavedChangesWarning } from '@/lib/hooks/useUnsavedChangesWarning';
+import { registerFlusher } from '@/lib/unsaved/unsaved-registry';
 import { describeError } from '@/lib/user-facing-error';
 
 const assessmentsStore = () => getDB('tamamhealth_assessments');
@@ -369,6 +370,13 @@ export default function ClinicalNoteEditor({
       }
     }
   }, [noteId]);
+
+  // Written straight to the note before the page goes (refresh, tab close,
+  // the tab hidden), so the last second of typing is not left on a timer.
+  useEffect(() => registerFlusher(async () => {
+    if (Object.keys(pendingSaves.current).length === 0) return;
+    try { await flushPendingEdits(); } catch { /* kept in pendingSaves; the warning still asks */ }
+  }), [flushPendingEdits]);
 
   /** Leave the note for a section of this patient's chart. */
   const openChartTab = useCallback((tabId: string) => {
@@ -1529,7 +1537,7 @@ export default function ClinicalNoteEditor({
     const purpose = t(purposeKey) !== purposeKey ? t(purposeKey) : typeDef.description;
     const bannerName = (patient && patientFullName(patient)) || (note.patientName && note.patientName !== 'Patient' ? note.patientName : '') || t('noteEditor.patientLoading');
     return (
-      <div className="cn-editor omf-root">
+      <div className="cn-editor omf-root" data-no-draft>
         {onBack && (
           <button type="button" className="omf-back" onClick={() => { if (confirmNavigation()) onBack(); }}>
             <ArrowLeft size={16} aria-hidden /> {t('noteEditor.backToForms')}
@@ -1630,7 +1638,7 @@ export default function ClinicalNoteEditor({
   }
 
   return (
-    <div className="cn-editor">
+    <div className="cn-editor" data-no-draft>
       {/* The left rail runs the full height of the screen; the header and
           toolbar belong to the note column, not the page. */}
       <div className={`cn-body${showContextSidebar ? '' : ' cn-body--without-sidebar'}`}>

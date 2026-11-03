@@ -11,7 +11,7 @@ describe('patient chart note workspace', () => {
   });
 
   it('takes the one chart slider size; ✕ closes completely, Back only when something is underneath', () => {
-    expect(chartShell).toContain('onClick={closeAllWorkspaces}><X />');
+    expect(chartShell).toContain('void closeAllWorkspaces(); }}><X />');
     expect(chartShell).toContain('className="tamam-drawer-back"');
     expect(chartShell).not.toContain('tamam-drawer-leave');
     // Docked beside the chart (it narrows the chart rather than covering it).
