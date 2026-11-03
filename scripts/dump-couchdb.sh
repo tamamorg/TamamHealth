@@ -78,8 +78,22 @@ FIRST=1
 # Iterating a `for` over command substitution rather than piping into `while`:
 # a piped subshell cannot mutate FAILURES in the parent, so failures were
 # invisible to the exit status.
+#
+# The list is read first and checked: inside `for db in $(...)` a failed curl or
+# jq is not seen by `set -e`, so an unreachable or refusing server used to
+# produce a run that dumped only the system databases and still looked fine.
 SYSTEM_DBS="_users _replicator"
-for db in $(couch_get '/_all_dbs' | jq -r '.[]' | grep '^tamamhealth_') $SYSTEM_DBS; do
+if ! ALL_DBS=$(couch_get '/_all_dbs'); then
+  log "FAILED: could not list databases at ${BASE}. Nothing was dumped."
+  touch "${OUT}/.INCOMPLETE"
+  exit 1
+fi
+if ! TAMAM_DBS=$(printf '%s' "$ALL_DBS" | jq -r '.[]' | grep '^tamamhealth_'); then
+  log "FAILED: the database list had no tamamhealth_* databases. Nothing was dumped."
+  touch "${OUT}/.INCOMPLETE"
+  exit 1
+fi
+for db in $TAMAM_DBS $SYSTEM_DBS; do
   log "  dumping $db"
 
   # Read live state BEFORE dumping, so the recorded checkpoint is never ahead
