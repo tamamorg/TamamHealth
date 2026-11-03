@@ -45,9 +45,9 @@ describe('dashboard flagging uses the QC critical table', () => {
   });
 
   it('falls back to the QC table for analytes the dashboard has no range for', () => {
-    expect(flagLabResult('Potassium', '7').flag).toBe('CRITICAL');
+    expect(flagLabResult('Glucose', '30').flag).toBe('CRITICAL');
     // Known to the QC table but with no normal range: not critical, not vouched for.
-    expect(flagLabResult('Potassium', '4').flag).toBe('');
+    expect(flagLabResult('Glucose', '5').flag).toBe('');
   });
 
   it('every range that names a QC rule resolves to it', () => {
@@ -69,7 +69,7 @@ it('matches the seeded "Platelet Count" order name, not only "Platelets"', () =>
 });
 
 describe('tests with no normal range are not called NORMAL', () => {
-  it.each(['Full Blood Count', 'Renal Function', 'Sputum AFB', 'CD4 Count'])('%s → not evaluated', test => {
+  it.each(['Full Blood Count', 'Renal Function', 'Sputum AFB', 'Troponin'])('%s → not evaluated', test => {
     expect(flagLabResult(test, '7').flag).toBe('');
   });
 

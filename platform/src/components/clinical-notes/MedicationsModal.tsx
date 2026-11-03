@@ -37,7 +37,7 @@ import type { PrescriptionStatus } from '@/lib/clinical-flow/order-lifecycles';
 import type { PatientDoc, PrescriptionDoc } from '@/lib/db-types';
 import './clinical-notes.css';
 import Select from '@/components/Select';
-import { FORMULARY } from '@/lib/data/formulary';
+import { FORMULARY, findFormularyDrug } from '@/lib/data/formulary';
 import { stopsClickPropagation } from '@/lib/a11y';
 import type { PrescriptionCreateInput } from '@/lib/services/prescription-service';
 import { describeError } from '@/lib/user-facing-error';
@@ -109,14 +109,13 @@ export default function MedicationsModal({
   const [addMed, setAddMed] = useState({ medication: '', dose: '', frequency: '' });
 
   const load = useCallback(async () => {
-    const { getPrescriptionsByPatient } = await import('@/lib/services/prescription-service');
+    const { getOrgPrescriptionsByPatient } = await import('@/lib/services/prescription-service');
     const { getPatientById } = await import('@/lib/services/patient-service');
     // Org-scoped only, not facility-scoped: the right-hand panel is a
     // deliberate cross-facility view (see file header) so it must stop at the
     // tenant boundary but must not be narrowed to one facility.
-    const orgScope = scope ? { ...scope, hospitalId: undefined } : undefined;
     const [rx, pt] = await Promise.all([
-      getPrescriptionsByPatient(patientId, orgScope),
+      scope ? getOrgPrescriptionsByPatient(patientId, scope) : Promise.resolve([]),
       scope ? getPatientById(patientId, scope) : Promise.resolve(null),
     ]);
     rx.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
@@ -273,6 +272,23 @@ export default function MedicationsModal({
       return;
     }
     const medication = addMed.medication.trim();
+    let offFormularyReason: string | undefined;
+    if (!findFormularyDrug(medication)) {
+      const reason = await confirmPrompt({
+        title: t('prescribe.offListTitle', { name: medication }),
+        message: t('prescribe.offListNotice'),
+        inputLabel: t('prescribe.overrideReason'),
+        confirmLabel: t('prescribe.overrideConfirm'),
+        inputRequired: true,
+        tone: 'danger',
+      });
+      if (reason === null) return;
+      if (reason.trim().length < 10) {
+        showToast(t('prescribe.overrideReasonRequired'), 'error');
+        return;
+      }
+      offFormularyReason = reason.trim();
+    }
     const medicationSafetyAcknowledgement = await reviewSevereAllergy(medication, { dose: addMed.dose, frequency: addMed.frequency });
     if (medicationSafetyAcknowledgement === null) return;
     const { createPrescription } = await import('@/lib/services/prescription-service');
@@ -293,6 +309,7 @@ export default function MedicationsModal({
       hospitalId: currentUser?.hospitalId,
       hospitalName: currentUser?.hospitalName,
       medicationSafetyAcknowledgement,
+      offFormularyReason,
     } as PrescriptionCreateInput, scope);
     if (added.duplicateRecord) showToast(t('dup.orderWarning', { name: added.duplicateRecord.survivorName }), 'warning');
     showToast(t('msg.addedToTheMedicationList', { medication }), 'success');

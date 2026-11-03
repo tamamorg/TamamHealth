@@ -170,6 +170,8 @@ export function evaluateCriticalObservations(
 export interface LabReferenceRange {
   /** Matched case-insensitively as a substring of the order's test name. */
   test: string;
+  /** Match the whole name: "AST" sits inside "Fasting", "Albumin" inside "Microalbumin". */
+  exact?: boolean;
   unit: string;
   normalMin?: number;
   normalMax?: number;
@@ -177,6 +179,8 @@ export interface LabReferenceRange {
   qualitative?: string[];
   /** Qualitative tests: the subset of `qualitative` that reads as normal. */
   normalValues?: string[];
+  /** Qualitative tests: the results that need someone told now. */
+  criticalValues?: string[];
   /** QC rule to take critical thresholds from (matched like a test name). */
   ruleName?: string;
   /** Multiply an entered value by this to get the QC rule's unit. */
@@ -185,6 +189,100 @@ export interface LabReferenceRange {
 }
 
 export const LAB_REFERENCE_RANGES: LabReferenceRange[] = [
+  // Tests from the 2026-11 catalogue. These sit first: `find` takes the first
+  // hit, and the older substring rows below would catch "HIV Viral Load" as a
+  // Reactive / Non-reactive test. Adult ranges; a laboratory's own ranges win.
+  { test: 'Kala-azar rK39 RDT', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'Kala-azar Direct Agglutination Test (DAT)', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'Sleeping Sickness CATT', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'Sleeping Sickness RDT', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'Trypanosome Microscopy (Blood or Node Aspirate)', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'Leishmania Microscopy (Spleen, Marrow or Node Aspirate)', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'Typhoid RDT', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'Urine LF-LAM', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'Cryptococcal Antigen', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'India Ink (Cryptococcus)', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'Sickle Cell Screen', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'Urine Pregnancy Test', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'Serum hCG', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'Faecal Occult Blood', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'H. pylori Antigen', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'H. pylori Antibody', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'Rotavirus Antigen', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'COVID-19 Antigen', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'Measles IgM', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'Hepatitis A IgM', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'Hepatitis E IgM', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'HBeAg', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'Dengue NS1/IgM', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'Chikungunya IgM', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'CMV IgM', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'Cholera RDT', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], criticalValues: ['Positive'], referenceStr: 'Negative' },
+  { test: 'Yellow Fever IgM', exact: true, unit: '', qualitative: ['Positive', 'Negative'], normalValues: ['Negative'], criticalValues: ['Positive'], referenceStr: 'Negative' },
+  { test: 'Syphilis RDT', exact: true, unit: '', qualitative: ['Reactive', 'Non-reactive'], normalValues: ['Non-reactive'], referenceStr: 'Non-reactive' },
+  { test: 'RPR / VDRL', exact: true, unit: '', qualitative: ['Reactive', 'Non-reactive'], normalValues: ['Non-reactive'], referenceStr: 'Non-reactive' },
+  { test: 'TPHA', exact: true, unit: '', qualitative: ['Reactive', 'Non-reactive'], normalValues: ['Non-reactive'], referenceStr: 'Non-reactive' },
+  { test: 'HBsAg', exact: true, unit: '', qualitative: ['Reactive', 'Non-reactive'], normalValues: ['Non-reactive'], referenceStr: 'Non-reactive' },
+  { test: 'Anti-HCV', exact: true, unit: '', qualitative: ['Reactive', 'Non-reactive'], normalValues: ['Non-reactive'], referenceStr: 'Non-reactive' },
+  { test: 'Infant HIV PCR (EID)', exact: true, unit: '', qualitative: ['Detected', 'Not detected'], normalValues: ['Not detected'], referenceStr: 'Not detected' },
+  { test: 'COVID-19 PCR', exact: true, unit: '', qualitative: ['Detected', 'Not detected'], normalValues: ['Not detected'], referenceStr: 'Not detected' },
+  { test: 'Influenza PCR', exact: true, unit: '', qualitative: ['Detected', 'Not detected'], normalValues: ['Not detected'], referenceStr: 'Not detected' },
+  { test: 'Gonorrhoea & Chlamydia PCR', exact: true, unit: '', qualitative: ['Detected', 'Not detected'], normalValues: ['Not detected'], referenceStr: 'Not detected' },
+  { test: 'Mpox PCR', exact: true, unit: '', qualitative: ['Detected', 'Not detected'], normalValues: ['Not detected'], referenceStr: 'Not detected' },
+  { test: 'Yellow Fever PCR', exact: true, unit: '', qualitative: ['Detected', 'Not detected'], normalValues: ['Not detected'], criticalValues: ['Detected'], referenceStr: 'Not detected' },
+  { test: 'Rift Valley Fever PCR', exact: true, unit: '', qualitative: ['Detected', 'Not detected'], normalValues: ['Not detected'], criticalValues: ['Detected'], referenceStr: 'Not detected' },
+  { test: 'Crimean-Congo Haemorrhagic Fever PCR', exact: true, unit: '', qualitative: ['Detected', 'Not detected'], normalValues: ['Not detected'], criticalValues: ['Detected'], referenceStr: 'Not detected' },
+  { test: 'Ebola PCR', exact: true, unit: '', qualitative: ['Detected', 'Not detected'], normalValues: ['Not detected'], criticalValues: ['Detected'], referenceStr: 'Not detected' },
+  { test: 'Marburg PCR', exact: true, unit: '', qualitative: ['Detected', 'Not detected'], normalValues: ['Not detected'], criticalValues: ['Detected'], referenceStr: 'Not detected' },
+  { test: 'Xpert MTB/RIF', exact: true, unit: '', qualitative: ['MTB not detected', 'MTB detected, RIF resistance not detected', 'MTB detected, RIF resistance detected', 'Indeterminate'], normalValues: ['MTB not detected'], referenceStr: 'MTB not detected' },
+  { test: 'Sputum AFB Smear', exact: true, unit: '', qualitative: ['Negative', 'Scanty', '1+', '2+', '3+'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'Malaria Microscopy', exact: true, unit: '', qualitative: ['Negative', 'P. falciparum', 'P. vivax', 'P. ovale', 'P. malariae', 'Mixed'], normalValues: ['Negative'], referenceStr: 'Negative' },
+  { test: 'G6PD Screen', exact: true, unit: '', qualitative: ['Normal', 'Intermediate', 'Deficient'], normalValues: ['Normal'], referenceStr: 'Normal' },
+  { test: '20-Minute Whole Blood Clotting Test', exact: true, unit: '', qualitative: ['Clotted', 'Not clotted'], normalValues: ['Clotted'], criticalValues: ['Not clotted'], referenceStr: 'Clotted' },
+  { test: 'HIV Viral Load', exact: true, unit: 'copies/mL', normalMax: 1000, referenceStr: 'Below 1000 copies/mL' },
+  { test: 'CD4 Count', exact: true, unit: 'cells/μL', normalMin: 500, normalMax: 1500, referenceStr: '500-1500 cells/μL' },
+  { test: 'White Blood Cell Count', exact: true, unit: '/μL', normalMin: 4000, normalMax: 11000, referenceStr: '4000-11000 /μL' },
+  { test: 'ESR', exact: true, unit: 'mm/hr', normalMax: 20, referenceStr: 'Below 20 mm/hr' },
+  { test: 'Urea', exact: true, unit: 'mmol/L', normalMin: 2.5, normalMax: 7.1, referenceStr: '2.5-7.1 mmol/L' },
+  { test: 'Chloride', exact: true, unit: 'mmol/L', normalMin: 98, normalMax: 107, referenceStr: '98-107 mmol/L' },
+  { test: 'Bicarbonate', exact: true, unit: 'mmol/L', normalMin: 22, normalMax: 29, referenceStr: '22-29 mmol/L' },
+  { test: 'Magnesium', exact: true, unit: 'mmol/L', normalMin: 0.7, normalMax: 1.0, referenceStr: '0.7-1.0 mmol/L' },
+  { test: 'Phosphate', exact: true, unit: 'mmol/L', normalMin: 0.8, normalMax: 1.5, referenceStr: '0.8-1.5 mmol/L' },
+  { test: 'ALT', exact: true, unit: 'U/L', normalMin: 7, normalMax: 56, referenceStr: '7-56 U/L' },
+  { test: 'AST', exact: true, unit: 'U/L', normalMin: 10, normalMax: 40, referenceStr: '10-40 U/L' },
+  { test: 'Alkaline Phosphatase', exact: true, unit: 'U/L', normalMin: 44, normalMax: 147, referenceStr: '44-147 U/L' },
+  { test: 'GGT', exact: true, unit: 'U/L', normalMin: 9, normalMax: 48, referenceStr: '9-48 U/L' },
+  { test: 'Bilirubin, Total', exact: true, unit: 'μmol/L', normalMin: 3, normalMax: 21, referenceStr: '3-21 μmol/L' },
+  { test: 'Bilirubin, Direct', exact: true, unit: 'μmol/L', normalMin: 0, normalMax: 5, referenceStr: '0-5 μmol/L' },
+  { test: 'Albumin', exact: true, unit: 'g/L', normalMin: 35, normalMax: 50, referenceStr: '35-50 g/L' },
+  { test: 'Total Protein', exact: true, unit: 'g/L', normalMin: 60, normalMax: 83, referenceStr: '60-83 g/L' },
+  { test: 'Total Cholesterol', exact: true, unit: 'mmol/L', normalMax: 5.2, referenceStr: 'Below 5.2 mmol/L' },
+  { test: 'HDL Cholesterol', exact: true, unit: 'mmol/L', normalMin: 1.0, referenceStr: 'Above 1.0 mmol/L' },
+  { test: 'LDL Cholesterol', exact: true, unit: 'mmol/L', normalMax: 3.4, referenceStr: 'Below 3.4 mmol/L' },
+  { test: 'Triglycerides', exact: true, unit: 'mmol/L', normalMax: 1.7, referenceStr: 'Below 1.7 mmol/L' },
+  { test: 'Uric Acid', exact: true, unit: 'μmol/L', normalMin: 150, normalMax: 420, referenceStr: '150-420 μmol/L' },
+  { test: 'Amylase', exact: true, unit: 'U/L', normalMin: 30, normalMax: 110, referenceStr: '30-110 U/L' },
+  { test: 'Lipase', exact: true, unit: 'U/L', normalMin: 0, normalMax: 160, referenceStr: '0-160 U/L' },
+  { test: 'LDH', exact: true, unit: 'U/L', normalMin: 140, normalMax: 280, referenceStr: '140-280 U/L' },
+  { test: 'Creatine Kinase (CK)', exact: true, unit: 'U/L', normalMin: 30, normalMax: 200, referenceStr: '30-200 U/L' },
+  { test: 'C-Reactive Protein (CRP)', exact: true, unit: 'mg/L', normalMax: 5, referenceStr: 'Below 5 mg/L' },
+  { test: 'TSH', exact: true, unit: 'mIU/L', normalMin: 0.4, normalMax: 4.0, referenceStr: '0.4-4.0 mIU/L' },
+  { test: 'Free T4', exact: true, unit: 'pmol/L', normalMin: 9, normalMax: 19, referenceStr: '9-19 pmol/L' },
+  { test: 'PSA', exact: true, unit: 'ng/mL', normalMax: 4, referenceStr: 'Below 4 ng/mL' },
+  { test: 'aPTT', exact: true, unit: 'seconds', normalMin: 25, normalMax: 35, referenceStr: '25-35 seconds' },
+  { test: 'Fibrinogen', exact: true, unit: 'g/L', normalMin: 2, normalMax: 4, referenceStr: '2-4 g/L' },
+  { test: 'D-Dimer', exact: true, unit: 'mg/L FEU', normalMax: 0.5, referenceStr: 'Below 0.5 mg/L FEU' },
+  { test: 'Phenytoin Level', exact: true, unit: 'mg/L', normalMin: 10, normalMax: 20, referenceStr: 'Therapeutic 10-20 mg/L' },
+  { test: 'Carbamazepine Level', exact: true, unit: 'mg/L', normalMin: 4, normalMax: 12, referenceStr: 'Therapeutic 4-12 mg/L' },
+  { test: 'Valproate Level', exact: true, unit: 'mg/L', normalMin: 50, normalMax: 100, referenceStr: 'Therapeutic 50-100 mg/L' },
+  { test: 'Phenobarbital Level', exact: true, unit: 'mg/L', normalMin: 15, normalMax: 40, referenceStr: 'Therapeutic 15-40 mg/L' },
+  { test: 'Sodium', exact: true, unit: 'mmol/L', normalMin: 135, normalMax: 145, ruleName: 'Sodium', toRuleUnit: 1, referenceStr: '135-145 mmol/L' },
+  { test: 'Potassium', exact: true, unit: 'mmol/L', normalMin: 3.5, normalMax: 5.0, ruleName: 'Potassium', toRuleUnit: 1, referenceStr: '3.5-5.0 mmol/L' },
+  { test: 'Calcium', exact: true, unit: 'mmol/L', normalMin: 2.15, normalMax: 2.55, ruleName: 'Calcium', toRuleUnit: 1, referenceStr: '2.15-2.55 mmol/L' },
+  { test: 'PT / INR', exact: true, unit: '', normalMin: 0.8, normalMax: 1.2, ruleName: 'INR', toRuleUnit: 1, referenceStr: '0.8-1.2 (target higher on warfarin)' },
+  { test: 'Lactate', exact: true, unit: 'mmol/L', normalMin: 0.5, normalMax: 2.2, ruleName: 'Lactate', toRuleUnit: 1, referenceStr: '0.5-2.2 mmol/L' },
+  { test: 'Lithium Level', exact: true, unit: 'mmol/L', normalMin: 0.6, normalMax: 1.0, ruleName: 'Lithium', toRuleUnit: 1, referenceStr: 'Therapeutic 0.6-1.0 mmol/L' },
+  { test: 'Digoxin Level', exact: true, unit: 'ng/mL', normalMin: 0.5, normalMax: 2.0, ruleName: 'Digoxin', toRuleUnit: 1, referenceStr: 'Therapeutic 0.5-2.0 ng/mL' },
   { test: 'Hemoglobin', unit: 'g/dL', normalMin: 12, normalMax: 17, ruleName: 'Hemoglobin', toRuleUnit: 1, referenceStr: '12-17 g/dL' },
   // ×10⁹/L = 10³/µL, so /µL ÷ 1000 lands in the rule's unit.
   { test: 'WBC', unit: '/μL', normalMin: 4000, normalMax: 11000, ruleName: 'White Blood Cell', toRuleUnit: 1 / 1000, referenceStr: '4000-11000 /μL' },
@@ -200,8 +298,8 @@ export const LAB_REFERENCE_RANGES: LabReferenceRange[] = [
 ];
 
 export function getLabReferenceRange(testName: string): LabReferenceRange | undefined {
-  const name = (testName || '').toLowerCase();
-  return LAB_REFERENCE_RANGES.find(r => name.includes(r.test.toLowerCase()));
+  const name = (testName || '').trim().toLowerCase();
+  return LAB_REFERENCE_RANGES.find(r => (r.exact ? name === r.test.toLowerCase() : name.includes(r.test.toLowerCase())));
 }
 
 /** Critical bounds for a range, expressed in the range's own entry unit. */
@@ -237,6 +335,7 @@ export function flagLabResult(testName: string, value: string): { flag: LabFlag;
 
   if (range.normalValues) {
     const v = value.trim().toLowerCase();
+    if (range.criticalValues?.some(c => c.toLowerCase() === v)) return { flag: 'CRITICAL', abnormal: true, critical: true };
     return range.normalValues.some(n => n.toLowerCase() === v)
       ? normal
       : { flag: 'ABNORMAL', abnormal: true, critical: false };

@@ -11,7 +11,7 @@ jest.mock('uuid', () => ({ v4: () => `${String(++uuidCounter).padStart(8, '0')}-
 jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 
 import { createDBMock, teardownTestDBs } from '../helpers/test-db';
-import { acceptTransfer, applyDueTransfers, getTransferById, buildTransferSummary, createTransferRequest, rejectTransfer } from '@/lib/services/patient-transfer-service';
+import { acceptTransfer, applyDueTransfers, getTransferById, buildTransferSummary, createTransferRequest, markTransferArrived, transferProgress, updateTransferLogistics, rejectTransfer } from '@/lib/services/patient-transfer-service';
 import { filterByScope, type DataScope } from '@/lib/services/data-scope';
 import type { PatientDoc } from '@/lib/db-types';
 
@@ -216,4 +216,28 @@ test('allergies that could not be read are named, not left looking like none', a
   const summary = await buildTransferSummary('pat-not-on-this-device');
   expect(summary.unavailable).toContain('allergies');
   expect(summary.allergies).toBeUndefined();
+});
+
+test('arrival is recorded once, and progress never goes backwards', async () => {
+  await seedPatient('pat-t13', 'hosp-001', juba.id);
+  const sent = await request('pat-t13', JUBA, WAU, juba);
+  await acceptTransfer(sent._id, wau);
+
+  await markTransferArrived(sent._id, wau);
+  const events = (await getTransferById(sent._id))?.events.length;
+  await markTransferArrived(sent._id, wau);
+  await markTransferArrived(sent._id, wau);
+  expect((await getTransferById(sent._id))?.events).toHaveLength(events!);
+
+  await updateTransferLogistics(sent._id, { physicalStatus: 'bed_reserved' }, wau);
+  await updateTransferLogistics(sent._id, { physicalStatus: 'ready_for_transport' }, wau);
+  const after = await getTransferById(sent._id);
+  expect(after?.physicalStatus).toBe('arrived');
+  expect(transferProgress(after!)).toBe('arrived');
+});
+
+test('an older transfer that slipped backwards still reads as arrived', () => {
+  expect(transferProgress({ physicalStatus: 'bed_reserved', arrivedAt: '2026-11-01T09:35:00Z' })).toBe('arrived');
+  expect(transferProgress({ physicalStatus: 'bed_reserved' })).toBe('bed_reserved');
+  expect(transferProgress({})).toBe('not_scheduled');
 });

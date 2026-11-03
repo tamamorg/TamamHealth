@@ -13,6 +13,7 @@
 
 import { defaultCurrency } from '@/lib/country/country-pack';
 import type { RoomClass } from '../db-types-ward';
+import { LAB_CATALOG_VERSION, LAB_TEST_CATALOG } from '../data/lab-tests';
 
 /** A single lab investigation the facility offers. */
 export interface LabTestDef {
@@ -23,6 +24,8 @@ export interface LabTestDef {
    *  interoperable, trendable results and DHIS2/FHIR export. Optional so custom
    *  facility tests can exist without a code. */
   loinc?: string;
+  /** Heading in the test picker. A facility's own tests fall under their specimen. */
+  section?: string;
 }
 
 export type EncounterStationKey =
@@ -65,6 +68,8 @@ export interface FacilitySettings {
   acuity: { timeAging: boolean; agingPerMinute: number };
   /** The lab investigations this facility can order. */
   labCatalog: LabTestDef[];
+  /** The catalogue release a saved list last took in. See `mergeLabCatalog`. */
+  labCatalogVersion?: number;
 
   // ── Operations ──────────────────────────────────────────────────────────
   /** Exam rooms / bays a patient can be placed in. */
@@ -223,23 +228,9 @@ export const DEFAULT_FACILITY_SETTINGS: FacilitySettings = {
   language: 'en',
   resultReviewSLA: { criticalHours: 1, routineHours: 168 },
   acuity: { timeAging: true, agingPerMinute: 0.1 },
+  labCatalogVersion: LAB_CATALOG_VERSION,
   labCatalog: [
-    { name: 'Full Blood Count', tier: 'basic', specimen: 'Blood', loinc: '58410-2' },
-    { name: 'Urinalysis', tier: 'basic', specimen: 'Urine', loinc: '24357-6' },
-    { name: 'Blood Glucose', tier: 'basic', specimen: 'Blood', loinc: '2339-0' },
-    { name: 'Malaria RDT', tier: 'basic', specimen: 'Blood', loinc: '70564-7' },
-    { name: 'HIV Rapid Test', tier: 'special', specimen: 'Blood', loinc: '75622-1' },
-    { name: 'CD4 Count', tier: 'special', specimen: 'Blood', loinc: '24467-3' },
-    { name: 'Liver Function', tier: 'special', specimen: 'Blood', loinc: '24325-3' },
-    { name: 'Renal Function', tier: 'special', specimen: 'Blood', loinc: '24362-6' },
-    { name: 'Typhoid (Widal)', tier: 'special', specimen: 'Blood' },
-    { name: 'Rheumatoid Factor', tier: 'special', specimen: 'Blood', loinc: '11572-5' },
-    { name: 'ANA (autoimmune screen)', tier: 'special', specimen: 'Blood', loinc: '5048-4' },
-    { name: 'Uric Acid', tier: 'special', specimen: 'Blood', loinc: '3084-1' },
-    { name: 'Vitamin D', tier: 'special', specimen: 'Blood', loinc: '35365-6' },
-    { name: 'Stool Culture', tier: 'special', specimen: 'Stool', loinc: '625-4' },
-    { name: 'Blood Culture', tier: 'special', specimen: 'Blood', loinc: '600-7' },
-    { name: 'Lipid Profile', tier: 'special', specimen: 'Blood', loinc: '57698-3' },
+    ...LAB_TEST_CATALOG,
     // Imaging studies — specimen 'Imaging' routes these to the radiology queue.
     { name: 'X-Ray — Chest', tier: 'special', specimen: 'Imaging' },
     { name: 'X-Ray — Limb/Skeletal', tier: 'special', specimen: 'Imaging' },
@@ -342,6 +333,27 @@ export const DEFAULT_FACILITY_SETTINGS: FacilitySettings = {
 };
 
 /**
+ * A facility's saved catalogue, brought up to the current release once. Tests
+ * added since it was saved are appended and its own edits stay. After that the
+ * saved list stands, so a test an admin removes does not come back.
+ */
+export function mergeLabCatalog(saved: LabTestDef[] | undefined, savedVersion: number | undefined): LabTestDef[] {
+  const defaults = DEFAULT_FACILITY_SETTINGS.labCatalog;
+  if (!saved?.length) return [...defaults];
+  if ((savedVersion ?? 1) >= LAB_CATALOG_VERSION) return saved;
+  const key = (name: string) => name.trim().toLowerCase();
+  const byName = new Map(defaults.map(test => [key(test.name), test]));
+  const held = new Set(saved.map(test => key(test.name)));
+  return [
+    ...saved.map(test => {
+      const current = byName.get(key(test.name));
+      return { ...current, ...test, ...(current?.loinc ? { loinc: current.loinc } : {}) };
+    }),
+    ...defaults.filter(test => !held.has(key(test.name))),
+  ];
+}
+
+/**
  * Merge a stored (possibly partial / older-schema) settings object over the
  * defaults so missing fields always resolve to a sane value. Nested objects
  * are merged shallowly per key.
@@ -355,7 +367,8 @@ export function mergeFacilitySettings(partial?: Partial<FacilitySettings> | null
     language: partial.language ?? d.language,
     resultReviewSLA: { ...d.resultReviewSLA, ...(partial.resultReviewSLA ?? {}) },
     acuity: { ...d.acuity, ...(partial.acuity ?? {}) },
-    labCatalog: partial.labCatalog?.length ? partial.labCatalog : [...d.labCatalog],
+    labCatalog: mergeLabCatalog(partial.labCatalog, partial.labCatalogVersion),
+    labCatalogVersion: LAB_CATALOG_VERSION,
     rooms: partial.rooms?.length ? partial.rooms : [...d.rooms],
     departments: partial.departments?.length ? partial.departments : [...d.departments],
     roomClasses: partial.roomClasses?.length ? partial.roomClasses.map(item => ({ ...item })) : d.roomClasses.map(item => ({ ...item })),

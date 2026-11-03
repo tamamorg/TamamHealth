@@ -13,7 +13,6 @@ export const VitalsTrends = dynamic(() => import('@/components/VitalsTrends'), {
 // workspace out of the facesheet bundle until its tab or action is opened.
 export const PatientTimeline = dynamic(() => import('@/components/PatientTimeline'), { loading: ChartPanelLoading });
 export const BillingTab = dynamic(() => import('@/components/patients/BillingTab'), { loading: ChartPanelLoading });
-export const PatientSBAR = dynamic(() => import('@/components/patients/PatientSBAR'), { loading: ChartPanelLoading });
 export const PortalAccessCard = dynamic(() => import('@/components/patients/PortalAccessCard'), { loading: ChartPanelLoading });
 export const NotesList = dynamic(() => import('@/components/clinical-notes/NotesList'), { loading: ChartPanelLoading });
 export const PhoneNotes = dynamic(() => import('@/components/patients/PhoneNotes'), { loading: ChartPanelLoading });

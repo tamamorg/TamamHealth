@@ -349,3 +349,28 @@
 .o3f-vital-message { margin: 0; font-size: 13px !important; font-weight: 500; }
 .o3f .o3f-output { display: flex; align-items: center; color: var(--text-secondary); }
 .o3f .o3f-answer-status { max-width: 360px; min-height: 32px; color: var(--text-secondary); }
+
+/* The page list stays on the left at slider width, as a slim column: labels
+   wrap rather than take the form's width. */
+.o3f { container: o3-form / inline-size; }
+@container o3-form (max-width: 720px) {
+  .o3f:not(.o3f--single) .o3f-grid { grid-template-columns: 148px minmax(0, 1fr); }
+  .o3f-nav { border-inline-end: 1px solid var(--border-light); background: var(--bg-app); }
+  .o3f-nav-item {
+    padding: 10px 12px;
+    border-inline-start: 3px solid transparent;
+    font-size: 13px;
+    line-height: 1.3;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .o3f-nav-item:hover { background: var(--border-light); }
+  .o3f-nav-item.is-active {
+    border-inline-start-color: var(--accent-primary);
+    background: var(--ehr-panel, var(--bg-card-solid));
+    font-weight: 600;
+  }
+  .o3f-nav-actions { margin: 12px 0 0; padding: 12px; }
+  .o3f-section-body { margin-inline-end: 0; padding: 16px; }
+  .o3f-page-head, .o3f-section-head { padding-inline: 16px; }
+}

@@ -16,7 +16,6 @@ import { usePatientReferrals } from '@/lib/hooks/useReferrals';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import { useImmunizations } from '@/lib/hooks/useImmunizations';
 import { useANC } from '@/lib/hooks/useANC';
-import { MessageSquare } from '@/components/icons/lucide';
 import { Icon as DuotoneInfoIcon } from '@/components/icons';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
@@ -37,7 +36,6 @@ import { buildChartLatestVitals } from '@/lib/chart-latest-vitals';
 
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { usePatientPayments } from '@/lib/hooks/usePayments';
-import { usePatientHandoff } from '@/lib/hooks/usePatientHandoff';
 
 import { useCreateNote } from '@/lib/clinical-notes/useCreateNote';
 import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
@@ -67,7 +65,6 @@ import { buildHandleToggleDeceased } from './detail/buildHandleToggleDeceased';
 import { buildHandleEditSubmit } from './detail/buildHandleEditSubmit';
 import { buildSendPatientMessage } from './detail/buildSendPatientMessage';
 import PatientOverviewTab from './detail/PatientOverviewTab';
-import PatientSbarTab from './detail/PatientSbarTab';
 import PatientProblemsTab from './detail/PatientProblemsTab';
 import PatientAllergiesTab from './detail/PatientAllergiesTab';
 import PatientCareChecklistTab from './detail/PatientCareChecklistTab';
@@ -402,7 +399,6 @@ export default function PatientDetailPage() {
   }, [activeTab, focusId, patientAppointments, setApptView]);
   const { prescriptions: allPrescriptions } = usePrescriptions(patient?._id);
   const { triages: patientTriages, loading: triageLoading } = useTriage(patient?._id);
-  const latestShiftHandoff = usePatientHandoff(patient?._id);
   // Merged vitals history across both places they're captured — a consult's
   // own vitalSigns and a triage stop's own vitals fields — normalized and
   // sorted newest-first. Feeds the vitals band, the vitals table and the
@@ -677,7 +673,6 @@ export default function PatientDetailPage() {
     { id: 'vitals', label: 'Vitals & Biometrics', icon: Activity },
     { id: 'notes', label: 'Notes', icon: FileText },
     { id: 'messages', label: 'Messages', icon: Mail },
-    { id: 'sbar', label: 'SBAR handoff', icon: MessageSquare },
     { id: 'labs', label: 'Results', icon: FlaskConical },
     { id: 'orders', label: 'Orders', icon: ClipboardList },
     { id: 'procedures', label: 'Procedures', icon: Bandage },
@@ -794,10 +789,6 @@ export default function PatientDetailPage() {
     // The conversation with the patient through their portal — what the care
     // team wrote, and what the patient wrote back.
     { id: 'messages', label: 'Messages', icon: Mail },
-    // A shift-handoff summary, not a documentation flow of its own — sits
-    // beside Notes since it's read the same way. Previously unreachable (no
-    // rail slot); cheaper to surface it here than to delete a working view.
-    { id: 'sbar', label: 'SBAR handoff', icon: MessageSquare },
     { id: 'allergies', label: 'Allergies', icon: ShieldAlert },
     { id: 'problems', label: 'Conditions', icon: AlertTriangle },
     // The standing history — medical, surgical, family, social — recorded once
@@ -897,7 +888,6 @@ export default function PatientDetailPage() {
                 ?? (showNurseVitals ? 'vitals' : showStartVisit ? 'startVisit' : showPrescribeModal ? 'prescribe' : showBookAppointment ? 'appointment' : openRecord ? 'record' : null);
               if (top === 'record' && openRecord) return {
                 title: t('recordSign.title'),
-                wide: true,
                 onClose: () => setRecordPanel(null),
                 content: (
                   <RecordSignPanel
@@ -966,7 +956,6 @@ export default function PatientDetailPage() {
               };
               if (top === 'prescribe') return {
                 title: t('createPage.prescribeTitle'),
-                wide: true,
                 onClose: () => setShowPrescribeModal(false),
                 // No padded drawer-body wrapper: like Record vitals, the form
                 // runs edge to edge so its action bar spans the slider.
@@ -1076,10 +1065,6 @@ export default function PatientDetailPage() {
           {activeTab === 'overview' && <PatientOverviewTab patient={patient} latestVitals={latestVitals} vitalsReady={vitalsReady} latestPatientTriage={latestPatientTriage} patientProblems={patientProblems} allPrescriptions={allPrescriptions} allLabResults={allLabResults} allImmunizations={allImmunizations} canViewClinical={canViewClinical} selectTab={selectTab} facesheetActions={facesheetActions} facesheetPanels={facesheetPanels} showCustomizeView={showCustomizeView} setShowCustomizeView={setShowCustomizeView} toggleFacesheetPanel={toggleFacesheetPanel} setFacesheetPanels={setFacesheetPanels} />}
 
           {activeTab === 'appointments' && patient && <PatientAppointmentsTab patient={patient} patientAppointments={patientAppointments} onAppointmentsChanged={reloadAppointments} apptTs={apptTs} apptSearch={apptSearch} apptPage={apptPage} APPT_PAGE_SIZE={APPT_PAGE_SIZE} t={t} canBookAppointments={canBookAppointments} onBook={openBookAppointment} apptView={apptView} setApptView={setApptView} setApptSearch={setApptSearch} setApptPage={setApptPage} focusId={focusId} />}
-
-          {/* No wrapper card: PatientSBAR is built from ChartSection now, and
-              nesting those inside a card produced a card-in-a-card. */}
-          {activeTab === 'sbar' && patient && <PatientSbarTab patient={patient} records={records} allLabResults={allLabResults} allPrescriptions={allPrescriptions} patientTriages={patientTriages} patientProblems={patientProblems} latestShiftHandoff={latestShiftHandoff} />}
 
           {/* Problem List — longitudinal active/chronic/resolved */}
           {/* Conditions — Tamam-style Conditions table (ChartSection), replacing

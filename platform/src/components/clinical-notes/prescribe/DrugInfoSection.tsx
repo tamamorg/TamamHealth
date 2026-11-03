@@ -11,7 +11,8 @@
 
 import { useMemo } from 'react';
 import { Star } from '@/components/icons/lucide';
-import { FORMULARY, type FormularyDrug } from '@/lib/data/formulary';
+import { FORMULARY, OFF_FORMULARY_CATEGORY, offFormularyDrug, type FormularyDrug } from '@/lib/data/formulary';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useRoleFlag } from '@/lib/settings/useRoleSetting';
 import type { PharmacyInventoryDoc, ProblemDoc } from '@/lib/db-types';
 import { stockPositionFor, type StockPosition, type StockState } from '@/lib/pharmacy-stock-position';
@@ -73,6 +74,7 @@ export default function DrugInfoSection({
   // "Show only in-stock medicines by default" (`rx.inStockOnly`). Advanced
   // search deliberately ignores it: that mode exists to find anything, and a
   // prescriber who has widened the search is asking for the full formulary.
+  const { t } = useTranslation();
   const inStockOnly = useRoleFlag('rx.inStockOnly', true);
   const results = useMemo<Array<{ drug: FormularyDrug; stock: StockState | null }>>(() => {
     const q = query.trim().toLowerCase();
@@ -109,13 +111,20 @@ export default function DrugInfoSection({
             onChange={e => { onChange({ drug: null }); onQueryChange(e.target.value); }}
             aria-label="Drug name"
           />
+          {!draft.drug && query.trim().length >= 3 && results.length === 0 && (
+            <button type="button" className="cn-rx-offlist" onClick={() => { onChange({ drug: offFormularyDrug(query) }); onQueryChange(''); }}>
+              {t('prescribe.offListUse', { name: query.trim() })}
+            </button>
+          )}
+          {draft.drug?.category === OFF_FORMULARY_CATEGORY && <span className="cn-rx-qtynote">{t('prescribe.offListNotice')}</span>}
+          {draft.drug?.note && <span className="cn-rx-qtynote">{draft.drug.note}</span>}
           {results.length > 0 && (
             <div className="cn-inc-results cn-rx-results">
               {results.map(({ drug: d, stock: state }) => (
                 <button key={d.name} type="button" onClick={() => { onChange({ drug: d }); onQueryChange(''); }}>
                   <span>{d.name}</span>
                   <span className="cn-meds-row-meta">
-                    {d.category}{d.form ? ` · ${d.form}` : ''}
+                    {d.category}{d.form ? ` · ${d.form}` : ''}{d.note ? ` · ${d.note}` : ''}
                     {state && RESULT_STOCK_TAG[state] && (
                       <span className="cn-rx-stocktag" data-stock={state}>{RESULT_STOCK_TAG[state]}</span>
                     )}

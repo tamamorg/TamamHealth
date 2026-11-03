@@ -8,7 +8,7 @@
  * of `not_assessed` means nobody looked, so neither becomes a finding.
  */
 
-import { IITT_RED_CRITERIA, IITT_YELLOW_CRITERIA, INFECTION_RISK_SIGNS } from '../clinical/iitt';
+import { IITT_RED_CRITERIA, IITT_YELLOW_CRITERIA, INFECTION_RISK_SIGNS, iittCodeLabels } from '../clinical/iitt';
 import { priorityLabel } from '../clinical/triage-display';
 import { toIsoDate } from '../date-utils';
 import { formatDateTime } from '../format-utils';
@@ -32,10 +32,6 @@ const sentence = (value?: string) => {
 };
 
 const assessed = (value?: string) => (value && value !== 'not_assessed' ? sentence(value) : '');
-
-function labels(codes: string[] | undefined, catalog: readonly (readonly [string, string])[]): string {
-  return (codes || []).map(code => catalog.find(([id]) => id === code)?.[1] || code).join('; ');
-}
 
 function pregnancy(triage: TriageDoc): string {
   const status = triage.pregnancyStatus;
@@ -74,12 +70,15 @@ function findingsText(triage: TriageDoc): string {
     line('Blood glucose', triage.bloodGlucose && `${triage.bloodGlucose} mmol/L`),
     line('MUAC', triage.muac && `${triage.muac} cm`),
     line('Capillary refill', triage.capillaryRefillSeconds && `${triage.capillaryRefillSeconds} seconds`),
-    line('Danger signs', labels(triage.redCriteria, IITT_RED_CRITERIA)),
-    line('Urgent signs', labels(triage.yellowCriteria, IITT_YELLOW_CRITERIA)),
-    line('Infection risk', labels(triage.infectionRiskSigns, INFECTION_RISK_SIGNS)),
+    line('Danger signs', iittCodeLabels(triage.redCriteria, IITT_RED_CRITERIA).join('; ')),
+    line('Urgent signs', iittCodeLabels(triage.yellowCriteria, IITT_YELLOW_CRITERIA).join('; ')),
+    line('Infection risk', iittCodeLabels(triage.infectionRiskSigns, INFECTION_RISK_SIGNS).join('; ')),
     triage.isolationRequired ? 'Isolation required' : '',
+    line('Vital sign warnings', (triage.vitalUrgencyWarnings || []).map(warning => warning.message).join('; ')),
     line('Priority changed because', triage.vitalUrgencyOverridden ? triage.vitalUrgencyOverrideReason : ''),
     line('Treatment at triage', triage.immediateInterventions),
+    line('Sent to', triage.destinationClinic || sentence(triage.disposition)),
+    line('Receiving provider', triage.assignedProviderName),
     line('Handoff note', triage.handoffNote),
   ].filter(Boolean);
   return lines.length ? [source(triage), ...lines].join('\n') : '';

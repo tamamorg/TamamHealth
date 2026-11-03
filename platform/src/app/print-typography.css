@@ -61,35 +61,15 @@
     box-shadow: none !important;
     outline: 0 !important;
   }
-  [data-print-active] :is(.tamam-reg-sectionhead, .tamam-reg-fields, .sbar-tile, .sbar-form-priority, .dash-card) {
+  [data-print-active] :is(.tamam-reg-sectionhead, .tamam-reg-fields, .dash-card) {
     padding: 0 !important;
     margin: 0 !important;
   }
   [data-print-active] :is(.tamam-reg-sectionhead, .tamam-reg-sectionhead h2)::before,
   [data-print-active] :is(.tamam-reg-sectionhead, .tamam-reg-sectionhead h2)::after { content: none !important; }
   [data-print-active] .tamam-reg-sectionhead p { display: none !important; }
-  [data-print-active] .sbar-as-form-body { display: block !important; }
-  [data-print-active] :is(.sbar-allergies-list em, .sbar-chips li, .sbar-chips li *) {
-    padding: 0 !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    background: none !important;
-    font-style: normal !important;
-    font-weight: 700 !important;
-    color: black !important;
-  }
-  [data-print-active] .sbar-allergies-list { gap: 0 4mm !important; }
   [data-print-active] .tamam-reg-section { margin: 0 0 5mm !important; }
   [data-print-active] .tamam-reg-sectionhead h2 { margin: 0 0 2mm !important; }
-  [data-print-active].sbar-as-form .sbar-ro-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 2.5mm 6mm !important; padding: 1mm 1mm 0 !important; }
-  [data-print-active].sbar-as-form .sbar-ro-label {
-    color: color-mix(in srgb, black 68%, white) !important;
-    font-size: 7.5pt !important;
-    font-weight: 400 !important;
-    letter-spacing: 0 !important;
-    text-transform: none !important;
-  }
-  [data-print-active].sbar-as-form .sbar-ro-value { padding: 0 !important; font-size: 9.5pt !important; font-weight: 700 !important; }
 
   /* Screen affordances mean nothing on paper. */
   [data-print-active] svg { display: none !important; }

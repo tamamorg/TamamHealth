@@ -12,7 +12,7 @@
  * for the patient, so a clinician does not order twice.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type MutableRefObject } from 'react';
 import { formatRxSig } from '@/lib/format-utils';
 import { AlertTriangle, ChevronDown, FlaskConical, Pencil, Pill, Plus, Trash2 } from '@/components/icons/lucide';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
@@ -22,7 +22,7 @@ import { useFacilityName } from '@/lib/hooks/useFacilityName';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useToast } from '@/components/Toast';
-import { FORMULARY } from '@/lib/data/formulary';
+import { FORMULARY, offFormularyDrug } from '@/lib/data/formulary';
 import { catalogFor, searchCatalog, toOrderedTest } from '@/components/lab/order/lab-order-catalog';
 import { stockPositionFor } from '@/lib/pharmacy-stock-position';
 import type { PatientDoc, PharmacyInventoryDoc } from '@/lib/db-types';
@@ -62,11 +62,13 @@ interface OrderBasketPanelProps {
   context?: BasketContext;
   /** The drawer's title follows the screen ("Add drug order"); null = the panel's own. */
   onTitleChange: (title: string | null) => void;
+  /** True while an order form holds edits, so closing the drawer can ask first. */
+  formEditedRef?: MutableRefObject<boolean>;
   onClose: () => void;
 }
 
 export default function OrderBasketPanel({
-  patient, currentUser, canPrescribe, canOrderLabs, request, onRequestHandled, context, onTitleChange, onClose,
+  patient, currentUser, canPrescribe, canOrderLabs, request, onRequestHandled, context, onTitleChange, formEditedRef, onClose,
 }: OrderBasketPanelProps) {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -135,7 +137,11 @@ export default function OrderBasketPanel({
   }, [view.name, onTitleChange, t]);
   useEffect(() => () => onTitleChange(null), [onTitleChange]);
 
-  const toBasket = () => { setQuery(''); setView({ name: 'basket' }); };
+  const markEdited = useCallback((edited: boolean) => {
+    if (formEditedRef) formEditedRef.current = edited;
+  }, [formEditedRef]);
+  useEffect(() => () => markEdited(false), [markEdited]);
+  const toBasket = () => { markEdited(false); setQuery(''); setView({ name: 'basket' }); };
   const stamp = <T extends DrugOrderDraft | TestOrderDraft>(order: T): T => (
     order.context || !context ? order : { ...order, context }
   );
@@ -149,6 +155,9 @@ export default function OrderBasketPanel({
     if (q.length < 2) return [];
     return FORMULARY.filter(d => `${d.name} ${d.category} ${d.atc}`.toLowerCase().includes(q)).slice(0, 50);
   }, [query]);
+  // A medicine the list does not carry can still be ordered, with a reason.
+  // Only when nothing matches, so it never sits beside the checked listing.
+  const typedOffList = query.trim().length >= 3 && drugMatches.length === 0 ? query.trim() : '';
   const testCatalog = useMemo(() => catalogFor(labCatalog, 'labs'), [labCatalog]);
   const testMatches = useMemo(() => searchCatalog(testCatalog, query), [testCatalog, query]);
 
@@ -213,25 +222,28 @@ export default function OrderBasketPanel({
     return (
       <div className="tamam-drawer-workspace obk-root">
         <OrderSearchView
-          items={drugMatches.map(d => ({
+          items={[...drugMatches.map(d => ({
             key: d.name,
             title: d.name,
-            detail: d.form,
+            detail: [d.form, d.note].filter(Boolean).join(' · '),
             inBasket: drugOrders.some(o => o.drug.name === d.name),
-          }))}
+          })), ...(typedOffList ? [{
+            key: typedOffList,
+            title: t('prescribe.offListUse', { name: typedOffList }),
+            detail: t('prescribe.offListDetail'),
+            inBasket: drugOrders.some(o => o.drug.name === typedOffList),
+          }] : [])]}
           query={query}
           onQuery={setQuery}
           placeholder={t('basket.searchDrugs')}
           onBack={toBasket}
           header={<AllergyLine patient={patient} />}
           onAdd={key => {
-            const drug = FORMULARY.find(d => d.name === key);
-            if (drug) basket.put(stamp(newDrugOrder(drug)));
+            basket.put(stamp(newDrugOrder(FORMULARY.find(d => d.name === key) ?? offFormularyDrug(key))));
             toBasket();
           }}
           onForm={key => {
-            const drug = FORMULARY.find(d => d.name === key);
-            if (drug) setView({ name: 'drug-form', order: stamp(newDrugOrder(drug)) });
+            setView({ name: 'drug-form', order: stamp(newDrugOrder(FORMULARY.find(d => d.name === key) ?? offFormularyDrug(key))) });
           }}
         />
       </div>
@@ -249,6 +261,7 @@ export default function OrderBasketPanel({
           facilityName={facilityName}
           onSave={order => { basket.put(order); toBasket(); }}
           onDiscard={toBasket}
+          onEdited={markEdited}
         />
       </div>
     );
@@ -290,6 +303,7 @@ export default function OrderBasketPanel({
           initial={view.order}
           onSave={order => { basket.put(order); toBasket(); }}
           onDiscard={toBasket}
+          onEdited={markEdited}
           onBack={toBasket}
         />
       </div>

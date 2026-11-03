@@ -46,6 +46,11 @@ export const INFECTION_RISK_SIGNS = [
 
 type CodedFinding = readonly (readonly [string, string])[];
 
+/** Saved criterion codes as the words the nurse saw, keeping any unknown code. */
+export function iittCodeLabels(codes: string[] | undefined, catalog: CodedFinding): string[] {
+  return (codes || []).map(code => catalog.find(([id]) => id === code)?.[1] || code);
+}
+
 export function filterKnownIittCodes(value: unknown, catalog: CodedFinding): string[] {
   if (!Array.isArray(value)) return [];
   const allowed = new Set(catalog.map(([code]) => code));

@@ -10,7 +10,7 @@ export default function PatientChartPrintStyles() {
           /* ── Page setup ──
              A named page, so the full-bleed sheet belongs to this document
              alone. Unscoped, a zero page margin applied to every print made
-             from the chart — the SBAR and the lab report came out with their
+             from the chart — the lab report came out with its
              text against the paper's edge. Later pages get a top and bottom
              margin; the first keeps none so the header band bleeds. */
           @page chart-record {
@@ -34,8 +34,8 @@ export default function PatientChartPrintStyles() {
              overflow-clipped frame. Hiding with visibility alone left the
              document inside that frame, so the record printed its first page
              and stopped — allergies, results and the signature block never
-             reached paper. (The SBAR and lab-report buttons on this page go
-             through printElementById, which does the same for their target.) */
+             reached paper. (The lab-report button on this page goes through
+             printElementById, which does the same for its target.) */
           body:has(.print-doc-root) *:not(:has(.print-doc-root)):not(.print-doc-root):not(.print-doc-root *) {
             display: none !important;
           }

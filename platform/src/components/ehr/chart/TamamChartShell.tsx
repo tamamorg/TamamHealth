@@ -17,13 +17,14 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useConfirm } from '@/components/ConfirmDialog';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import {
-  ShoppingCart, Pencil, ClipboardCheck, FileText, Users, X, ArrowRight, Maximize2, Minimize2,
+  ShoppingCart, Pencil, ClipboardCheck, FileText, Users, X, ArrowLeft, Maximize2, Minimize2,
   Utensils, ScanLine, FlaskConical, Pill, Activity, HeartPulse, BedDouble, ClipboardList,
 } from '@/components/icons/lucide';
 import type { PatientDoc } from '@/lib/db-types';
-import DrawerResizeHandle from './DrawerResizeHandle';
 import RailResizeHandle from './RailResizeHandle';
 import { useHistoryLayer } from '@/lib/navigation/history-layer';
 // One dropdown look for every workspace form (O3 select).
@@ -118,29 +119,25 @@ const CLINICAL_NOTE_PANEL: DrawerPanelDef = { id: 'clinical-note', title: 'Clini
  * holds the radiology station. The rules live in `panels/role-form-access`,
  * which the Clinical forms list reads too.
  */
-const ROLE_FORM_PANELS: (DrawerPanelDef & { wide?: boolean })[] = [
+const ROLE_FORM_PANELS: DrawerPanelDef[] = [
   { id: 'nutrition-screening', title: 'Nutrition screening', icon: Utensils },
   { id: 'imaging-report', title: 'Imaging report', icon: ScanLine },
   // The bench and the counter: the lab's and the pharmacy's six-step
   // workflows, worked beside the record. Wide, as the note editor is — the
   // step chevrons need the room.
-  { id: 'lab-orders', title: 'Lab orders', icon: FlaskConical, wide: true },
-  { id: 'dispense', title: 'Dispense', icon: Pill, wide: true },
+  { id: 'lab-orders', title: 'Lab orders', icon: FlaskConical },
+  { id: 'dispense', title: 'Dispense', icon: Pill },
   // Clinical forms that used to leave the chart for their module's page.
-  { id: 'triage-form', title: 'Triage / ETAT assessment', icon: Activity, wide: true },
-  { id: 'anc-visit', title: 'ANC visit', icon: HeartPulse, wide: true },
+  { id: 'triage-form', title: 'Triage / ETAT assessment', icon: Activity },
+  { id: 'anc-visit', title: 'ANC visit', icon: HeartPulse },
   { id: 'ward-admission', title: 'Ward admission', icon: BedDouble },
-  // The structured O3 forms (Clinical forms list): a page list beside the
-  // questions, so wide.
-  { id: 'form-lab-results', title: 'Laboratory test results', icon: FlaskConical, wide: true },
-  { id: 'form-covid19', title: 'Covid 19', icon: ClipboardList, wide: true },
-  { id: 'form-mental-health', title: 'Mental health assessment', icon: ClipboardList, wide: true },
-  { id: 'form-surgical-operation', title: 'Surgical operation', icon: ClipboardList, wide: true },
+  // The structured O3 forms (Clinical forms list).
+  { id: 'form-lab-results', title: 'Laboratory test results', icon: FlaskConical },
+  { id: 'form-covid19', title: 'Covid 19', icon: ClipboardList },
+  { id: 'form-mental-health', title: 'Mental health assessment', icon: ClipboardList },
+  { id: 'form-surgical-operation', title: 'Surgical operation', icon: ClipboardList },
 ];
 
-function isWideRoleForm(id: string): boolean {
-  return !!ROLE_FORM_PANELS.find(panel => panel.id === id)?.wide;
-}
 
 /** The role forms `role` may open in the chart. Exported for tests. */
 export function allowedRoleFormPanels(role: string | undefined, canViewClinical: boolean): DrawerPanelDef[] {
@@ -190,8 +187,7 @@ interface TamamChartShellProps {
   /** A page-owned workspace (Record vitals) shown in the same docked slot as
    *  the rail panels, so it squeezes the chart the same way. Opening it closes
    *  any rail panel; opening a rail panel closes it. */
-  /** `wide` gives the workspace the note editor's wider column (Prescribe). */
-  workspace?: { title: string; content: ReactNode; onClose: () => void; wide?: boolean } | null;
+  workspace?: { title: string; content: ReactNode; onClose: () => void } | null;
   /** The order a `?form=…&focus=` link named, for the station forms. */
   formFocusId?: string;
 }
@@ -207,6 +203,8 @@ export default function TamamChartShell({
   // underneath; closing the top one (✕, Cancel, Back, Escape) shows the one
   // below it, and so on down. The top entry is what the drawer shows. A rail
   // panel already in the stack moves to the top instead of appearing twice.
+  const { t } = useTranslation();
+  const confirm = useConfirm();
   const [stack, setStack] = useState<WorkspaceEntry[]>([]);
   const top = stack[stack.length - 1];
   const openPanel = top?.kind === 'rail' ? top.id : null;
@@ -244,6 +242,13 @@ export default function TamamChartShell({
   }, [pushRail]);
   const clearBasketRequest = useCallback(() => setBasketRequest(null), []);
   // Nothing open: the next workspace starts at its docked width again.
+  // Every slider opened from a chart is the drawer's size (--chart-slider-w).
+  // They portal to <body>, so the page marks itself for them to read.
+  useEffect(() => {
+    document.documentElement.classList.add('tm-chart-open');
+    return () => document.documentElement.classList.remove('tm-chart-open');
+  }, []);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset when the last workspace closes
     if (stack.length === 0) setDrawerMaximized(false);
@@ -313,23 +318,41 @@ export default function TamamChartShell({
     if (openPanel === CLINICAL_NOTE_PANEL.id && next !== CLINICAL_NOTE_PANEL.id) onNoteSaved?.();
   };
 
+  // An order being written lives only in its form, unlike a note, which saves
+  // itself as it closes. An untouched form closes without asking.
+  const orderFormEditedRef = useRef(false);
+  const leaveOrderForm = async () => {
+    if (!orderFormEditedRef.current) return true;
+    const leave = await confirm({
+      title: t('basket.leaveTitle'),
+      message: t('basket.leaveMessage'),
+      confirmLabel: t('basket.leaveConfirm'),
+      cancelLabel: t('basket.keepEditing'),
+    });
+    if (leave) orderFormEditedRef.current = false;
+    return leave;
+  };
+
   // A rail button opens its panel on top of the stack; pressing the button of
   // the panel already showing closes it (back to the one beneath).
-  const togglePanel = (id: string) => {
-    if (openPanel === id) { closeDrawer(); return; }
+  const togglePanel = async (id: string) => {
+    if (openPanel === id) { void closeDrawer(); return; }
+    if (!await leaveOrderForm()) return;
     notifyIfNoteClosing(id);
     pushRail({ id });
   };
   // Close the top workspace only. A page workspace is closed by the page
   // (the effect above then drops it); a rail panel is popped here.
-  const closeDrawer = () => {
+  const closeDrawer = async () => {
+    if (!await leaveOrderForm()) return;
     if (top?.kind === 'page') { workspace?.onClose(); return; }
     notifyIfNoteClosing(null);
     setStack(prev => prev.slice(0, -1));
   };
-  // Leave the workspaces altogether (the header's →): every stacked panel
-  // closes, not just the top one, and the chart gets its full width back.
-  const closeAllWorkspaces = () => {
+  // Leave the workspaces altogether: every stacked panel closes, not just the
+  // top one, and the chart gets its full width back.
+  const closeAllWorkspaces = async () => {
+    if (!await leaveOrderForm()) return;
     if (stack.some(e => e.kind === 'rail' && e.id === CLINICAL_NOTE_PANEL.id)) onNoteSaved?.();
     if (stack.some(e => e.kind === 'page')) workspace?.onClose();
     setStack([]);
@@ -406,6 +429,7 @@ export default function TamamChartShell({
             onRequestHandled={clearBasketRequest}
             context={basketContext}
             onTitleChange={setBasketTitle}
+            formEditedRef={orderFormEditedRef}
             onClose={closeDrawer}
           />
         );
@@ -611,23 +635,21 @@ export default function TamamChartShell({
           <div
             ref={drawerRef}
             tabIndex={-1}
-            className={`tamam-drawer no-print ${activePanel.id === CLINICAL_NOTE_PANEL.id || (activePanel.id === PAGE_WORKSPACE_ID && workspace?.wide) || isWideRoleForm(activePanel.id) ? 'is-note-editor' : ''} ${drawerMaximized ? 'is-maximized' : ''}`}
+            className={`tamam-drawer no-print ${drawerMaximized ? 'is-maximized' : ''}`}
             style={drawerHeight ? { height: drawerHeight } : undefined}
             role="dialog"
             aria-modal="false"
             aria-label={activePanel.title}
           >
-            {/* Drag the inner edge to resize (DrawerResizeHandle): note-width
-                and panel-width workspaces each remember their own width.
-                Hidden in full screen, where there is no edge to drag. */}
-            {!drawerMaximized && (
-              <DrawerResizeHandle storageKey={activePanel.id === CLINICAL_NOTE_PANEL.id || (activePanel.id === PAGE_WORKSPACE_ID && workspace?.wide) || isWideRoleForm(activePanel.id) ? 'tamam-drawer-w:note' : 'tamam-drawer-w:panel'} />
-            )}
             <div className="tamam-drawer-header">
+              {/* ✕ always closes completely. Back is here only when something is
+                  open underneath to go back to, on the title's side of the bar. A
+                  basket order form has its own "Back to order basket" instead. */}
+              {stack.length > 1 && !(activePanel.id === 'order-basket' && basketTitle) && (
+                <button type="button" className="tamam-drawer-back" title="Back" aria-label="Back to the previous panel" onClick={closeDrawer}><ArrowLeft /></button>
+              )}
               <span className="tamam-drawer-title">{activePanel.title}</span>
               <div className="tamam-drawer-controls">
-                {/* → leaves the workspaces (every stacked panel closes);
-                    ✕ closes only this one and goes back to the one beneath. */}
                 <button
                   type="button"
                   title={drawerMaximized ? 'Exit full screen' : 'Full screen'}
@@ -637,12 +659,7 @@ export default function TamamChartShell({
                 >
                   {drawerMaximized ? <Minimize2 /> : <Maximize2 />}
                 </button>
-                <button type="button" className="tamam-drawer-leave" title="Close all panels" aria-label="Close all panels" onClick={closeAllWorkspaces}>
-                  <ArrowRight />
-                </button>
-                <button type="button" title={stack.length > 1 ? 'Back' : 'Close'} aria-label={stack.length > 1 ? 'Back to the previous panel' : 'Close panel'} onClick={closeDrawer}>
-                  <X />
-                </button>
+                <button type="button" title="Close" aria-label="Close" onClick={closeAllWorkspaces}><X /></button>
               </div>
             </div>
             {renderPanelBody(activePanel.id)}

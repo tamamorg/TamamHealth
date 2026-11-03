@@ -1198,7 +1198,7 @@
    second bar inside the first — which is what the chart showed. The reset was
    qualified with `.tamam-root`, and that class exists only on
    `TamamChartShell`; `ChartSection` is also rendered by PatientDetailPage,
-   PatientTimeline, DocumentsPanel and PatientSBAR, and every one of those got
+   PatientTimeline and DocumentsPanel, and every one of those got
    the doubled bar. `.tamam-section-search input[type='search']` is (0,2,1)
    against the global rule's (0,1,1), so it wins on its own. */
 .tamam-section-search input[type='search'] {
@@ -1694,8 +1694,9 @@
   position: sticky;
   top: 0;
   align-self: flex-start;
-  flex: 0 0 clamp(400px, 34vw, 560px);
-  width: clamp(400px, 34vw, 560px);
+  flex: 0 0 min(var(--chart-slider-w), 100vw);
+  width: min(var(--chart-slider-w), 100vw);
+  container: chart-drawer / inline-size;
   /* The space under the top rail and the Back bar (--app-route-bar-h, published
      by RouteContextBar); without the bar the footer ran off the window. */
   height: calc(100svh - var(--app-overlay-top-inset, var(--ehr-top-rail-height, 0px)) - var(--app-route-bar-h, 0px));
@@ -1706,12 +1707,6 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-}
-
-/* Documentation needs more canvas than the compact action panels. */
-.tamam-drawer.is-note-editor {
-  flex-basis: clamp(480px, 50vw, 860px);
-  width: clamp(480px, 50vw, 860px);
 }
 
 .tamam-drawer-header {
@@ -1872,8 +1867,7 @@
     padding: 9px 0;
   }
   /* Too narrow to share: the workspace covers the chart, full width. */
-  .tamam-drawer,
-  .tamam-drawer.is-note-editor {
+  .tamam-drawer {
     position: fixed;
     top: var(--app-overlay-top-inset, var(--ehr-top-rail-height, 0px));
     right: 0;
@@ -2202,365 +2196,8 @@
 }
 .tamam-reported-meds > p { margin: 0 0 8px; }
 
-/* ══════════════════════════════════════════════════════════════════════════
-   SBAR handoff (components/patients/PatientSBAR.tsx)
-
-   The handoff is built from ChartSection like every other chart tab, so this
-   file only styles what lives INSIDE those sections. Rules to note: no row
-   dividers (the label carries the separation; a rule per fact turned four
-   short facts into a ruled ledger) and no card of its own for the document
-   title — the sticky patient header above already says whose chart this is.
-   ══════════════════════════════════════════════════════════════════════════ */
-
-.sbar-doc {
-  font-size: 13px;
-  color: var(--ehr-text-strong, #113055);
-}
-
-/* ══════════════════════════════════════════════════════════════════════════
-   SBAR written out as the triage form was filled — the Tamam `tamam-reg`
-   layout (left step-nav rail + stacked field slabs), read-only. The rail and
-   slab styling come from globals.css (`.tamam-reg*`); these rules add the
-   read-only field surface and the two lead banners.
-   ═══════════════════════════════════════════════════════════════════════════ */
-.sbar-as-form { max-width: 100%; }
-
-/* The handoff has no left rail, so the record takes the whole width rather
-   than leaving the rail's 244px column standing empty. */
-.tamam-reg.sbar-as-form { grid-template-columns: minmax(0, 1fr); }
-
-/* Print sits above the record it prints, trailing edge. */
-.sbar-as-form .sbar-form-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-/* Stack the lead banners and the sections at one rhythm — the omrs section
-   margin is neutralised here so the flex gap is the single source. */
-.tamam-reg-form.sbar-as-form-body { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
-.tamam-reg-form.sbar-as-form-body .tamam-reg-section + .tamam-reg-section { margin-top: 0; }
-
-/* Priority slab, the same fact the filled form leads with. */
-.sbar-as-form .sbar-form-priority {
-  display: flex; align-items: baseline; gap: 10px;
-  padding: 10px 16px; border-radius: 8px;
-}
-.sbar-as-form .sbar-form-priority strong { font-size: 16px; font-weight: 750; }
-.sbar-as-form .sbar-form-priority span { font-size: 11.5px; opacity: 0.85; text-transform: capitalize; }
-
-/* Read-only field: a label over a value on the same white, underlined surface
-   the form's inputs use, so a filled field and a read-only one match. */
-.sbar-as-form .sbar-ro-grid {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px;
-}
-.sbar-as-form .sbar-ro-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.sbar-as-form .sbar-ro-field--full { grid-column: 1 / -1; }
-.sbar-as-form .sbar-ro-label {
-  font-size: 12px; font-weight: 400; letter-spacing: 0;
-  color: var(--tamam-text-02, #5D728B);
-}
-.sbar-as-form .sbar-ro-value {
-  display: flex; align-items: center; min-height: 40px;
-  padding: 8px 12px; font-size: 14px; line-height: 1.4;
-  color: var(--tamam-ui-05, #113055);
-  background: var(--tamam-field-01, #fff);
-  border-bottom: 1px solid var(--tamam-ui-04, #CFD6DD);
-  overflow-wrap: anywhere;
-}
-.sbar-as-form .sbar-inline-dx em { font-style: normal; color: var(--tamam-text-02, #5D728B); }
-
-/* The sub-lists (chips, rows, tiles, ABCC grid) keep their own styling but sit
-   on the field slab, so a little top spacing separates them from a field grid
-   above. */
-.sbar-as-form .tamam-reg-fields > .sbar-block:not(:first-child),
-.sbar-as-form .tamam-reg-fields > .sbar-ro-grid + .sbar-ro-grid { margin-top: 2px; }
-
-/* The disclaimer closes the last slab quietly. */
-.sbar-as-form .tamam-reg-fields .sbar-disclaimer { margin-top: 4px; }
-
-@media (max-width: 900px) {
-  .sbar-as-form .sbar-ro-grid { grid-template-columns: minmax(0, 1fr); }
-}
-
-/* Print the document, not its navigation: the rail is a table of contents. */
-@media print {
-  .sbar-as-form { display: block !important; }
-  .sbar-as-form .tamam-reg-rail { display: none !important; }
-  /* A sheet of paper is narrower than the 900px breakpoint above, so on paper
-     the form fell to one field per row: a handoff ran to six pages, the first
-     nearly empty because each section refused to break and jumped whole to the
-     next sheet. Printed, it is a compact three-up grid whose sections may
-     split across pages; only a single field stays together. */
-  .tamam-reg-form.sbar-as-form-body { gap: 10px !important; }
-  .sbar-as-form .sbar-ro-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    gap: 6px 14px !important;
-  }
-  .sbar-as-form .sbar-ro-field { gap: 1px !important; break-inside: avoid; }
-  .sbar-as-form .sbar-ro-label { font-size: 8pt !important; }
-  .sbar-as-form .sbar-ro-value {
-    min-height: 0 !important;
-    padding: 2px 0 3px !important;
-    border: 0 !important;
-    border-bottom: 1px solid #CFD6DD !important;
-    border-radius: 0 !important;
-    background: none !important;
-    font-size: 10pt !important;
-  }
-  .sbar-as-form .tamam-reg-section,
-  .sbar-as-form .tamam-reg-fields { break-inside: auto; }
-  .sbar-as-form .tamam-reg-fields { padding: 8px 10px !important; }
-}
-
-.sbar-triage-header,
-.sbar-triage-section {
-  border-radius: 12px;
-  border-color: var(--border-light, var(--ehr-border)) !important;
-  background: var(--overlay-subtle, #F5F8FB);
-}
-
-.sbar-triage-header { padding: 14px; }
-.sbar-triage-header__top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.sbar-triage-header__top h2 { margin: 2px 0 0; color: var(--ehr-text-title); font-size: 16px; font-weight: 750; }
-.sbar-triage-kicker { color: var(--ehr-muted); font-size: 9.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-.sbar-triage-meta,
-.sbar-triage-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
-.sbar-triage-meta { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.sbar-triage-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid var(--border-light, var(--ehr-border));
-  border-radius: 6px;
-  background: var(--bg-card, #fff);
-}
-.sbar-triage-field > span { color: var(--ehr-muted); font-size: 9px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; }
-.sbar-triage-field > strong { color: var(--ehr-text-strong); font-size: 12px; font-weight: 650; line-height: 1.4; text-transform: capitalize; overflow-wrap: anywhere; }
-.sbar-triage-fields--handoff .sbar-triage-field:nth-last-child(-n+2) { grid-column: 1 / -1; }
-.sbar-triage-section .tamam-section-body { padding-top: 0; }
-
-.sbar-muted { color: var(--ehr-muted, #5D728B); font-weight: 400; }
-
-/* ── Allergy strip ── */
-.sbar-allergies {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding: 9px 14px;
-  border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 8px;
-  background: var(--ehr-panel, #fff);
-  color: var(--ehr-muted, #5D728B);
-}
-
-.sbar-allergies.is-alert {
-  border-color: rgba(224, 49, 39, 0.28);
-  background: rgba(224, 49, 39, 0.05);
-  color: var(--tamamhealth-red, #D92B20);
-}
-
-.sbar-allergies-label {
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.sbar-allergies-none { font-size: 12.5px; }
-
-.sbar-allergies-list { display: flex; flex-wrap: wrap; gap: 6px; }
-
-.sbar-allergies-list em {
-  padding: 2px 8px;
-  border: 1px solid rgba(224, 49, 39, 0.22);
-  border-radius: 5px;
-  background: rgba(224, 49, 39, 0.10);
-  color: var(--tamamhealth-red-text, #B4180F);
-  font-size: 12px;
-  font-style: normal;
-  font-weight: 600;
-}
-
-/* ── Body typography ── */
-.sbar-lede { margin: 0; font-size: 13.5px; line-height: 1.55; }
-.sbar-para { margin: 6px 0 0; line-height: 1.6; }
-
-/* The acuity result and ABCC cards intentionally mirror the completed triage
-   screen: a filled clinical state is faster to scan than four unweighted
-   prose facts, and the same tone always carries the same meaning. */
-.sbar-triage-priority {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 10px 0 8px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  text-align: center;
-}
-
-.sbar-triage-priority strong { font-size: 14px; }
-.sbar-triage-priority span { font-size: 11.5px; font-weight: 650; }
-
-.sbar-triage-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.sbar-triage-card {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-height: 78px;
-  padding: 12px;
-  border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 12px;
-  background: var(--ehr-soft, #F5F8FB);
-}
-
-.sbar-triage-card span {
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  color: var(--ehr-muted, #5D728B);
-}
-
-.sbar-triage-card strong { font-size: 12.5px; text-transform: capitalize; }
-.sbar-triage-card[data-tone='normal'] { background: var(--acuity-green-bg); border-color: color-mix(in srgb, var(--acuity-green) 32%, transparent); color: var(--acuity-green); }
-.sbar-triage-card[data-tone='warning'] { background: var(--acuity-yellow-bg); border-color: color-mix(in srgb, var(--acuity-yellow) 32%, transparent); color: var(--acuity-yellow); }
-.sbar-triage-card[data-tone='danger'] { background: var(--acuity-red-bg); border-color: color-mix(in srgb, var(--acuity-red) 32%, transparent); color: var(--acuity-red); }
-.sbar-triage-card[data-tone='muted'] { color: var(--ehr-muted, #5D728B); }
-
-/* ── One labelled fact per line ── */
-.sbar-fact {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 5px 0;
-}
-
-.sbar-fact + .sbar-fact { padding-top: 4px; }
-
-.sbar-fact-label {
-  flex: 0 0 auto;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ehr-muted, #5D728B);
-}
-
-.sbar-fact-value { text-align: right; line-height: 1.5; }
-
-/* ── Sub-block inside a section ── */
-.sbar-block { margin-top: 14px; }
-.sbar-block:first-child { margin-top: 0; }
-
-.sbar-subhead {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 7px;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ehr-muted, #5D728B);
-}
-
-.sbar-subhead[data-tone='danger'] { color: var(--tamamhealth-red, #D92B20); }
-.sbar-subhead svg { width: 13px; height: 13px; }
-
-/* ── Problem chips ── */
-.sbar-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
-
-.sbar-chips li {
-  padding: 3px 9px;
-  border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 5px;
-  background: var(--ehr-soft, #ECEEF1);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ehr-text-body, #3C5574);
-}
-
-/* Danger-sign chips (IITT red/yellow criteria, "why this priority") — same
-   acuity tokens the triage priority pill and the ABCC cards above already use. */
-.sbar-chips li[data-tone='danger'] { background: var(--acuity-red-bg); border-color: color-mix(in srgb, var(--acuity-red) 32%, transparent); color: var(--acuity-red); }
-.sbar-chips li[data-tone='warning'] { background: var(--acuity-yellow-bg); border-color: color-mix(in srgb, var(--acuity-yellow) 32%, transparent); color: var(--acuity-yellow); }
-
-/* ── Two-part rows (medication, lab, diagnosis) ── */
-.sbar-rows { margin: 0; padding: 0; list-style: none; }
-
-.sbar-rows li {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 5px 0;
-}
-
-.sbar-row-main { font-weight: 600; }
-.sbar-critical { white-space: nowrap; font-weight: 700; color: var(--tamamhealth-red-text, #B4180F); }
-
-.sbar-bullets { margin: 0; padding-left: 18px; line-height: 1.7; }
-
-/* ── Vitals tiles ── */
-.sbar-tiles {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.sbar-tile {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 10px;
-  border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 6px;
-  background: var(--bg-card, #fff);
-}
-
-.sbar-tile-label {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ehr-muted, #5D728B);
-}
-
-.sbar-tile-value {
-  font-size: 15px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--ehr-text-strong, #113055);
-}
-
-/* ── Prior shift handoff ── */
-.sbar-handoff-grid { display: grid; gap: 10px; }
-
-@media (min-width: 900px) {
-  .sbar-handoff-grid { grid-template-columns: 1fr 1fr; }
-}
-
-.sbar-handoff-cell p { margin: 3px 0 0; line-height: 1.55; white-space: pre-wrap; }
-
-.sbar-disclaimer {
-  margin: 4px 2px 0;
-  font-size: 11px;
-  font-style: italic;
-  color: var(--ehr-muted, #5D728B);
-}
-
 /* Latest-triage source block on the patient summary. This is fed from the
-   same record as SBAR and the vitals timeline, so the summary does not keep
+   same record as the vitals timeline, so the summary does not keep
    showing a pre-triage consultation after the nurse has completed ETAT. */
 .tebra-triage-snapshot { margin-bottom: 10px; }
 .tebra-triage-snapshot__priority {
@@ -2582,21 +2219,14 @@
 .tebra-triage-snapshot__abcc > span[data-tone='danger'] { color: var(--acuity-red); background: var(--acuity-red-bg); }
 .tebra-triage-snapshot__abcc > span[data-tone='muted'] { color: var(--ehr-muted); }
 .tebra-triage-snapshot__route { margin: 7px 2px 0; font-size: 10.5px; line-height: 1.4; color: var(--ehr-muted); }
+.tebra-triage-snapshot__sign { margin: 6px 2px 0; font-size: 11.5px; line-height: 1.4; color: var(--ehr-text-strong); }
+.tebra-triage-snapshot__sign.is-red strong { color: var(--acuity-red); }
+.tebra-triage-snapshot__sign.is-yellow strong { color: var(--acuity-yellow); }
 
 @media (max-width: 720px) {
-  .sbar-triage-grid,
   .tebra-triage-snapshot__abcc { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .sbar-triage-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .sbar-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .sbar-triage-priority,
   .tebra-triage-snapshot__priority { align-items: flex-start; flex-direction: column; }
   .tebra-triage-snapshot__priority span { white-space: normal; }
-}
-
-@media (max-width: 480px) {
-  .sbar-triage-meta,
-  .sbar-triage-fields { grid-template-columns: 1fr; }
-  .sbar-triage-fields--handoff .sbar-triage-field:nth-last-child(-n+2) { grid-column: auto; }
 }
 
 /* ── Shared table cell treatments ──
@@ -3222,7 +2852,7 @@ body .tamam-root .tamam-table.tamam-table--referrals td.tamam-num,
 
 /* The drawer header's "close all panels" arrow points the way the workspace
    leaves: flipped in right-to-left locales. */
-[dir="rtl"] .tamam-drawer-leave svg { transform: scaleX(-1); }
+[dir="rtl"] .tamam-drawer-back svg { transform: scaleX(-1); }
 
 /* Appointments tab: Upcoming / Today / Past content switcher (O3). */
 .tamam-appt-switcher {
@@ -3584,3 +3214,37 @@ html.tm-slider-open .tamam-root .tamam-drawer {
 .tamam-transfer-records p { margin: 2px 0 12px; font-size: 12px; color: var(--text-secondary); }
 .tamam-transfer-records .tamam-transfer-records-warn { color: var(--color-warning-text); font-weight: 600; }
 .tamam-transfer-records-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 24px; }
+
+/* Transfers listed in the chart; a row opens its slider. */
+.tamam-transfer-table tbody tr { cursor: pointer; }
+.tamam-transfer-table .tamam-cell-strong,
+.tamam-transfer-table .tamam-cell-sub { display: block; }
+.tamam-transfer-table th:first-child { width: 36%; }
+
+/* A chart table shown inside a slider: the same columns, tighter. */
+html.tm-chart-open .tm-slider .tamam-section { padding-inline: 0; border: 0; box-shadow: none; }
+html.tm-chart-open .tm-slider .tamam-section-body { padding-inline: 0; overflow-x: hidden; }
+html.tm-chart-open .tm-slider .tamam-table { width: 100%; table-layout: fixed; font-size: 13px; }
+html.tm-chart-open .tm-slider .tamam-table :is(th, td) { padding-inline: 8px; overflow-wrap: anywhere; }
+
+/* Back sits with the title; ✕ stays at the far edge and always means close. The
+   header's Back replaces the form's own link, so there is one way back. */
+.tamam-drawer-header .tamam-drawer-back {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  padding: 0;
+  border: 0;
+  border-inline-end: 1px solid var(--ehr-border, var(--border-light));
+  background: transparent;
+  color: var(--accent-text);
+  cursor: pointer;
+}
+.tamam-drawer-header:has(.tamam-drawer-back) .tamam-drawer-title { flex: 1 1 auto; margin-inline-start: 16px; text-align: start; }
+.tamam-drawer-header .tamam-drawer-back:hover { background: var(--bg-app); }
+.tamam-drawer-header .tamam-drawer-back:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+.tamam-drawer-header .tamam-drawer-back svg { width: 18px; height: 18px; color: currentColor !important; }
+.tamam-drawer .omf-back,
+.tamam-drawer .o3f-back { display: none; }

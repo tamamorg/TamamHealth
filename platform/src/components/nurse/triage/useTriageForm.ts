@@ -817,8 +817,8 @@ export function useTriageForm({
         const existingTriage = triageHistory.find(h => h._id === editingTriageId);
         // Saving the form again IS the patient's latest triage — a repeat
         // assessment of a patient whose triage is still open lands here, not
-        // in createTriage. Stamp it as such: when and by whom, so the chart's
-        // SBAR (which reads the newest triage) shows this assessment rather
+        // in createTriage. Stamp it as such: when and by whom, so the chart
+        // (which reads the newest triage) shows this assessment rather
         // than the first one's time and nurse, and the vitals read as fresh.
         // The payload resets the handoff to assigned/awaiting, so the
         // receiving provider's acknowledgement of the OLD handoff goes too —

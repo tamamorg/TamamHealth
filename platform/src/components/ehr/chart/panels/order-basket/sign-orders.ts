@@ -18,6 +18,7 @@ import type { PatientDoc, UserRole } from '@/lib/db-types';
 import type { DataScope } from '@/lib/services/data-scope';
 import type { PrescriptionCreateInput } from '@/lib/services/prescription-service';
 import type { ConfirmPromptOptions } from '@/components/ConfirmDialog';
+import { OFF_FORMULARY_CATEGORY } from '@/lib/data/formulary';
 import { emptyLabOrderDraft } from '@/components/lab/order/lab-order-types';
 import { placeLabOrder } from '@/components/lab/order/place-lab-order';
 import type { ChartPanelUser } from '../types';
@@ -68,6 +69,22 @@ export async function signOrders({
         if (safety.allergyCheckUnavailable) outcome.warnings.push(t('prescribe.allergyCheckUnavailable'));
         if (safety.interactionCheckUnavailable) outcome.warnings.push(t('prescribe.interactionCheckUnavailable'));
         for (const w of safety.doseWarnings || []) outcome.warnings.push(doseWarningText(t, w));
+        let offFormularyReason: string | undefined;
+        if (order.drug.category === OFF_FORMULARY_CATEGORY) {
+          const reason = await confirmPrompt({
+            title: t('prescribe.offListTitle', { name: order.drug.name }),
+            message: t('prescribe.offListNotice'),
+            inputLabel: t('prescribe.overrideReason'),
+            confirmLabel: t('prescribe.overrideConfirm'),
+            inputRequired: true,
+            tone: 'danger',
+          });
+          if (reason === null || reason.trim().length < 10) {
+            outcome.kept.push({ id: order.id, reason: 'declined', message: reason === null ? undefined : t('prescribe.overrideReasonRequired') });
+            continue;
+          }
+          offFormularyReason = reason.trim();
+        }
         let medicationSafetyAcknowledgement: PrescriptionCreateInput['medicationSafetyAcknowledgement'];
         const stops = { ...safety, weeklyOnly: needsWeeklyReview(order.drug.name, frequencyText(order)) };
         if (hasSafetyStop(stops)) {
@@ -94,6 +111,7 @@ export async function signOrders({
           // A prescription raised from a note belongs to that note's visit.
           encounterId: order.context?.encounterId,
           medication: order.drug.name,
+          offFormularyReason,
           dose: order.freeText ? '' : doseText(order),
           route: order.freeText ? '' : order.route,
           frequency: frequencyText(order),

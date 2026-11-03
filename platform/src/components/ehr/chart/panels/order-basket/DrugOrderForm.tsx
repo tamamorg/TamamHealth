@@ -42,7 +42,7 @@ function Stepper({ id, value, onChange, min = 0, label }: {
 }
 
 export default function DrugOrderForm({
-  initial, patient, activeMedications, stockFor, facilityName, onSave, onDiscard,
+  initial, patient, activeMedications, stockFor, facilityName, onSave, onDiscard, onEdited,
 }: {
   initial: DrugOrderDraft;
   patient: PatientDoc;
@@ -53,9 +53,12 @@ export default function DrugOrderForm({
   facilityName: string;
   onSave: (order: DrugOrderDraft) => void;
   onDiscard: () => void;
+  /** Tells the host once the form differs from what it opened with. */
+  onEdited?: (edited: boolean) => void;
 }) {
   const { t } = useTranslation();
   const [order, setOrder] = useState<DrugOrderDraft>(initial);
+  useEffect(() => { onEdited?.(order !== initial); }, [order, initial, onEdited]);
   const [tried, setTried] = useState(false);
   const patch = (p: Partial<DrugOrderDraft>) => setOrder(prev => ({ ...prev, ...p }));
   const gaps = drugOrderGaps(order);

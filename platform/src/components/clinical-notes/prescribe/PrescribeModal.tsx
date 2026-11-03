@@ -21,6 +21,7 @@ import { useRouter } from 'next/navigation';
 import { expandHref } from '@/lib/navigation/expand-to-page';
 import Modal from '@/components/Modal';
 import { useToast } from '@/components/Toast';
+import { OFF_FORMULARY_CATEGORY } from '@/lib/data/formulary';
 import { useConfirm, useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useAuth } from '@/lib/context';
@@ -265,6 +266,23 @@ export default function PrescribeModal({
     const drug = draft.drug;
     if (!drug) { showToast(t('msg.selectTheDrug'), 'error'); return null; }
     if (!draft.instructions.trim()) { showToast(t('msg.enterThePatientInstructions'), 'error'); return null; }
+    let offFormularyReason: string | undefined;
+    if (drug.category === OFF_FORMULARY_CATEGORY) {
+      const reason = await confirmPrompt({
+        title: t('prescribe.offListTitle', { name: drug.name }),
+        message: t('prescribe.offListNotice'),
+        inputLabel: t('prescribe.overrideReason'),
+        confirmLabel: t('prescribe.overrideConfirm'),
+        inputRequired: true,
+        tone: 'danger',
+      });
+      if (reason === null) return null;
+      if (reason.trim().length < 10) {
+        showToast(t('prescribe.overrideReasonRequired'), 'error');
+        return null;
+      }
+      offFormularyReason = reason.trim();
+    }
     let medicationSafetyAcknowledgement: { reviewedBy: string; reason: string } | undefined;
     // The chart's allergy list is checked here too, so a conflict is stopped
     // even when the save-time assessment cannot see the chart.
@@ -321,6 +339,7 @@ export default function PrescribeModal({
         hospitalName: facilityName,
         orgId: currentUser?.orgId,
         medicationSafetyAcknowledgement,
+        offFormularyReason,
       } as PrescriptionCreateInput, scope);
 
       if (result.allergyWarnings?.length) {

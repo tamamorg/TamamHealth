@@ -1,8 +1,8 @@
 /**
- * Advisory dose check: a daily total above the usual maximum, for a short list
- * of common oral medicines.
+ * Advisory dose check: a daily total above the usual maximum, for common oral
+ * medicines and the narrow-margin ones most worth catching.
  *
- * It WARNS and never blocks. It is not a dosing engine: it knows three drugs,
+ * It WARNS and never blocks. It is not a dosing engine: it covers a short list,
  * reads a plain milligram dose, and says nothing when it cannot be sure what
  * was ordered (a liquid in ml, a combination product, an unrecognised
  * frequency or a missing strength). Silence from this check is not approval.
@@ -22,6 +22,10 @@
  *   - amoxicillin: BNF / BNFC. Adult oral 3 g daily (1 g three times a day).
  *     Child high-dose oral courses up to 30 mg/kg three times a day
  *     (ceiling used: 90 mg/kg/day).
+ *   - the rest:    adult maximum from the US prescribing label (DailyMed /
+ *     openFDA), read 2026-11-01. Valproate and azathioprine are labelled per
+ *     kilogram only. Medicines whose labelled ceiling is too high to catch
+ *     anything (haloperidol, chlorpromazine) are left out.
  */
 import { dosesPerDay } from './course-quantity';
 
@@ -29,15 +33,35 @@ export interface DoseLimit {
   /** Lower-case fragments that identify the drug in a free-text name. */
   match: readonly string[];
   /** Usual maximum per day for an adult, in mg. */
-  adultMaxMgPerDay: number;
+  adultMaxMgPerDay?: number;
   /** Maximum per day per kg of body weight, in mg/kg. */
-  maxMgPerKgPerDay: number;
+  maxMgPerKgPerDay?: number;
 }
 
 export const DOSE_LIMITS: Readonly<Record<string, DoseLimit>> = {
   paracetamol: { match: ['paracetamol', 'acetaminophen'], adultMaxMgPerDay: 4000, maxMgPerKgPerDay: 60 },
   ibuprofen: { match: ['ibuprofen'], adultMaxMgPerDay: 2400, maxMgPerKgPerDay: 30 },
   amoxicillin: { match: ['amoxicillin', 'amoxycillin'], adultMaxMgPerDay: 3000, maxMgPerKgPerDay: 90 },
+  tramadol: { match: ['tramadol'], adultMaxMgPerDay: 400 },
+  amlodipine: { match: ['amlodipine'], adultMaxMgPerDay: 10 },
+  enalapril: { match: ['enalapril'], adultMaxMgPerDay: 40 },
+  lisinopril: { match: ['lisinopril'], adultMaxMgPerDay: 80 },
+  captopril: { match: ['captopril'], adultMaxMgPerDay: 450 },
+  losartan: { match: ['losartan'], adultMaxMgPerDay: 100 },
+  atenolol: { match: ['atenolol'], adultMaxMgPerDay: 100 },
+  metformin: { match: ['metformin'], adultMaxMgPerDay: 2550 },
+  glibenclamide: { match: ['glibenclamide', 'glyburide'], adultMaxMgPerDay: 20 },
+  levetiracetam: { match: ['levetiracetam'], adultMaxMgPerDay: 3000 },
+  carbamazepine: { match: ['carbamazepine'], adultMaxMgPerDay: 1600 },
+  valproate: { match: ['valproate', 'valproic'], maxMgPerKgPerDay: 60 },
+  fluoxetine: { match: ['fluoxetine'], adultMaxMgPerDay: 80 },
+  sertraline: { match: ['sertraline'], adultMaxMgPerDay: 200 },
+  clozapine: { match: ['clozapine'], adultMaxMgPerDay: 900 },
+  risperidone: { match: ['risperidone'], adultMaxMgPerDay: 16 },
+  olanzapine: { match: ['olanzapine'], adultMaxMgPerDay: 20 },
+  allopurinol: { match: ['allopurinol'], adultMaxMgPerDay: 800 },
+  colchicine: { match: ['colchicine'], adultMaxMgPerDay: 1.8 },
+  azathioprine: { match: ['azathioprine'], maxMgPerKgPerDay: 2.5 },
 };
 
 /** A weight older than this is not trusted for a per-kg limit (children grow). */
@@ -88,12 +112,14 @@ export function checkDoseAdvisory(input: {
   if (!input.frequency || !input.frequency.trim()) return null;
   const perDose = doseMg(input.medication, input.dose);
   if (!perDose) return null;
-  const dailyMg = Math.round(perDose * dosesPerDay(input.frequency));
+  // Hundredths, so a 0.6 mg dose three times a day is 1.8 mg and not 2.
+  const dailyMg = Math.round(perDose * dosesPerDay(input.frequency) * 100) / 100;
   const limit = DOSE_LIMITS[drug];
+  const adultMax = limit.adultMaxMgPerDay ?? Infinity;
   const weight = typeof input.weightKg === 'number' && input.weightKg > 0 ? input.weightKg : null;
-  const perKgLimit = weight ? Math.round(limit.maxMgPerKgPerDay * weight) : null;
-  const useWeight = perKgLimit !== null && perKgLimit < limit.adultMaxMgPerDay;
-  const limitMg = useWeight ? perKgLimit : limit.adultMaxMgPerDay;
+  const perKgLimit = weight && limit.maxMgPerKgPerDay ? Math.round(limit.maxMgPerKgPerDay * weight) : null;
+  const useWeight = perKgLimit !== null && perKgLimit < adultMax;
+  const limitMg = useWeight ? perKgLimit : adultMax;
   if (dailyMg <= limitMg) return null;
   return {
     medication: input.medication,

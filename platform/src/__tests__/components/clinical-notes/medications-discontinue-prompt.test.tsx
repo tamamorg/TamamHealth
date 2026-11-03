@@ -11,11 +11,11 @@ const updatePrescription = jest.fn().mockResolvedValue({});
 const rx = {
   _id: 'rx-1', patientId: 'p1', medication: 'Amoxicillin', dose: '500mg', route: 'oral',
   frequency: 'TID', duration: '5d', status: 'pending', orderStatus: 'prescribed',
-  prescribedBy: 'Dr X', createdAt: '2026-10-01T00:00:00.000Z',
+  prescribedBy: 'Dr X', createdAt: '2026-10-01T00:00:00.000Z', orgId: 'org-1', hospitalId: 'hosp-1',
 };
 
 jest.mock('@/lib/services/prescription-service', () => ({
-  getPrescriptionsByPatient: jest.fn(async () => [rx]),
+  getOrgPrescriptionsByPatient: jest.fn(async () => [rx]),
   updatePrescription: (...a: unknown[]) => updatePrescription(...a),
   createPrescription: jest.fn(),
 }));
@@ -23,7 +23,8 @@ jest.mock('@/lib/services/patient-service', () => ({
   getPatientById: jest.fn(async () => ({ _id: 'p1' })),
   updatePatient: jest.fn(),
 }));
-jest.mock('@/lib/hooks/useDataScope', () => ({ useDataScope: () => undefined }));
+const mockScope = { orgId: 'org-1', hospitalId: 'hosp-1', role: 'doctor' };
+jest.mock('@/lib/hooks/useDataScope', () => ({ useDataScope: () => mockScope }));
 jest.mock('@/components/Toast', () => ({ useToast: () => ({ showToast: jest.fn() }) }));
 jest.mock('@/lib/i18n/useTranslation', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
