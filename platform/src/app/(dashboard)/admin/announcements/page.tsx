@@ -21,7 +21,7 @@ import {
   SadbPage, SadbPanelHeader, SadbCard, SadbQueueRow, SadbSettingGroup, type ChipTone,
 } from '@/components/admin/sadb-ui';
 import { formatWhen } from '@/components/admin/sa-ui';
-import { Send } from '@/components/icons/lucide';
+import { Plus, Send } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { canPostAnnouncements, createAnnouncement, getVisibleAnnouncements } from '@/modules/communication/services/announcement-service';
 import { describeError } from '@/lib/user-facing-error';
@@ -45,6 +45,7 @@ export default function AdminAnnouncementsPage() {
   const [annPriority, setAnnPriority] = useState<AnnouncementPriority>('normal');
   const [annOrgId, setAnnOrgId] = useState('');
   const [annPosting, setAnnPosting] = useState(false);
+  const [composing, setComposing] = useState(false);
 
   const loadAnnouncements = useCallback(() => {
     if (!currentUser) return;
@@ -80,6 +81,7 @@ export default function AdminAnnouncementsPage() {
       setAnnTitle('');
       setAnnBody('');
       setAnnPriority('normal');
+      setComposing(false);
       loadAnnouncements();
       showToast(t('msg.announcementPosted'), 'success');
     } catch (err) {
@@ -94,9 +96,16 @@ export default function AdminAnnouncementsPage() {
       <SadbPanelHeader
         title="Announcements"
         note="Messages broadcast to tenant staff, newest first."
-        tag={announcementsLoading ? undefined : `${announcements.length} visible`}
       />
-      <SadbCard>
+      <SadbCard
+        title="Posted"
+        meta={announcementsLoading ? undefined : `${announcements.length} visible`}
+        action={currentUser && canPostAnnouncements(currentUser.role) && !composing ? (
+          <button type="button" className="tm-ghost-btn" onClick={() => setComposing(true)}>
+            {t('adminConsole.postAnnouncement')} <Plus className="w-4 h-4" aria-hidden="true" />
+          </button>
+        ) : undefined}
+      >
         {announcementsLoading ? (
           <p className="sadb-empty">Loading announcements…</p>
         ) : announcements.length === 0 ? (
@@ -114,7 +123,7 @@ export default function AdminAnnouncementsPage() {
         )}
       </SadbCard>
 
-      {currentUser && canPostAnnouncements(currentUser.role) && (
+      {currentUser && canPostAnnouncements(currentUser.role) && composing && (
         <SadbSettingGroup title="Post an announcement" meta="Organization audience">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px' }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -161,7 +170,8 @@ export default function AdminAnnouncementsPage() {
                 </Select>
               </label>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setComposing(false)} disabled={annPosting}>Cancel</button>
               <button
                 type="button"
                 className="btn btn-primary btn-sm"

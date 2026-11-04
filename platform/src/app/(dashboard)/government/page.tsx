@@ -17,9 +17,10 @@
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  ChevronRight, ChevronDown, Check,
-} from '@/components/icons/lucide';
+import { ChevronRight } from '@/components/icons/lucide';
+import Select from '@/components/Select';
+import { SadbKpiTile } from '@/components/admin/sadb-ui';
+import { Field, MultiField, weeklyTrend } from '@/components/oversight/OversightKit';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
 import { SOUTH_SUDAN_STATES } from '@/data/south-sudan-geo';
 import { makeProjector } from '@/lib/maps/south-sudan-projection';
@@ -175,7 +176,7 @@ const FACILITY_TYPE_META: Record<string, { label: string; color: string }> = {
   state_hospital: { label: 'State Hospital', color: 'var(--chart-3)' },
   county_hospital: { label: 'County Hospital', color: 'var(--color-success-text)' },
   phcc: { label: 'PHCC', color: 'var(--color-warning-text)' },
-  phcu: { label: 'PHCU', color: '#B35900' },
+  phcu: { label: 'PHCU', color: CHART_SERIES[5] },
 };
 
 export default function GovernmentNationalDashboard() {
@@ -285,7 +286,7 @@ export default function GovernmentNationalDashboard() {
     const map = new Map<string, string>();
     for (const d of diseaseList) {
       const named = DISEASE_COLORS[d.toLowerCase()];
-      const color = named && !used.has(named) ? named : DISEASE_FALLBACK.find(c => !used.has(c)) || '#5D728B';
+      const color = named && !used.has(named) ? named : DISEASE_FALLBACK.find(c => !used.has(c)) || 'var(--text-muted)';
       used.add(color);
       map.set(d, color);
     }
@@ -352,106 +353,84 @@ export default function GovernmentNationalDashboard() {
     });
   };
 
-  // Disease picker for the weekly-trend card header. Stays open while
-  // toggling (multi-select); closes on outside click or Escape.
-  const [diseaseMenuOpen, setDiseaseMenuOpen] = useState(false);
-  const diseaseMenuRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!diseaseMenuOpen) return;
-    const onDown = (e: MouseEvent) => { if (diseaseMenuRef.current && !diseaseMenuRef.current.contains(e.target as Node)) setDiseaseMenuOpen(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setDiseaseMenuOpen(false); };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
-  }, [diseaseMenuOpen]);
-
+  // Disease filter for the weekly-trend card header: a multi-select field.
   const diseaseSelector = diseaseList.length > 0 ? (
-    <div className="relative" ref={diseaseMenuRef}>
-      <button
-        type="button"
-        onClick={() => setDiseaseMenuOpen(o => !o)}
-        aria-expanded={diseaseMenuOpen}
-        aria-haspopup="true"
-        className="inline-flex items-center gap-1"
-        style={{
-          fontSize: 11,
-          color: 'var(--text-muted)',
-          background: 'var(--overlay-subtle)',
-          border: '1px solid var(--border-light)',
-          borderRadius: 7,
-          padding: '3px 8px',
-          cursor: 'pointer',
-          fontFamily: 'var(--font-platform)',
-        }}
-      >
-        {selectedDiseases === null ? 'Diseases: All' : `Diseases: ${shownDiseases.length}/${diseaseList.length}`}
-        <ChevronDown className="w-3 h-3" />
-      </button>
-      {diseaseMenuOpen && (
-        <div
-          className="absolute end-0 z-30 mt-1 py-1 rounded-lg overflow-y-auto"
-          style={{ top: '100%', minWidth: 210, maxHeight: 260, background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)', boxShadow: 'var(--card-shadow-lg)' }}
-        >
-          <button
-            type="button"
-            onClick={() => setSelectedDiseases(null)}
-            className="w-full flex items-center gap-2 px-3 py-1.5 text-start hover:bg-[var(--overlay-subtle)]"
-            style={{ fontSize: 11, fontWeight: 700, color: selectedDiseases === null ? 'var(--accent-primary)' : 'var(--text-secondary)' }}
-          >
-            <span className="flex-1">All diseases</span>
-            {selectedDiseases === null && <Check className="w-3 h-3 flex-shrink-0" />}
-          </button>
-          {diseaseList.map(d => {
-            const on = selectedDiseases === null || selectedDiseases.has(d);
-            const color = diseaseColorMap.get(d)!;
-            return (
-              <button
-                key={d}
-                type="button"
-                onClick={() => toggleDisease(d)}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-start hover:bg-[var(--overlay-subtle)]"
-                style={{ fontSize: 11, fontWeight: 600, color: on ? 'var(--text-primary)' : 'var(--text-muted)' }}
-              >
-                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: on ? color : 'var(--border-medium)' }} />
-                <span className="flex-1 truncate">{d}</span>
-                {on && <Check className="w-3 h-3 flex-shrink-0" style={{ color }} />}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
+    <MultiField
+      label="Diseases"
+      summary={selectedDiseases === null ? 'All diseases' : `${shownDiseases.length} of ${diseaseList.length}`}
+      options={diseaseList.map(d => ({ key: d, label: d, color: diseaseColorMap.get(d) }))}
+      selected={selectedDiseases}
+      onToggle={toggleDisease}
+      onAll={() => setSelectedDiseases(null)}
+      allLabel="All diseases"
+    />
   ) : null;
 
-
+  // Figures for the band. Trends only where the loaded alert records are dated.
+  const activeAlertRows = useMemo(() => alerts.filter(a => a.alertLevel !== 'normal'), [alerts]);
+  const caseTrend = useMemo(() => weeklyTrend(activeAlertRows, a => a.reportDate, a => a.cases || 0), [activeAlertRows]);
+  const emergencyRows = useMemo(() => activeAlertRows.filter(a => a.alertLevel === 'emergency'), [activeAlertRows]);
+  const emergencyTrend = useMemo(() => weeklyTrend(emergencyRows, a => a.reportDate, () => 1), [emergencyRows]);
 
   const selected = selectedState ? stateAgg.get(selectedState) : null;
 
   return (
     <main className="page-container page-enter gov-dash">
-      {/* ── Header: what/where/when — no decorative hero ── */}
-      {/* No greeting header (removed 2026-11-04): Executive briefing and
-          Priority alerts are this hub's tabs now (ModuleHubTabs), and the
-          period each card covers is in that card's own head. */}
+      {/* No greeting header (removed 2026-11-04). The band is this page's
+          figures; each tile opens the page that owns the number. */}
+      <div className="sadb-kpi-row gov-kpi-band">
+        <SadbKpiTile
+          label="Alert cases this week"
+          value={(caseTrend?.current ?? 0).toLocaleString()}
+          delta={`Cases on active alerts reported in the last 7 days (${activeAlertRows.length.toLocaleString()} active alerts)`}
+          trend={caseTrend?.trend}
+          onClick={() => router.push('/government/alerts')}
+        />
+        <SadbKpiTile
+          label="Emergency alerts"
+          value={emergencyRows.length.toLocaleString()}
+          delta={`Alerts at emergency level out of ${activeAlertRows.length.toLocaleString()} active`}
+          deltaTone={emergencyRows.length > 0 ? 'warn' : undefined}
+          trend={emergencyTrend?.trend ? { ...emergencyTrend.trend, label: `vs ${emergencyTrend.previous.toLocaleString()} last week` } : undefined}
+          onClick={() => router.push('/government/alerts')}
+        />
+        <SadbKpiTile
+          label="Facilities assessed"
+          value={dq ? `${dq.facilitiesReporting.toLocaleString()} of ${dq.totalFacilities.toLocaleString()}` : '—'}
+          delta="Registered facilities with a facility assessment on file"
+          onClick={() => router.push('/facility-assessments')}
+        />
+        <SadbKpiTile
+          label="Reporting completeness"
+          value={dq ? `${dq.avgCompleteness}%` : '—'}
+          delta="Average of assessed facilities, target 80%"
+          deltaTone={dq && dq.facilitiesReporting > 0 && dq.avgCompleteness < 80 ? 'warn' : undefined}
+          onClick={() => router.push('/facility-assessments')}
+        />
+        <SadbKpiTile
+          label="Children fully immunized"
+          value={imm ? `${imm.coverageRate}%` : '—'}
+          delta={imm ? `BCG, Penta 3 and Measles 1 done, ${imm.totalChildren.toLocaleString()} children on record` : 'No immunization records on file'}
+          onClick={() => router.push('/immunizations')}
+        />
+      </div>
 
       {/* ── One viewport, no scrolling: the map fills the left 4/6 across
           both rows; the right 2/6 stacks Facility types over Weekly cases,
           the chart flexing to absorb the leftover height. ── */}
       <div className="gov-grid">
         <section className="gov-panel gov-span-4 gov-map-panel">
-          <PanelHead title="By state" meta="ranked · National" />
-          <div className="gov-map-layers">
-            {MAP_LAYERS.map(l => (
-              <button
-                key={l.key}
-                type="button"
-                onClick={() => setLayer(l.key)}
-                className={layer === l.key ? 'is-active' : undefined}
-              >
-                {l.label}
-              </button>
-            ))}
-          </div>
+          <PanelHead
+            title="By state"
+            meta="ranked · National"
+            action={(
+              <Field label="Show" inline>
+                <Select value={layer} onChange={e => setLayer(e.target.value as MapLayer)} data-action="gov-map-layer">
+                  {MAP_LAYERS.map(l => <option key={l.key} value={l.key}>{l.label}</option>)}
+                </Select>
+              </Field>
+            )}
+          />
           <div className="gov-map-body">
             {/* Real South Sudan choropleth: each state polygon shaded by the
                 active layer's value; click a state to drill down. The map
@@ -501,11 +480,11 @@ export default function GovernmentNationalDashboard() {
                         return (
                           <g key={s.name} pointerEvents="none">
                             <text x={c.x} y={c.y - 2} textAnchor="middle" fontSize="8.5" fontWeight="700"
-                              fill={heavy ? '#fff' : 'var(--text-secondary)'}>
+                              fill={heavy ? 'var(--bg-card-solid)' : 'var(--text-secondary)'}>
                               {s.name}
                             </text>
                             <text x={c.x} y={c.y + 9} textAnchor="middle" fontSize="9.5" fontWeight="800"
-                              fill={heavy ? '#fff' : 'var(--brand-800)'} style={{ fontVariantNumeric: 'tabular-nums' }}>
+                              fill={heavy ? 'var(--bg-card-solid)' : 'var(--brand-800)'} style={{ fontVariantNumeric: 'tabular-nums' }}>
                               {formatValue(value)}
                             </text>
                           </g>
@@ -536,7 +515,7 @@ export default function GovernmentNationalDashboard() {
                           <span aria-hidden="true" className="gov-scale-bar flex-1 rounded-full" style={{
                             height: 8,
                             background: `linear-gradient(90deg, rgb(245, 247, 248), ${layerHex})`,
-                            border: '1px solid var(--ehr-border, #E2E6EB)',
+                            border: '1px solid var(--border-light)',
                           }} />
                           <span className="text-[10px] tabular-nums">{maxValue.toLocaleString()}</span>
                         </div>

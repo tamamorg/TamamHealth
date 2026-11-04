@@ -37,7 +37,7 @@ interface DbStat {
 // counted a tenth of local storage while reading as the total.
 const DB_NAMES: ReadonlyArray<readonly [string, string]> = DATABASE_SYNC_CONFIGS.map(c => [
   c.localName,
-  c.localName.replace(/^tamamhealth_/, '').replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase()),
+  c.localName.replace(/^tamamhealth_/, '').replace(/_/g, ' ').replace(/^\w/, ch => ch.toUpperCase()),
 ] as const);
 
 /** Bars drawn in the Data Stores card — the biggest stores; the headline
@@ -285,7 +285,7 @@ export default function ItOperationsPanel({ embedded = false }: {
               <div key={integration} className="it-kv-row">
                 <span className="flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
                   <i className="it-dot" style={{ background: 'var(--text-muted)' }} />
-                  {integration.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                  {integration.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())}
                 </span>
                 <span className="it-pill">Enabled</span>
               </div>

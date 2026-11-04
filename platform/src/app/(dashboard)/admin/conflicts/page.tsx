@@ -11,7 +11,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ConflictQueueDoc } from '@/lib/db-types';
 import { useAuth } from '@/lib/context';
-import { FormError } from '@/components/overlay/FormNotices';
+import InlineBanner from '@/components/overlay/InlineBanner';
+import Select from '@/components/Select';
+import '@/components/admin/admin-pages.css';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { apiFetch } from '@/lib/api-fetch';
 import { useToast } from '@/components/Toast';
@@ -20,7 +22,6 @@ import {
   SadbCard, SadbChip, SadbKvRow, SadbActionButton, SadbPanelHeader,
   SadbEditorModal, SadbConfirmModal, useSadbTab, type ChipTone,
 } from '@/components/admin/sadb-ui';
-import { describeApiError } from '@/lib/user-facing-error';
 
 const STATUSES = ['pending', 'resolved', 'dismissed'] as const;
 type Status = (typeof STATUSES)[number];
@@ -99,22 +100,17 @@ export default function ConflictsPage() {
         if (requestIdRef.current !== requestId) return;
         setConflicts(data.conflicts || []);
       } else {
-        const body = await res.json().catch(() => ({}));
-        const msg = describeApiError(body, 'Conflicts not loaded. Reload the page.');
         setConflicts([]);
-        setErrorMsg(msg);
-        showToast(msg, 'error');
+        setErrorMsg(t('conflicts.errLoad'));
       }
-    } catch (err) {
+    } catch {
       if (requestIdRef.current !== requestId) return;
-      const msg = err instanceof Error ? err.message : 'Failed to load conflicts';
       setConflicts([]);
-      setErrorMsg(msg);
-      showToast(msg, 'error');
+      setErrorMsg(t('conflicts.errLoad'));
     } finally {
       if (requestIdRef.current === requestId) setLoading(false);
     }
-  }, [filterStatus, showToast]);
+  }, [filterStatus, t]);
 
   const loadCounts = useCallback(async () => {
     try {
@@ -212,23 +208,23 @@ export default function ConflictsPage() {
           note="High-risk clinical data (allergies, referrals, discharge status) flagged for human review after a replication conflict."
         />
 
-        <div className="flex gap-1" role="tablist" aria-label="Conflict status" data-tour="admin-conflicts-tabs">
-          {STATUSES.map(s => (
-            <button
-              key={s}
-              type="button"
-              role="tab"
-              aria-selected={filterStatus === s}
-              className={`sadb-pill${filterStatus === s ? ' is-active' : ''}`}
-              onClick={() => setFilterStatus(s)}
-            >
-              {STATUS_LABEL[s]} ({counts[s] ?? '…'})
-            </button>
-          ))}
+        <div className="adm-fields" data-tour="admin-conflicts-tabs">
+          <label className="adm-field">
+            <span className="adm-field-label">{t('conflicts.showLabel')}</span>
+            <Select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} aria-label={t('conflicts.showLabel')}>
+              {STATUSES.map(s => (
+                <option key={s} value={s}>{STATUS_LABEL[s]} ({counts[s] ?? '…'})</option>
+              ))}
+            </Select>
+          </label>
         </div>
 
         {errorMsg && (
-          <FormError message={errorMsg} onDismiss={() => setErrorMsg(null)} />
+          <InlineBanner
+            tone="danger"
+            title={errorMsg}
+            action={{ label: t('management.retry'), onClick: () => { void loadConflicts(); } }}
+          />
         )}
 
         {loading ? (
@@ -243,19 +239,19 @@ export default function ConflictsPage() {
                 <SadbCard
                   key={c._id}
                   title={c.resourceType}
-                  meta={<span style={{ fontFamily: 'var(--font-platform-mono)' }}>{c.resourceId}</span>}
+                  meta={<span className="adm-mono">{c.resourceId}</span>}
                   action={<SadbChip tone={RISK_CHIP[c.risk]}>{RISK_LABEL[c.risk]}</SadbChip>}
                 >
                   <SadbKvRow
                     label="Default winner"
-                    value={<span style={{ fontFamily: 'var(--font-platform-mono)' }}>{c.winningRev}</span>}
+                    value={<span className="adm-mono">{c.winningRev}</span>}
                   />
                   <div className="sadb-setting-row">
                     <div className="sadb-setting-copy">
                       <b className="sadb-setting-label">Losing revisions</b>
                       <span className="sadb-setting-sub">
                         {c.losingRevs.map(r => (
-                          <span key={r} style={{ fontFamily: 'var(--font-platform-mono)', marginInlineEnd: 8 }}>{r}</span>
+                          <span key={r} className="adm-mono" style={{ marginInlineEnd: 8 }}>{r}</span>
                         ))}
                       </span>
                     </div>
@@ -264,7 +260,7 @@ export default function ConflictsPage() {
                   {c.status !== 'pending' && (
                     <p className="sadb-setting-sub" style={{ padding: '10px 16px' }}>
                       {c.status === 'resolved' ? 'Resolved' : 'Dismissed'} by {c.resolvedBy || 'unknown'} on {c.resolvedAt?.slice(0, 16).replace('T', ' ') ?? ''}
-                      {c.resolvedRev && <> → kept <span style={{ fontFamily: 'var(--font-platform-mono)' }}>{c.resolvedRev}</span></>}
+                      {c.resolvedRev && <> → kept <span className="adm-mono">{c.resolvedRev}</span></>}
                       {c.resolutionNote && <> — &ldquo;{c.resolutionNote}&rdquo;</>}
                     </p>
                   )}

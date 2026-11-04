@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import FormSlider from '@/components/overlay/FormSlider';
-import { AlertTriangle, Package } from '@/components/icons/lucide';
+import { Package } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useReferrals } from '@/lib/hooks/useReferrals';
 import { useHospitals } from '@/lib/hooks/useHospitals';
@@ -206,26 +206,18 @@ export default function ReferralFormModal({ onClose, onSent, presentation = 'mod
 
         {/* Urgency */}
         <div>
-          <label>{t('referrals.urgency')}</label>
-          <div className="flex gap-3 mt-1">
+          {/* A dropdown, like every other single choice on the form (user,
+              2026-11-04); it was three coloured pill buttons. */}
+          <label htmlFor="referral-form-urgency">{t('referrals.urgency')}</label>
+          <Select
+            id="referral-form-urgency"
+            value={formUrgency}
+            onChange={e => setFormUrgency(e.target.value as 'routine' | 'urgent' | 'emergency')}
+          >
             {(['routine', 'urgent', 'emergency'] as const).map(level => (
-              <button
-                key={level}
-                type="button"
-                onClick={() => setFormUrgency(level)}
-                className={`badge urgency-${level} cursor-pointer px-4 py-2 text-sm transition-all`}
-                style={{
-                  opacity: formUrgency === level ? 1 : 0.45,
-                  transform: formUrgency === level ? 'scale(1.05)' : 'scale(1)',
-                  border: formUrgency === level ? '2px solid currentColor' : '2px solid transparent',
-                  borderRadius: '4px',
-                }}
-              >
-                {level === 'emergency' && <AlertTriangle className="w-3.5 h-3.5 inline me-1" />}
-                {t(`referrals.urgency_${level}`)}
-              </button>
+              <option key={level} value={level}>{t(`referrals.urgency_${level}`)}</option>
             ))}
-          </div>
+          </Select>
         </div>
 
         {/* Reason */}

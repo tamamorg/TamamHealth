@@ -144,14 +144,17 @@ export default function MyFacilityPage() {
   // just report it.
   const numberField = (label: string, value: number, onChange: (v: number) => void, max?: number) => (
     <SadbSettingRow key={label} label={label}>
-      <NumberInput step="1"
-        min={0}
-        max={max}
-        className="sadb-modal-input"
-        style={{ maxWidth: 120 }}
-        value={value}
-        onChange={e => onChange(Math.max(0, parseInt(e.target.value) || 0))}
-      />
+      {/* A fixed-width cell: the stepper is 100% wide by default and would
+          squeeze the label to nothing in a flex row. */}
+      <span style={{ flex: '0 0 156px', width: 156 }}>
+        <NumberInput step="1"
+          min={0}
+          max={max}
+          className="sadb-modal-input"
+          value={value}
+          onChange={e => onChange(Math.max(0, parseInt(e.target.value) || 0))}
+        />
+      </span>
     </SadbSettingRow>
   );
 
@@ -297,7 +300,7 @@ export default function MyFacilityPage() {
       {/* Ministry of Health reporting — facility-level review gate. Data is
           reviewed and explicitly submitted here rather than syncing to the
           Ministry automatically. */}
-      <SadbCard title="Ministry of Health Reporting">
+      <SadbCard title="Ministry of Health reporting">
         <div className="p-4 space-y-3">
           {(() => {
             const submission = hospital?.mohSubmission;
@@ -308,7 +311,7 @@ export default function MyFacilityPage() {
               <>
                 <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                   Review the facility profile above, then submit it to the Ministry of Health.
-                  Facility data is not sent automatically — it is only reported once you submit it here.
+                  Facility data is not sent automatically. It is only reported once you submit it here.
                 </p>
 
                 <div>
@@ -326,10 +329,10 @@ export default function MyFacilityPage() {
                 </div>
 
                 {submittedAt && (
-                  <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                     Last submitted {new Date(submittedAt).toLocaleString()}
                     {submission?.submittedByName ? ` by ${submission.submittedByName}` : ''}.
-                    {hasPendingChanges ? ' The profile has been edited since — submit again to report the latest data.' : ''}
+                    {hasPendingChanges ? ' The profile has been edited since. Submit again to report the latest data.' : ''}
                   </p>
                 )}
 
@@ -349,7 +352,7 @@ export default function MyFacilityPage() {
                   )}
                 </div>
 
-                <p className="text-[11px] flex items-center gap-1.5 pt-1" style={{ color: 'var(--text-muted)' }}>
+                <p className="text-xs flex items-center gap-1.5 pt-1" style={{ color: 'var(--text-muted)' }}>
                   <AlertTriangle className="w-3 h-3" /> Save your changes before submitting so the Ministry receives the latest data.
                 </p>
               </>

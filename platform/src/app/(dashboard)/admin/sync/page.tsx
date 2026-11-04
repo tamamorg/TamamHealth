@@ -142,7 +142,7 @@ export default function AdminSyncPage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const msg = body?.result?.message || body?.error || 'DHIS2 export not sent. The server refused it; try again.';
+        const msg = body?.result?.message || body?.error || 'DHIS2 export not sent. Try again.';
         showToast(msg, 'error');
       } else {
         const ok = body.result?.ok !== false;
@@ -173,13 +173,13 @@ export default function AdminSyncPage() {
           <SadbKvRow label="Pending reconciliation" value={conflictsError ? '—' : pendingConflicts ?? '…'} />
         </SadbCard>
 
-        <SadbSettingGroup title="Job runners">
+        <SadbSettingGroup title="Run now">
           <SadbSettingRow label="Push pending to country node" sub="Pushes up to 50 queued events from this browser to the configured country node.">
             <SadbActionButton onClick={handlePushCountryNode} disabled={anyRunning}>
               {pushingCountryNode ? 'Running…' : 'Run now'}
             </SadbActionButton>
           </SadbSettingRow>
-          <SadbSettingRow label="Server sync push" sub="Server-side push of pending sync events to CouchDB.">
+          <SadbSettingRow label="Server sync push" sub="Server-side push of pending sync events to the central server.">
             <SadbActionButton onClick={handleSyncPush} disabled={anyRunning}>
               {syncPushing ? 'Running…' : 'Run now'}
             </SadbActionButton>
@@ -193,7 +193,7 @@ export default function AdminSyncPage() {
       </div>
 
       <SadbCard
-        title="Sync &amp; Jobs"
+        title="Sync queue"
         meta={(
           <div className="sadb-legend">
             <span><i style={{ background: 'var(--color-warning-600)' }} />Pending ({loading ? '—' : stats?.pending ?? 0})</span>
@@ -213,7 +213,7 @@ export default function AdminSyncPage() {
             { label: 'When', w: 0.9 }, { label: 'Resource', w: 1.5 }, { label: 'Operation', w: 1 },
             { label: 'Facility', w: 1.2 }, { label: 'Status', w: 0.8 }, { label: 'Error', w: 1.8 },
           ]}
-          empty={loading ? 'Loading…' : 'Queue is drained — all events synced.'}
+          empty={loading ? 'Loading…' : 'Nothing waiting. All events are synced.'}
           minWidth={760}
         >
           {events.map(ev => (
@@ -222,7 +222,7 @@ export default function AdminSyncPage() {
               <td><strong>{ev.resourceType}</strong> <span style={{ color: 'var(--text-muted)' }}>{ev.resourceId.slice(0, 12)}</span></td>
               <td>{ev.operation}</td>
               <td>{(ev.hospitalId && hospitalNames.get(ev.hospitalId)) || ev.hospitalId || '—'}</td>
-              <td><SadbChip tone={STATUS_CHIP[ev.syncStatus]}>{ev.syncStatus}</SadbChip></td>
+              <td><SadbChip tone={STATUS_CHIP[ev.syncStatus]}>{ev.syncStatus.charAt(0).toUpperCase() + ev.syncStatus.slice(1)}</SadbChip></td>
               <td>{ev.syncError || '—'}</td>
             </tr>
           ))}

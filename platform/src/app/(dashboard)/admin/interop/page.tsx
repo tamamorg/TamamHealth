@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  SadbPage, SadbCard, SadbStatusCard, SadbHeadLink, SadbKvRow, TONE_CHIP,
+  SadbPage, SadbCard, SadbStatusCard, SadbKvRow, TONE_CHIP,
 } from '@/components/admin/sadb-ui';
 import { SaPill, SaTable, formatWhen } from '@/components/admin/sa-ui';
 import { useToast } from '@/components/Toast';
@@ -178,12 +178,12 @@ export default function AdminInteropPage() {
       </SadbCard>
 
       <SadbCard
-        title="Failed pushes & retry"
+        title="Failed pushes"
         meta={loading ? 'Loading…' : `${failedEvents.length} shown${failedEvents.length === 50 ? ' (capped)' : ''}`}
         action={
           <button type="button" className="btn btn-secondary btn-sm" disabled={retrying} onClick={handleRetryBatch}>
             <RefreshCw className="w-3.5 h-3.5" />
-            {retrying ? 'Retrying…' : 'Retry batch'}
+            {retrying ? 'Retrying…' : 'Retry failed pushes'}
           </button>
         }
       >
@@ -206,11 +206,8 @@ export default function AdminInteropPage() {
         </SaTable>
       </SadbCard>
 
-      <SadbCard
-        title="Terminology & code mappings"
-        action={<SadbHeadLink onClick={() => router.push('/dhis2-export')}>Open DHIS2 export</SadbHeadLink>}
-      >
-        <SadbKvRow label="ICD-11 reference set" value="Bundled client-side (icd11-codes.ts) for diagnosis coding" />
+      <SadbCard title="Terminology & code mappings">
+        <SadbKvRow label="ICD-11 reference set" value="Built into the app for diagnosis coding" />
         <SadbKvRow
           label="DHIS2 data-element mappings"
           value="Facility & workforce, births/deaths (CRVS), laboratory, pharmacy, immunizations, ANC, disease surveillance, data quality"

@@ -277,6 +277,12 @@ body main[data-surface="management"] .ehr-list-scroll .data-table thead th {
   white-space: nowrap;
 }
 
+/* Heads sit over their own cells: start-aligned, as the cells are (a global
+   th rule centred them, so a head floated apart from the figures it names).
+   A column marked right-aligned keeps its head at the end. */
+body main[data-surface="management"] table thead th { text-align: start !important; }
+body main[data-surface="management"] table thead th:is(.text-right, .text-end, .is-right, .tm-sortable--end, [align="right"]) { text-align: end !important; }
+
 body main[data-surface="management"] .sadb-tenant-grid--head {
   min-height: 40px;
   align-items: center;
@@ -623,3 +629,16 @@ body main[data-surface="management"] .sadb-trend--bad .sadb-trend-icon { color: 
 body main[data-surface="management"] .sadb-trend--flat .sadb-trend-icon { color: var(--text-muted) !important; }
 body main[data-surface="management"] .sadb-trend--good { color: var(--color-success-text, var(--color-success-800)); font-weight: 600; }
 body main[data-surface="management"] .sadb-trend--bad { color: var(--color-danger-text, var(--color-danger-800)); font-weight: 600; }
+
+/* ── Select fields keep their chevron ──────────────────────────────────────
+   The platform draws a select's chevron as a background image (globals.css
+   `select`). Some management forms (create user, create facility) reset the
+   field with a `background` shorthand, which wipes the image, so those
+   dropdowns showed no chevron at all. The image is restored here, and only
+   the image: each form keeps its own fill. */
+body main[data-surface="management"] select:not([multiple]):not([size]) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 14px center !important;
+  padding-inline-end: 40px;
+}

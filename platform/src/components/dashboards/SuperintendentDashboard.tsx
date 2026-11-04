@@ -9,11 +9,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { SadbKpiTile } from '@/components/admin/sadb-ui';
-import {
-  Users, BedDouble,
-  ClipboardCheck, Activity, AlertTriangle,
-  ChevronRight, ArrowRight} from '@/components/icons/lucide';
+import { SadbKpiTile, SadbCard, SadbQueueRow, SadbHeadLink, trendBetween } from '@/components/admin/sadb-ui';
+import { Activity } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useUsers } from '@/lib/hooks/useUsers';
@@ -23,8 +20,12 @@ import { useSurveillance } from '@/lib/hooks/useSurveillance';
 import type { LeaveRequestDoc } from '@/lib/db-types-hr';
 import { todayIso } from '@/lib/date-utils';
 import { userWorksAtFacility } from '@/modules/tenancy/client';
+import { usersHrefForRole } from '@/lib/people-nav';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 
+
+const DOCTOR_ROLES = new Set(['doctor', 'clinical_officer', 'clinician']);
+const NURSE_ROLES = new Set(['nurse', 'midwife']);
 
 export default function SuperintendentDashboard() {
   const { t } = useTranslation();
@@ -84,11 +85,32 @@ export default function SuperintendentDashboard() {
   const activeAlerts = diseaseAlerts.filter(a => a.alertLevel === 'emergency' || a.alertLevel === 'warning');
   const pendingReferrals = referrals.filter(r => r.status === 'sent' || r.status === 'received');
 
+  // Doctors and nurses are counted from this facility's own accounts, the same
+  // records the Active staff figure counts; the registry's headcount fields
+  // describe the whole hospital and would not add up to the tile's number.
+  const doctorAccounts = facilityUsers.filter(u => DOCTOR_ROLES.has(u.role)).length;
+  const nurseAccounts = facilityUsers.filter(u => NURSE_ROLES.has(u.role)).length;
+
+  // Requests received this week against the week before: leave carries its
+  // request date, so the comparison is real. Staff, beds and alerts carry no
+  // history here and get no trend.
+  const leaveTrend = (() => {
+    const nowMs = Date.now();
+    let thisWeek = 0;
+    let lastWeek = 0;
+    for (const l of leave) {
+      const at = l.requestedAt ? new Date(l.requestedAt).getTime() : NaN;
+      if (at >= nowMs - 7 * 86400000) thisWeek++;
+      else if (at >= nowMs - 14 * 86400000) lastWeek++;
+    }
+    return { direction: trendBetween(thisWeek, lastWeek), label: `${thisWeek} requested this week vs ${lastWeek} last`, good: 'down' as const };
+  })();
+
   const kpis = [
-    { id: 'staff', label: t('dashboard.activeStaff'), value: facilityUsers.length || (totalDoctors + totalNurses), sub: t('superintendent.staffSub', { doctors: totalDoctors, nurses: totalNurses }), Icon: Users, color: 'var(--accent-primary)', href: '/hr' },
-    { id: 'beds', label: t('dashboard.bedOccupancy'), value: `${occupancyPct}%`, sub: t('superintendent.bedsSub', { occupied: bedOccupancy, total: bedTotal }), Icon: BedDouble, color: 'var(--color-success-text)', href: '/wards' },
-    { id: 'leave', label: t('hr.kpiPendingLeave'), value: pendingLeave.length, sub: t('superintendent.leaveSub', { count: onLeaveToday.length }), Icon: ClipboardCheck, color: pendingLeave.length > 0 ? 'var(--color-danger-500)' : 'var(--accent-primary)', href: '/hr/leave', alarm: pendingLeave.length > 0 },
-    { id: 'alerts', label: t('dashboard.activeAlerts'), value: activeAlerts.length, sub: t('superintendent.alertsSub', { count: pendingReferrals.length }), Icon: AlertTriangle, color: activeAlerts.length > 0 ? 'var(--color-danger-500)' : 'var(--accent-primary)', href: '/surveillance', alarm: activeAlerts.length > 0 },
+    { id: 'staff', label: t('dashboard.activeStaff'), value: facilityUsers.length || (totalDoctors + totalNurses), sub: `${doctorAccounts} ${doctorAccounts === 1 ? 'doctor' : 'doctors'} · ${nurseAccounts} ${nurseAccounts === 1 ? 'nurse' : 'nurses'}`, href: (currentUser ? usersHrefForRole(currentUser.role) : null) || '/hr/schedule' },
+    { id: 'beds', label: t('dashboard.bedOccupancy'), value: `${occupancyPct}%`, sub: t('superintendent.bedsSub', { occupied: bedOccupancy, total: bedTotal }), href: '/wards' },
+    { id: 'leave', label: t('hr.kpiPendingLeave'), value: pendingLeave.length, sub: t('superintendent.leaveSub', { count: onLeaveToday.length }), href: '/hr/leave', alarm: pendingLeave.length > 0, trend: leaveTrend },
+    { id: 'alerts', label: t('dashboard.activeAlerts'), value: activeAlerts.length, sub: t('superintendent.alertsSub', { count: pendingReferrals.length }), href: '/surveillance', alarm: activeAlerts.length > 0 },
   ];
 
   /* Every card opens the page that owns its figure directly (2026-11-04):
@@ -110,51 +132,36 @@ export default function SuperintendentDashboard() {
               value={k.value}
               delta={k.sub}
               deltaTone={k.alarm ? 'warn' : undefined}
+              trend={k.trend}
               onClick={() => router.push(k.href)}
             />
           ))}
         </div>
 
         {/* ═══ SURVEILLANCE / ALERTS ═══ */}
-        <div className="dash-card overflow-hidden">
-          <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-light)' }}>
-            <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
-              <span className="dashboard-panel-title-full">{t('superintendent.surveillanceSignal')}</span>
-              <span className="dashboard-panel-title-tablet">{t('superintendent.surveillanceTitle')}</span>
-            </h3>
-            <button onClick={() => router.push('/surveillance')} className="text-[11px] font-bold inline-flex items-center gap-1" style={{ color: 'var(--accent-primary)' }}>
-              {t('hr.viewAll')} <ChevronRight className="w-3 h-3" />
-            </button>
-          </div>
+        <SadbCard
+          title={t('superintendent.surveillanceSignal')}
+          tabletTitle={t('superintendent.surveillanceTitle')}
+          action={<SadbHeadLink onClick={() => router.push('/surveillance')}>{t('hr.viewAll')}</SadbHeadLink>}
+        >
           {activeAlerts.length === 0 ? (
             <div className="p-10 text-center" style={{ color: 'var(--text-muted)' }}>
               <Activity className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--color-success-text)', opacity: 0.6 }} />
               {t('epidemic.noActiveDiseaseAlerts')}
             </div>
           ) : (
-            <div>
-              {activeAlerts.slice(0, 6).map((a, i) => (
-                <button
-                  key={a._id || i}
-                  onClick={() => router.push(a._id ? `/surveillance?alert=${encodeURIComponent(a._id)}` : '/surveillance')}
-                  className="data-row data-row--warning w-full"
-                  style={{ textAlign: 'start' }}
-                >
-                  <div className="icon-box-sm flex-shrink-0">
-                    <AlertTriangle className="w-4 h-4" style={{ color: a.alertLevel === 'emergency' ? 'var(--color-danger-500)' : 'var(--color-warning)' }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{a.disease || t('superintendent.alertFallback')}</div>
-                    <div className="text-[11.5px] mt-0.5 capitalize" style={{ color: a.alertLevel === 'emergency' ? 'var(--color-danger-500)' : 'var(--color-warning-text)' }}>
-                      {a.alertLevel} · {[a.county, a.state].filter(Boolean).join(', ') || t('superintendent.locationFallback')} · {t('dashboard.casesCount', { count: a.cases })}
-                    </div>
-                  </div>
-                  <ArrowRight className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-                </button>
-              ))}
-            </div>
+            activeAlerts.slice(0, 6).map((a, i) => (
+              <SadbQueueRow
+                key={a._id || i}
+                chip={a.alertLevel === 'emergency' ? 'Emergency' : 'Warning'}
+                chipTone={a.alertLevel === 'emergency' ? 'red' : 'yellow'}
+                title={a.disease || t('superintendent.alertFallback')}
+                sub={`${[a.county, a.state].filter(Boolean).join(', ') || t('superintendent.locationFallback')} · ${t('dashboard.casesCount', { count: a.cases })}`}
+                onClick={() => router.push(a._id ? `/surveillance?alert=${encodeURIComponent(a._id)}` : '/surveillance')}
+              />
+            ))
           )}
-        </div>
+        </SadbCard>
       </main>
     </>
   );

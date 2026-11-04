@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Children, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useDashboardRailDock } from '@/lib/hooks/useDashboardRailDock';
@@ -239,6 +240,7 @@ function compareDashboardRows(a: EhrCareDashboardRow, b: EhrCareDashboardRow): n
 export default function EhrCareDashboard({
   title,
   compactHeader = false,
+  columnLabels,
   greetingName,
   greetingSubtitle,
   dateLabel,
@@ -294,6 +296,12 @@ export default function EhrCareDashboard({
    * content.
    */
   compactHeader?: boolean;
+  /**
+   * The list's five column heads. Defaults to the visit board's (Patient,
+   * Time, Care team, Context, Status); a board of something else (the county
+   * overview's counties) names its own columns.
+   */
+  columnLabels?: readonly [string, string, string, string, string];
   dateLabel: string;
   tabs: EhrCareDashboardTab[];
   activeTab: string;
@@ -670,6 +678,7 @@ export default function EhrCareDashboard({
   // top-left slot as the Clinical Officer-style "+" CTA; every other action
   // renders in the right-hand header row (wrapping when needed) — including
   // panel toggles that swap what occupies the center.
+  const { t } = useTranslation();
   const primaryAction = actions[0];
   const headerTitle = greetingName ? `Welcome, ${abbreviateProviderName(greetingName)}` : title;
   // Role, then module — the two halves of the eyebrow under the greeting. The
@@ -895,11 +904,8 @@ export default function EhrCareDashboard({
                       empty day or a filter that matches nothing, so the table
                       never collapses into a bare message. */}
                   <div className="appointment-card-head" aria-hidden="true">
-                    <span>Patient</span>
-                    <span>Time</span>
-                    <span>Care team</span>
-                    <span>Context</span>
-                    <span>Status</span>
+                    {(columnLabels ?? [t('careBoard.colPatient'), t('careBoard.colTime'), t('careBoard.colCareTeam'), t('careBoard.colContext'), t('careBoard.colStatus')])
+                      .map(label => <span key={label}>{label}</span>)}
                   </div>
                   {visibleRows.length === 0 && (
                     <div className="ehr-empty-state">

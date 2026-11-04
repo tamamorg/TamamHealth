@@ -12,7 +12,9 @@ import { useAssets } from '@/lib/hooks/useAssets';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { AssetDoc, AssetCategory, AssetStatus } from '@/lib/db-types-asset';
-import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import EhrListHeader from '@/components/ehr/EhrListHeader';
+import FacilityKpiBand from '@/components/dashboards/FacilityKpiBand';
+import { SadbChip, type ChipTone } from '@/components/admin/sadb-ui';
 import Select from '@/components/Select';
 import { useNow } from '@/lib/hooks/useNow';
 import NumberInput from '@/components/forms/NumberInput';
@@ -30,12 +32,12 @@ const CATEGORIES: { id: AssetCategory; labelKey: string }[] = [
   { id: 'other', labelKey: 'equipment.categoryOther' },
 ];
 
-const STATUS_TOKENS: Record<AssetStatus, { labelKey: string; color: string; bg: string }> = {
-  operational:    { labelKey: 'equipment.statusOperational',     color: 'var(--color-success-text)', bg: 'rgba(15, 160, 106, 0.12)' },
-  needs_service:  { labelKey: 'equipment.statusNeedsService',   color: 'var(--color-warning-text)', bg: 'rgba(254, 230, 151, 0.16)' },
-  under_repair:   { labelKey: 'equipment.statusUnderRepair',    color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.12)' },
-  decommissioned: { labelKey: 'equipment.statusDecommissioned',  color: 'var(--text-muted)', bg: 'var(--overlay-light)' },
-  lost_or_stolen: { labelKey: 'equipment.statusLostOrStolen',   color: 'var(--color-danger-text)', bg: 'rgba(224, 49, 39, 0.14)' },
+const STATUS_TOKENS: Record<AssetStatus, { labelKey: string; tone: ChipTone }> = {
+  operational:    { labelKey: 'equipment.statusOperational',     tone: 'green' },
+  needs_service:  { labelKey: 'equipment.statusNeedsService',    tone: 'yellow' },
+  under_repair:   { labelKey: 'equipment.statusUnderRepair',     tone: 'blue' },
+  decommissioned: { labelKey: 'equipment.statusDecommissioned',  tone: 'neutral' },
+  lost_or_stolen: { labelKey: 'equipment.statusLostOrStolen',    tone: 'red' },
 };
 
 export default function AssetsPage() {
@@ -155,23 +157,22 @@ export default function AssetsPage() {
   return (
     <>
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-        {/* Asset table. The register's counts ride in the list header as dot
-            chips — the same row every other module list uses — rather than a
-            KPI strip above the card, which cost a band of vertical space and
-            was the only place in the app still framing counts as cards. */}
+        {/* Headline counts as the management KPI band, above the register. */}
+        {summary && (
+          <FacilityKpiBand tiles={[
+            { key: 'operational', label: t('equipment.kpiOperational'), value: summary.operational, detail: `Of ${summary.total} registered assets` },
+            { key: 'service', label: t('equipment.kpiNeedsService'), value: summary.needsService, detail: summary.needsService ? 'Marked as needing service' : 'None waiting for service', warn: summary.needsService > 0 },
+            { key: 'repair', label: t('equipment.kpiUnderRepair'), value: summary.underRepair, detail: summary.underRepair ? 'Out of use until repaired' : 'Nothing out for repair' },
+            { key: 'due', label: t('equipment.kpiServiceDueSoon'), value: summary.serviceDueSoon, detail: 'Service falls due within 30 days', warn: summary.serviceDueSoon > 0 },
+          ]} />
+        )}
         <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="equipment-list">
           <EhrListHeader
             title={t('equipment.topBarTitle')}
             count={summary?.total}
-            stats={summary ? [
-              { label: t('equipment.kpiOperational'), value: summary.operational, color: LIST_STAT_COLORS.green },
-              { label: t('equipment.kpiNeedsService'), value: summary.needsService, color: LIST_STAT_COLORS.amber },
-              { label: t('equipment.kpiUnderRepair'), value: summary.underRepair, color: LIST_STAT_COLORS.blue },
-              { label: t('equipment.kpiServiceDueSoon'), value: summary.serviceDueSoon, color: 'var(--color-danger)' },
-            ] : []}
             search={{ value: globalSearch, onChange: setGlobalSearch, placeholder: 'Search assets…' }}
             actions={
-              <button onClick={() => setCreateOpen(true)} className="btn btn-primary" style={{ height: 38, whiteSpace: 'nowrap', flexShrink: 0 }}>
+              <button type="button" onClick={() => setCreateOpen(true)} className="btn btn-primary">
                 <Plus className="w-4 h-4" /> {t('equipment.registerAsset')}
               </button>
             }
@@ -207,19 +208,17 @@ export default function AssetsPage() {
                   <tr key={a._id}>
                     <td>
                       <div className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{a.name}</div>
-                      <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                      <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
                         {t('equipment.tagLabel')} <span className="font-mono">{a.assetTag}</span>{a.serialNumber ? ` · ${t('equipment.snLabel')} ${a.serialNumber}` : ''}
                       </div>
                     </td>
                     <td className="text-xs capitalize" style={{ color: 'var(--text-secondary)' }}>{(() => { const cat = CATEGORIES.find(c => c.id === a.category); return cat ? t(cat.labelKey) : a.category; })()}</td>
                     <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                       {a.department || '—'}
-                      {a.location && <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{a.location}</div>}
+                      {a.location && <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{a.location}</div>}
                     </td>
                     <td>
-                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md" style={{ background: tok.bg, color: tok.color, border: `1px solid ${tok.color}40` }}>
-                        {t(tok.labelKey)}
-                      </span>
+                      <SadbChip tone={tok.tone}>{t(tok.labelKey)}</SadbChip>
                     </td>
                     <td className="text-xs">
                       {a.nextServiceDueAt ? (
@@ -250,63 +249,63 @@ export default function AssetsPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelName')}</label>
+                  <label className="field-required text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelName')}</label>
                   <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder={t('equipment.placeholderName')} />
                 </div>
                 <div>
-                  <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelAssetTag')}</label>
+                  <label className="field-required text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelAssetTag')}</label>
                   <input value={form.assetTag} onChange={e => setForm({ ...form, assetTag: e.target.value })} placeholder="JTH-US-001" />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelCategory')}</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelCategory')}</label>
                   <Select value={form.category} onChange={e => setForm({ ...form, category: e.target.value as AssetCategory })}>
                     {CATEGORIES.map(c => <option key={c.id} value={c.id}>{t(c.labelKey)}</option>)}
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelCondition')}</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelCondition')}</label>
                   <Select value={form.condition} onChange={e => setForm({ ...form, condition: e.target.value as AssetDoc['condition'] })}>
                     <option value="new">{t('equipment.conditionNew')}</option><option value="good">{t('equipment.conditionGood')}</option><option value="fair">{t('equipment.conditionFair')}</option><option value="poor">{t('equipment.conditionPoor')}</option>
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelManufacturer')}</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelManufacturer')}</label>
                   <input value={form.manufacturer} onChange={e => setForm({ ...form, manufacturer: e.target.value })} />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelModel')}</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelModel')}</label>
                   <input value={form.model} onChange={e => setForm({ ...form, model: e.target.value })} />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelSerialNumber')}</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelSerialNumber')}</label>
                   <input value={form.serialNumber} onChange={e => setForm({ ...form, serialNumber: e.target.value })} />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelDepartment')}</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelDepartment')}</label>
                   <DepartmentInput value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} placeholder={t('equipment.placeholderDepartment')} />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelLocation')}</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelLocation')}</label>
                   <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} placeholder={t('equipment.placeholderLocation')} />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelDonor')}</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelDonor')}</label>
                   <input value={form.donor} onChange={e => setForm({ ...form, donor: e.target.value })} placeholder={t('equipment.placeholderDonor')} />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelCost', { currency: form.costCurrency })}</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelCost', { currency: form.costCurrency })}</label>
                   <NumberInput step="any" min={0} value={form.cost || ''} onChange={e => setForm({ ...form, cost: parseFloat(e.target.value) || 0 })} />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelWarrantyExpires')}</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelWarrantyExpires')}</label>
                   <input type="date" value={form.warrantyExpiresAt} onChange={e => setForm({ ...form, warrantyExpiresAt: e.target.value })} />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelServiceInterval')}</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelServiceInterval')}</label>
                   <NumberInput step="1" min={0} value={form.serviceIntervalMonths || ''} onChange={e => setForm({ ...form, serviceIntervalMonths: parseInt(e.target.value) || 0 })} />
                 </div>
                 <div className="col-span-2">
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelNotes')}</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelNotes')}</label>
                   <textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
                 </div>
               </div>
@@ -329,7 +328,7 @@ export default function AssetsPage() {
             <div className="space-y-4">
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelType')}</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelType')}</label>
                   <Select value={serviceForm.type} onChange={e => setServiceForm({ ...serviceForm, type: e.target.value as typeof serviceForm.type })}>
                     <option value="inspection">{t('equipment.serviceTypeInspection')}</option>
                     <option value="service">{t('equipment.serviceTypeRoutine')}</option>
@@ -338,11 +337,11 @@ export default function AssetsPage() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelServiceCost')}</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelServiceCost')}</label>
                   <NumberInput step="any" min={0} value={serviceForm.cost || ''} onChange={e => setServiceForm({ ...serviceForm, cost: parseFloat(e.target.value) || 0 })} />
                 </div>
                 <div>
-                  <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelServiceNotes')}</label>
+                  <label className="field-required text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelServiceNotes')}</label>
                   <textarea rows={3} value={serviceForm.notes} onChange={e => setServiceForm({ ...serviceForm, notes: e.target.value })} placeholder={t('equipment.placeholderServiceNotes')} />
                 </div>
               </div>

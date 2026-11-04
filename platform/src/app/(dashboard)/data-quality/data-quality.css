@@ -1,0 +1,22 @@
+/* Data quality: the KPI band's spacing and the labelled View field beside the
+   list's search. Everything else is the management frame's. */
+body main[data-surface="management"] .dq-kpis.sadb-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  margin-bottom: 12px;
+}
+body main[data-surface="management"] .dq-view-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+body main[data-surface="management"] .dq-view-field > span {
+  font-family: var(--font-platform);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-secondary);
+}
+body main[data-surface="management"] [data-tour="dq-facility-table"] table thead th { text-align: start; }

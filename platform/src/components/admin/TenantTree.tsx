@@ -101,7 +101,7 @@ export function OrgFacilities({ facilities, usersByFacility, loading, onOpen }: 
                   onClick={e => { e.stopPropagation(); onOpen(f._id); }}
                   title={`Open ${f.name}`}
                 >
-                  {f.name}{retired ? ' · retired' : ''}
+                  {f.name}{retired ? ' · Retired' : ''}
                 </button>
               </span>
               <span className="truncate">{FACILITY_TYPE_LABELS[f.facilityType] || f.facilityType}</span>
@@ -166,7 +166,7 @@ export function FacilityUserList({ id, users, facilityId }: { id: string; users:
           <span className="sadb-subrow-blank">—</span>
           <span style={{ textAlign: 'end' }}>
             <SadbChip tone={u.isActive === false ? 'neutral' : 'green'}>
-              {u.isActive === false ? 'inactive' : 'active'}
+              {u.isActive === false ? 'Inactive' : 'Active'}
             </SadbChip>
           </span>
         </div>

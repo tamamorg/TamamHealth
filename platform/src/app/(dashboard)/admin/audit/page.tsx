@@ -295,7 +295,7 @@ export default function AuditLogsPage() {
               Activity: {userScope.name || userScope.id} <X className="w-3.5 h-3.5" />
             </button>
           )}
-          <button type="button" className="btn btn-primary btn-sm flex-shrink-0" onClick={exportCsv}>Export evidence (CSV)</button>
+          <button type="button" className="tm-ghost-btn flex-shrink-0" onClick={exportCsv}>Export as CSV</button>
         </div>
         {/* No pager: every matching event lives in one scroll area, and the
             head's "Showing X of Y" meta states the count. */}
@@ -326,7 +326,7 @@ export default function AuditLogsPage() {
                 <td>{log.action}</td>
                 <td>{log.details || '—'}</td>
                 <td><SadbChip tone={log.success ? 'green' : 'red'}>{log.success ? 'Success' : 'Failure'}</SadbChip></td>
-                <td><SadbChip tone={SEVERITY_CHIP[risk]}>{risk.toUpperCase()}</SadbChip></td>
+                <td><SadbChip tone={SEVERITY_CHIP[risk]}>{risk[0].toUpperCase() + risk.slice(1)}</SadbChip></td>
                 <td>
                   {log.success ? (
                     <span className="sadb-table-action-state">Not needed</span>
@@ -466,8 +466,8 @@ function AuditEntryDialog({
         <DialogBody>
         <div className="flex items-center flex-wrap gap-2" style={{ margin: '0 0 16px' }}>
           {log.success ? <SadbChip tone="green">Success</SadbChip> : <SadbChip tone="red">Failure</SadbChip>}
-          <SadbChip tone={SEVERITY_CHIP[risk]}>{risk.toUpperCase()} RISK</SadbChip>
-          {resolution && <SadbChip tone="green">RESOLVED</SadbChip>}
+          <SadbChip tone={SEVERITY_CHIP[risk]}>{risk[0].toUpperCase() + risk.slice(1)} risk</SadbChip>
+          {resolution && <SadbChip tone="green">Resolved</SadbChip>}
         </div>
 
         {resolution && (
@@ -527,7 +527,7 @@ function AuditEntryDialog({
           start={(
             <div className="flex flex-wrap gap-2">
               <button type="button" className="btn btn-ghost btn-sm" onClick={onFilterUser}>Show this user&apos;s activity</button>
-              {onOpenUser && <button type="button" className="btn btn-ghost btn-sm" onClick={onOpenUser}>View in User Management</button>}
+              {onOpenUser && <button type="button" className="btn btn-ghost btn-sm" onClick={onOpenUser}>View user account</button>}
               {onOpenPatient && <button type="button" className="btn btn-ghost btn-sm" onClick={onOpenPatient}>Open patient chart</button>}
               <button type="button" className="btn btn-ghost btn-sm" onClick={onCopyJson}>Copy entry JSON</button>
             </div>

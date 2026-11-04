@@ -5,19 +5,21 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useDataQuality } from '@/lib/hooks/useDataQuality';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { Wifi, Users, TrendingUp, AlertTriangle } from '@/components/icons/lucide';
-import { FilterTabs } from '@/components/filters';
+import Select from '@/components/Select';
+import './data-quality.css';
+import InlineBanner from '@/components/overlay/InlineBanner';
+import { SadbKpiTile } from '@/components/admin/sadb-ui';
 import DuplicateReviewPanel from '@/components/patients/DuplicateReviewPanel';
 import { useDuplicateReview } from '@/components/patients/useDuplicateReview';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import type { DataCompletenessEntry } from '@/lib/services/data-quality-service';
 
 type View = 'completeness' | 'timeliness' | 'outliers' | 'scores';
-const VIEWS: { key: View; label: string }[] = [
-  { key: 'completeness', label: 'Completeness' },
-  { key: 'timeliness', label: 'Timeliness' },
-  { key: 'scores', label: 'Quality scores' },
-  { key: 'outliers', label: 'Possible outliers' },
+const VIEW_KEYS: { key: View; labelKey: string }[] = [
+  { key: 'completeness', labelKey: 'dataQuality.viewCompleteness' },
+  { key: 'timeliness', labelKey: 'dataQuality.viewTimeliness' },
+  { key: 'scores', labelKey: 'dataQuality.viewScores' },
+  { key: 'outliers', labelKey: 'dataQuality.viewOutliers' },
 ];
 
 const RED = 'var(--color-danger)';
@@ -26,14 +28,6 @@ const GREEN = 'var(--color-success)';
 
 function thresholdColor(value: number) {
   return value < 60 ? RED : value < 80 ? AMBER : GREEN;
-}
-
-function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return (
-    <th className={`${right ? 'text-end' : 'text-start'} px-4 py-2.5`} style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-card-solid)' }}>
-      <span className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap">{children}</span>
-    </th>
-  );
 }
 
 function MetricBar({ value }: { value: number }) {
@@ -121,7 +115,7 @@ export default function DataQualityPage() {
 
   if (loading || !data) return <main className="page-container flex items-center justify-center"><p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('dataQuality.loading')}</p></main>;
 
-  const scoreColor = (score: number) => score >= 70 ? 'var(--accent-primary)' : score >= 50 ? 'var(--color-warning)' : 'var(--color-danger)';
+  const facilityRows = view === 'completeness' ? filteredCompletenessRows : view === 'timeliness' ? filteredTimelinessRows : filteredScoreRows;
 
   // Header stat pills reflect the whole (unfiltered) view, matching the
   // appointments-page convention where the search box narrows the table but
@@ -137,200 +131,154 @@ export default function DataQualityPage() {
     : outliers.length;
   const listHeaderStats =
     view === 'completeness'
-      ? [{ label: 'Below 80%', value: belowCompleteness80, color: LIST_STAT_COLORS.amber }]
+      ? [{ label: t('dataQuality.belowEighty'), value: belowCompleteness80, color: LIST_STAT_COLORS.amber }]
       : view === 'timeliness'
-      ? [{ label: 'Below 80%', value: belowTimeliness80, color: LIST_STAT_COLORS.amber }]
+      ? [{ label: t('dataQuality.belowEighty'), value: belowTimeliness80, color: LIST_STAT_COLORS.amber }]
       : [];
 
   const listHeaderSearch =
     view === 'outliers'
-      ? { value: rowQuery, onChange: setRowQuery, placeholder: 'Search disease or location', ariaLabel: 'Search outliers by disease or location' }
-      : { value: rowQuery, onChange: setRowQuery, placeholder: 'Search facility or state', ariaLabel: 'Search facilities by name or state' };
+      ? { value: rowQuery, onChange: setRowQuery, placeholder: t('dataQuality.searchOutliers'), ariaLabel: t('dataQuality.searchOutliersAria') }
+      : { value: rowQuery, onChange: setRowQuery, placeholder: t('dataQuality.searchFacility'), ariaLabel: t('dataQuality.searchFacilityAria') };
+
+  const assessed = assessedEntries.length;
+  const goodFacilities = assessedEntries.filter(e => e.reportingCompleteness >= 80).length;
+  const dhis2Facilities = data.totalFacilities ? Math.round(data.dhis2Adoption * data.totalFacilities / 100) : 0;
+  const tone = (value: number, target: number) => (value < target ? 'warn' as const : undefined);
 
   return (
     <main className="page-container page-enter">
-        <div className="card-elevated px-4 pt-4 pb-3 mb-4">
-          <span style={{ fontFamily: 'var(--font-condensed)', fontWeight: 800, fontSize: 22, lineHeight: 1.12, letterSpacing: '-0.015em', color: 'var(--text-primary)' }}>
-            {t('dataQuality.topBarTitle')}
-          </span>
-        </div>
-        {/* National indicators */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          <div className="card-elevated p-4" data-tour="dq-national-indicators">
-            <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-              {t('dataQuality.nationalIndicatorsTitle')}
-            </h3>
-            <div className="space-y-3">
-              {[
-                { label: t('dataQuality.indicatorReportingCompleteness'), value: data.avgCompleteness, target: 80 },
-                { label: t('dataQuality.indicatorReportingTimeliness'), value: data.avgTimeliness, target: 75 },
-                { label: t('dataQuality.indicatorDataAccuracy'), value: data.avgQuality, target: 70 },
-                { label: t('dataQuality.indicatorFacilitiesCompleteness'), value: data.completenessRate, target: 60 },
-                { label: t('dataQuality.indicatorDhis2Reporting'), value: data.dhis2Adoption, target: 50 },
-              ].map(item => (
-                <div key={item.label}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span style={{ color: 'var(--text-secondary)' }}>{item.label}</span>
-                    <span className="font-bold" style={{ color: scoreColor(item.value) }}>{item.value}%
-                      <span className="font-semibold ms-1" style={{ color: 'var(--text-muted)' }}>/ {item.target}%</span>
-                    </span>
-                  </div>
-                  <div className="relative w-full h-3 rounded-full" style={{ background: 'var(--overlay-light)' }}>
-                    <div className="h-full rounded-full transition-all" style={{ width: `${item.value}%`, background: scoreColor(item.value) }} />
-                    <div className="absolute top-0 bottom-0 w-0.5" style={{ left: `${item.target}%`, background: 'var(--text-muted)', opacity: 0.5 }} />
-                  </div>
-                </div>
-              ))}
-            </div>
+      {/* The figures: what each is made of and the target it is held to. The
+          assessments carry one date each, so there is no honest period
+          comparison to draw a trend from. */}
+      <div className="sadb-kpi-row dq-kpis" data-tour="dq-national-indicators">
+        <SadbKpiTile
+          label={t('dataQuality.tileCompleteness')}
+          value={`${data.avgCompleteness}%`}
+          delta={t('dataQuality.detailTarget', { target: 80, count: assessed })}
+          deltaTone={tone(data.avgCompleteness, 80)}
+        />
+        <SadbKpiTile
+          label={t('dataQuality.tileTimeliness')}
+          value={`${data.avgTimeliness}%`}
+          delta={t('dataQuality.detailTarget', { target: 75, count: assessed })}
+          deltaTone={tone(data.avgTimeliness, 75)}
+        />
+        <SadbKpiTile
+          label={t('dataQuality.tileAccuracy')}
+          value={`${data.avgQuality}%`}
+          delta={t('dataQuality.detailTarget', { target: 70, count: assessed })}
+          deltaTone={tone(data.avgQuality, 70)}
+        />
+        <SadbKpiTile
+          label={t('dataQuality.tileGoodFacilities')}
+          value={`${data.completenessRate}%`}
+          delta={t('dataQuality.detailGoodFacilities', { target: 60, good: goodFacilities, total: assessed })}
+          deltaTone={tone(data.completenessRate, 60)}
+        />
+        <SadbKpiTile
+          label={t('dataQuality.tileDhis2')}
+          value={`${data.dhis2Adoption}%`}
+          delta={t('dataQuality.detailDhis2', { target: 50, count: dhis2Facilities, total: data.totalFacilities })}
+          deltaTone={tone(data.dhis2Adoption, 50)}
+        />
+        <SadbKpiTile
+          label={t('dataQuality.tileStaff')}
+          value={data.totalHISStaff.toLocaleString()}
+          delta={t('dataQuality.detailStaff', { trained: data.facilitiesWithTrainedStaff, total: data.totalFacilities })}
+        />
+      </div>
+
+      {/* Facility-level views */}
+      <div className="dash-card overflow-hidden" data-tour="dq-facility-table">
+        <EhrListHeader
+          title={t('dataQuality.listTitle')}
+          count={listHeaderCount}
+          stats={listHeaderStats}
+          search={listHeaderSearch}
+          actions={
+            <label className="dq-view-field">
+              <span>{t('dataQuality.viewLabel')}</span>
+              <Select value={view} onChange={e => setView(e.target.value as View)} data-action="dq-view">
+                {VIEW_KEYS.map(v => <option key={v.key} value={v.key}>{t(v.labelKey)}</option>)}
+              </Select>
+            </label>
+          }
+        />
+
+        {view !== 'outliers' && (
+          <div className="overflow-x-auto">
+            <table className="w-full" style={{ minWidth: 640 }}>
+              <thead>
+                <tr>
+                  {view === 'scores' && <th>{t('dataQuality.colRank')}</th>}
+                  <th>{t('dataQuality.colFacility')}</th>
+                  <th>{t('dataQuality.colState')}</th>
+                  <th>{view === 'completeness' ? t('dataQuality.colCompleteness') : view === 'timeliness' ? t('dataQuality.colTimeliness') : t('dataQuality.colScore')}</th>
+                  <th>{t('dataQuality.colLastAssessment')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {facilityRows.length === 0 && (
+                  <tr><td colSpan={view === 'scores' ? 5 : 4} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('dataQuality.noAssessments')}</td></tr>
+                )}
+                {facilityRows.map((e: DataCompletenessEntry, i: number) => (
+                  <tr key={e.facilityId}>
+                    {view === 'scores' && <td className="tabular-nums" style={{ color: 'var(--text-muted)' }}>{i + 1}</td>}
+                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{e.facilityName}</td>
+                    <td style={{ color: 'var(--text-secondary)' }}>{e.state}</td>
+                    <td><MetricBar value={view === 'completeness' ? e.reportingCompleteness : view === 'timeliness' ? e.reportingTimeliness : e.dataQualityScore} /></td>
+                    <td className="tabular-nums" style={{ color: 'var(--text-secondary)' }}>{e.lastAssessmentDate}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+        )}
 
-          <div className="card-elevated p-4">
-            <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
-              <Users className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-              {t('dataQuality.hisWorkforceTitle')}
-            </h3>
-            <div className="space-y-4">
-              <div className="p-3 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('dataQuality.totalHisStaff')}</p>
-                <p className="text-3xl font-bold" style={{ color: 'var(--accent-primary)' }}>{data.totalHISStaff}</p>
-                <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>{t('dataQuality.acrossFacilitiesTrained', { count: data.facilitiesWithTrainedStaff })}</p>
-              </div>
-              <div className="p-3 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('dataQuality.staffCoverage')}</p>
-                <p className="text-3xl font-bold" style={{ color: scoreColor(data.totalFacilities ? Math.round(data.facilitiesWithTrainedStaff / data.totalFacilities * 100) : 0) }}>
-                  {data.totalFacilities ? Math.round(data.facilitiesWithTrainedStaff / data.totalFacilities * 100) : 0}%
-                </p>
-                <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>{t('dataQuality.facilitiesWithTrainedStaff', { trained: data.facilitiesWithTrainedStaff, total: data.totalFacilities })}</p>
-              </div>
-              <div className="p-3 rounded-lg" style={{ background: data.dhis2Adoption >= 50 ? 'rgba(33, 145, 208, 0.08)' : 'rgba(224, 49, 39,0.08)' }}>
-                <div className="flex items-center gap-2 mb-1">
-                  <Wifi className="w-3.5 h-3.5" style={{ color: scoreColor(data.dhis2Adoption) }} />
-                  <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('dataQuality.electronicReporting')}</p>
-                </div>
-                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  {t('dataQuality.facilitiesUsingDhis2', { count: data.totalFacilities ? Math.round(data.dhis2Adoption * data.totalFacilities / 100) : 0 })}
-                </p>
-              </div>
+        {view === 'outliers' && (
+          <div>
+            <div className="px-4 pb-3">
+              <InlineBanner tone="warning">{t('dataQuality.outlierNote')}</InlineBanner>
             </div>
+            {alertsLoading ? (
+              <div className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('dataQuality.alertsLoading')}</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full" style={{ minWidth: 640 }}>
+                  <thead>
+                    <tr>
+                      <th>{t('dataQuality.colDisease')}</th>
+                      <th>{t('dataQuality.colLocation')}</th>
+                      <th>{t('dataQuality.colCases')}</th>
+                      <th>{t('dataQuality.colReported')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredOutliers.length === 0 && (
+                      <tr><td colSpan={4} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('dataQuality.noOutliers')}</td></tr>
+                    )}
+                    {filteredOutliers.map(a => (
+                      <tr key={a._id}>
+                        <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{a.disease}</td>
+                        <td style={{ color: 'var(--text-secondary)' }}>{a.county}, {a.state}</td>
+                        <td className="tabular-nums" style={{ color: RED, fontWeight: 600 }}>{a.cases.toLocaleString()}</td>
+                        <td className="tabular-nums" style={{ color: 'var(--text-secondary)' }}>{a.reportDate}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-        </div>
+        )}
+      </div>
 
-        {/* Facility-level views */}
-        <div className="dash-card overflow-hidden" data-tour="dq-facility-table">
-          <EhrListHeader
-            title="Facility data quality"
-            count={listHeaderCount}
-            stats={listHeaderStats}
-            search={listHeaderSearch}
-            actions={
-              <FilterTabs ariaLabel="Data quality view" active={view} onChange={k => setView(k as View)} tabs={VIEWS.map(v => ({ key: v.key, label: v.label }))} />
-            }
-          />
-
-          {view === 'completeness' && (
-            <div className="overflow-x-auto">
-              <table className="w-full" style={{ minWidth: 640 }}>
-                <thead><tr><Th>Facility</Th><Th>State</Th><Th>Reporting completeness</Th><Th>Last assessment</Th></tr></thead>
-                <tbody>
-                  {filteredCompletenessRows.length === 0 && (
-                    <tr><td colSpan={4} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No facility assessments on file.</td></tr>
-                  )}
-                  {filteredCompletenessRows.map((e: DataCompletenessEntry) => (
-                    <tr key={e.facilityId} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                      <td className="px-4 py-2.5 text-[14px]" style={{ color: 'var(--ehr-text, var(--text-primary))', fontWeight: 800 }}>{e.facilityName}</td>
-                      <td className="px-4 py-2.5 text-[13px]" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{e.state}</td>
-                      <td className="px-4 py-2.5"><MetricBar value={e.reportingCompleteness} /></td>
-                      <td className="px-4 py-2.5 text-[12px] font-mono" style={{ color: 'var(--text-muted)' }}>{e.lastAssessmentDate}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {view === 'timeliness' && (
-            <div className="overflow-x-auto">
-              <table className="w-full" style={{ minWidth: 640 }}>
-                <thead><tr><Th>Facility</Th><Th>State</Th><Th>Reporting timeliness</Th><Th>Last assessment</Th></tr></thead>
-                <tbody>
-                  {filteredTimelinessRows.length === 0 && (
-                    <tr><td colSpan={4} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No facility assessments on file.</td></tr>
-                  )}
-                  {filteredTimelinessRows.map((e: DataCompletenessEntry) => (
-                    <tr key={e.facilityId} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                      <td className="px-4 py-2.5 text-[14px]" style={{ color: 'var(--ehr-text, var(--text-primary))', fontWeight: 800 }}>{e.facilityName}</td>
-                      <td className="px-4 py-2.5 text-[13px]" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{e.state}</td>
-                      <td className="px-4 py-2.5"><MetricBar value={e.reportingTimeliness} /></td>
-                      <td className="px-4 py-2.5 text-[12px] font-mono" style={{ color: 'var(--text-muted)' }}>{e.lastAssessmentDate}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {view === 'scores' && (
-            <div className="overflow-x-auto">
-              <table className="w-full" style={{ minWidth: 640 }}>
-                <thead><tr><Th>Rank</Th><Th>Facility</Th><Th>State</Th><Th>Data quality score</Th><Th>Last assessment</Th></tr></thead>
-                <tbody>
-                  {filteredScoreRows.length === 0 && (
-                    <tr><td colSpan={5} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No facility assessments on file.</td></tr>
-                  )}
-                  {filteredScoreRows.map((e: DataCompletenessEntry, i: number) => (
-                    <tr key={e.facilityId} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                      <td className="px-4 py-2.5 text-[13px] font-mono" style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
-                      <td className="px-4 py-2.5 text-[14px]" style={{ color: 'var(--ehr-text, var(--text-primary))', fontWeight: 800 }}>{e.facilityName}</td>
-                      <td className="px-4 py-2.5 text-[13px]" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{e.state}</td>
-                      <td className="px-4 py-2.5"><MetricBar value={e.dataQualityScore} /></td>
-                      <td className="px-4 py-2.5 text-[12px] font-mono" style={{ color: 'var(--text-muted)' }}>{e.lastAssessmentDate}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {view === 'outliers' && (
-            <div>
-              <div className="px-4 py-3 flex items-start gap-2" style={{ borderBottom: '1px solid var(--border-light)', background: 'var(--overlay-subtle)' }}>
-                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: AMBER }} />
-                <p className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>
-                  Possible data outliers — verify at source. Flagged where an alert&rsquo;s case count exceeds 3&times; the median for that disease. No validation rules are configured yet in TamamHealth; this is a heuristic, not a confirmed error.
-                </p>
-              </div>
-              {alertsLoading ? (
-                <div className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>Loading surveillance alerts…</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full" style={{ minWidth: 640 }}>
-                    <thead><tr><Th>Disease</Th><Th>Location</Th><Th right>Cases</Th><Th>Reported</Th></tr></thead>
-                    <tbody>
-                      {filteredOutliers.length === 0 && (
-                        <tr><td colSpan={4} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No outliers detected against this heuristic.</td></tr>
-                      )}
-                      {filteredOutliers.map(a => (
-                        <tr key={a._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                          <td className="px-4 py-2.5 text-[14px]" style={{ color: 'var(--ehr-text, var(--text-primary))', fontWeight: 800 }}>{a.disease}</td>
-                          <td className="px-4 py-2.5 text-[13px]" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{a.county}, {a.state}</td>
-                          <td className="px-4 py-2.5 text-[13px] text-end font-mono" style={{ color: RED }}>{a.cases.toLocaleString()}</td>
-                          <td className="px-4 py-2.5 text-[12px] font-mono" style={{ color: 'var(--text-muted)' }}>{a.reportDate}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Duplicate patient records: the review that used to live only on the
-            platform operator's /admin/data, which holds no records. */}
-        <div className="mt-6" data-tour="dq-duplicate-review">
-          <DuplicateReviewPanel review={duplicateReview} standalone />
-        </div>
+      {/* Duplicate patient records: the review that used to live only on the
+          platform operator's /admin/data, which holds no records. */}
+      <div className="mt-4" data-tour="dq-duplicate-review">
+        <DuplicateReviewPanel review={duplicateReview} standalone />
+      </div>
     </main>
   );
 }

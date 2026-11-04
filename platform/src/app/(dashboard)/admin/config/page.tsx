@@ -181,7 +181,7 @@ export default function AdminConfigPage() {
                   title="Tenant defaults"
                   note="Trial length, capacity ceiling, and self-service signup applied to every new organization."
                 />
-                <SadbSettingGroup title="Trial & capacity">
+                <SadbSettingGroup title="Trials and capacity">
                   <SadbSettingRow label="Trial days" sub="Length of the free trial period for new organizations.">
                     <NumberInput step="1" min={1} max={365}
                       className="sadb-modal-input" style={{ maxWidth: 120 }}
@@ -216,7 +216,7 @@ export default function AdminConfigPage() {
                   tagTone={config.maintenanceMode ? 'red' : 'green'}
                 />
                 <SadbSettingGroup title="Sign-in gate">
-                  <SadbSettingRow label="Maintenance mode" sub="When on, only super admins can sign in — all other roles see a maintenance notice.">
+                  <SadbSettingRow label="Maintenance mode" sub="When on, only super admins can sign in. All other roles see a maintenance notice.">
                     <SadbToggle
                       checked={draft.maintenanceMode}
                       onChange={v => setField('maintenanceMode', v)}
@@ -228,7 +228,7 @@ export default function AdminConfigPage() {
                       <b>{config.maintenanceMode ? 'Maintenance mode is live' : 'This will restrict tenant access'}</b>
                       <span>
                         {config.maintenanceMode
-                          ? 'Only super admins can sign in right now — all other roles see a maintenance notice.'
+                          ? 'Only super admins can sign in right now. All other roles see a maintenance notice.'
                           : 'Saving turns this on immediately: all non-super-admin roles will be signed out of new sessions.'}
                       </span>
                     </div>
@@ -242,10 +242,10 @@ export default function AdminConfigPage() {
               <>
                 <SadbPanelHeader
                   title="Security policy defaults"
-                  note="Configured from Security & Compliance — this page shows the current values only."
+                  note="Set in the security settings. This page shows the current values only."
                   tag="Read-only"
                 />
-                <SadbCard action={<SadbHeadLink onClick={() => router.push('/admin/security')}>Edit in Security &amp; Compliance</SadbHeadLink>}>
+                <SadbCard action={<SadbHeadLink onClick={() => router.push('/admin/security')}>{t('adminConsole.editInSecuritySettings')}</SadbHeadLink>}>
                   {!policies ? (
                     <p className="sadb-empty">Loading…</p>
                   ) : (
@@ -263,7 +263,7 @@ export default function AdminConfigPage() {
                         value={`${policies.dualApprovalForHighRisk ? 'Yes' : 'No'} · not enforced`}
                       />
                       <SadbKvRow label="Audit retention" value={`${policies.auditRetentionYears}y · not enforced`} />
-                      <SadbKvRow label="SSO enabled" value={`${policies.ssoEnabled ? 'Yes' : 'No'} · not enforced`} />
+                      <SadbKvRow label="Single sign-on" value={`${policies.ssoEnabled ? 'Yes' : 'No'} · not enforced`} />
                     </>
                   )}
                 </SadbCard>
@@ -274,7 +274,7 @@ export default function AdminConfigPage() {
               <>
                 <SadbPanelHeader title="Notification templates" note="Copy used for platform email and SMS notifications." />
                 <SadbCard>
-                  <p className="sadb-empty">No template store configured — email and SMS notifications use built-in copy.</p>
+                  <p className="sadb-empty">No templates are set up. Email and SMS notifications use the built-in wording.</p>
                 </SadbCard>
               </>
             )}

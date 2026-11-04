@@ -20,6 +20,7 @@ import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useToast } from '@/components/Toast';
 import { Plus, Save } from '@/components/icons/lucide';
+import FacilityKpiBand from '@/components/dashboards/FacilityKpiBand';
 import {
   SadbPage, SadbCard, SadbSearch, SadbGridList, SadbGridRow, SadbChip, SadbConfirmModal,
 } from '@/components/admin/sadb-ui';
@@ -57,8 +58,8 @@ const emptyForm = (): FeeInput & { isActive: boolean } => ({
   serviceCode: '', serviceName: '', unitPrice: 0, billingUnit: 'each', currency: defaultCurrency(), isActive: true,
 });
 
-/* Service · Code · Category · Price · Status */
-const FEE_GRID = 'minmax(200px, 1.6fr) minmax(110px, 0.8fr) minmax(130px, 1fr) minmax(120px, 0.9fr) minmax(90px, 0.7fr)';
+/* Service · Facility · Code · Category · Price · Status */
+const FEE_GRID = 'minmax(200px, 1.5fr) minmax(140px, 1fr) minmax(100px, 0.7fr) minmax(130px, 1fr) minmax(120px, 0.9fr) minmax(90px, 0.7fr)';
 
 export default function ServicePricingPage() {
   const { t } = useTranslation();
@@ -192,11 +193,24 @@ export default function ServicePricingPage() {
 
   const editingFee = editingId ? fees.find(f => f._id === editingId) ?? null : null;
 
+  const activeCount = fees.filter(f => f.isActive).length;
+  const facilityCount = new Set(fees.map(f => f.facilityId)).size;
+  const categoryCount = new Set(fees.map(f => f.category)).size;
+  const priciest = fees.reduce<FeeScheduleDoc | null>((best, f) => (!best || f.unitPrice > best.unitPrice ? f : best), null);
+
   return (
     <SadbPage roles={['org_admin', 'super_admin']}>
+      {!loading && (
+        <FacilityKpiBand tiles={[
+          { key: 'services', label: 'Services priced', value: fees.length, detail: `${activeCount} active · ${fees.length - activeCount} inactive` },
+          { key: 'facilities', label: 'Facilities', value: facilityCount, detail: 'Each with its own price list' },
+          { key: 'categories', label: 'Charge categories', value: categoryCount, detail: `Of ${CATEGORIES.length} available` },
+          { key: 'top', label: 'Highest price', value: priciest ? formatMoney(priciest.unitPrice, { currency: priciest.currency }) : '—', detail: priciest ? priciest.serviceName : 'No services priced yet' },
+        ]} />
+      )}
       <div data-tour="org-pricing-table">
         <SadbCard
-          title="Service Pricing"
+          title="Service pricing"
           meta={loading ? undefined : `${filtered.length} of ${fees.length}`}
           action={
             <button type="button" className="btn btn-primary btn-sm" onClick={openAdd}>
@@ -210,8 +224,8 @@ export default function ServicePricingPage() {
 
           <SadbGridList
             template={FEE_GRID}
-            minWidth={700}
-            head={['Service', 'Code', 'Category', 'Price', 'Status']}
+            minWidth={820}
+            head={['Service', 'Facility', 'Code', 'Category', 'Price', 'Status']}
             alignEndLast
             empty={loading
               ? 'Loading…'
@@ -222,9 +236,10 @@ export default function ServicePricingPage() {
             {!loading && filtered.map(fee => (
               <SadbGridRow key={fee._id} template={FEE_GRID} onClick={() => openEdit(fee)}>
                 <span className="sadb-tenant-name truncate">{fee.serviceName}</span>
+                <span className="truncate">{fee.facilityName || '—'}</span>
                 <span className="sadb-tenant-sub font-mono">{fee.serviceCode || '—'}</span>
                 <span className="truncate">{CATEGORIES.find(c => c.value === fee.category)?.label || fee.category}</span>
-                <span className="sadb-tenant-num" style={{ fontWeight: 700 }}>
+                <span className="sadb-tenant-num" style={{ fontWeight: 600 }}>
                   {formatMoney(fee.unitPrice, { currency: fee.currency, decimals: 2 })}
                 </span>
                 <span style={{ justifySelf: 'end' }}>
@@ -319,7 +334,7 @@ export default function ServicePricingPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>{label}</label>
+      <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>{label}</label>
       {children}
     </div>
   );

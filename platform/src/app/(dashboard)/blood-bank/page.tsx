@@ -19,7 +19,8 @@ import type { BloodBankDoc, PatientDoc } from '@/lib/db-types';
 import Badge, { type BadgeTone } from '@/components/Badge';
 import EmptyState from '@/components/EmptyState';
 import { formatDate, humanizeStatus } from '@/lib/format-utils';
-import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import EhrListHeader from '@/components/ehr/EhrListHeader';
+import FacilityKpiBand, { weekOverWeek } from '@/components/dashboards/FacilityKpiBand';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import type { RowAction } from '@/components/RowActionsMenu';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -136,6 +137,12 @@ export default function BloodBankPage() {
     }
     return counts;
   }, [units]);
+
+  const outOfStock = BLOOD_GROUPS.filter(g => !availableByGroup[g]);
+  const mostStocked = useMemo(() => {
+    const top = Object.entries(availableByGroup).sort((a, b) => b[1] - a[1])[0];
+    return top && top[1] > 0 ? top : null;
+  }, [availableByGroup]);
 
   // Header stat chips — computed from the units already loaded on this page.
   const unitStats = useMemo(() => {
@@ -370,46 +377,25 @@ export default function BloodBankPage() {
   return (
     <>
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-        {/* Availability by blood group — one tile per group, count of AVAILABLE units.
+        {/* Headline stock figures as the management KPI band. The per-group
+            counts that used to be a strip of eight tiles ride the detail
+            lines (most stocked, and which groups have run out).
             data-tour: guided-tour anchor for the lab journey's blood-bank step. */}
-        <div className="dash-card mb-4" data-tour="bb-availability">
-          <div className="px-5 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
-            <h3 className="font-semibold text-sm">Availability by blood group</h3>
-          </div>
-          <div className="p-3 overflow-x-auto">
-            <table className="w-full text-center" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-              <thead>
-                <tr>
-                  {BLOOD_GROUPS.map((g, i) => (
-                    <th
-                      key={g}
-                      className="text-[11px] font-bold uppercase tracking-wider px-2 py-1.5"
-                      style={{ color: 'var(--accent-primary)', borderBottom: '1px solid var(--border-light)', borderInlineStart: i === 0 ? undefined : '1px solid var(--border-light)' }}
-                    >
-                      {g}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  {BLOOD_GROUPS.map((g, i) => {
-                    const count = availableByGroup[g] || 0;
-                    const color = count === 0 ? 'var(--color-danger)' : count <= 2 ? 'var(--color-warning)' : 'var(--color-success)';
-                    return (
-                      <td
-                        key={g}
-                        className="text-base font-bold px-2 py-2"
-                        style={{ color, fontVariantNumeric: 'tabular-nums', borderInlineStart: i === 0 ? undefined : '1px solid var(--border-light)' }}
-                      >
-                        {count}
-                      </td>
-                    );
-                  })}
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div className="mb-3" data-tour="bb-availability">
+          <FacilityKpiBand tiles={[
+            {
+              key: 'available', label: 'Available units', value: unitStats.available,
+              detail: mostStocked ? `Most stocked: ${mostStocked[0]} (${mostStocked[1]})` : 'No usable units in stock',
+              trend: weekOverWeek(units, u => u.collectionDate, 'collected'),
+            },
+            { key: 'reserved', label: 'Reserved', value: unitStats.reserved, detail: 'Held for a patient, reserved or crossmatched' },
+            { key: 'expiring', label: 'Expiring soon', value: unitStats.expiringSoon, detail: 'Units that expire within 7 days', warn: unitStats.expiringSoon > 0 },
+            {
+              key: 'outofstock', label: 'Groups out of stock', value: outOfStock.length,
+              detail: outOfStock.length ? outOfStock.join(', ') : `All ${BLOOD_GROUPS.length} blood groups in stock`,
+              warn: outOfStock.length > 0,
+            },
+          ]} />
         </div>
 
         {/* Units table */}
@@ -417,14 +403,9 @@ export default function BloodBankPage() {
           <EhrListHeader
             title="Blood units"
             count={unitStats.total}
-            stats={[
-              { label: 'Available', value: unitStats.available, color: LIST_STAT_COLORS.blue },
-              { label: 'Reserved', value: unitStats.reserved, color: LIST_STAT_COLORS.amber },
-              { label: 'Expiring ≤7d', value: unitStats.expiringSoon, color: LIST_STAT_COLORS.green },
-            ]}
             search={{ value: unitSearch, onChange: setUnitSearch, placeholder: 'Filter table', ariaLabel: 'Search units by ID, group, status' }}
             actions={
-              <button onClick={openModal} className="btn btn-primary" style={{ height: 38, whiteSpace: 'nowrap', flexShrink: 0 }}>
+              <button type="button" onClick={openModal} className="btn btn-primary">
                 <Plus className="w-4 h-4" /> Add unit
               </button>
             }
@@ -519,7 +500,7 @@ export default function BloodBankPage() {
             <div className="space-y-4">
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Unit ID</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Unit ID</label>
                   <input
                     type="text"
                     value={form.unitId}
@@ -529,13 +510,13 @@ export default function BloodBankPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Blood group</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Blood group</label>
                     <Select value={form.bloodGroup} onChange={e => setForm({ ...form, bloodGroup: e.target.value as BloodBankDoc['bloodGroup'] })}>
                       {BLOOD_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Component</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Component</label>
                     <Select value={form.component} onChange={e => setForm({ ...form, component: e.target.value as BloodBankDoc['component'] })}>
                       {COMPONENTS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                     </Select>
@@ -543,7 +524,7 @@ export default function BloodBankPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Volume (ml)</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Volume (ml)</label>
                     <NumberInput step="any"
                       min={1}
                       value={form.volume || ''}
@@ -551,7 +532,7 @@ export default function BloodBankPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Donor name</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Donor name</label>
                     <input
                       type="text"
                       value={form.donorName}
@@ -562,16 +543,16 @@ export default function BloodBankPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Collection date</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Collection date</label>
                     <input type="date" value={form.collectionDate} onChange={e => setForm({ ...form, collectionDate: e.target.value })} />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Expiry date</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Expiry date</label>
                     <input type="date" value={form.expiryDate} onChange={e => setForm({ ...form, expiryDate: e.target.value })} />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Notes</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Notes</label>
                   <textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Optional" />
                 </div>
               </div>
@@ -672,7 +653,7 @@ export default function BloodBankPage() {
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Reason</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Reason</label>
                     <textarea
                       autoFocus
                       rows={3}

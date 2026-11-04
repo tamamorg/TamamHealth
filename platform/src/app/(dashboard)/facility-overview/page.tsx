@@ -31,12 +31,14 @@ import { useReferrals } from '@/lib/hooks/useReferrals';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
 import { useFacilityCensus } from '@/lib/hooks/useFacilityCensus';
 import { censusFor } from '@/lib/services/facility-census';
-import { Building2, AlertTriangle, Send, Loader2 } from '@/components/icons/lucide';
+import InlineBanner from '@/components/overlay/InlineBanner';
+import { Building2, Send, Loader2 } from '@/components/icons/lucide';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { tooltipStyle as chartTooltipStyle, axisTick } from '@/components/ChartCard';
 import { SadbPage, SadbCard, SadbKpiTile, SadbKvRow, SadbChip, type ChipTone } from '@/components/admin/sadb-ui';
+import { weekOverWeek } from '@/components/dashboards/FacilityKpiBand';
 import type { UserRole } from '@/lib/db-types';
 import { describeError } from '@/lib/user-facing-error';
 
@@ -45,13 +47,6 @@ import { describeError } from '@/lib/user-facing-error';
  * standing wildcard — folded from the bare `<RoleGuard>` this page used to
  * wrap itself in. */
 const FACILITY_OVERVIEW_ROLES: UserRole[] = ['org_admin', 'medical_superintendent', 'hospital_manager', 'super_admin'];
-
-const OP_STATUS_TONE: Record<string, ChipTone> = {
-  functional: 'green',
-  partially_functional: 'yellow',
-  non_functional: 'red',
-  closed: 'neutral',
-};
 
 export default function FacilityOverviewPage() {
   return <FacilityOverview />;
@@ -131,8 +126,13 @@ function FacilityOverview() {
 
   const referralsOut = referrals.filter(r => r.fromHospitalId === hospitalId).length;
   const referralsIn = referrals.filter(r => r.toHospitalId === hospitalId).length;
-  const activeAlerts = alerts.filter(a => a.alertLevel === 'emergency' || a.alertLevel === 'warning').length;
+  const emergencyAlerts = alerts.filter(a => a.alertLevel === 'emergency').length;
+  const warningAlerts = alerts.filter(a => a.alertLevel === 'warning').length;
+  const activeAlerts = emergencyAlerts + warningAlerts;
 
+  const OP_STATUS_TONE: Record<string, ChipTone> = {
+    functional: 'green', partially_functional: 'yellow', non_functional: 'red', closed: 'neutral',
+  };
   const MONTH_ABBR: Record<string, string> = {
     '01': 'Jan', '02': 'Feb', '03': 'Mar', '04': 'Apr', '05': 'May', '06': 'Jun',
     '07': 'Jul', '08': 'Aug', '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dec',
@@ -164,7 +164,7 @@ function FacilityOverview() {
 
       {/* ═══ MINISTRY OF HEALTH SUBMISSION GATE ═══ */}
       <SadbCard
-        title="Ministry of Health Reporting"
+        title="Ministry of Health reporting"
         action={
           <button
             type="button"
@@ -180,21 +180,19 @@ function FacilityOverview() {
         <div className="p-4 flex flex-col gap-2.5">
           <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
             Review your facility&apos;s data below, then submit it to the Ministry of Health. Data is reported
-            only when you submit it here — it is not sent automatically.
+            only when you submit it here. It is not sent automatically.
           </p>
           <div>
             <SadbChip tone={mohTone}>{mohLabel}</SadbChip>
           </div>
           {submittedAt && (
-            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               Last submitted {new Date(submittedAt).toLocaleString()}
               {submission?.submittedByName ? ` by ${submission.submittedByName}` : ''}.
             </p>
           )}
           {submitError && (
-            <span className="text-xs font-bold flex items-center gap-1" style={{ color: 'var(--color-danger-text)' }}>
-              <AlertTriangle className="w-3.5 h-3.5" /> {submitError}
-            </span>
+            <InlineBanner tone="danger">{submitError}</InlineBanner>
           )}
         </div>
       </SadbCard>
@@ -213,12 +211,12 @@ function FacilityOverview() {
             delta={`${hospital?.icuBeds ?? 0} ICU · ${hospital?.maternityBeds ?? 0} maternity`}
           />
           <SadbKpiTile
-            label="Clinical Staff"
+            label="Clinical staff"
             value={String(staff)}
             delta={`${hospital?.doctors ?? 0} doctors · ${hospital?.nurses ?? 0} nurses · ${hospital?.clinicalOfficers ?? 0} COs`}
           />
           <SadbKpiTile
-            label="Today's Visits"
+            label="Today's visits"
             value={facilityCensus && hospitalId ? String(censusFor(facilityCensus, hospitalId).todayVisits) : '…'}
             delta="Encounters opened today"
           />
@@ -226,54 +224,50 @@ function FacilityOverview() {
             label="Referrals"
             value={String(referralsIn + referralsOut)}
             delta={`${referralsIn} received · ${referralsOut} sent`}
+            trend={weekOverWeek(referrals.filter(r => r.fromHospitalId === hospitalId || r.toHospitalId === hospitalId), r => r.createdAt, 'made')}
           />
           <SadbKpiTile
-            label="Active Alerts"
+            label="Active alerts"
             value={String(activeAlerts)}
-            delta={activeAlerts > 0 ? 'Needs attention' : 'No open alerts'}
+            delta={activeAlerts > 0 ? `${emergencyAlerts} emergency · ${warningAlerts} warning` : 'No open alerts'}
             deltaTone={activeAlerts > 0 ? 'warn' : undefined}
           />
           {/* '—' when never measured — a red 0% would assert a measurement
               that was never taken. */}
           <SadbKpiTile
-            label="Data Quality"
+            label="Data quality"
             value={dataQuality === null ? '—' : `${Math.round(dataQuality)}%`}
             delta={dataQuality === null ? 'Not yet measured' : dataQuality < 80 ? 'Below the 80% target' : 'Meets the 80% target'}
             deltaTone={dataQuality !== null && dataQuality < 80 ? 'warn' : undefined}
           />
         </div>
 
-        <SadbCard title="Vital Events & Care Programs">
-          <SadbKvRow label="Births Registered" value={String(births.length)} />
-          <SadbKvRow label="Deaths Registered" value={String(deaths.length)} />
-          <SadbKvRow label="ANC Visits" value={String(ancVisits.length)} />
+        <SadbCard title="Vital events and care programs">
+          <SadbKvRow label="Births registered" value={String(births.length)} />
+          <SadbKvRow label="Deaths registered" value={String(deaths.length)} />
+          <SadbKvRow label="ANC visits" value={String(ancVisits.length)} />
           <SadbKvRow label="Immunizations" value={String(immunizations.length)} />
         </SadbCard>
       </div>
 
-      {/* ═══ OPERATIONAL STATUS + PERFORMANCE GAUGES ═══ */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-3.5">
-        <SadbCard title="Operational Status">
-          <div className="p-4">
-            <SadbChip tone={OP_STATUS_TONE[opStatus] ?? 'neutral'}>{opStatusLabel[opStatus] ?? opStatus}</SadbChip>
+      {/* ═══ PERFORMANCE GAUGES ═══ */}
+      <SadbCard
+        title="Facility performance"
+        meta={<SadbChip tone={OP_STATUS_TONE[opStatus] ?? 'neutral'}>{opStatusLabel[opStatus] ?? opStatus}</SadbChip>}
+      >
+        {perf ? (
+          <div className="grid grid-cols-3 gap-4 p-4">
+            <Gauge label="Reporting" value={perf.reportingCompleteness ?? 0} />
+            <Gauge label="Service readiness" value={perf.serviceReadinessScore ?? 0} />
+            <Gauge label="Immunization coverage" value={perf.immunizationCoverage ?? 0} />
           </div>
-        </SadbCard>
-
-        <SadbCard title="Facility Performance">
-          {perf ? (
-            <div className="grid grid-cols-3 gap-4 p-4">
-              <Gauge label="Reporting" value={perf.reportingCompleteness ?? 0} />
-              <Gauge label="Service Readiness" value={perf.serviceReadinessScore ?? 0} />
-              <Gauge label="Immunization Coverage" value={perf.immunizationCoverage ?? 0} />
-            </div>
-          ) : (
-            <p className="sadb-empty">No performance data recorded for this facility yet.</p>
-          )}
-        </SadbCard>
-      </div>
+        ) : (
+          <p className="sadb-empty">No performance data recorded for this facility yet.</p>
+        )}
+      </SadbCard>
 
       {/* ═══ HEALTH VISITS TREND ═══ */}
-      <SadbCard title="Health Visits Trend" meta="Monthly">
+      <SadbCard title="Health visits trend" meta="Monthly">
         <div className="px-3 pt-3 pb-1">
           {trend.length === 0 ? (
             <p className="sadb-empty">No monthly trend data recorded for this facility yet.</p>
@@ -319,7 +313,7 @@ function Gauge({ label, value }: { label: string; value: number }) {
         />
         <text x="40" y="45" textAnchor="middle" style={{ fontSize: 16, fontWeight: 700, fill: 'var(--text-primary)' }}>{pct}%</text>
       </svg>
-      <span className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>{label}</span>
+      <span className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{label}</span>
     </div>
   );
 }

@@ -7,37 +7,23 @@ import {
   ResponsiveContainer, Cell,
 } from 'recharts';
 import { tooltipStyle, axisTick } from '@/components/ChartCard';
-import { FilterTabs } from '@/components/filters';
-import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import Select from '@/components/Select';
+import { SadbCard, SadbChip, SadbKpiTile, SadbSearch } from '@/components/admin/sadb-ui';
+import { Field, FieldRow, weeklyTrend } from '@/components/oversight/OversightKit';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
 import { useImmunizations } from '@/lib/hooks/useImmunizations';
 import { useANC } from '@/lib/hooks/useANC';
 import { useDataQuality } from '@/lib/hooks/useDataQuality';
 import { SOUTH_SUDAN_STATES } from '@/lib/geographic-data';
-import { ChevronUp, ChevronDown, AlertTriangle } from '@/components/icons/lucide';
+import { AlertTriangle } from '@/components/icons/lucide';
 
 type View = 'comparison' | 'burden' | 'access';
 const VIEWS: { key: View; label: string }[] = [
   { key: 'comparison', label: 'State comparison' },
-  { key: 'burden', label: 'Burden vs. visibility' },
+  { key: 'burden', label: 'Burden and reporting' },
   { key: 'access', label: 'Facility access' },
 ];
-
-function Th({ children, onClick, active, dir }: { children?: React.ReactNode; onClick?: () => void; active?: boolean; dir?: 'asc' | 'desc' }) {
-  return (
-    <th
-      className="text-start px-4 py-2.5"
-      style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', cursor: onClick ? 'pointer' : undefined }}
-      onClick={onClick}
-    >
-      <span className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap inline-flex items-center gap-1">
-        {children}
-        {onClick && active && (dir === 'asc' ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />)}
-      </span>
-    </th>
-  );
-}
 
 function MiniBar({ value, max, color }: { value: number; max: number; color: string }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
@@ -46,7 +32,7 @@ function MiniBar({ value, max, color }: { value: number; max: number; color: str
       <div className="h-1.5 rounded-full flex-shrink-0" style={{ width: 70, background: 'var(--overlay-light)' }}>
         <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
       </div>
-      <span className="text-[13px] font-mono" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{value.toLocaleString()}</span>
+      <span style={{ color: 'var(--text-secondary)' }}>{value.toLocaleString()}</span>
     </div>
   );
 }
@@ -96,26 +82,13 @@ export default function EquityPlanningPage() {
     });
   }, [hospitals, alerts, immStats, ancStats, dq]);
 
-  // ── Comparison view sort state ──
+  // ── Comparison view: worst burden first; every column head sorts the rows ──
   const [search, setSearch] = useState('');
-  const [sortKey, setSortKey] = useState<keyof StateRow>('activeCases');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const sortedRows = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    const copy = needle ? rows.filter(r => r.state.toLowerCase().includes(needle)) : [...rows];
-    copy.sort((a, b) => {
-      const av = a[sortKey], bv = b[sortKey];
-      const an = av === null ? -1 : (av as number);
-      const bn = bv === null ? -1 : (bv as number);
-      if (sortKey === 'state') return sortDir === 'asc' ? a.state.localeCompare(b.state) : b.state.localeCompare(a.state);
-      return sortDir === 'asc' ? an - bn : bn - an;
-    });
-    return copy;
-  }, [rows, sortKey, sortDir, search]);
-  const toggleSort = (key: keyof StateRow) => {
-    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortKey(key); setSortDir('desc'); }
-  };
+    const list = needle ? rows.filter(r => r.state.toLowerCase().includes(needle)) : [...rows];
+    return list.sort((a, b) => b.activeCases - a.activeCases);
+  }, [rows, search]);
   const maxFacilities = Math.max(1, ...rows.map(r => r.facilities));
   const maxCases = Math.max(1, ...rows.map(r => r.activeCases));
   const maxImm = Math.max(1, ...rows.map(r => r.immRecords));
@@ -145,157 +118,188 @@ export default function EquityPlanningPage() {
     accessGap: r.facilities <= 1,
   })).sort((a, b) => a.facilities - b.facilities), [rows]);
 
+  const totalFacilities = rows.reduce((sum, r) => sum + r.facilities, 0);
+  const accessGapCount = rows.filter(r => r.facilities <= 1).length;
+  const activeAlertRows = useMemo(() => alerts.filter(a => a.alertLevel !== 'normal'), [alerts]);
+  const caseTrend = useMemo(() => weeklyTrend(activeAlertRows, a => a.reportDate, a => a.cases || 0), [activeAlertRows]);
+
   return (
-    <main className="page-container page-enter">
-      <div data-tour="gov-equity-header" className="dash-card mb-3">
-        <EhrListHeader
-          title="Equity & planning"
-          count={rows.length}
-          stats={[
-            { label: 'Facilities', value: rows.reduce((sum, r) => sum + r.facilities, 0), color: LIST_STAT_COLORS.blue },
-          ]}
-          search={{ value: search, onChange: setSearch, placeholder: 'Search a state…', ariaLabel: 'Search states' }}
-          actions={
-            <FilterTabs ariaLabel="Equity view" active={view} onChange={k => setView(k as View)} tabs={VIEWS.map(v => ({ key: v.key, label: v.label }))} />
-          }
-        />
-      </div>
+    <main className="page-container page-enter sadb-scope">
+      <div className="sadb-page" data-tour="gov-equity-header">
+        <div className="sadb-kpi-row">
+          <SadbKpiTile
+            label="States with an access gap"
+            value={`${accessGapCount} of ${rows.length}`}
+            delta="States with one facility or none registered"
+            deltaTone={accessGapCount > 0 ? 'warn' : undefined}
+            onClick={() => router.push('/manage')}
+          />
+          <SadbKpiTile
+            label="Priority states"
+            value={priorityStates.length}
+            delta="More active cases and lower reporting completeness than the median state"
+            onClick={() => setView('burden')}
+          />
+          <SadbKpiTile
+            label="Active alert cases"
+            value={activeAlertRows.reduce((n, a) => n + (a.cases || 0), 0).toLocaleString()}
+            delta={`Cases on ${activeAlertRows.length.toLocaleString()} active alerts across all states`}
+            trend={caseTrend?.trend}
+            onClick={() => router.push('/government/alerts')}
+          />
+          <SadbKpiTile
+            label="Registered facilities"
+            value={totalFacilities.toLocaleString()}
+            delta={`Spread over ${rows.filter(r => r.facilities > 0).length} of ${rows.length} states`}
+            onClick={() => router.push('/manage')}
+          />
+        </div>
 
-      {loading ? (
-        <div className="dash-card p-8 text-center" style={{ color: 'var(--text-muted)' }}>Loading state comparisons…</div>
-      ) : (
-        <>
+        <FieldRow>
+          <Field label="View">
+            <Select value={view} onChange={e => setView(e.target.value as View)} data-action="gov-equity-view">
+              {VIEWS.map(v => <option key={v.key} value={v.key}>{v.label}</option>)}
+            </Select>
+          </Field>
           {view === 'comparison' && (
-            <div className="dash-card overflow-hidden">
-              <div className="show-scrollbar" style={{ overflowX: 'auto' }}>
-                <table className="w-full" style={{ minWidth: 860 }}>
-                  <thead>
-                    <tr>
-                      <Th onClick={() => toggleSort('state')} active={sortKey === 'state'} dir={sortDir}>State</Th>
-                      <Th onClick={() => toggleSort('facilities')} active={sortKey === 'facilities'} dir={sortDir}>Facilities</Th>
-                      <Th onClick={() => toggleSort('activeCases')} active={sortKey === 'activeCases'} dir={sortDir}>Active alert cases</Th>
-                      <Th onClick={() => toggleSort('immRecords')} active={sortKey === 'immRecords'} dir={sortDir}>Immunization records</Th>
-                      <Th onClick={() => toggleSort('ancVisits')} active={sortKey === 'ancVisits'} dir={sortDir}>ANC visits</Th>
-                      <Th onClick={() => toggleSort('avgCompleteness')} active={sortKey === 'avgCompleteness'} dir={sortDir}>Avg. reporting completeness</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedRows.map(r => (
-                      <tr key={r.state} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                        <td className="px-4 py-2.5 text-[14px]" style={{ color: 'var(--ehr-text, var(--text-primary))', fontWeight: 800 }}>{r.state}</td>
-                        <td className="px-4 py-2.5"><MiniBar value={r.facilities} max={maxFacilities} color="var(--chart-1)" /></td>
-                        <td className="px-4 py-2.5"><MiniBar value={r.activeCases} max={maxCases} color="var(--color-danger-text)" /></td>
-                        <td className="px-4 py-2.5"><MiniBar value={r.immRecords} max={maxImm} color="var(--color-success-text)" /></td>
-                        <td className="px-4 py-2.5"><MiniBar value={r.ancVisits} max={maxAnc} color="var(--color-warning-text)" /></td>
-                        <td className="px-4 py-2.5 text-[13px] font-mono" style={{ color: r.avgCompleteness === null ? 'var(--text-muted)' : 'var(--ehr-muted, var(--text-secondary))' }}>
-                          {r.avgCompleteness === null ? 'No data on file' : `${r.avgCompleteness}%`}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <Field label="Search" group>
+              <SadbSearch value={search} onChange={setSearch} placeholder="State name" ariaLabel="Search states" />
+            </Field>
           )}
+        </FieldRow>
 
-          {view === 'burden' && (
-            <div className="dash-card">
-              <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-                <span className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>Active case burden vs. reporting completeness</span>
-                <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  Reporting completeness is used here as a visibility proxy, not a measure of service coverage. States without any facility assessment are excluded from this chart.
-                </p>
-              </div>
-              <div className="px-4 py-4" style={{ height: 380 }}>
-                {scatterRows.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-[13px]" style={{ color: 'var(--text-muted)' }}>No facility assessments on file to plot.</div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ScatterChart margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
-                      <XAxis type="number" dataKey="activeCases" name="Active alert cases" tick={axisTick} axisLine={{ stroke: 'var(--border-light)' }} tickLine={false} label={{ value: 'Active alert cases (burden)', position: 'insideBottom', offset: -5, fontSize: 11, fill: 'var(--text-muted)' }} />
-                      <YAxis type="number" dataKey="avgCompleteness" name="Avg. completeness" domain={[0, 100]} tick={axisTick} axisLine={{ stroke: 'var(--border-light)' }} tickLine={false} label={{ value: 'Reporting completeness % (visibility proxy)', angle: -90, position: 'insideLeft', fontSize: 11, fill: 'var(--text-muted)' }} />
-                      <Tooltip cursor={tooltipStyle.cursor} content={({ active, payload }) => {
-                        if (!active || !payload?.length) return null;
-                        const p = payload[0].payload as StateRow;
-                        return (
-                          <div style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)', borderRadius: 8, padding: '8px 10px', fontSize: 12 }}>
-                            <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{p.state}</div>
-                            <div style={{ color: 'var(--text-secondary)' }}>{p.activeCases.toLocaleString()} active cases</div>
-                            <div style={{ color: 'var(--text-secondary)' }}>{p.avgCompleteness}% avg. completeness</div>
-                          </div>
-                        );
-                      }} />
-                      <ReferenceLine x={medianCases} stroke="var(--border-light)" strokeDasharray="4 4" />
-                      <ReferenceLine y={medianCompleteness} stroke="var(--border-light)" strokeDasharray="4 4" />
-                      <Scatter data={scatterRows} fill="var(--chart-1)">
-                        {scatterRows.map((r, i) => (
-                          <Cell key={i} fill={r.activeCases > medianCases && (r.avgCompleteness as number) < medianCompleteness ? 'var(--color-warning)' : 'var(--chart-1)'} />
-                        ))}
-                      </Scatter>
-                    </ScatterChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-              <div className="px-4 pb-4">
-                <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--color-warning-text)' }}>High burden / low visibility — priority</p>
-                {priorityStates.length === 0 ? (
-                  <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>No states currently fall in the high-burden / low-visibility quadrant.</p>
-                ) : (
-                  <ul className="space-y-1">
-                    {priorityStates.map((r, i) => (
-                      <li key={r.state} className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>
-                        <span className="font-bold" style={{ color: 'var(--ehr-text, var(--text-primary))' }}>{i + 1}. {r.state}</span>
-                        {' — '}{r.activeCases.toLocaleString()} active cases, {r.avgCompleteness}% avg. completeness
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          )}
-
-          {view === 'access' && (
-            <div className="dash-card overflow-hidden">
-              <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-                <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                  Population denominators are not on file — density figures below are per recorded activity (active alert cases), not per-capita.
-                </p>
-              </div>
-              <div className="show-scrollbar" style={{ overflowX: 'auto' }}>
-                <table className="w-full" style={{ minWidth: 720 }}>
-                  <thead>
-                    <tr>
-                      <Th>State</Th>
-                      <Th>Facilities</Th>
-                      <Th>Active alert cases</Th>
-                      <Th>Facilities per 100 active cases</Th>
-                      <Th>Flag</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {accessRows.map(r => (
-                      <tr key={r.state} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                        <td className="px-4 py-2.5 text-[14px]" style={{ color: 'var(--ehr-text, var(--text-primary))', fontWeight: 800 }}>{r.state}</td>
-                        <td className="px-4 py-2.5 text-[13px] font-mono" style={{ color: r.accessGap ? 'var(--color-danger-text)' : 'var(--ehr-muted, var(--text-secondary))' }}>{r.facilities}</td>
-                        <td className="px-4 py-2.5 text-[13px] font-mono" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{r.activeCases.toLocaleString()}</td>
-                        <td className="px-4 py-2.5 text-[13px] font-mono" style={{ color: 'var(--ehr-muted, var(--text-secondary))' }}>{r.ratePer100Cases === null ? '—' : r.ratePer100Cases}</td>
-                        <td className="px-4 py-2.5">
-                          {r.accessGap && (
-                            <span className="gov-chip gap-1" style={{ background: 'rgba(255, 153, 51,0.14)', color: '#b35900', border: '1px solid rgba(255, 153, 51,0.4)' }}>
-                              <AlertTriangle className="w-3 h-3" /> Access gap
-                            </span>
-                          )}
-                        </td>
+        {loading ? (
+          <SadbCard><p className="sadb-empty">Loading state comparisons…</p></SadbCard>
+        ) : (
+          <>
+            {view === 'comparison' && (
+              <SadbCard title="State comparison" meta={`${sortedRows.length} of ${rows.length} states`}>
+                <div className="show-scrollbar" style={{ overflowX: 'auto' }}>
+                  <table className="w-full ov-table" style={{ minWidth: 860 }}>
+                    <thead>
+                      <tr>
+                        <th className="text-start">State</th>
+                        <th className="text-start">Facilities</th>
+                        <th className="text-start">Active alert cases</th>
+                        <th className="text-start">Immunization records</th>
+                        <th className="text-start">Antenatal visits</th>
+                        <th className="text-start">Reporting completeness</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </>
-      )}
+                    </thead>
+                    <tbody>
+                      {sortedRows.length === 0 && (
+                        <tr><td colSpan={6} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No state matches this search. Clear it to see all states.</td></tr>
+                      )}
+                      {sortedRows.map(r => (
+                        <tr key={r.state}>
+                          <td className="font-semibold">{r.state}</td>
+                          <td><MiniBar value={r.facilities} max={maxFacilities} color="var(--chart-1)" /></td>
+                          <td><MiniBar value={r.activeCases} max={maxCases} color="var(--color-danger-text)" /></td>
+                          <td><MiniBar value={r.immRecords} max={maxImm} color="var(--color-success-text)" /></td>
+                          <td><MiniBar value={r.ancVisits} max={maxAnc} color="var(--color-warning-text)" /></td>
+                          <td style={{ color: r.avgCompleteness === null ? 'var(--text-muted)' : undefined }}>
+                            {r.avgCompleteness === null ? 'Not assessed' : `${r.avgCompleteness}%`}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </SadbCard>
+            )}
+
+            {view === 'burden' && (
+              <SadbCard title="Active case burden against reporting completeness" meta="States without an assessment are left out">
+                <p className="px-4 pt-3" style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                  Reporting completeness stands in for how well a state can see its own burden. It does not measure service coverage.
+                </p>
+                <div className="px-4 py-4" style={{ height: 380 }}>
+                  {scatterRows.length === 0 ? (
+                    <div className="flex items-center justify-center h-full" style={{ color: 'var(--text-muted)' }}>No facility assessments on file. Record an assessment to plot a state.</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ScatterChart margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
+                        <XAxis type="number" dataKey="activeCases" name="Active alert cases" tick={axisTick} axisLine={{ stroke: 'var(--border-light)' }} tickLine={false} label={{ value: 'Active alert cases (burden)', position: 'insideBottom', offset: -5, fontSize: 12, fill: 'var(--text-muted)' }} />
+                        <YAxis type="number" dataKey="avgCompleteness" name="Avg. completeness" domain={[0, 100]} tick={axisTick} axisLine={{ stroke: 'var(--border-light)' }} tickLine={false} label={{ value: 'Reporting completeness %', angle: -90, position: 'insideLeft', fontSize: 12, fill: 'var(--text-muted)' }} />
+                        <Tooltip cursor={tooltipStyle.cursor} content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null;
+                          const p = payload[0].payload as StateRow;
+                          return (
+                            <div style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)', borderRadius: 4, padding: '8px 10px', fontSize: 12 }}>
+                              <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.state}</div>
+                              <div style={{ color: 'var(--text-secondary)' }}>{p.activeCases.toLocaleString()} active cases</div>
+                              <div style={{ color: 'var(--text-secondary)' }}>{p.avgCompleteness}% reporting completeness</div>
+                            </div>
+                          );
+                        }} />
+                        <ReferenceLine x={medianCases} stroke="var(--border-light)" strokeDasharray="4 4" />
+                        <ReferenceLine y={medianCompleteness} stroke="var(--border-light)" strokeDasharray="4 4" />
+                        <Scatter data={scatterRows} fill="var(--chart-1)">
+                          {scatterRows.map((r, i) => (
+                            <Cell key={i} fill={r.activeCases > medianCases && (r.avgCompleteness as number) < medianCompleteness ? 'var(--color-warning)' : 'var(--chart-1)'} />
+                          ))}
+                        </Scatter>
+                      </ScatterChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+                <div className="px-4 pb-4">
+                  <p className="mb-2" style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-warning-text)' }}>High burden, low visibility: priority states</p>
+                  {priorityStates.length === 0 ? (
+                    <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>No state is in the high-burden, low-visibility quadrant.</p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {priorityStates.map((r, i) => (
+                        <li key={r.state} style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{i + 1}. {r.state}</span>
+                          {': '}{r.activeCases.toLocaleString()} active cases, {r.avgCompleteness}% reporting completeness
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </SadbCard>
+            )}
+
+            {view === 'access' && (
+              <SadbCard title="Facility access" meta="Per active alert case, not per head of population">
+                <p className="px-4 pt-3" style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                  Population figures are not on file, so density is measured against active alert cases.
+                </p>
+                <div className="show-scrollbar" style={{ overflowX: 'auto' }}>
+                  <table className="w-full ov-table" style={{ minWidth: 720 }}>
+                    <thead>
+                      <tr>
+                        <th className="text-start">State</th>
+                        <th className="text-start">Facilities</th>
+                        <th className="text-start">Active alert cases</th>
+                        <th className="text-start">Facilities per 100 cases</th>
+                        <th className="text-start">Flag</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {accessRows.map(r => (
+                        <tr key={r.state}>
+                          <td className="font-semibold">{r.state}</td>
+                          <td style={{ color: r.accessGap ? 'var(--color-danger-text)' : undefined }}>{r.facilities}</td>
+                          <td>{r.activeCases.toLocaleString()}</td>
+                          <td>{r.ratePer100Cases === null ? '—' : r.ratePer100Cases}</td>
+                          <td>
+                            {r.accessGap && (
+                              <SadbChip tone="yellow"><AlertTriangle className="w-3 h-3" /> Access gap</SadbChip>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </SadbCard>
+            )}
+          </>
+        )}
+      </div>
     </main>
   );
 }

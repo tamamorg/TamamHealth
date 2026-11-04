@@ -31,7 +31,7 @@ import { classifyAuditRisk, formatWhen, type SaSeverity } from '@/components/adm
 import { useNow } from '@/lib/hooks/useNow';
 import {
   SadbPage, SadbShell, useSadbTab, SadbPanelHeader, SadbSettingGroup, SadbSettingRow,
-  SadbToggle, SadbValueButton, SadbEditorModal, SadbCard, SadbKvRow, SadbHeadLink,
+  SadbToggle, SadbValueButton, SadbEditorModal, SadbCard, SadbKvRow,
   SadbQueueRow, SadbSaveBar, SEVERITY_CHIP, TONE_CHIP, type Tone,
 } from '@/components/admin/sadb-ui';
 import { describeError } from '@/lib/user-facing-error';
@@ -84,26 +84,26 @@ const ACCESS_FIELDS: SettingField[] = [
     sub: 'Locks every session at the timeout above. Off, each person may switch their own screen lock off in Settings.',
     enforcement: 'enforced', enforcedBy: 'lib/hooks/useAutoLock.ts',
   },
-  { kind: 'toggle', key: 'ssoEnabled', label: 'SSO controls', sub: 'Expose SAML/OIDC controls per organization.' },
+  { kind: 'toggle', key: 'ssoEnabled', label: 'Single sign-on', sub: 'Offer single sign-on settings to each organization.' },
 ];
 
 const PHI_FIELDS: SettingField[] = [
-  { kind: 'toggle', key: 'phiExportRequiresReason', label: 'Reason required for PHI export', sub: 'Exports must include purpose and requester.' },
+  { kind: 'toggle', key: 'phiExportRequiresReason', label: 'Reason required to export patient data', sub: 'Exports must include purpose and requester.' },
   { kind: 'toggle', key: 'dataDeletionRequiresApproval', label: 'Approval before deletion', sub: 'Hard deletion and tenant data removal need approval.' },
   { kind: 'number', key: 'auditRetentionYears', label: 'Audit retention', sub: 'Audit documentation retention window, years.', unit: 'y' },
   { kind: 'toggle', key: 'apiKeysEnabled', label: 'API keys', sub: 'Enable tenant API key issuance and rotation.' },
 ];
 
 const BREAKGLASS_FIELDS: SettingField[] = [
-  { kind: 'toggle', key: 'emergencyAccessEnabled', label: 'Emergency access', sub: 'Allow break-glass access with follow-up review.' },
-  { kind: 'number', key: 'emergencyAccessReviewHours', label: 'Emergency review window', sub: 'Hours to review break-glass access after use.', unit: 'h' },
+  { kind: 'toggle', key: 'emergencyAccessEnabled', label: 'Emergency access', sub: 'Allow emergency access with follow-up review.' },
+  { kind: 'number', key: 'emergencyAccessReviewHours', label: 'Emergency review window', sub: 'Hours to review emergency access after use.', unit: 'h' },
   {
-    kind: 'toggle', key: 'impersonationEnabled', label: 'Support impersonation',
+    kind: 'toggle', key: 'impersonationEnabled', label: 'Sign in as another role',
     sub: 'Allow a platform operator to sign in as another role. Every session is audited.',
     enforcement: 'enforced', enforcedBy: 'lib/login-session.ts',
   },
   {
-    kind: 'number', key: 'impersonationMaxMinutes', label: 'Impersonation max duration',
+    kind: 'number', key: 'impersonationMaxMinutes', label: 'Longest sign-in as another role',
     sub: 'An impersonated session expires after this long, whatever the normal session length is.',
     unit: 'm', enforcement: 'enforced', enforcedBy: 'lib/login-session.ts',
   },
@@ -112,8 +112,8 @@ const BREAKGLASS_FIELDS: SettingField[] = [
 ];
 
 const CONTINUITY_FIELDS: SettingField[] = [
-  { kind: 'number', key: 'backupRpoHours', label: 'Recovery point objective', sub: 'Maximum acceptable data loss window, hours.', unit: 'h' },
-  { kind: 'number', key: 'backupRtoHours', label: 'Recovery time objective', sub: 'Maximum acceptable restore time, hours.', unit: 'h' },
+  { kind: 'number', key: 'backupRpoHours', label: 'Data loss limit', sub: 'Maximum acceptable data loss window, hours.', unit: 'h' },
+  { kind: 'number', key: 'backupRtoHours', label: 'Restore time limit', sub: 'Maximum acceptable restore time, hours.', unit: 'h' },
 ];
 
 /**
@@ -291,27 +291,27 @@ export default function SecurityCompliancePage() {
     // A stated policy, not a measurement: nothing reads this number. Audit
     // entries are in fact never pruned on the server, so the trail is kept
     // regardless — the chip says which of the two this row is reporting.
-    { label: 'Audit retention policy ≥ 6 years', tone: (persisted.auditRetentionYears >= 6 ? 'ok' : 'warn') as Tone, chip: `${persisted.auditRetentionYears}y · policy only` },
-    { label: 'PHI export control', tone: (persisted.phiExportRequiresReason ? 'ok' : 'warn') as Tone, chip: persisted.phiExportRequiresReason ? 'On' : 'Off' },
+    { label: 'Audit retention of 6 years or more', tone: (persisted.auditRetentionYears >= 6 ? 'ok' : 'warn') as Tone, chip: `${persisted.auditRetentionYears}y · recorded policy` },
+    { label: 'Reason required to export patient data', tone: (persisted.phiExportRequiresReason ? 'ok' : 'warn') as Tone, chip: persisted.phiExportRequiresReason ? 'On' : 'Off' },
     { label: 'Deletion approval', tone: (persisted.dataDeletionRequiresApproval ? 'ok' : 'warn') as Tone, chip: persisted.dataDeletionRequiresApproval ? 'On' : 'Off' },
     // Three states, not two: "unknown" claimed "At risk" before, which is a
     // finding this screen had not established.
-    { label: 'Backup within RPO', tone: (backupUnknown ? 'muted' : backupWithinRpo ? 'ok' : 'warn') as Tone, chip: backupUnknown ? 'Unknown' : backupWithinRpo ? 'Within RPO' : 'At risk' },
-    { label: 'Break-glass review window set', tone: (persisted.emergencyAccessReviewHours > 0 ? 'ok' : 'warn') as Tone, chip: persisted.emergencyAccessReviewHours > 0 ? `${persisted.emergencyAccessReviewHours}h` : 'Not set' },
+    { label: 'Backup within recovery target', tone: (backupUnknown ? 'muted' : backupWithinRpo ? 'ok' : 'warn') as Tone, chip: backupUnknown ? 'Unknown' : backupWithinRpo ? 'Within target' : 'At risk' },
+    { label: 'Emergency access review window set', tone: (persisted.emergencyAccessReviewHours > 0 ? 'ok' : 'warn') as Tone, chip: persisted.emergencyAccessReviewHours > 0 ? `${persisted.emergencyAccessReviewHours}h` : 'Not set' },
   ], [persisted, backupUnknown, backupWithinRpo]);
 
   /* ── Rail (counts derived from the rows each section actually renders) */
 
   const railGroups = [{
-    title: 'Security & Compliance',
+    title: 'Security',
     items: [
-      { id: 'access', label: 'Access & Auth', icon: Lock, count: ACCESS_FIELDS.length },
-      { id: 'phi', label: 'PHI & Data Controls', icon: FileText, count: PHI_FIELDS.length },
-      { id: 'breakglass', label: 'Break-glass', icon: AlertTriangle, count: BREAKGLASS_FIELDS.length },
+      { id: 'access', label: 'Sign-in and access', icon: Lock, count: ACCESS_FIELDS.length },
+      { id: 'phi', label: 'Patient data', icon: FileText, count: PHI_FIELDS.length },
+      { id: 'breakglass', label: 'Emergency access', icon: AlertTriangle, count: BREAKGLASS_FIELDS.length },
       // +1: the backup-age fact row rendered alongside the two RPO/RTO fields.
-      { id: 'continuity', label: 'Continuity Objectives', icon: Clock, count: CONTINUITY_FIELDS.length + 1 },
+      { id: 'continuity', label: 'Backup targets', icon: Clock, count: CONTINUITY_FIELDS.length + 1 },
       { id: 'watchlist', label: 'Security watchlist', icon: Eye, count: watchlist.length },
-      { id: 'overview', label: 'Posture & Evidence', icon: ShieldCheck, count: postureRows.length },
+      { id: 'overview', label: 'Security overview', icon: ShieldCheck, count: postureRows.length },
     ],
   }];
 
@@ -323,10 +323,10 @@ export default function SecurityCompliancePage() {
         {activeSection === 'access' && (
           <>
             <SadbPanelHeader
-              title="Access & authentication"
-              note="Authentication requirements applied platform-wide. Changes apply once saved above."
+              title="Sign-in and access"
+              note="Sign-in requirements applied platform-wide. Changes apply once saved above."
             />
-            <SadbSettingGroup title="Access & authentication">
+            <SadbSettingGroup title="Passwords and sessions">
               {accessFields.map(f => renderField(f, draft, setField, openEditor))}
             </SadbSettingGroup>
           </>
@@ -335,10 +335,10 @@ export default function SecurityCompliancePage() {
         {activeSection === 'phi' && (
           <>
             <SadbPanelHeader
-              title="PHI & data controls"
-              note="Controls governing PHI export, deletion, and API key issuance across every tenant."
+              title="Patient data"
+              note="Rules for exporting and deleting patient data and for issuing API keys across every organization."
             />
-            <SadbSettingGroup title="PHI & data controls">
+            <SadbSettingGroup title="Export, deletion and API keys">
               {PHI_FIELDS.map(f => renderField(f, draft, setField, openEditor))}
             </SadbSettingGroup>
           </>
@@ -347,10 +347,10 @@ export default function SecurityCompliancePage() {
         {activeSection === 'breakglass' && (
           <>
             <SadbPanelHeader
-              title="Break-glass & support access"
-              note="Emergency and support access paths, each with a required review window or audit trail."
+              title="Emergency and support access"
+              note="Ways to reach records outside normal permissions, each with a review window or an audit trail."
             />
-            <SadbSettingGroup title="Break-glass & support access">
+            <SadbSettingGroup title="Review and approval rules">
               {BREAKGLASS_FIELDS.map(f => renderField(f, draft, setField, openEditor))}
             </SadbSettingGroup>
           </>
@@ -359,14 +359,14 @@ export default function SecurityCompliancePage() {
         {activeSection === 'continuity' && (
           <>
             <SadbPanelHeader
-              title="Continuity objectives"
-              note="Backup recovery targets, plus the last backup age actually reported by the system."
+              title="Backup targets"
+              note="How much data loss and downtime is acceptable, plus the age of the last backup reported."
             />
-            <SadbSettingGroup title="Continuity objectives">
+            <SadbSettingGroup title="Recovery targets">
               {CONTINUITY_FIELDS.map(f => renderField(f, draft, setField, openEditor))}
               <SadbKvRow
                 label="Current backup age"
-                chip={backupUnknown ? 'Unknown — nothing reported' : `${Math.round(backupAgeHours ?? 0)}h ago`}
+                chip={backupUnknown ? 'Unknown. No backup reported' : `${Math.round(backupAgeHours ?? 0)}h ago`}
                 chipTone={TONE_CHIP[backupUnknown ? 'muted' : backupWithinRpo ? 'ok' : 'warn']}
               />
             </SadbSettingGroup>
@@ -383,7 +383,6 @@ export default function SecurityCompliancePage() {
             <SadbCard
               title="High-risk actions"
               meta={auditLoading ? 'Loading…' : `${watchlist.length} recorded`}
-              action={<SadbHeadLink onClick={() => router.push('/admin/audit')}>Open Audit Logs</SadbHeadLink>}
             >
               {watchlist.length === 0 ? (
                 <p className="sadb-empty">
@@ -407,23 +406,15 @@ export default function SecurityCompliancePage() {
         {activeSection === 'overview' && (
           <>
             <SadbPanelHeader
-              title="Security posture"
-              note="Live read of the persisted policy and the most recent backup report — nothing here is simulated."
+              title="Security overview"
+              note="Checks read from the saved policy and the most recent backup report."
             />
-            <SadbCard title="Security posture">
+            <SadbCard title="Checks">
               {postureRows.map(r => (
                 <SadbKvRow key={r.label} label={r.label} chip={r.chip} chipTone={TONE_CHIP[r.tone]} />
               ))}
             </SadbCard>
 
-            <SadbCard
-              title="Compliance evidence"
-              action={<SadbHeadLink onClick={() => router.push('/admin/audit')}>Open Audit Logs</SadbHeadLink>}
-            >
-              <p style={{ margin: '10px 14px 14px', color: 'var(--text-muted)', fontSize: 12.5, fontWeight: 600 }}>
-                Full audit trail export with user, org, action, and risk classification lives in Audit Logs.
-              </p>
-            </SadbCard>
           </>
         )}
       </SadbShell>

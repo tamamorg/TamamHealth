@@ -41,7 +41,6 @@ import {
 import { ORG_GRID_TEMPLATE } from '@/components/admin/TenantTree';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
 import { useOpenConflicts } from '@/lib/hooks/useOpenConflicts';
-import { Maximize2 } from '@/components/icons/lucide';
 import { useNow } from '@/lib/hooks/useNow';
 import type {
   AuditLogDoc, EncounterDoc, HospitalDoc, RiskResolutionDoc, SyncEventDoc, UserDoc,
@@ -283,6 +282,14 @@ export default function AdminDashboardPage() {
      separately so they are not hidden, only distinguished. */
   const platformOperators = users.filter(u => u.role === 'super_admin').length;
   const tenantUsers = users.length - platformOperators;
+  /* Accounts opened this week against the week before, from createdAt. */
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  const tenantUsersIn = (from: number, to: number) => users.filter(u => {
+    const at = u.createdAt ? new Date(u.createdAt).getTime() : NaN;
+    return u.role !== 'super_admin' && at >= from && at < to;
+  }).length;
+  const newUsersWeek = tenantUsersIn(nowMs - weekMs, nowMs + 1);
+  const newUsersPrevWeek = tenantUsersIn(nowMs - 2 * weekMs, nowMs - weekMs);
 
   const licensedSeats = organizations.reduce((sum, o) => sum + (o.maxUsers || 0), 0);
 
@@ -341,7 +348,8 @@ export default function AdminDashboardPage() {
       key: 'users',
       label: 'Users',
       value: loading ? '…' : tenantUsers.toLocaleString(),
-      delta: `${platformOperators} platform operator${platformOperators === 1 ? '' : 's'}`,
+      delta: `Tenant accounts, excludes ${platformOperators} platform operator${platformOperators === 1 ? '' : 's'}`,
+      trend: loading ? undefined : { direction: trendBetween(newUsersWeek, newUsersPrevWeek), label: `vs ${newUsersPrevWeek} last week` },
       href: '/admin/users',
     },
     {
@@ -448,13 +456,7 @@ export default function AdminDashboardPage() {
 
           {/* Business snapshot */}
           <div className="sadb-card">
-            <CardHead
-              title="Business snapshot"
-              action={
-                /* Billing merged into the Organizations registry 2026-08-23. */
-                <button type="button" className="sadb-head-link" onClick={() => router.push('/admin/organizations')}>Billing ›</button>
-              }
-            />
+            <CardHead title="Business snapshot" />
             <KvRow label="Active subscriptions" value={organizations.filter(o => o.subscriptionStatus === 'active').length} />
             <KvRow label="Trials" value={trialOrgs.length} />
             <KvRow label="Suspended / cancelled" value={suspendedOrgs.length} valueClass={suspendedOrgs.length > 0 ? 'is-warn' : undefined} />
@@ -494,20 +496,8 @@ export default function AdminDashboardPage() {
             meta={loading ? undefined : `${activeOrgs.length} active · ${trialOrgs.length} trial · ${suspendedOrgs.length} suspended`}
             action={
               /* The create actions (organization, facility, staff member) as
-                 O3 openers on the list they add to, then ⤢ to the registry. */
-              <span className="flex items-center gap-1">
-              <DashboardCreateActions variant="ghost" />
-              <button
-                type="button"
-                className="p-1.5 rounded-md flex-shrink-0"
-                onClick={() => router.push('/admin/organizations')}
-                aria-label="Open organizations"
-                title="Open organizations"
-                data-action="orgs-expand"
-              >
-                <Maximize2 className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />
-              </button>
-              </span>
+                 O3 openers on the list they add to. */
+              <span className="flex items-center gap-1"><DashboardCreateActions variant="ghost" /></span>
             }
           />
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>

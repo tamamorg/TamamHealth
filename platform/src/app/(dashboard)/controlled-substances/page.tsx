@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import FormSlider from '@/components/overlay/FormSlider';
 import EhrListHeader from '@/components/ehr/EhrListHeader';
+import FacilityKpiBand, { weekOverWeek } from '@/components/dashboards/FacilityKpiBand';
 import { Pill, Plus, UserCheck } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
@@ -151,18 +152,31 @@ export default function ControlledSubstancesPage() {
       await load();
     } catch (err) {
       // recordMovement throws on missing/duplicate signatories and bad math.
-      const message = err instanceof Error ? err.message : 'Failed to record movement.';
+      const message = err instanceof Error ? err.message : 'Movement not recorded. Check the entries and try again.';
       showToast(message, 'error');
     } finally {
       setSaving(false);
     }
   };
 
+  const countOf = (movement: ControlledSubstanceLogDoc['movement']) => movements.filter(m => m.movement === movement).length;
+  const lastReconciled = movements
+    .filter(m => m.movement === 'reconciliation')
+    .map(m => m.createdAt)
+    .sort()
+    .pop();
+
   return (
-    <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+    <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0, overflow: 'hidden' }}>
+        <FacilityKpiBand tiles={[
+          { key: 'all', label: 'Movements', value: movements.length, detail: `${countOf('intake')} intake · ${countOf('transfer')} transfer`, trend: weekOverWeek(movements, m => m.createdAt, 'recorded') },
+          { key: 'dispense', label: 'Dispensed', value: countOf('dispense'), detail: 'Doses handed out, each with a witness' },
+          { key: 'waste', label: 'Waste', value: countOf('waste'), detail: countOf('waste') ? 'Wasted doses on the audit trail' : 'No waste recorded', warn: countOf('waste') > 0 },
+          { key: 'recon', label: 'Reconciliations', value: countOf('reconciliation'), detail: lastReconciled ? `Last on ${formatDateTime(lastReconciled)}` : 'None recorded yet' },
+        ]} />
         <div className="dash-card flex flex-col" style={{ flex: 1, minHeight: 0 }}>
           <EhrListHeader
-            title="Controlled Substances"
+            title="Controlled substances"
             count={movements.length}
             actions={
               <button data-tour="csub-record-movement" onClick={openModal} className="btn btn-primary">
@@ -214,10 +228,10 @@ export default function ControlledSubstancesPage() {
                     <tr key={m._id}>
                       <td className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{m.medicationName}</td>
                       <td>
-                        <Badge tone="neutral" uppercase>Sch {m.schedule}</Badge>
+                        <Badge tone="neutral">Sch {m.schedule}</Badge>
                       </td>
                       <td>
-                        <Badge tone={MOVEMENT_TONE[m.movement]} uppercase>{MOVEMENT_LABELS[m.movement]}</Badge>
+                        <Badge tone={MOVEMENT_TONE[m.movement]}>{MOVEMENT_LABELS[m.movement]}</Badge>
                       </td>
                       <td className="text-sm" style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{m.quantity} {m.unit}</td>
                       <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>{m.operatorName}</td>
@@ -259,19 +273,19 @@ export default function ControlledSubstancesPage() {
             <div className="space-y-4">
               <div className="space-y-3" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Medication</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Medication</label>
                   <input type="text" value={form.medicationName} onChange={e => setForm({ ...form, medicationName: e.target.value })} placeholder="e.g. Morphine sulfate" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Schedule</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Schedule</label>
                     <Select value={form.schedule} onChange={e => setForm({ ...form, schedule: e.target.value as ControlledSubstanceLogDoc['schedule'] })}>
                       {SCHEDULES.map(s => <option key={s} value={s}>Schedule {s}</option>)}
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Movement</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Movement</label>
                     <Select value={form.movement} onChange={e => setForm({ ...form, movement: e.target.value as ControlledSubstanceLogDoc['movement'] })}>
                       {MOVEMENTS.map(m => <option key={m} value={m}>{MOVEMENT_LABELS[m]}</option>)}
                     </Select>
@@ -280,37 +294,37 @@ export default function ControlledSubstancesPage() {
 
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Quantity</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Quantity</label>
                     <NumberInput min={0} step="any" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} placeholder="0" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Unit</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Unit</label>
                     <input type="text" value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })} placeholder="mg" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Before balance</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Before balance</label>
                     <NumberInput min={0} step="any" value={form.beforeBalance} onChange={e => setForm({ ...form, beforeBalance: e.target.value })} placeholder="0" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Patient (optional)</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Patient (optional)</label>
                   <input type="text" value={form.patientName} onChange={e => setForm({ ...form, patientName: e.target.value })} placeholder="For dispense movements" />
                 </div>
 
                 <hr className="section-divider" />
 
                 <div className="rounded-lg p-3" style={{ background: 'var(--accent-light)', border: '1px solid var(--border-light)' }}>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'var(--accent-primary)' }}>
+                  <label className="text-xs font-semibold mb-2 flex items-center gap-1.5" style={{ color: 'var(--accent-primary)' }}>
                     <UserCheck className="w-3 h-3" /> Two-signature audit
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Operator</label>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Operator</label>
                       <input type="text" value={form.operatorName} onChange={e => setForm({ ...form, operatorName: e.target.value })} placeholder="Operator name" />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Witness</label>
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Witness</label>
                       <input type="text" value={form.witnessName} onChange={e => setForm({ ...form, witnessName: e.target.value })} placeholder="Witness name" />
                     </div>
                   </div>
@@ -320,7 +334,7 @@ export default function ControlledSubstancesPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Reason (optional)</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Reason (optional)</label>
                   <textarea rows={2} value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} placeholder="Reason / notes for this movement" />
                 </div>
               </div>

@@ -1,7 +1,5 @@
 'use client';
 
-import EhrPageTitle from '@/components/ehr/EhrPageTitle';
-
 import { useState } from 'react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useVitalStatistics } from '@/lib/hooks/useVitalStatistics';
@@ -9,7 +7,8 @@ import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useDataQuality } from '@/lib/hooks/useDataQuality';
 import { useFacilityAssessments } from '@/lib/hooks/useFacilityAssessments';
 import { useFacilityCensus } from '@/lib/hooks/useFacilityCensus';
-import { Baby, Skull, Activity, Heart, Shield, Building2, Users, BedDouble, Stethoscope, Wifi } from '@/components/icons/lucide';
+import { SadbKpiTile } from '@/components/admin/sadb-ui';
+import { Baby, Skull, Activity, Heart, Shield } from '@/components/icons/lucide';
 
 type SectionId = 'overview' | 'births' | 'mortality' | 'readiness' | 'quality';
 
@@ -49,10 +48,6 @@ export default function PublicStatsPage() {
   return (
     <>
       <main className="page-container page-enter">
-        <div className="dash-card mb-4" style={{ padding: '16px 20px' }}>
-          <EhrPageTitle>{t('hospitalManager.publicStatistics')}</EhrPageTitle>
-        </div>
-
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <aside style={{ width: 224, flexShrink: 0 }}>
             <nav className="ehr-set-nav" aria-label="Public statistics sections">
@@ -77,30 +72,17 @@ export default function PublicStatsPage() {
           <section style={{ flex: 1, minWidth: 0 }}>
             {/* National Overview */}
             {section === 'overview' && (
-              <div data-tour="public-stats-overview" className="card-elevated p-5 mb-6" style={{ background: 'rgba(33, 145, 208,0.04)' }}>
-                <div className="flex items-center gap-2 mb-4">
-                  <Shield className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-                  <h2 className="font-semibold text-sm">{t('publicStats.nationalOverview')}</h2>
-                </div>
-                <div className="kpi-grid">
-                  {[
-                    { label: t('publicStats.healthFacilities'), value: hospitals.length, icon: Building2, color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.12)' },
-                    { label: t('patients.kpiTotalPatients'), value: totalPop.toLocaleString(), icon: Users, color: 'var(--accent-primary)', bg: 'rgba(33, 145, 208, 0.12)' },
-                    { label: t('publicStats.hospitalBeds'), value: totalBeds.toLocaleString(), icon: BedDouble, color: 'var(--color-warning-text)', bg: 'rgba(253, 217, 95,0.12)' },
-                    { label: t('publicStats.healthWorkers'), value: totalStaff.toLocaleString(), icon: Stethoscope, color: 'var(--accent-primary)', bg: 'rgba(124, 199, 255,0.12)' },
-                    { label: t('publicStats.dhis2Coverage'), value: `${dqData?.dhis2Adoption ?? 0}%`, icon: Wifi, color: scoreColor(dqData?.dhis2Adoption ?? 0), bg: 'rgba(33, 145, 208, 0.12)' },
-                  ].map(stat => (
-                    <div key={stat.label} className="kpi">
-                      <div className="kpi__icon">
-                        <stat.icon style={{ color: stat.color }} />
-                      </div>
-                      <div className="kpi__body">
-                        <div className="kpi__value">{stat.value}</div>
-                        <div className="kpi__label">{stat.label}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div data-tour="public-stats-overview" className="sadb-kpi-row mb-6">
+                <SadbKpiTile label={t('publicStats.healthFacilities')} value={hospitals.length.toLocaleString()} delta="Facilities in the national registry" />
+                <SadbKpiTile label={t('patients.kpiTotalPatients')} value={totalPop.toLocaleString()} delta="Patients with a record at any registered facility" />
+                <SadbKpiTile label={t('publicStats.hospitalBeds')} value={totalBeds.toLocaleString()} delta="Total beds across registered facilities" />
+                <SadbKpiTile label={t('publicStats.healthWorkers')} value={totalStaff.toLocaleString()} delta="Doctors, nurses and clinical officers on the registry" />
+                <SadbKpiTile
+                  label={t('publicStats.dhis2Coverage')}
+                  value={`${dqData?.dhis2Adoption ?? 0}%`}
+                  delta="Assessed facilities that report through DHIS2"
+                  deltaTone={(dqData?.dhis2Adoption ?? 0) < 50 ? 'warn' : undefined}
+                />
               </div>
             )}
 
@@ -162,7 +144,7 @@ export default function PublicStatsPage() {
                   <h2 className="font-semibold text-sm">{t('publicStats.mortalityStatistics')}</h2>
                 </div>
                 <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="p-3 rounded-lg" style={{ background: 'rgba(224, 49, 39,0.08)' }}>
+                  <div className="p-3 rounded-lg" style={{ background: 'var(--color-danger-bg)' }}>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('publicStats.totalDeaths')}</p>
                     <p className="text-xl font-bold" style={{ color: 'var(--color-danger-text)' }}>{deathStats.total}</p>
                   </div>
@@ -204,7 +186,7 @@ export default function PublicStatsPage() {
                       {deathStats.topCauses.slice(0, 5).map((c, i) => (
                         <div key={c.code} className="flex items-center gap-2">
                           <span className="text-[10px] font-bold w-4" style={{ color: 'var(--text-muted)' }}>{i + 1}</span>
-                          <span className="font-mono text-[10px] px-1 py-0.5 rounded" style={{ background: 'rgba(224, 49, 39,0.12)', color: 'var(--color-danger-text)' }}>{c.code}</span>
+                          <span className="font-mono text-[10px] px-1 py-0.5 rounded" style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)' }}>{c.code}</span>
                           <span className="text-[10px] flex-1 truncate">{c.cause}</span>
                           <span className="text-xs font-bold">{c.count}</span>
                         </div>

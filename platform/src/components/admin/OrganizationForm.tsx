@@ -439,7 +439,7 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
   };
   const labelStyle: React.CSSProperties = {
     fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)',
-    textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px', display: 'block',
+    marginBottom: '6px', display: 'block',
   };
   const sectionTitleStyle: React.CSSProperties = { marginBottom: 10 };
 

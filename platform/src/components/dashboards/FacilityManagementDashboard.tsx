@@ -51,6 +51,7 @@ import {
   Loader2,} from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
+import { summariseIssues } from '@/modules/communication/client';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useWards } from '@/lib/hooks/useWards';
@@ -217,17 +218,17 @@ export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOve
   const staffTone = usersUnavailable ? ('warning' as const) : undefined;
 
   const metrics: FacilityOverviewMetric[] = [
-    { key: 'staff-total', label: 'Total Staff', value: staffCount(users.length), href: usersHref, tone: staffTone },
-    { key: 'doctors', label: 'Total Doctors', value: staffCount(doctors.length), href: usersHref, tone: staffTone },
-    { key: 'nurses', label: 'Total Nurses', value: staffCount(nurses.length), href: usersHref, tone: staffTone },
-    { key: 'patients', label: 'Total Patients', value: patients.length, href: '/patients' },
-    { key: 'beds', label: 'Available Beds', value: availableBeds, href: '/wards' },
-    { key: 'inquiries-open', label: 'Open Inquiries', value: enquirySummary.open, href: '/inquiries?status=new', tone: enquirySummary.open > 0 ? 'warning' : undefined },
-    { key: 'leave-pending', label: 'Pending Leave', value: pendingLeave.length, href: '/hr/leave?status=pending', tone: pendingLeave.length > 0 ? 'warning' : undefined },
+    { key: 'staff-total', label: 'Total staff', value: staffCount(users.length), href: usersHref, tone: staffTone },
+    { key: 'doctors', label: 'Total doctors', value: staffCount(doctors.length), href: usersHref, tone: staffTone },
+    { key: 'nurses', label: 'Total nurses', value: staffCount(nurses.length), href: usersHref, tone: staffTone },
+    { key: 'patients', label: 'Total patients', value: patients.length, href: '/patients' },
+    { key: 'beds', label: 'Available beds', value: availableBeds, href: '/wards' },
+    { key: 'inquiries-open', label: 'Open inquiries', value: enquirySummary.open, href: '/inquiries?status=new', tone: enquirySummary.open > 0 ? 'warning' : undefined },
+    { key: 'leave-pending', label: 'Pending leave', value: pendingLeave.length, href: '/hr/leave?status=pending', tone: pendingLeave.length > 0 ? 'warning' : undefined },
     { key: 'shifts-today', label: "Today's Shifts", value: schedules.length, href: `/hr/schedule?date=${today}` },
     // "Unfilled" = short against a configured per-shift minimum, not a vacant
     // position record — this data model has no such record (see getStaffingGaps).
-    { key: 'shifts-unfilled', label: 'Unfilled Shifts', value: unfilledShifts, href: '/hr/schedule?gaps=1', tone: unfilledShifts > 0 ? 'danger' : undefined },
+    { key: 'shifts-unfilled', label: 'Unfilled shifts', value: unfilledShifts, href: '/hr/schedule?gaps=1', tone: unfilledShifts > 0 ? 'danger' : undefined },
   ];
 
   // The three queues, shaped by the shared builders the queue page uses. Here
@@ -276,6 +277,21 @@ export default function FacilityManagementDashboard() {
   const { currentUser } = useAuth();
   const router = useRouter();
   const scope = useDataScope();
+
+  /* Staff issue reports, for the "Open issues" tile. /inquiries is the
+     reported-issues inbox for management roles (PR #196), so the tile that
+     links there counts issues, not patient inquiries. */
+  const [issueReports, setIssueReports] = useState<MessageDoc[]>([]);
+  useEffect(() => {
+    if (!scope) return;
+    let cancelled = false;
+    import('@/modules/communication/services/issue-report-service')
+      .then(({ getIssueReports }) => getIssueReports(scope))
+      .then(rows => { if (!cancelled) setIssueReports(rows); })
+      .catch(() => { /* the tile reads 0 rather than blocking the dashboard */ });
+    return () => { cancelled = true; };
+  }, [scope]);
+  const issueSummary = useMemo(() => summariseIssues(issueReports), [issueReports]);
 
   const { users, loading: usersLoading, error: usersError } = useUsers();
   const { patients, loading: patientsLoading } = usePatients();
@@ -484,15 +500,16 @@ export default function FacilityManagementDashboard() {
       nurses: share('nurses'),
       patients: `Across ${hospitals.length} ${hospitals.length === 1 ? 'facility' : 'facilities'}`,
       beds: wardBedTotal > 0 ? `of ${wardBedTotal} · ${wardOccupancy}% occupied` : undefined,
-      'inquiries-open': `${enquiries.length} received in total`,
+      issues: `${issueSummary.total} reported in total`,
     };
-  }, [overview, hospitals.length, wardBedTotal, wardOccupancy, enquiries.length]);
+  }, [overview, hospitals.length, wardBedTotal, wardOccupancy, issueSummary.total]);
 
   const tileTrends = useMemo<Record<string, SadbTrendValue | undefined>>(() => ({
     patients: weekTrend(patients),
     // More inquiries arriving is more work waiting: up is not good news here.
-    'inquiries-open': { ...weekTrend(enquiries), good: 'down' },
-  }), [weekTrend, patients, enquiries]);
+    // More issues arriving is more work waiting: up is not good news here.
+    issues: { ...weekTrend(issueReports), good: 'down' },
+  }), [weekTrend, patients, issueReports]);
 
   /* This week, Monday-first, on the CLINICAL calendar: both cards below read
      the same seven days, and a visit at 23:00 in Juba belongs to that day
@@ -549,7 +566,8 @@ export default function FacilityManagementDashboard() {
   /* KPI tiles carry the census/staffing totals; the three day-scoped figures
      (shifts, unfilled, pending leave) read in the Today's Operations card so
      the tile row is one line, not two. */
-  const TILE_KEYS = ['staff-total', 'doctors', 'nurses', 'patients', 'beds', 'inquiries-open'];
+  const TILE_KEYS = ['staff-total', 'doctors', 'nurses', 'patients', 'beds'];
+  const issuesTile = { key: 'issues', label: 'Open issues', href: '/inquiries' };
 
   const unfilledShifts = metricByKey('shifts-unfilled')?.value ?? 0;
   // The unfiltered count — this page no longer carries the queue's search box.
@@ -619,6 +637,15 @@ export default function FacilityManagementDashboard() {
             />
           );
         })}
+        <SadbKpiTile
+          key={issuesTile.key}
+          label={issuesTile.label}
+          value={issueSummary.open}
+          delta={tileDetails.issues}
+          deltaTone={issueSummary.open > 0 ? 'warn' : undefined}
+          trend={tileTrends.issues}
+          onClick={() => router.push(issuesTile.href)}
+        />
       </div>
 
       {/* ═══ Operational row: patient flow · cash · today ═══
@@ -630,7 +657,7 @@ export default function FacilityManagementDashboard() {
         {/* The week's arrivals: how many came, and how many stayed. Admissions
             and outpatient encounters are the two ends of the same day's work,
             and nothing on this page said either until now. */}
-        <SadbCard title="Patient Flow" tabletTitle="Patients" meta="This week">
+        <SadbCard title="Patient flow" tabletTitle="Patients" meta="This week">
           <div className="px-3 pt-3 pb-1">
             <WeeklyActivityChart data={weeklyFlow} chartType="bar" series={flowSeries} />
           </div>
@@ -642,7 +669,7 @@ export default function FacilityManagementDashboard() {
             the card, here it shares a row with a 208px chart, so it has
             height to spend and centres itself in it rather than sitting in
             the card's top corner. */}
-        <SadbCard title="Cash Flow" tabletTitle="Cash" meta={`${cash.currency} · this week`}>
+        <SadbCard title="Cash flow" tabletTitle="Cash" meta={`${cash.currency} · this week`}>
           <div className="sadb-readiness-body fmcash-body">
             <div className="fmcash-ring">
               <CashFlowDonut data={cashSlices} />
@@ -665,7 +692,7 @@ export default function FacilityManagementDashboard() {
         </SadbCard>
 
         <SadbCard
-          title="Today's Operations"
+          title="Today's operations"
           tabletTitle="Operations"
           action={<SadbHeadLink onClick={() => router.push(`/hr/schedule?date=${today}`)}>Schedule</SadbHeadLink>}
         >

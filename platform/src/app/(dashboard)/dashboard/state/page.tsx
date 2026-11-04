@@ -38,16 +38,21 @@ export default function StateDashboardPage() {
   const [activeTab, setActiveTab] = useState('all');
   const [search, setSearch] = useState('');
 
+  // A director whose account carries no state sees every county on file,
+  // rather than an empty list headed "Counties in —".
+  const inScope = (st?: string) => !stateName || st === stateName;
+
   const thisMonth = jubaYearMonth();
   const stateBirthsThisMonth = births.filter(
-    b => b.state === stateName && b.dateOfBirth?.startsWith(thisMonth),
+    b => inScope(b.state) && b.dateOfBirth?.startsWith(thisMonth),
   ).length;
   const stateDeathsThisMonth = deaths.filter(
-    d => d.state === stateName && d.dateOfDeath?.startsWith(thisMonth),
+    d => inScope(d.state) && d.dateOfDeath?.startsWith(thisMonth),
   ).length;
-  const facilitiesInState = hospitals.filter(h => h.state === stateName);
-  const anc1ForState = mch?.ancCascade?.byState?.[stateName]?.anc1 ?? 0;
-  const ancTotalForState = mch?.ancCascade?.byState?.[stateName]?.total ?? 0;
+  const facilitiesInState = hospitals.filter(h => inScope(h.state));
+  const stateAnc = stateName ? mch?.ancCascade?.byState?.[stateName] : undefined;
+  const anc1ForState = stateAnc?.anc1 ?? (stateName ? 0 : mch?.ancCascade?.anc1 ?? 0);
+  const ancTotalForState = stateAnc?.total ?? (stateName ? 0 : mch?.ancCascade?.totalPregnancies ?? 0);
   const anc1Rate = ancTotalForState > 0 ? Math.round((anc1ForState / ancTotalForState) * 100) : 0;
   // "YTD" is meant literally — `getImmunizationStats().totalVaccinations` is an
   // all-time count, so derive the current-year figure from the raw records instead.
@@ -68,7 +73,7 @@ export default function StateDashboardPage() {
   const byCounty = mch?.ancCascade?.byCounty ?? {};
   for (const [key, val] of Object.entries(byCounty)) {
     const [s, c] = key.split('::');
-    if (s !== stateName) continue;
+    if (!inScope(s)) continue;
     counties.push({
       county: c,
       // Births/deaths are not in the ANC rollup; the raw-stream pass below fills them.
@@ -91,14 +96,14 @@ export default function StateDashboardPage() {
   };
   // Fallback: derive county births/deaths from raw streams when the rollup is empty for them.
   for (const b of births) {
-    if (b.state !== stateName || !b.county) continue;
+    if (!inScope(b.state) || !b.county) continue;
     const row = touchCounty(b.county);
     row.birthCount += 1;
     if (b.facilityId) row.facilityIds.add(b.facilityId);
     if (b.createdAt && (!row.lastReportAt || b.createdAt > row.lastReportAt)) row.lastReportAt = b.createdAt;
   }
   for (const d of deaths) {
-    if (d.state !== stateName || !d.county) continue;
+    if (!inScope(d.state) || !d.county) continue;
     const row = touchCounty(d.county);
     row.deathCount += 1;
     if (d.facilityId) row.facilityIds.add(d.facilityId);
@@ -166,12 +171,13 @@ export default function StateDashboardPage() {
   // Built instead from the dated registry docs the page already loads — births
   // and deaths for this state — plotted at their real registration instant.
   const stateChartItems = useMemo<DayStatsItem[]>(() => [
-    ...births.filter(b => b.state === stateName).map((b): DayStatsItem => ({
+    ...births.filter(b => inScope(b.state)).map((b): DayStatsItem => ({
       date: b.createdAt.slice(0, 10), time: clockTime(b.createdAt), series: 0,
     })),
-    ...deaths.filter(d => d.state === stateName).map((d): DayStatsItem => ({
+    ...deaths.filter(d => inScope(d.state)).map((d): DayStatsItem => ({
       date: d.createdAt.slice(0, 10), time: clockTime(d.createdAt), series: 1,
     })),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [births, deaths, stateName]);
 
   return (
@@ -180,9 +186,10 @@ export default function StateDashboardPage() {
         <EhrCareDashboard
           title={t('state.title')}
           compactHeader
+          columnLabels={[t('state.colCounty'), t('state.colLastReport'), t('state.colFacilities'), t('state.colIndicators'), t('state.colReporting')]}
           dateLabel={dateLabel}
           tabs={[
-            { key: 'all', label: t('state.countiesIn', { state: stateName || '—' }), count: counties.length },
+            { key: 'all', label: stateName ? t('state.countiesIn', { state: stateName }) : 'All counties', count: counties.length },
           ]}
           // Counties are a roster, not a day's schedule — their row date is
           // "last reported", so day-scoping left the list empty on most days
@@ -208,7 +215,8 @@ export default function StateDashboardPage() {
             return {
               id: c.county,
               title: c.county,
-              subtitle: t('state.countyStats', { births: c.birthCount, deaths: c.deathCount, anc: c.ancTotal }),
+              // Nothing under the name: the month's figures are their own column.
+              subtitle: '',
               careTeam: facilityCount > 0 ? `${facilityCount} facilit${facilityCount === 1 ? 'y' : 'ies'}` : undefined,
               careTeamLabel: 'Reporting facilities',
               location: t('state.countyStats', { births: c.birthCount, deaths: c.deathCount, anc: c.ancTotal }),

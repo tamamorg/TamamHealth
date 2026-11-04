@@ -28,7 +28,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Hospital } from '@/components/icons/lucide';
+import { Plus } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
 import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import './tenancy-slider.css';
@@ -326,16 +326,6 @@ export default function OrganizationDetail({ orgId, hostedAt }: {
       <SadbCard
         title={t('management.facilities')}
         meta={t('management.showingOf', { shown: filteredFacilities.length, total: orgFacilities.length })}
-        action={may('facility:create') ? (
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            data-tour="org-hospitals-add"
-            onClick={() => { setEditingFacility(null); setShowFacilityEditor(true); }}
-          >
-            <Hospital className="w-4 h-4" /> {t('management.addFacility')}
-          </button>
-        ) : undefined}
       >
         <div className="sadb-search-row" style={{ paddingBottom: 12 }}>
           <SadbSearch
@@ -344,6 +334,16 @@ export default function OrganizationDetail({ orgId, hostedAt }: {
             placeholder={t('management.searchFacilities')}
             ariaLabel={t('management.searchFacilities')}
           />
+          {may('facility:create') && (
+            <button
+              type="button"
+              className="tm-ghost-btn"
+              data-tour="org-hospitals-add"
+              onClick={() => { setEditingFacility(null); setShowFacilityEditor(true); }}
+            >
+              {t('management.addFacility')} <Plus className="w-4 h-4" aria-hidden="true" />
+            </button>
+          )}
         </div>
         <div data-tour="org-hospitals-table">
           <SadbGridList

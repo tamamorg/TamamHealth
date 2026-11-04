@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import EhrListHeader from '@/components/ehr/EhrListHeader';
+import { SadbCard } from '@/components/admin/sadb-ui';
+import { FieldRow } from '@/components/oversight/OversightKit';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
 import { useImmunizations } from '@/lib/hooks/useImmunizations';
 import { useANC } from '@/lib/hooks/useANC';
@@ -14,14 +15,9 @@ import { printElementById } from '@/lib/safe-html';
 
 function Section({ heading, children }: { heading: string; children: React.ReactNode }) {
   return (
-    <div className="dash-card mb-3">
-      <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-        <span className="text-[15px] font-bold" style={{ color: 'var(--text-primary)' }}>{heading}</span>
-      </div>
-      <div className="px-4 py-3">
-        {children}
-      </div>
-    </div>
+    <SadbCard title={heading}>
+      <div className="px-4 py-3">{children}</div>
+    </SadbCard>
   );
 }
 
@@ -29,7 +25,7 @@ function Bullets({ items }: { items: string[] }) {
   return (
     <ul className="space-y-1.5">
       {items.map((line, i) => (
-        <li key={i} className="text-[13px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+        <li key={i} className="leading-relaxed" style={{ fontSize: 14, color: 'var(--text-primary)' }}>
           &bull;&nbsp; {line}
         </li>
       ))}
@@ -89,31 +85,36 @@ export default function ExecutiveBriefingPage() {
 
   if (loading) {
     return (
-      <main className="page-container page-enter">
-        <div className="dash-card p-8 text-center" style={{ color: 'var(--text-muted)' }}>Compiling briefing…</div>
+      <main className="page-container page-enter sadb-scope">
+        <SadbCard><p className="sadb-empty">Compiling briefing…</p></SadbCard>
       </main>
     );
   }
 
   return (
-    <main id="executive-briefing-print" className="page-container page-enter">
-      <div data-tour="gov-briefing-header" className="dash-card mb-3 no-print">
-        <EhrListHeader
-          title="Executive briefing"
-          stats={[{ label: 'As of', value: `${today} · National` }]}
-          actions={
-            <button onClick={() => printElementById('executive-briefing-print', { label: 'Executive Briefing', issuer: 'Ministry of Health', fieldsTitle: 'Report Scope', fields: [{ label: 'Coverage', value: 'National' }] })} className="btn btn-secondary print-visible" style={{ height: 36 }}>
-              <Printer className="w-4 h-4" /> Print briefing
+    <main id="executive-briefing-print" className="page-container page-enter sadb-scope">
+      <div className="sadb-page">
+      <div data-tour="gov-briefing-header" className="no-print">
+        <FieldRow
+          end={(
+            <button
+              type="button"
+              onClick={() => printElementById('executive-briefing-print', { label: 'Executive Briefing', issuer: 'Ministry of Health', fieldsTitle: 'Report Scope', fields: [{ label: 'Coverage', value: 'National' }] })}
+              className="tm-ghost-btn print-visible"
+            >
+              Print briefing <Printer className="w-4 h-4" aria-hidden="true" />
             </button>
-          }
-        />
+          )}
+        >
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>As of {today} · National</p>
+        </FieldRow>
       </div>
 
       <Section heading="Situation overview">
         <Bullets items={[
           activeAlerts.length > 0
             ? `${activeAlerts.length} active disease alert${activeAlerts.length === 1 ? '' : 's'} on file: ${emergencyCount} emergency, ${warningCount} warning, ${watchCount} watch.`
-            : 'No active disease alerts on file — all reporting facilities at normal alert level.',
+            : 'No active disease alerts on file. Every reporting facility is at normal level.',
           topDisease
             ? `Highest case load: ${topDisease[0]} (${topDisease[1].toLocaleString()} active cases).`
             : 'No disease with an active case load to report.',
@@ -151,7 +152,7 @@ export default function ExecutiveBriefingPage() {
             ? `Average reporting completeness ${dq.avgCompleteness}%, timeliness ${dq.avgTimeliness}%, across ${dq.facilitiesReporting} of ${dq.totalFacilities} facilities assessed.`
             : 'No data on file for facility reporting quality.',
           worstFacilities.length > 0
-            ? `Lowest data-quality scores: ${worstFacilities.map(f => `${f.facilityName} (${f.state}) — ${f.dataQualityScore}%`).join('; ')}.`
+            ? `Lowest data-quality scores: ${worstFacilities.map(f => `${f.facilityName} (${f.state}) ${f.dataQualityScore}%`).join('; ')}.`
             : 'No facility assessments on file to rank by data-quality score.',
         ]} />
       </Section>
@@ -171,6 +172,7 @@ export default function ExecutiveBriefingPage() {
             : 'No data on file for immunization defaulters.',
         ]} />
       </Section>
+      </div>
     </main>
   );
 }

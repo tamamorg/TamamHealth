@@ -22,6 +22,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import InlineBanner from '@/components/overlay/InlineBanner';
+import Select from '@/components/Select';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
@@ -41,7 +42,7 @@ import {
   getRiskResolutions, indexResolutions, isRiskResolved, reopenRisk, resolveRisks,
   type ResolveRiskInput,
 } from '@/lib/services/risk-resolution-service';
-import { SadbPage, SadbCard, SadbSearch, SadbChip, SadbTabs, SEVERITY_CHIP } from '@/components/admin/sadb-ui';
+import { SadbPage, SadbCard, SadbSearch, SadbChip, SEVERITY_CHIP } from '@/components/admin/sadb-ui';
 import { humanizeStatus } from '@/lib/format-utils';
 import { useUrlView } from '@/lib/navigation/use-url-view';
 
@@ -294,15 +295,6 @@ export default function RiskCenterPage() {
         title="Risk & incident queue"
         action={
           <>
-            <SadbTabs
-              ariaLabel="Risk queue view"
-              active={tab}
-              onChange={key => setTab(key as 'open' | 'resolved')}
-              tabs={[
-                { key: 'open', label: 'Open', count: openTotal },
-                { key: 'resolved', label: 'Resolved', count: resolvedDocs.length },
-              ]}
-            />
             <div className="sadb-legend">
               <span><i style={{ background: 'var(--color-danger-500)' }} />Critical ({counts.critical})</span>
               <span><i style={{ background: 'var(--color-danger-500)' }} />High ({counts.high})</span>
@@ -328,6 +320,15 @@ export default function RiskCenterPage() {
 
         <div className="sadb-search-row sadb-search-row--table-aligned">
           <SadbSearch value={search} onChange={setSearch} placeholder="Search signal or detail…" ariaLabel="Search risk signals" />
+          <Select
+            aria-label="Show risks"
+            value={tab}
+            onChange={e => setTab(e.target.value as 'open' | 'resolved')}
+            style={{ width: 190 }}
+          >
+            <option value="open">{`Open (${openTotal})`}</option>
+            <option value="resolved">{`Resolved (${resolvedDocs.length})`}</option>
+          </Select>
           {/* Deliberately "all shown", not "all": whatever the filters have
               narrowed to is what an operator has actually just looked at. Past
               MAX_BULK_RESOLVE the one-click bulk is withheld — clearing a safety
@@ -352,7 +353,7 @@ export default function RiskCenterPage() {
               columns={[
                 'Signal', 'Severity', 'Source', 'Detail', 'Age', 'Status', 'Resolve',
               ]}
-              empty={loading ? 'Loading risk signals…' : 'No open risk signals — the platform is clean.'}
+              empty={loading ? 'Loading risk signals…' : 'No open risks. The platform is clean.'}
             >
               {pagedOpen.map(r => (
                 <tr

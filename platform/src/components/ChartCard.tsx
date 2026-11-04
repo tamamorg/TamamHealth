@@ -12,6 +12,7 @@
 
 import { useState, type ReactNode } from 'react';
 import Select from '@/components/Select';
+import './chart-card.css';
 
 export type ChartType = 'line' | 'area' | 'bar';
 export type ChartPeriod = 'week' | 'month' | 'quarter' | 'year';
@@ -81,11 +82,11 @@ export default function ChartCard({
         style={{ borderBottom: '1px solid var(--border-light)' }}
       >
         <div className="flex items-center gap-3 min-w-0">
-          <h3 style={{ fontFamily: "var(--font-platform)", fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', letterSpacing: -0.2, lineHeight: 1 }}>
+          <h3 style={{ fontFamily: "var(--font-platform)", fontWeight: 600, fontSize: 16, color: 'var(--accent-text, var(--text-primary))', lineHeight: 1.3 }}>
             {title}
           </h3>
           {subtitle && (
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{subtitle}</span>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{subtitle}</span>
           )}
         </div>
 
@@ -93,27 +94,21 @@ export default function ChartCard({
             type buttons plus the period select are wider than the card, and
             an unshrinkable row pushed the select out past its edge. */}
         <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-          {/* Chart type buttons */}
-          {chartTypes.length > 1 && chartTypes.map(t => (
-            <button
-              key={t}
-              onClick={() => setChartType(t)}
-              style={{
-                fontSize: 10,
-                fontWeight: 600,
-                padding: '3px 9px',
-                borderRadius: 6,
-                border: 'none',
-                cursor: 'pointer',
-                fontFamily: "var(--font-platform)",
-                background: chartType === t ? 'var(--accent-primary)' : 'var(--overlay-subtle)',
-                color: chartType === t ? '#fff' : 'var(--text-muted)',
-                transition: 'background 0.15s, color 0.15s',
-              }}
+          {/* Chart type: a dropdown like the period beside it (user, 2026-11-04:
+              single choices are selected from a field, not from pills). */}
+          {chartTypes.length > 1 && (
+            <Select
+              value={chartType}
+              onChange={e => setChartType(e.target.value as ChartType)}
+              aria-label="Chart type"
+              className="chart-card-select"
+              data-action="chart-card-type"
             >
-              {t[0].toUpperCase() + t.slice(1)}
-            </button>
-          ))}
+              {chartTypes.map(t => (
+                <option key={t} value={t}>{t[0].toUpperCase() + t.slice(1)}</option>
+              ))}
+            </Select>
+          )}
 
           {extraControls}
 
@@ -122,17 +117,9 @@ export default function ChartCard({
             <Select
               value={period}
               onChange={e => setPeriod(e.target.value as ChartPeriod)}
-              style={{
-                fontSize: 11,
-                color: 'var(--text-muted)',
-                background: 'var(--overlay-subtle)',
-                border: '1px solid var(--border-light)',
-                borderRadius: 7,
-                padding: '3px 8px',
-                cursor: 'pointer',
-                outline: 'none',
-                fontFamily: "var(--font-platform)",
-              }}
+              aria-label="Period"
+              className="chart-card-select"
+              data-action="chart-card-period"
             >
               {periods.map(p => (
                 <option key={p} value={p}>{PERIOD_LABELS[p]}</option>

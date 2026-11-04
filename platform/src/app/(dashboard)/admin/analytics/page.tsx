@@ -43,7 +43,7 @@ import {
 } from 'recharts';
 import { tooltipStyle as chartTooltipStyle, axisTick, AreaGradients } from '@/components/ChartCard';
 import {
-  SadbPage, SadbCard, SadbKpiTile, SadbPanelHeader, SadbKvRow,
+  SadbPage, SadbCard, SadbKpiTile, SadbPanelHeader, SadbKvRow, trendBetween,
 } from '@/components/admin/sadb-ui';
 
 /** Local day bucket — the trend is read the way a operator reads a calendar,
@@ -179,6 +179,17 @@ export default function AdminAnalyticsPage() {
     [activityTrend],
   );
 
+  /* Recorded actions, the last 7 days against the 7 before — only when the
+     usage feed actually returned that window. */
+  const actionsTrend = useMemo(() => {
+    const days = usage?.dauTrend ?? [];
+    if (days.length < 14) return undefined;
+    const sum = (rows: typeof days) => rows.reduce((s, d) => s + (d.events || 0), 0);
+    const now = sum(days.slice(-7));
+    const before = sum(days.slice(-14, -7));
+    return { direction: trendBetween(now, before), label: `vs ${before.toLocaleString()} last week` };
+  }, [usage]);
+
   const totalUsersAll = orgData.reduce((s, d) => s + d.users, 0);
   const totalPatientsAll = orgData.reduce((s, d) => s + d.patients, 0);
 
@@ -214,7 +225,7 @@ export default function AdminAnalyticsPage() {
     }
     if (!usage?.dauTrend?.length || usage.dauTrend.every(d => !d.users && !d.events)) {
       return (
-        <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="flex items-center justify-center" style={{ height: 260 }}>
           <EmptyState icon={Activity} title={t('analytics.noUsageYet')} message={t('analytics.noDataShort')} />
         </div>
       );
@@ -266,6 +277,7 @@ export default function AdminAnalyticsPage() {
           label={t('analytics.events30d')}
           value={usage ? usage.eventCount.toLocaleString() : '—'}
           delta={usage ? t('analytics.kpiPerDay', { count: Math.round(usage.eventCount / 30) }) : t('analytics.kpiLast30')}
+          trend={actionsTrend}
         />
       </div>
 

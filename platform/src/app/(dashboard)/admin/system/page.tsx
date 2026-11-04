@@ -36,7 +36,7 @@ export default function AdminSystemPage() {
         const { DATABASE_SYNC_CONFIGS } = await import('@/lib/sync/sync-config');
         const dbNames = DATABASE_SYNC_CONFIGS.map(c => ({
           key: c.localName,
-          label: c.localName.replace(/^tamamhealth_/, '').replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase()),
+          label: c.localName.replace(/^tamamhealth_/, '').replace(/_/g, ' ').replace(/^\w/, ch => ch.toUpperCase()),
         }));
         // Run all db.info() calls concurrently — sequential awaits across 18
         // databases meant 18 round-trips on every page load.
@@ -66,8 +66,8 @@ export default function AdminSystemPage() {
   return (
     <SadbPage>
       <SadbCard
-        title="System Health"
-        meta={dbStatsLoading ? '…' : `${dbStats.length} stores · ${totalDocs.toLocaleString()} documents`}
+        title="System health"
+        meta={dbStatsLoading ? '…' : `${dbStats.length} data sets · ${totalDocs.toLocaleString()} records`}
       >
         <SadbGridList
           template={GRID_TEMPLATE}
@@ -80,7 +80,7 @@ export default function AdminSystemPage() {
               <span>{db.name}</span>
               <span
                 className="sadb-tenant-num"
-                style={{ fontFamily: 'var(--font-platform-mono)', color: db.docCount > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}
+                style={{ color: db.docCount > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}
               >
                 {db.docCount.toLocaleString()}
               </span>

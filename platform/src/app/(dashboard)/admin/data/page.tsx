@@ -106,7 +106,7 @@ export default function AdminDataGovernancePage() {
   const busy = loading || hospitalsLoading;
 
   const railGroups = [{
-    title: 'Data Governance',
+    title: 'Data checks',
     items: [
       { id: 'duplicates', label: 'Duplicate review', icon: Copy, count: busy ? '…' : review.candidates.length },
       { id: 'completeness', label: 'Completeness', icon: BarChart3, count: busy ? '…' : completeness.rows.length },
@@ -193,19 +193,19 @@ export default function AdminDataGovernancePage() {
                 valueTone={!conflictsError && (pendingConflicts ?? 0) > 0 ? 'warn' : undefined}
               />
               <div style={{ padding: '0 14px 14px' }}>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => router.push('/admin/conflicts')}>
+                <button type="button" className="tm-ghost-btn" onClick={() => router.push('/admin/conflicts')}>
                   Open reconciliation queue
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
               <div className="sadb-kv">
                 <span>Export / deletion requests</span>
-                <span style={{ color: 'var(--text-muted)', fontFamily: 'inherit', fontWeight: 600 }}>None — policy-gated, no request store configured</span>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>None. Requests are not switched on for this platform.</span>
               </div>
               <div style={{ padding: '14px 14px 0' }}>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => router.push('/admin/security')}>
+                <button type="button" className="tm-ghost-btn" onClick={() => router.push('/admin/security')}>
                   Review data policy
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </SadbCard>

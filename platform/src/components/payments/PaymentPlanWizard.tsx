@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatMoney } from '@/lib/format-utils';
 import { useDataScope } from '@/lib/hooks/useDataScope';
+import Select from '@/components/Select';
 import { FormError } from '@/components/overlay/FormNotices';
 
 interface PaymentPlanWizardProps {
@@ -114,8 +115,8 @@ export default function PaymentPlanWizard({
       <div className="space-y-4">
         {/* Balance */}
         <div style={{ padding: '16px 20px', background: 'var(--bg-secondary)', textAlign: 'center' }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('payments.totalBalance')}</div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)' }}>{formatMoney(balance, { currency })}</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>{t('payments.totalBalance')}</div>
+          <div style={{ fontSize: 24, fontWeight: 600, color: 'var(--text-primary)' }}>{formatMoney(balance, { currency })}</div>
         </div>
 
         <div className="ehr-finance-dialog__body" style={{ padding: 20 }}>
@@ -124,24 +125,16 @@ export default function PaymentPlanWizard({
           {step === 1 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{t('payments.chooseTermLength')}</label>
-              <div className="ehr-finance-dialog__terms" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+              <Select value={String(termMonths)} onChange={e => setTermMonths(Number(e.target.value))} aria-label={t('payments.chooseTermLength')} data-action="plan-term">
                 {terms.map(term => (
-                  <button key={term} aria-pressed={termMonths === term} onClick={() => setTermMonths(term)} style={{
-                    padding: '16px 8px', borderRadius: 12, textAlign: 'center', cursor: 'pointer',
-                    border: termMonths === term ? '2px solid var(--accent)' : '1px solid var(--border-medium)',
-                    background: termMonths === term ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'transparent',
-                  }}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: termMonths === term ? 'var(--accent)' : 'var(--text-primary)' }}>{term}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('time.months')}</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, marginTop: 4, color: 'var(--text-muted)' }}>
-                      {t('payments.perMonth', { amount: Math.ceil(balance / term).toLocaleString() })}
-                    </div>
-                  </button>
+                  <option key={term} value={term}>
+                    {t('payments.termMonths', { months: term })} · {t('payments.perMonth', { amount: Math.ceil(balance / term).toLocaleString() })}
+                  </option>
                 ))}
-              </div>
-              <button className="ehr-finance-dialog__primary" disabled={loadingBalance || !Number.isFinite(balance) || balance <= 0} onClick={() => setStep(2)} style={{
+              </Select>
+              <button className="btn btn-primary ehr-finance-dialog__primary" disabled={loadingBalance || !Number.isFinite(balance) || balance <= 0} onClick={() => setStep(2)} style={{
                 marginTop: 8, padding: '12px 0', borderRadius: 10, border: 'none',
-                background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 600,
+                fontSize: 14, fontWeight: 600,
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               }}>
                 {t('payments.reviewPlan')} <ArrowRight size={14} />
@@ -177,9 +170,9 @@ export default function PaymentPlanWizard({
                   flex: 1, padding: '12px 0', borderRadius: 10, border: '1px solid var(--border-medium)',
                   background: 'transparent', color: 'var(--text-muted)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 }}>{t('action.back')}</button>
-                <button className="ehr-finance-dialog__primary" onClick={handleCreate} disabled={processing} style={{
+                <button className="btn btn-primary ehr-finance-dialog__primary" onClick={handleCreate} disabled={processing} style={{
                   flex: 2, padding: '12px 0', borderRadius: 10, border: 'none',
-                  background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 600,
+                  fontSize: 14, fontWeight: 600,
                   cursor: 'pointer', opacity: processing ? 0.7 : 1,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 }}>

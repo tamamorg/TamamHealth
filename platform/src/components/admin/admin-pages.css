@@ -1,0 +1,29 @@
+/* Platform administration pages: the short row of labelled fields used where a
+   page offers ONE choice from a set (the Reports "Choose a report" pattern).
+   Scoped to the management surface like the rest of its chart-look styles. */
+body main[data-surface="management"] .adm-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+}
+
+body main[data-surface="management"] .adm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 200px;
+  flex: 0 1 260px;
+}
+
+body main[data-surface="management"] .adm-field-label {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+body main[data-surface="management"] .adm-mono {
+  font-family: var(--font-platform-mono);
+}

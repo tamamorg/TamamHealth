@@ -10,9 +10,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ClipboardList, Plus } from '@/components/icons/lucide';
 import RequestLeaveDialog from '@/components/create-dialogs/RequestLeaveDialog';
-import EhrListHeader, { EhrListHeaderButton } from '@/components/ehr/EhrListHeader';
+import EhrListHeader from '@/components/ehr/EhrListHeader';
 import RowStatusSelect from '@/components/ehr/RowStatusSelect';
 import EmptyState from '@/components/EmptyState';
+import FacilityKpiBand, { weekOverWeek } from '@/components/dashboards/FacilityKpiBand';
+import { todayIso } from '@/lib/date-utils';
 import type { LeaveRequestDoc, LeaveStatus } from '@/lib/db-types-hr';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import {
@@ -101,24 +103,28 @@ export default function HrLeavePage() {
     row?.focus({ preventScroll: true });
   }, [focusedRequestId, leave.length]);
 
+  const today = todayIso();
+  const pending = leave.filter(r => r.status === 'pending');
+  const approved = leave.filter(r => r.status === 'approved' || r.status === 'taken');
+  const awayToday = leave.filter(r => r.status === 'approved' && r.startDate <= today && r.endDate >= today);
+
   return (
     <HrPageShell>
+      <FacilityKpiBand tiles={[
+        { key: 'pending', label: 'Pending', value: pending.length, detail: pending.length ? `${pending.reduce((n, r) => n + r.days, 0)} days awaiting a decision` : 'Nothing waiting for a decision', warn: pending.length > 0, trend: weekOverWeek(leave, r => r.requestedAt, 'requested') },
+        { key: 'approved', label: 'Approved', value: approved.length, detail: `${leave.filter(r => r.status === 'taken').length} already taken` },
+        { key: 'rejected', label: 'Rejected', value: leave.filter(r => r.status === 'rejected').length, detail: `Out of ${leave.length} requests` },
+        { key: 'away', label: 'Away today', value: awayToday.length, detail: awayToday.length ? awayToday.map(r => r.userName).slice(0, 2).join(', ') + (awayToday.length > 2 ? ` and ${awayToday.length - 2} more` : '') : 'No approved leave covers today' },
+      ]} />
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="hr-leave-list">
         <EhrListHeader
           title="Leave requests"
           count={leave.length}
-          stats={[
-            { label: 'Pending', value: leave.filter(r => r.status === 'pending').length, color: 'var(--color-warning-text)' },
-            { label: 'Approved', value: leave.filter(r => r.status === 'approved').length, color: 'var(--color-success)' },
-            { label: 'Rejected', value: leave.filter(r => r.status === 'rejected').length, color: 'var(--color-danger)' },
-          ]}
           search={{ value: search, onChange: setSearch, placeholder: 'Search leave requests…', ariaLabel: 'Search leave requests' }}
           actions={
-            <>
-              <EhrListHeaderButton primary onClick={() => setOpen(true)} ariaLabel={t('hr.requestLeave')}>
-                <Plus className="w-4 h-4" color="#fff" />
-              </EhrListHeaderButton>
-            </>
+            <button type="button" className="btn btn-primary" onClick={() => setOpen(true)}>
+              <Plus className="w-4 h-4" /> {t('hr.requestLeave')}
+            </button>
           }
         />
         {/* The patient registry's list, exactly: the same surface + flow
