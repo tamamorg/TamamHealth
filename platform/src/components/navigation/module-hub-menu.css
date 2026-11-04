@@ -1,0 +1,23 @@
+/* The hub dropdown in the route bar: reads as the current crumb with a
+ * chevron, a quiet outlined button, 28px so the 40px bar keeps its height. */
+.route-hub-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card-solid);
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.route-hub-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.route-hub-trigger svg { flex: 0 0 auto; width: 14px; height: 14px; color: var(--text-muted); }
+.route-hub-trigger:hover { background: var(--state-hover); }
+.route-hub-trigger[data-open] { border-color: var(--accent-primary); }
+.route-hub-trigger:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
