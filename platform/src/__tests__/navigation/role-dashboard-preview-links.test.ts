@@ -102,14 +102,14 @@ describe('role dashboard preview links', () => {
     const dashboard = source('app/(dashboard)/admin/page.tsx');
     // The risk queue and the security watchlist are owned by Risk Center and
     // Security & Compliance now — the dashboard keeps only the signals.
-    expect(dashboard).not.toContain('title="Risk & incident queue"');
-    expect(dashboard).not.toContain('title="Security watchlist"');
+    expect(dashboard).not.toContain("title={t('ui.riskIncidentQueue')}");
+    expect(dashboard).not.toContain("title={t('ui.securityWatchlist')}");
     expect(dashboard).toContain("router.push('/admin/risk')");
     expect(dashboard).toContain("router.push('/admin/sync')");
     // The 14-day activity trend the dashboard used to draw lives on Analytics.
     expect(dashboard).not.toContain('ComposedChart');
     expect(source('app/(dashboard)/admin/analytics/page.tsx')).toContain("t('analytics.platformActivity')");
-    expect(source('app/(dashboard)/admin/risk/page.tsx')).toContain('title="Risk & incident queue"');
-    expect(source('app/(dashboard)/admin/security/page.tsx')).toContain('title="Security watchlist"');
+    expect(source('app/(dashboard)/admin/risk/page.tsx')).toContain("title={t('ui.riskIncidentQueue')}");
+    expect(source('app/(dashboard)/admin/security/page.tsx')).toContain("title={t('ui.securityWatchlist')}");
   });
 });

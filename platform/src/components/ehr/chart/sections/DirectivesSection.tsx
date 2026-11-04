@@ -110,7 +110,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
   return (
     <>
       <ChartSection
-        title="Directives &amp; consent"
+        title={t('ui.directivesAmpConsent')}
         addLabel="Add"
         onAdd={canManage ? () => { setAddForm(EMPTY_FORM); setAdding(true); } : undefined}
         searchValue={search}
@@ -122,10 +122,10 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
           </colgroup>
           <thead>
             <tr>
-              <th>Type</th>
-              <th>Detail</th>
-              <th>Effective</th>
-              <th>Status</th>
+              <th>{t('billing.activityColumn.type')}</th>
+              <th>{t('adminUsers.activityDetail')}</th>
+              <th>{t('ui.effective')}</th>
+              <th>{t('billing.activityColumn.status')}</th>
               <th>{t('chart.actions')}</th>
             </tr>
           </thead>
@@ -135,7 +135,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
                 <td colSpan={5} style={{ cursor: 'default', background: 'transparent' }}>
                   <OmrsEmptyState
                     itemLabel="directives"
-                    actionLabel="Record consent"
+                    actionLabel={t('ui.recordConsent')}
                     onAction={canManage ? () => { setAddForm(EMPTY_FORM); setAdding(true); } : undefined}
                     disabledReason={canManage ? undefined : 'Requires clinical or registration permission'}
                   />
@@ -151,7 +151,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
                   {d.signature ? (
                     <>
                       <span className="tamam-panel-badge tamam-panel-badge--done">
-                        <Lock className="w-3 h-3" /> Signed
+                        <Lock className="w-3 h-3" /> {t('notesList.statusSigned')}
                       </span>
                       <div className="tamam-cell-sub">
                         {d.signature.name}
@@ -161,8 +161,8 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
                     </>
                   ) : (
                     <>
-                      <span className="tamam-panel-badge tamam-panel-badge--pending">Unsigned</span>
-                      <div className="tamam-cell-sub">Recorded, not yet attested</div>
+                      <span className="tamam-panel-badge tamam-panel-badge--pending">{t('notesList.statusUnsigned')}</span>
+                      <div className="tamam-cell-sub">{t('ui.recordedNotYetAttested')}</div>
                     </>
                   )}
                 </td>
@@ -187,13 +187,13 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
       {/* ── Add ── */}
       {adding && (
         <FormSlider
-          title="Add directive / consent"
+          title={t('ui.addDirectiveConsent')}
           className="tamam-dialog"
           width={480}
           onClose={() => !busy && setAdding(false)}
           busy={busy}
           footer={<>
-              <button className="btn btn-secondary" disabled={busy} onClick={() => setAdding(false)}>Cancel</button>
+              <button className="btn btn-secondary" disabled={busy} onClick={() => setAdding(false)}>{t('action.cancel')}</button>
               <button
                 className="btn btn-primary"
                 disabled={busy || !addForm.description.trim()}
@@ -208,17 +208,17 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
         >
           <div className="space-y-4">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="dir-type" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Type</label>
+              <label htmlFor="dir-type" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('billing.activityColumn.type')}</label>
               <Select id="dir-type" value={addForm.type} onChange={e => setAddForm({ ...addForm, type: e.target.value as DirectiveType })}>
                 {TYPE_OPTIONS.map(t => <option key={t} value={t}>{typeLabel(t)}</option>)}
               </Select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="dir-desc" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Detail</label>
-              <textarea rows={1} id="dir-desc" autoFocus value={addForm.description} onChange={e => setAddForm({ ...addForm, description: e.target.value })} placeholder="e.g. General consent to treat" className={fieldCls} style={fieldStyle} />
+              <label htmlFor="dir-desc" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('adminUsers.activityDetail')}</label>
+              <textarea rows={1} id="dir-desc" autoFocus value={addForm.description} onChange={e => setAddForm({ ...addForm, description: e.target.value })} placeholder={t('ui.eGGeneralConsentTo')} className={fieldCls} style={fieldStyle} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="dir-start" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Effective from</label>
+              <label htmlFor="dir-start" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('ui.effectiveFrom')}</label>
               <input id="dir-start" type="date" value={addForm.startDate} onChange={e => setAddForm({ ...addForm, startDate: e.target.value })} className={fieldCls} style={fieldStyle} />
             </div>
           </div>
@@ -228,13 +228,13 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
       {/* ── Edit (unsigned only) ── */}
       {editing && (
         <FormSlider
-          title="Edit directive"
+          title={t('ui.editDirective')}
           className="tamam-dialog"
           width={480}
           onClose={() => !busy && setEditing(null)}
           busy={busy}
           footer={<>
-              <button className="btn btn-secondary" disabled={busy} onClick={() => setEditing(null)}>Cancel</button>
+              <button className="btn btn-secondary" disabled={busy} onClick={() => setEditing(null)}>{t('action.cancel')}</button>
               <button
                 className="btn btn-primary"
                 disabled={busy || !editForm.description.trim()}
@@ -269,13 +269,13 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
       {/* ── Signature ── */}
       {signing && (
         <FormSlider
-          title="Take signature"
+          title={t('ui.takeSignature')}
           className="tamam-dialog"
           width={460}
           onClose={() => !busy && setSigning(null)}
           busy={busy}
           footer={<>
-              <button className="btn btn-secondary" disabled={busy} onClick={() => setSigning(null)}>Cancel</button>
+              <button className="btn btn-secondary" disabled={busy} onClick={() => setSigning(null)}>{t('action.cancel')}</button>
               <button
                 className="btn btn-primary"
                 disabled={busy || !signForm.name.trim() || (signForm.signedBy !== 'patient' && !signForm.relationship.trim())}
@@ -290,7 +290,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
                   });
                 }, () => setSigning(null), 'Signature recorded')}
               >
-                <Lock className="w-3.5 h-3.5" /> Record signature
+                <Lock className="w-3.5 h-3.5" /> {t('ui.recordSignature')}
               </button>
           </>}
         >
@@ -299,24 +299,23 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
               <strong>{typeLabel(signing.type)}</strong> — {signing.description}
             </p>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="dir-signedby" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Who is signing</label>
+              <label htmlFor="dir-signedby" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('ui.whoIsSigning')}</label>
               <Select id="dir-signedby" value={signForm.signedBy} onChange={e => setSignForm({ ...signForm, signedBy: e.target.value as DirectiveSignatory })}>
                 {SIGNATORY_OPTIONS.map(s => <option key={s} value={s}>{SIGNATORY_LABELS[s]}</option>)}
               </Select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="dir-signame" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Name as signed</label>
-              <input id="dir-signame" autoFocus value={signForm.name} onChange={e => setSignForm({ ...signForm, name: e.target.value })} placeholder="Full name" className={fieldCls} style={fieldStyle} />
+              <label htmlFor="dir-signame" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('ui.nameAsSigned')}</label>
+              <input id="dir-signame" autoFocus value={signForm.name} onChange={e => setSignForm({ ...signForm, name: e.target.value })} placeholder={t('adminUsers.fieldFullName')} className={fieldCls} style={fieldStyle} />
             </div>
             {signForm.signedBy !== 'patient' && (
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="dir-rel" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Relationship to the patient</label>
-                <input id="dir-rel" value={signForm.relationship} onChange={e => setSignForm({ ...signForm, relationship: e.target.value })} placeholder="e.g. mother, legal guardian" className={fieldCls} style={fieldStyle} />
+                <label htmlFor="dir-rel" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('ui.relationshipToThePatient')}</label>
+                <input id="dir-rel" value={signForm.relationship} onChange={e => setSignForm({ ...signForm, relationship: e.target.value })} placeholder={t('ui.eGMotherLegalGuardian')} className={fieldCls} style={fieldStyle} />
               </div>
             )}
             <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              Witnessed by {author.recordedByName || 'the signed-in user'}. A signature cannot be edited afterwards —
-              a consent taken in error is revoked and taken again.
+              {t('ui.witnessedBy')} {author.recordedByName || 'the signed-in user'}{t('ui.aSignatureCannotBeEdited')}
             </p>
           </div>
         </FormSlider>
@@ -326,19 +325,18 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
       {revoking && (
         <Modal variant="slider" className="tamam-dialog" onClose={() => !busy && setRevoking(null)} width={560} labelledBy="revoke-dir-title">
           <DialogFrame busy={busy}>
-            <DialogHeader titleId="revoke-dir-title" title="Revoke directive" onClose={() => !busy && setRevoking(null)} />
+            <DialogHeader titleId="revoke-dir-title" title={t('ui.revokeDirective')} onClose={() => !busy && setRevoking(null)} />
             <DialogBody className="space-y-4">
             <p className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>
-              Revoke <strong>{typeLabel(revoking.type)}</strong>? The entry is kept with its reason — consent history
-              is never deleted.
+              {t('ui.revoke')} <strong>{typeLabel(revoking.type)}</strong>{t('ui.theEntryIsKeptWith')}
             </p>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="dir-reason" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Reason (required)</label>
+              <label htmlFor="dir-reason" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('ui.reasonRequired')}</label>
               <textarea rows={1} id="dir-reason" autoFocus value={revokeReason} onChange={e => setRevokeReason(e.target.value)} className={fieldCls} style={fieldStyle} />
             </div>
             </DialogBody>
             <DialogFooter>
-              <button className="btn btn-secondary" disabled={busy} onClick={() => setRevoking(null)}>Cancel</button>
+              <button className="btn btn-secondary" disabled={busy} onClick={() => setRevoking(null)}>{t('action.cancel')}</button>
               <button
                 className="btn btn-primary"
                 disabled={busy || !revokeReason.trim()}

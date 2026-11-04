@@ -102,15 +102,14 @@ export default function FacilityPolicySections({ panel }: { panel: FacilityPolic
           <span><Building2 /></span>
           <div style={{ minWidth: 0, flex: '1 1 auto' }}>
             <h3>{meta.title}</h3>
-            <small>Set per facility</small>
+            <small>{t('ui.setPerFacility')}</small>
           </div>
         </div>
         <div className="ehr-set-row">
           <div className="ehr-set-row-label">
-            <b>No facility on this account</b>
+            <b>{t('ui.noFacilityOnThisAccount')}</b>
             <span>
-              {meta.title} applies to one hospital at a time. Open Facility settings and choose
-              the facility you want to configure.
+              {meta.title} {t('ui.appliesToOneHospitalAt')}
             </span>
           </div>
         </div>
@@ -142,7 +141,7 @@ export default function FacilityPolicySections({ panel }: { panel: FacilityPolic
     }
   };
 
-  const unavailable = <span className="ehr-set-locked"><Lock /> Not available yet</span>;
+  const unavailable = <span className="ehr-set-locked"><Lock /> {t('ui.notAvailableYet')}</span>;
   const canSave = panel !== 'reporting';
 
   return (
@@ -166,15 +165,15 @@ export default function FacilityPolicySections({ panel }: { panel: FacilityPolic
 
       {panel === 'clinical' && (
         <>
-          <Row label="Triage scale" hint="Acuity colours across every queue at this facility">
+          <Row label={t('ui.triageScale')} hint={t('ui.acuityColoursAcrossEveryQueue')}>
             {unavailable}
           </Row>
-          <Row label="Diagnosis coding" hint="Required on every consultation">
+          <Row label={t('ui.diagnosisCoding')} hint={t('ui.requiredOnEveryConsultation')}>
             {unavailable}
           </Row>
-          <Row label="Target door-to-clinician" hint="Waits past this are highlighted in every queue">
+          <Row label={t('ui.targetDoorToClinician')} hint={t('ui.waitsPastThisAreHighlighted')}>
             <Choice
-              label="Target door-to-clinician"
+              label={t('ui.targetDoorToClinician')}
               value={String(draft.clinicalPolicy.doorToClinicianMinutes)}
               options={[
                 { value: '15', label: '15 min' },
@@ -184,19 +183,19 @@ export default function FacilityPolicySections({ panel }: { panel: FacilityPolic
               onChange={v => patch({ clinicalPolicy: { ...draft.clinicalPolicy, doorToClinicianMinutes: Number(v) } })}
             />
           </Row>
-          <Row label="Witness required for controlled substances" hint="A second staff member co-signs at prescribing and dispensing">
+          <Row label={t('ui.witnessRequiredForControlledSubstances')} hint={t('ui.aSecondStaffMemberCo')}>
             {unavailable}
           </Row>
-          <Row label="Allergy hard stop" hint="A documented allergy blocks the order instead of warning about it">
+          <Row label={t('ui.allergyHardStop')} hint={t('ui.aDocumentedAllergyBlocksThe')}>
             <Toggle
-              label="Allergy hard stop"
+              label={t('ui.allergyHardStop')}
               on={draft.clinicalPolicy.allergyHardStop}
               onChange={on => patch({ clinicalPolicy: { ...draft.clinicalPolicy, allergyHardStop: on } })}
             />
           </Row>
-          <Row label="On-site pharmacy" hint="Off for a facility with no dispensary: prescriptions are printed or texted to the patient for an outside pharmacy, and do not hold checkout">
+          <Row label={t('ui.onSitePharmacy')} hint={t('ui.offForAFacilityWith')}>
             <Toggle
-              label="On-site pharmacy"
+              label={t('ui.onSitePharmacy')}
               on={draft.clinicalPolicy.onSitePharmacy}
               onChange={on => patch({ clinicalPolicy: { ...draft.clinicalPolicy, onSitePharmacy: on } })}
             />
@@ -205,22 +204,22 @@ export default function FacilityPolicySections({ panel }: { panel: FacilityPolic
       )}
 
       {panel === 'reporting' && (
-        <Row label="Reporting automation" hint="Deadlines, completeness sign-off, automatic submission, and missed-deadline alerts">
+        <Row label={t('ui.reportingAutomation')} hint={t('ui.deadlinesCompletenessSignOffAutomatic')}>
           {unavailable}
         </Row>
       )}
 
       {panel === 'integrations' && (
         <>
-          <Row label="Integration switches" hint="DHIS2, payments, SMS, lab devices, and barcode printers">
+          <Row label={t('ui.integrationSwitches')} hint={t('ui.dhis2PaymentsSmsLabDevices')}>
             {unavailable}
           </Row>
-          <Row label="Offline mode policy" hint="Blocking offline operation requires a complete continuity and emergency-access design">
+          <Row label={t('ui.offlineModePolicy')} hint={t('ui.blockingOfflineOperationRequiresA')}>
             {unavailable}
           </Row>
-          <Row label="Sync failure alert" hint="Minutes without replication before IT is notified">
+          <Row label={t('ui.syncFailureAlert')} hint={t('ui.minutesWithoutReplicationBeforeIt')}>
             <Choice
-              label="Sync failure alert"
+              label={t('ui.syncFailureAlert')}
               value={String(draft.itOperations.syncFailureAlertMinutes)}
               options={[
                 { value: '15', label: 'After 15 min' },

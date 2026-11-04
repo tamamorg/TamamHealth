@@ -34,6 +34,7 @@ import { isoWeek } from '@/lib/format-utils';
 import { CHART_SERIES, CHART_SERIES_HEX, DISEASE_COLOR } from '@/lib/chart-colors';
 import { toIsoDate } from '@/lib/date-utils';
 import { ChartLoadingState } from '@/components/ChartCard';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 // recharts (~80-100KB) is deferred behind dynamic boundaries so it's fetched
 // only when a chart actually renders — same pattern as
@@ -182,6 +183,7 @@ const FACILITY_TYPE_META: Record<string, { label: string; color: string }> = {
 };
 
 export default function GovernmentNationalDashboard() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { currentUser } = useAuth();
   const { alerts } = useSurveillance();
@@ -402,7 +404,7 @@ export default function GovernmentNationalDashboard() {
             className="w-full flex items-center gap-2 px-3 py-1.5 text-start hover:bg-[var(--overlay-subtle)]"
             style={{ fontSize: 11, fontWeight: 700, color: selectedDiseases === null ? 'var(--accent-primary)' : 'var(--text-secondary)' }}
           >
-            <span className="flex-1">All diseases</span>
+            <span className="flex-1">{t('ui.allDiseases')}</span>
             {selectedDiseases === null && <Check className="w-3 h-3 flex-shrink-0" />}
           </button>
           {diseaseList.map(d => {
@@ -449,17 +451,17 @@ export default function GovernmentNationalDashboard() {
           </h1>
           {currentUser && (
             <p className="ehr-care-greeting-sub">
-              {getRoleConfig(currentUser.role).label} · National dashboard
+              {getRoleConfig(currentUser.role).label} {t('ui.nationalDashboard')}
             </p>
           )}
-          <p>South Sudan · National · {periodLabel} — computed live from facility-reported data</p>
+          <p>{t('ui.southSudanNational')} {periodLabel} {t('ui.computedLiveFromFacilityReported')}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button type="button" className="btn btn-secondary" onClick={() => router.push('/government/briefing')}>
-            <FileText className="w-4 h-4" /> Executive briefing
+            <FileText className="w-4 h-4" /> {t('ui.executiveBriefing')}
           </button>
           <button type="button" className="btn btn-primary btn-alerts" onClick={() => router.push('/government/alerts')}>
-            <Siren className="w-4 h-4" /> Priority alerts
+            <Siren className="w-4 h-4" /> {t('ui.priorityAlerts')}
           </button>
         </div>
       </div>
@@ -469,7 +471,7 @@ export default function GovernmentNationalDashboard() {
           the chart flexing to absorb the leftover height. ── */}
       <div className="gov-grid">
         <section className="gov-panel gov-span-4 gov-map-panel">
-          <PanelHead title="By state" meta="ranked · National" />
+          <PanelHead title={t('ui.byState')} meta="ranked · National" />
           <div className="gov-map-layers">
             {MAP_LAYERS.map(l => (
               <button
@@ -571,23 +573,23 @@ export default function GovernmentNationalDashboard() {
                           <span className="text-[10px] tabular-nums">{maxValue.toLocaleString()}</span>
                         </div>
                       )}
-                      <p className="gov-legend-foot">Neutral states have no data on file.</p>
+                      <p className="gov-legend-foot">{t('ui.neutralStatesHaveNoData')}</p>
                     </div>
 
                     {selected && selectedState ? (
                       <div className="gov-map-selected">
                         <b>{selectedState}</b>
                         <span>{selected.facilities} facilities</span>
-                        <span style={{ color: selected.alertCases > 0 ? RED : 'inherit' }}>{selected.alertCases.toLocaleString()} alert cases</span>
-                        <span>{selected.immRecords.toLocaleString()} immunization records</span>
+                        <span style={{ color: selected.alertCases > 0 ? RED : 'inherit' }}>{selected.alertCases.toLocaleString()} {t('ui.alertCases')}</span>
+                        <span>{selected.immRecords.toLocaleString()} {t('ui.immunizationRecords')}</span>
                         <span>{selected.completenessN > 0 ? `${Math.round(selected.completenessSum / selected.completenessN)}% reporting completeness` : 'No assessment on file'}</span>
                         <button type="button" className="gov-open-link" onClick={() => router.push('/manage')}>
-                          Open facilities <ChevronRight className="w-3 h-3 inline" />
+                          {t('ui.openFacilities')} <ChevronRight className="w-3 h-3 inline" />
                         </button>
                       </div>
                     ) : (
                       <div className="gov-map-hint">
-                        Select a state on the map to see its facilities, alert cases, immunization records, and reporting completeness here.
+                        {t('ui.selectAStateOnThe')}
                       </div>
                     )}
                   </div>
@@ -599,9 +601,9 @@ export default function GovernmentNationalDashboard() {
 
         {/* Facility-type mix — the design's 104px donut with a count legend. */}
         <section className="gov-panel gov-span-2">
-          <PanelHead title="Facility types" meta={`${hospitals.length.toLocaleString()} registered`} />
+          <PanelHead title={t('ui.facilityTypes')} meta={`${hospitals.length.toLocaleString()} registered`} />
           {facilityMix.length === 0 ? (
-            <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>No facilities on file.</p>
+            <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>{t('ui.noFacilitiesOnFile')}</p>
           ) : (
             <div className="gov-donut-body">
               <div className="gov-donut-ring">
@@ -625,10 +627,10 @@ export default function GovernmentNationalDashboard() {
         {/* Weekly reported cases — the design's paired-bar panel; series stay
             per-disease with the entity-stable palette and the selector. */}
         <section className="gov-panel gov-span-2 gov-fill-panel">
-          <PanelHead title="Weekly reported cases" meta="Last 12 weeks · National" action={diseaseSelector} />
+          <PanelHead title={t('ui.weeklyReportedCases')} meta="Last 12 weeks · National" action={diseaseSelector} />
           <div className="gov-chart-body gov-chart-fill" style={{ height: 208 }}>
             {weeklyByDisease.length === 0 || diseaseList.length === 0 ? (
-              <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>No surveillance reports on file.</p>
+              <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>{t('ui.noSurveillanceReportsOnFile')}</p>
             ) : (
               <WeeklyCasesChart data={weeklyByDisease} diseases={shownDiseases} colorMap={diseaseColorMap} />
             )}

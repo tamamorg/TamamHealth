@@ -144,7 +144,7 @@ export default function ChartVitalsBand({
     return (
       <div className="tamam-vitals-band" aria-busy="true">
         <div className="tamam-vitals-head">
-          <span className="tamam-vitals-title">Vitals and biometrics</span>
+          <span className="tamam-vitals-title">{t('featureCatalog.capability.patient-vitals')}</span>
           <span className="tamam-vitals-timestamp" role="status">{t('chart.vitalsLoading')}</span>
         </div>
         <div className="tamam-vitals-grid">
@@ -162,16 +162,16 @@ export default function ChartVitalsBand({
   return (
     <div className="tamam-vitals-band">
       <div className="tamam-vitals-head">
-        <span className="tamam-vitals-title">Vitals and biometrics</span>
+        <span className="tamam-vitals-title">{t('featureCatalog.capability.patient-vitals')}</span>
         {latestRecordDate && <span className="tamam-vitals-timestamp">{formatDateTime(latestRecordDate)}</span>}
-        {isStale && <span className="tamam-vitals-fresh-pill">These vitals are {freshnessLabel}</span>}
+        {isStale && <span className="tamam-vitals-fresh-pill">{t('ui.theseVitalsAre')} {freshnessLabel}</span>}
         {topLevel && (
           <span className="tamam-vitals-alert" data-level={topLevel} role="status" title={alertReasons}>
             <AlertTriangle aria-hidden /> {alertText}
             {flagged.length > 0 && <b>{flagged.length}</b>}
           </span>
         )}
-        <button type="button" className="tamam-vitals-link" onClick={onViewVitalsHistory}><History aria-hidden /> Vitals history</button>
+        <button type="button" className="tamam-vitals-link" onClick={onViewVitalsHistory}><History aria-hidden /> {t('ui.vitalsHistory')}</button>
         <span className="tamam-vitals-spacer" />
         {/* The arrow used to double as the permission cue; the button now says
             so directly by being disabled when vitals cannot be recorded. */}
@@ -182,7 +182,7 @@ export default function ChartVitalsBand({
           disabled={!canRecordVitals}
           title={canRecordVitals ? undefined : 'Requires vitals-recording permission'}
         >
-          <ArrowRight aria-hidden /> Record vitals
+          <ArrowRight aria-hidden /> {t('createPage.vitalsTitle')}
         </button>
       </div>
       <div className="tamam-vitals-grid">

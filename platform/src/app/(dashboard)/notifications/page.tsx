@@ -19,6 +19,7 @@ import { Bell, BellOff, Check, ChevronRight, RefreshCw } from '@/components/icon
 
 import { NOTIFICATION_META, NOTIFICATION_TYPE_ORDER, SEVERITY_META, getNotificationAlertPref, notificationBucket, relativeNotificationTime, setNotificationAlertPref, useNotifications } from '@/modules/communication/client';
 import type { NotificationItem, NotificationSeverity, NotificationType } from '@/modules/communication/client';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /** Rows rendered before "Show more" — long feeds stay responsive. */
 const PAGE_SIZE = 60;
@@ -36,6 +37,7 @@ const BUCKET_LABELS: Record<ReturnType<typeof notificationBucket>, string> = {
 };
 
 function NotificationsPageInner() {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useSearchParams();
   const { items, count, unreadCount, loading, reload, markRead, markAllRead } = useNotifications();
@@ -109,7 +111,7 @@ function NotificationsPageInner() {
     <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
         <EhrListHeader
-          title="Notifications"
+          title={t('common.notifications')}
           count={count}
           stats={[
             { label: 'Unread', value: unreadCount, color: LIST_STAT_COLORS.blue },
@@ -137,7 +139,7 @@ function NotificationsPageInner() {
                   style={{ border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', color: 'var(--text-secondary)' }}
                 >
                   <Check className="w-4 h-4" style={{ stroke: 'currentColor' }} />
-                  Mark all read
+                  {t('ui.markAllRead')}
                 </button>
               )}
               <EhrListHeaderButton
@@ -158,7 +160,7 @@ function NotificationsPageInner() {
 
         <div style={{ overflowY: 'auto', flex: 1, minHeight: 0, padding: 16 }}>
           {loading ? (
-            <div className="p-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Loading notifications…</div>
+            <div className="p-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('ui.loadingNotifications')}</div>
           ) : filtered.length === 0 ? (
             <EmptyState
               icon={Bell}
@@ -213,7 +215,7 @@ function NotificationsPageInner() {
                               {!n.read && (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-bold" style={{ color: 'var(--accent-primary)' }}>
                                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--accent-primary)' }} />
-                                  New
+                                  {t('breadcrumb.new')}
                                 </span>
                               )}
                               <span className="text-[11px] ms-auto" style={{ color: 'var(--text-muted)' }}>{relativeNotificationTime(n.time)}</span>

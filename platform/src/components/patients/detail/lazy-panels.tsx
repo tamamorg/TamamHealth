@@ -1,5 +1,6 @@
 'use client';
 import dynamic from 'next/dynamic';
+import { localizeText } from '@/lib/i18n';
 export const ChartPanelLoading = () => (
   <div className="h-24 rounded-lg animate-pulse" style={{ background: 'var(--overlay-subtle)' }} aria-hidden="true" />
 );
@@ -7,7 +8,7 @@ export const ChartPanelLoading = () => (
 // out of the patient-record initial bundle.
 export const VitalsTrends = dynamic(() => import('@/components/VitalsTrends'), {
   ssr: false,
-  loading: () => <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Loading charts…</div>,
+  loading: () => <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{localizeText('Loading charts…')}</div>,
 });
 // The chart has more than twenty mutually-exclusive sections. Keep each large
 // workspace out of the facesheet bundle until its tab or action is opened.

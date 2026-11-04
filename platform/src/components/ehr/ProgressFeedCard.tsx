@@ -34,11 +34,13 @@ import {
   relativeTime,
   type ProgressEvent,
 } from '@/lib/clinical-flow/progress-feed';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /** How many rows before the card scrolls. Matches the overdue-labs card. */
 const VISIBLE_CAP = 25;
 
 export default function ProgressFeedCard() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { currentUser } = useAuth();
   const config = progressFeedFor(currentUser?.role);
@@ -76,7 +78,7 @@ export default function ProgressFeedCard() {
       {events.length === 0 && (
         // The feed's window is 12h (buildProgressFeed default) — say so, so a
         // quiet card reads as "nothing happened", not "nothing loaded".
-        <p className="ehr-progress-empty">No patient movement in the last 12 hours.</p>
+        <p className="ehr-progress-empty">{t('ui.noPatientMovementInThe')}</p>
       )}
       {events.length > 0 && (
       <ul className="ehr-progress-list is-scrollable">

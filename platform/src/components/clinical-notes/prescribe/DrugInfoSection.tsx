@@ -105,13 +105,13 @@ export default function DrugInfoSection({
     <>
       <div className="cn-rx-grid">
         <label className="cn-rx-field cn-rx-field--wide">
-          <span className="field-required">Drug Name</span>
+          <span className="field-required">{t('ui.drugName')}</span>
           <input
             className="cn-input"
             placeholder={advanced ? 'Name, class or ATC code…' : 'Search the formulary…'}
             value={draft.drug?.name ?? query}
             onChange={e => { onChange({ drug: null }); onQueryChange(e.target.value); }}
-            aria-label="Drug name"
+            aria-label={t('ui.drugName2')}
           />
           {!draft.drug && query.trim().length >= 3 && results.length === 0 && (
             <button type="button" className="cn-rx-offlist" onClick={() => { onChange({ drug: offFormularyDrug(query) }); onQueryChange(''); }}>
@@ -139,53 +139,53 @@ export default function DrugInfoSection({
         </label>
 
         <label className="cn-rx-field">
-          <span className="field-required">Quantity</span>
+          <span className="field-required">{t('pharmacy.quantity')}</span>
           <NumberInput
             className="cn-input" step="any"
             min={1}
             value={draft.quantity}
             onChange={e => onChange({ quantity: e.target.value })}
-            aria-label="Quantity"
+            aria-label={t('pharmacy.quantity')}
           />
           {draft.drug && (
             <span className="cn-rx-qtynote">
-              Total quantity: {draft.quantity || '0'}
+              {t('ui.totalQuantity')} {draft.quantity || '0'}
               {draft.drug.form ? ` × ${draft.drug.form.toLowerCase()}` : ''}
             </span>
           )}
         </label>
 
         <label className="cn-rx-field">
-          <span>Refill</span>
+          <span>{t('ui.refill')}</span>
           <Select
             className="cn-select"
             value={draft.refills}
             onChange={e => onChange({ refills: e.target.value })}
-            aria-label="Refills"
+            aria-label={t('ui.refills')}
           >
             {['0', '1', '2', '3', '4', '5', '6'].map(n => <option key={n} value={n}>{n}</option>)}
           </Select>
         </label>
 
         <label className="cn-rx-field">
-          <span>Days Supply</span>
+          <span>{t('ui.daysSupply')}</span>
           <NumberInput
             className="cn-input" step="1"
             min={0}
             value={draft.daysSupply}
             onChange={e => onChange({ daysSupply: e.target.value })}
-            aria-label="Days supply"
+            aria-label={t('ui.daysSupply2')}
           />
         </label>
 
         <label className="cn-rx-field">
-          <span>Effective On</span>
+          <span>{t('ui.effectiveOn')}</span>
           <input
             className="cn-input"
             type="date"
             value={draft.effectiveOn}
             onChange={e => onChange({ effectiveOn: e.target.value })}
-            aria-label="Effective on"
+            aria-label={t('ui.effectiveOn2')}
           />
         </label>
       </div>
@@ -209,29 +209,29 @@ export default function DrugInfoSection({
             checked={draft.allowSubstitution}
             onChange={e => onChange({ allowSubstitution: e.target.checked })}
           />
-          Allow Substitution
+          {t('ui.allowSubstitution')}
         </label>
       </div>
 
       <div className="cn-rx-grid">
         <label className="cn-rx-field cn-rx-field--wide">
-          <span>Service Location</span>
+          <span>{t('ui.serviceLocation2')}</span>
           <Select
             className="cn-select"
             value={draft.serviceLocation}
             onChange={e => onChange({ serviceLocation: e.target.value })}
-            aria-label="Service location"
+            aria-label={t('ui.serviceLocation')}
           >
             {serviceLocations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
           </Select>
         </label>
 
         <div className="cn-rx-field cn-rx-field--wide">
-          <span>Reason For Rx</span>
+          <span>{t('ui.reasonForRx')}</span>
           <div className="cn-rx-reason">
             {draft.reason
               ? <span className="cn-rx-reason-chip" title={draft.reason}>{draft.reason}</span>
-              : <span className="cn-rx-reason-empty">None recorded</span>}
+              : <span className="cn-rx-reason-empty">{t('storyboard.noneRecorded')}</span>}
             {/* "Change" once a reason is cited — "Add Reason" next to a reason
                 that is already there reads as a second one. */}
             <button
@@ -247,7 +247,7 @@ export default function DrugInfoSection({
             <div className="cn-inc-results cn-rx-results">
               {problems.length === 0 && (
                 <p className="cn-consent-note" style={{ padding: '8px 10px' }}>
-                  No active problems to cite — add one from the Assessment.
+                  {t('ui.noActiveProblemsToCite')}
                 </p>
               )}
               {problems.map(p => (
@@ -269,13 +269,13 @@ export default function DrugInfoSection({
       </div>
 
       <label className="cn-rx-field cn-rx-field--wide">
-        <span className="field-required">Patient Instructions</span>
+        <span className="field-required">{t('ui.patientInstructions')}</span>
         <textarea
           className="cn-textarea cn-rx-instructions"
           value={draft.instructions}
           onChange={e => onChange({ instructions: e.target.value })}
-          placeholder="e.g. One tablet twice daily after food, for 5 days"
-          aria-label="Patient instructions"
+          placeholder={t('ui.eGOneTabletTwice')}
+          aria-label={t('ward.followUpInstructions')}
         />
       </label>
 
@@ -285,7 +285,7 @@ export default function DrugInfoSection({
         onClick={onToggleSigs}
         aria-expanded={showSigs}
       >
-        Recommended Sigs {showSigs ? '▾' : '▸'}
+        {t('ui.recommendedSigs')} {showSigs ? '▾' : '▸'}
       </button>
       {showSigs && (
         <ul className="cn-rx-sigs">

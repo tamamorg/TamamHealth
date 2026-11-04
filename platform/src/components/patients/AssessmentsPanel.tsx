@@ -96,27 +96,27 @@ export default function AssessmentsPanel({ patient, focusId }: {
   }
 
   return (
-    <ChartSection title="Outcome measures" addLabel="New assessment" onAdd={() => { setAdding(true); setAnswers({}); }}>
+    <ChartSection title={t('ui.outcomeMeasures')} addLabel="New assessment" onAdd={() => { setAdding(true); setAnswers({}); }}>
       <table className="tamam-table tamam-table--fixed">
           <colgroup>
             <col /><col /><col /><col /><col /><col /><col />
           </colgroup>
           <thead>
             <tr>
-              <th>Instrument</th>
-              <th>Score</th>
-              <th>Answered</th>
-              <th>Entered by</th>
-              <th>Date</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th>{t('ui.instrument')}</th>
+              <th>{t('dashboard.tabScore')}</th>
+              <th>{t('ui.answered2')}</th>
+              <th>{t('ui.enteredBy')}</th>
+              <th>{t('billing.activityColumn.date')}</th>
+              <th>{t('billing.activityColumn.status')}</th>
+              <th>{t('adminBilling.colActions')}</th>
             </tr>
           </thead>
           <tbody>
             {assessments.length === 0 && (
               <tr>
                 <td colSpan={7} style={{ cursor: 'default', background: 'transparent' }}>
-                  <OmrsEmptyState itemLabel="assessments" actionLabel="New assessment" onAction={() => { setAdding(true); setAnswers({}); }} />
+                  <OmrsEmptyState itemLabel="assessments" actionLabel={t('ui.newAssessment')} onAction={() => { setAdding(true); setAnswers({}); }} />
                 </td>
               </tr>
             )}
@@ -138,7 +138,7 @@ export default function AssessmentsPanel({ patient, focusId }: {
                   <td>{a.answeredCount}/{a.questionCount}</td>
                   <td>
                     {a.enteredByName || '—'}
-                    {signed && a.signedByName && <div className="tamam-cell-sub">signed by {a.signedByName}</div>}
+                    {signed && a.signedByName && <div className="tamam-cell-sub">{t('ui.signedBy')} {a.signedByName}</div>}
                   </td>
                   <td>{formatDateTime(a.createdAt)}</td>
                   <td>

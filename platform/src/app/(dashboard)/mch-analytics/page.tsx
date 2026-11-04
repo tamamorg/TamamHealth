@@ -111,7 +111,7 @@ export default function MCHAnalyticsPage() {
               <div className="flex items-center gap-2.5">
                 <div className="listpage-header-icon"><HeartPulse size={20} /></div>
                 <div style={{ minWidth: 0 }}>
-                  <p className="listpage-eyebrow" style={{ margin: 0 }}>Maternal &amp; Child Health</p>
+                  <p className="listpage-eyebrow" style={{ margin: 0 }}>{t('ui.maternalChildHealth')}</p>
                   <h1 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>{t('mch.topbarTitle')}</h1>
                 </div>
               </div>

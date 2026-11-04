@@ -29,8 +29,10 @@ import { MessagingDock, MessagingDockProvider, PatientTextOutbox } from '@/modul
 import NavHistoryTracker from '@/components/navigation/NavHistoryTracker';
 import TableSortEnhancer from '@/components/table/TableSortEnhancer';
 import PageDraftKeeper from '@/components/unsaved/PageDraftKeeper';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const { isAuthenticated, currentUser, dbReady, logout, platformPolicy } = useAuth();
   // Audit rows written from this browser are filed under the signed-in user's
@@ -116,10 +118,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex items-center justify-center min-h-screen tamam-solid-bg">
         <div className="flex flex-col items-center gap-4 relative z-10">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/assets/logos/SVG/Tamam_Style_Guide-33.svg" alt="TamamHealth" className="w-14 h-14" />
+          <img src="/assets/logos/SVG/Tamam_Style_Guide-33.svg" alt={t('app.name')} className="w-14 h-14" />
           <div className="flex items-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--accent-primary)' }} />
-            <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Loading TamamHealth…</p>
+            <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>{t('ui.loadingTamamhealth')}</p>
           </div>
         </div>
       </div>
@@ -177,7 +179,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           onLogout={dismissPinSetup}
         />
       )}
-      <a href="#main-content" className="skip-link">Skip to main content</a>
+      <a href="#main-content" className="skip-link">{t('ui.skipToMainContent')}</a>
       {/* Stamps each page's history entry, so every Back control can return
           to the screen the user came from (lib/navigation/nav-history.ts). */}
       <Suspense fallback={null}><NavHistoryTracker /></Suspense>

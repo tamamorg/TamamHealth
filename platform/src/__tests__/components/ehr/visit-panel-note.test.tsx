@@ -49,11 +49,11 @@ it("shows today's signed clinical note as the visit note", async () => {
   const { container } = await render();
   expect(container.textContent).toContain('Fever and headache for three days');
   expect(container.textContent).toContain('Dr. James Wani Igga · Signed');
-  expect(container.textContent).not.toContain('Visit form has not been completed');
+  expect(container.textContent).not.toContain('ui.visitFormHasNotBeen');
 });
 
 it('still says the form is not done when there is no note today', async () => {
   notes = [{ _id: 'note-0', patientId: 'pat-1', serviceDate: '2020-01-01', status: 'signed', authorName: 'Dr. X', sections: [] }];
   const { container } = await render();
-  expect(container.textContent).toContain('Visit form has not been completed');
+  expect(container.textContent).toContain('ui.visitFormHasNotBeen');
 });

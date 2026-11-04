@@ -8,6 +8,7 @@ import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
 import { formatPrintedAt } from '@/lib/print-identity';
 import { useAuth } from '@/lib/context';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /** One column of a printable list. `key` indexes into each row record. */
 export interface PrintListColumn {
@@ -122,6 +123,7 @@ export default function PrintListDialog({ title, subtitle, sections, filename, o
   filename: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   // Preselect the sections that have rows — printing every empty lane by
   // default is noise, but any can be ticked back on.
@@ -178,7 +180,7 @@ export default function PrintListDialog({ title, subtitle, sections, filename, o
         <DialogBody>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div>
-          <p style={groupHead}>What to print</p>
+          <p style={groupHead}>{t('ui.whatToPrint')}</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {sections.map(section => (
               <label key={section.key} style={choiceLabel}>
@@ -198,7 +200,7 @@ export default function PrintListDialog({ title, subtitle, sections, filename, o
         </div>
 
         <div>
-          <p style={groupHead}>Format</p>
+          <p style={groupHead}>{t('ui.format')}</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <label style={choiceLabel}>
               <input
@@ -209,9 +211,9 @@ export default function PrintListDialog({ title, subtitle, sections, filename, o
                 style={{ marginTop: 2 }}
               />
               <span style={{ flex: 1 }}>
-                <strong style={{ display: 'block', fontWeight: 600 }}>Print</strong>
+                <strong style={{ display: 'block', fontWeight: 600 }}>{t('noteViewer.print')}</strong>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  Plain list to paper — or choose &ldquo;Save as PDF&rdquo; in the print dialog to download it.
+                  {t('ui.plainListToPaperOr')}
                 </span>
               </span>
               <Printer className="w-4 h-4" style={{ marginTop: 2, color: 'var(--text-muted)' }} />
@@ -225,9 +227,9 @@ export default function PrintListDialog({ title, subtitle, sections, filename, o
                 style={{ marginTop: 2 }}
               />
               <span style={{ flex: 1 }}>
-                <strong style={{ display: 'block', fontWeight: 600 }}>Download CSV</strong>
+                <strong style={{ display: 'block', fontWeight: 600 }}>{t('reports.downloadCsv')}</strong>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  Spreadsheet file for Excel or Google Sheets.
+                  {t('ui.spreadsheetFileForExcelOr')}
                 </span>
               </span>
               <Download className="w-4 h-4" style={{ marginTop: 2, color: 'var(--text-muted)' }} />
@@ -238,7 +240,7 @@ export default function PrintListDialog({ title, subtitle, sections, filename, o
         </div>
         </DialogBody>
         <DialogFooter>
-          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>{t('action.cancel')}</button>
           <button type="button" className="btn btn-primary" onClick={run} disabled={chosen.length === 0}>
             {format === 'print' ? 'Print' : 'Download CSV'}
           </button>

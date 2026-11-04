@@ -113,7 +113,7 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
       <header className="lg-topbar">
         <a href="https://tamamhealth.org" className="lg-topbar-link">
           {/* eslint-disable-next-line @next/next/no-img-element -- fixed-height SVG logo */}
-          <img src="/assets/tamamhealth-logo-full.svg" alt="Tamam Healthcare System" className="lg-topbar-logo" />
+          <img src="/assets/tamamhealth-logo-full.svg" alt={t('ui.tamamHealthcareSystem')} className="lg-topbar-logo" />
         </a>
       </header>
 
@@ -123,7 +123,7 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
           {otpChallenge ? (
             <>
               <div>
-                <h1 className="lg-h1">Enter your verification code</h1>
+                <h1 className="lg-h1">{t('ui.enterYourVerificationCode')}</h1>
                 <p className="lg-lede">
                   {otpChallenge.maskedPhone
                     ? `We sent a 6-digit code to ${otpChallenge.maskedPhone}. It expires in 5 minutes.`
@@ -133,7 +133,7 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
 
               <form onSubmit={handleVerifyOtp} className="lg-form">
                 <div className="lg-field">
-                  <label htmlFor="pp-otp">Verification code</label>
+                  <label htmlFor="pp-otp">{t('ui.verificationCode')}</label>
                   <input
                     id="pp-otp"
                     type="text"
@@ -162,7 +162,7 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
                   className="lg-btn-quiet"
                   onClick={() => { setOtpChallenge(null); setOtpCode(''); setError(''); }}
                 >
-                  Back to sign in
+                  {t('forgotPassword.backToSignIn')}
                 </button>
               </form>
             </>
@@ -216,7 +216,7 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
 
                 {IS_DEMO && (
                   <p className="lg-hint">
-                    Demo account — signs in as <strong>patient.mary</strong> / <strong>patient1234</strong>, seeded data, no real patient.
+                    {t('ui.demoAccountSignsInAs')} <strong>patient.mary</strong> / <strong>patient1234</strong>{t('ui.seededDataNoRealPatient')}
                   </p>
                 )}
 
@@ -236,14 +236,12 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
                 arrives at the sign-in page first should not have to retype a
                 URL to find the one page that can help them. */}
             <a href="/patient-portal/activate">{t('patientPortal.haveActivationCode')}</a>
-            <a href="/login">Staff login</a>
-            <a href={`mailto:support.tamam@gmail.com?subject=${encodeURIComponent('Trouble signing in to the patient portal')}`}>Trouble signing in?</a>
+            <a href="/login">{t('ui.staffLogin')}</a>
+            <a href={`mailto:support.tamam@gmail.com?subject=${encodeURIComponent('Trouble signing in to the patient portal')}`}>{t('ui.troubleSigningIn')}</a>
           </div>
 
           <span className="lg-note">
-            Your record is private to you. The portal shows what your care team has written at the facility that
-            treated you — if something there looks wrong, tell that facility rather than replying to any message
-            asking for your password.
+            {t('ui.yourRecordIsPrivateTo')}
           </span>
         </div>
 
@@ -252,29 +250,28 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
               the person signing in is about to see the interface anyway. ── */}
         <aside className="lg-aside blueprint">
           <Corners />
-          <span className="lg-eyebrow">Tamam patient portal</span>
-          <h2 className="lg-h2">Your health record, in your hands</h2>
+          <span className="lg-eyebrow">{t('pactivate.asideEyebrow')}</span>
+          <h2 className="lg-h2">{t('pactivate.asideTitle')}</h2>
           <p className="lg-aside-copy">
-            Every visit, lab result and prescription your care team records lands in one record — the same one
-            they read from, wherever in the health system you are seen.
+            {t('pactivate.asideBody')}
           </p>
           <ul className="lg-points">
-            <li>Book and track your visits</li>
-            <li>See lab results and prescriptions as they&rsquo;re ready</li>
-            <li>Private to you, shared only with your care team</li>
+            <li>{t('pactivate.asidePoint1')}</li>
+            <li>{t('pactivate.asidePoint2')}</li>
+            <li>{t('pactivate.asidePoint3')}</li>
           </ul>
           <div className="lg-shot lg-shot--portrait blueprint">
             <Corners />
             {/* eslint-disable-next-line @next/next/no-img-element -- photograph, cropped by CSS */}
-            <img src="/assets/clinician-with-tablet.jpg" alt="A clinician reading a patient's record on a tablet" />
+            <img src="/assets/clinician-with-tablet.jpg" alt={t('ui.aClinicianReadingAPatient')} />
           </div>
         </aside>
       </div>
 
       <footer className="lg-footer">
-        <a href="/terms">Terms &amp; Conditions</a>
-        <a href="/privacy">Privacy Policy</a>
-        <a href="https://tamamhealth.org">Back to tamamhealth.org</a>
+        <a href="/terms">{t('login.termsAndConditions')}</a>
+        <a href="/privacy">{t('login.privacyPolicy')}</a>
+        <a href="https://tamamhealth.org">{t('login.backToSite')}</a>
       </footer>
 
     </div>

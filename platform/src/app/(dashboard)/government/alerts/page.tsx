@@ -8,6 +8,7 @@ import {
   ArrowUpRight, Search, TrendingUp, TrendingDown, Minus,
 } from '@/components/icons/lucide';
 import type { DiseaseAlertDoc } from '@/lib/db-types';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 // ── Shared "flat clinical" section chrome (matches the HR / patients pages) ──
 const SECTION_TITLE_STYLE: React.CSSProperties = {
@@ -60,6 +61,7 @@ function TrendIcon({ trend }: { trend: string }) {
 }
 
 export default function PriorityAlertsPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { alerts, loading } = useSurveillance();
   const [search, setSearch] = useState('');
@@ -110,10 +112,10 @@ export default function PriorityAlertsPage() {
           <div className="flex items-end justify-between gap-3 mb-1 flex-wrap">
             <div>
               <span style={SECTION_TITLE_STYLE}>
-                Priority alerts
+                {t('ui.priorityAlerts')}
                 <span className="tabular-nums" style={{ color: 'var(--text-muted)', fontWeight: 600 }}> ({counts.total})</span>
               </span>
-              <p className="text-[12px] mt-0.5" style={{ color: 'var(--text-muted)' }}>All active alerts · National</p>
+              <p className="text-[12px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('ui.allActiveAlertsNational')}</p>
             </div>
             <StatDots stats={[
               { label: 'Emergency', value: counts.emergency, color: LEVEL_COLORS.emergency },
@@ -127,34 +129,34 @@ export default function PriorityAlertsPage() {
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search by disease, state, or county…"
+              placeholder={t('ui.searchByDiseaseStateOr')}
               style={{ width: '100%', padding: '9px 14px 9px 34px', height: 38, borderRadius: 999, border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', fontSize: 13, color: 'var(--text-primary)', outline: 'none' }}
             />
           </div>
         </div>
 
         {loading ? (
-          <div className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>Loading surveillance alerts…</div>
+          <div className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('ui.loadingSurveillanceAlerts')}</div>
         ) : (
           <div className="show-scrollbar" style={{ overflowX: 'auto' }}>
             <table className="w-full" style={{ minWidth: 840 }}>
               <thead>
                 <tr>
-                  <Th>Disease</Th>
-                  <Th>Location</Th>
-                  <Th right>Cases</Th>
-                  <Th right>Deaths</Th>
-                  <Th>Level</Th>
-                  <Th>Trend</Th>
-                  <Th>Reported</Th>
+                  <Th>{t('epidemic.colDisease')}</Th>
+                  <Th>{t('deaths.location')}</Th>
+                  <Th right>{t('epidemic.colCases')}</Th>
+                  <Th right>{t('admin.dbDeaths')}</Th>
+                  <Th>{t('ui.level')}</Th>
+                  <Th>{t('epidemic.colTrend')}</Th>
+                  <Th>{t('issues.colReported')}</Th>
                   <Th />
                 </tr>
               </thead>
               <tbody>
                 {activeAlerts.length === 0 ? (
-                  <tr><td colSpan={8} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No active disease alerts on file. All reporting facilities are at normal alert level.</td></tr>
+                  <tr><td colSpan={8} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('ui.noActiveDiseaseAlertsOn')}</td></tr>
                 ) : filtered.length === 0 ? (
-                  <tr><td colSpan={8} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No alerts match &ldquo;{search}&rdquo;.</td></tr>
+                  <tr><td colSpan={8} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('ui.noAlertsMatch')}{search}&rdquo;.</td></tr>
                 ) : filtered.map((a: DiseaseAlertDoc) => (
                   <tr key={a._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                     <td className="px-4 py-2.5 text-[14px]" style={{ color: 'var(--ehr-text, var(--text-primary))', fontWeight: 800 }}>{a.disease}</td>
@@ -174,7 +176,7 @@ export default function PriorityAlertsPage() {
                         className="inline-flex items-center gap-1 text-[12px] font-semibold whitespace-nowrap"
                         style={{ color: 'var(--accent-primary)' }}
                       >
-                        Open in surveillance <ArrowUpRight className="w-3 h-3" />
+                        {t('ui.openInSurveillance')} <ArrowUpRight className="w-3 h-3" />
                       </button>
                     </td>
                   </tr>
@@ -188,18 +190,18 @@ export default function PriorityAlertsPage() {
       {/* Response guidance — top counties by active case load */}
       <div className="dash-card mt-3">
         <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-          <span style={{ fontFamily: 'var(--font-condensed)', fontSize: 13, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-primary)' }}>Response guidance</span>
+          <span style={{ fontFamily: 'var(--font-condensed)', fontSize: 13, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-primary)' }}>{t('ui.responseGuidance')}</span>
         </div>
         <div className="px-4 py-3">
           {topCounties.length === 0 ? (
-            <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>No active alerts to prioritize.</p>
+            <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>{t('ui.noActiveAlertsToPrioritize')}</p>
           ) : (
             <ul className="space-y-1.5">
               {topCounties.map((c, i) => (
                 <li key={`${c.county}-${c.state}`} className="flex items-center gap-2 text-[13px]" style={{ color: 'var(--text-secondary)' }}>
                   <span className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)' }}>{i + 1}</span>
                   <span style={{ fontWeight: 700, color: 'var(--ehr-text, var(--text-primary))' }}>{c.county}, {c.state}</span>
-                  <span style={{ color: 'var(--text-muted)' }}>— {c.cases.toLocaleString()} active cases across {c.alerts} alert{c.alerts === 1 ? '' : 's'}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>— {c.cases.toLocaleString()} {t('ui.activeCasesAcross')} {c.alerts} alert{c.alerts === 1 ? '' : 's'}</span>
                 </li>
               ))}
             </ul>

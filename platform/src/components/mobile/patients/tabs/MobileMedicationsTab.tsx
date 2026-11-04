@@ -5,8 +5,10 @@ import { formatRxSig, humanizeStatus } from '@/lib/format-utils';
 import Badge, { toneForStatus } from '@/components/Badge';
 import EmptyState from '@/components/EmptyState';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export default function MobileMedicationsTab({ patientId }: { patientId: string }) {
+  const { t } = useTranslation();
   const { prescriptions, loading } = usePrescriptions();
 
   if (loading) {
@@ -19,7 +21,7 @@ export default function MobileMedicationsTab({ patientId }: { patientId: string 
 
   const mine = prescriptions.filter((rx) => rx.patientId === patientId);
   if (mine.length === 0) {
-    return <EmptyState title="No medications" message="Prescriptions for this patient will appear here." />;
+    return <EmptyState title={t('ui.noMedications')} message="Prescriptions for this patient will appear here." />;
   }
 
   return (

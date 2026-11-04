@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown } from '@/components/icons/lucide';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export interface AssignOption {
   _id: string;
@@ -41,6 +42,7 @@ const ROW_HEIGHT = 34;
 export default function AssignPicker({
   value, valueName, options, disabled, onAssign,
 }: AssignPickerProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -110,7 +112,7 @@ export default function AssignPicker({
         onClick={e => { e.stopPropagation(); void choose(null); }}
       >
         <span className="cn-type-tick" aria-hidden>{!value ? '✓' : ''}</span>
-        None
+        {t('births.optNone')}
       </button>
       {options.map(option => {
         const selected = option._id === value;
@@ -129,7 +131,7 @@ export default function AssignPicker({
         );
       })}
       {options.length === 0 && (
-        <p className="cn-assign-empty">No providers available to assign.</p>
+        <p className="cn-assign-empty">{t('ui.noProvidersAvailableToAssign')}</p>
       )}
     </div>,
     document.body,

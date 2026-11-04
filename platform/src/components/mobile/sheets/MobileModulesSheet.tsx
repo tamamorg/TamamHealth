@@ -36,7 +36,7 @@ export default function MobileModulesSheet({ open, onClose }: MobileModulesSheet
   const groups = useMemo(() => groupNavItemsBySection(navItems), [navItems]);
 
   return (
-    <MobileBottomSheet open={open} onClose={onClose} title="All modules" subtitle={roleConfig?.badgeLabel}>
+    <MobileBottomSheet open={open} onClose={onClose} title={t('ui.allModules')} subtitle={roleConfig?.badgeLabel}>
       {groups.map((group, i) => (
         <div key={`${group.section || 'main'}-${i}`} className="mobile-sheet-section">
           {group.section && <small className="mobile-sheet-section-label">{group.section}</small>}

@@ -1,5 +1,6 @@
 import { headers } from 'next/headers';
 import { longWhen } from '@/lib/booking/public-client';
+import T from '@/components/T';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,9 +51,9 @@ export default async function ConfirmPage({
       <div className="booking-page booking-confirm">
         <section className="booking-card">
           <div className="booking-card-body">
-            <h1 className="booking-h1" style={{ fontSize: 22 }}>We couldn&rsquo;t find that booking</h1>
+            <h1 className="booking-h1" style={{ fontSize: 22 }}><T k="ui.bookingNotFound" en="We couldn’t find that booking" /></h1>
             <p className="booking-hint">
-              Check the reference from your confirmation message, or call the practice.
+              <T k="ui.bookingNotFoundHint" en="Check the reference from your confirmation message, or call the practice." />
             </p>
           </div>
         </section>
@@ -66,14 +67,16 @@ export default async function ConfirmPage({
     <div className="booking-page booking-confirm">
       <section className="booking-card">
         <header className="booking-card-head">
-          {confirmed ? 'Appointment confirmed' : 'Appointment requested'}
+          {confirmed
+            ? <T k="ui.appointmentConfirmed" en="Appointment confirmed" />
+            : <T k="ui.appointmentRequested" en="Appointment requested" />}
         </header>
         <div className="booking-card-body">
-          {data.firstName && <p className="booking-hint" style={{ fontSize: 15 }}>Hello {data.firstName},</p>}
+          {data.firstName && <p className="booking-hint" style={{ fontSize: 15 }}><T k="ui.helloName" vars={{ name: data.firstName }} en="Hello {{name}}," /></p>}
           <p className="booking-hint" style={{ fontSize: 15 }}>
             {confirmed
-              ? 'Your appointment is booked. Please arrive a few minutes early.'
-              : 'Your request has been sent to the practice. They will confirm it shortly.'}
+              ? <T k="ui.bookingConfirmedArriveEarly" en="Your appointment is booked. Arrive a few minutes early." />
+              : <T k="ui.bookingRequestSent" en="Your request has been sent to the practice. They will confirm it shortly." />}
           </p>
           <div className="booking-reference">{data.reference}</div>
           <div className="booking-divider" />
@@ -86,7 +89,7 @@ export default async function ConfirmPage({
           </span>
           <div className="booking-divider" />
           <p className="booking-hint">
-            To change or cancel, call the practice and quote your reference.
+            <T k="ui.bookingChangeCall" en="To change or cancel, call the practice and quote your reference." />
           </p>
         </div>
       </section>

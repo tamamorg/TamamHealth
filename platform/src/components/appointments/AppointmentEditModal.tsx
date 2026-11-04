@@ -383,7 +383,7 @@ export default function AppointmentEditModal({
             </button>
           ))}
           {headerActions && (
-            <div {...stopsClickPropagation} className="appt-edit-header-actions" role="group" aria-label="Patient actions">
+            <div {...stopsClickPropagation} className="appt-edit-header-actions" role="group" aria-label={t('ui.patientActions')}>
               {headerActions}
             </div>
           )}
@@ -393,14 +393,14 @@ export default function AppointmentEditModal({
         {(!inline || hideInlineTabs || tab === 'appointment') && (
         <div className="appt-edit-col">
           {inline && inlineLocation}
-          {!inline && <h4 className="appt-edit-section">Location &amp; visit type</h4>}
+          {!inline && <h4 className="appt-edit-section">{t('ui.locationVisitType')}</h4>}
           <AppointmentDetailFields
             section="location"
             {...detailProps}
             locationSlot={(
               <>
               <div>
-                <label>Visit type</label>
+                <label>{t('ui.visitType')}</label>
                 <Select value={type} onChange={e => setType(e.target.value as AppointmentType)}>
                   {APPOINTMENT_TYPE_OPTIONS.map(option => <option key={option.value} value={option.value}>{t(option.labelKey)}</option>)}
                 </Select>
@@ -410,30 +410,30 @@ export default function AppointmentEditModal({
             )}
           />
 
-          {!inline && <h4 className="appt-edit-section">Date &amp; time</h4>}
+          {!inline && <h4 className="appt-edit-section">{t('ui.dateTime')}</h4>}
           <div className="appt-edit-row">
-            <div><label>Date</label><input type="date" value={date} disabled={!canReschedule} onChange={e => setDate(e.target.value)} /></div>
-            <div><label>Time</label><Select value={time} disabled={!canReschedule} onChange={e => setTime(e.target.value)}>{TIME_SLOTS.map(slot => <option key={slot} value={slot}>{slot}</option>)}</Select></div>
-            <div><label>Duration</label><Select value={duration} disabled={!canReschedule} onChange={e => setDuration(Number(e.target.value))}>{DURATIONS.map(d => <option key={d} value={d}>{d} min</option>)}</Select></div>
+            <div><label>{t('billing.activityColumn.date')}</label><input type="date" value={date} disabled={!canReschedule} onChange={e => setDate(e.target.value)} /></div>
+            <div><label>{t('noteEditor.time')}</label><Select value={time} disabled={!canReschedule} onChange={e => setTime(e.target.value)}>{TIME_SLOTS.map(slot => <option key={slot} value={slot}>{slot}</option>)}</Select></div>
+            <div><label>{t('appointments.labelDuration')}</label><Select value={duration} disabled={!canReschedule} onChange={e => setDuration(Number(e.target.value))}>{DURATIONS.map(d => <option key={d} value={d}>{d} min</option>)}</Select></div>
           </div>
           {!canReschedule && (
             <p className="appt-edit-hint" style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
               {t('appointments.rescheduleAtFrontDesk')}
             </p>
           )}
-          <div><label>Notes</label><textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} /></div>
+          <div><label>{t('postConsult.link.notes')}</label><textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} /></div>
         </div>
         )}
 
         {(!inline || hideInlineTabs || tab === 'care') && (
         <div className="appt-edit-col">
-          {!inline && <h4 className="appt-edit-section">Provider &amp; staff</h4>}
+          {!inline && <h4 className="appt-edit-section">{t('ui.providerStaff')}</h4>}
           {canAssignCareTeam ? (
             <>
               {/* A picker, not free text, with its own Assign so the change can
                   be committed without saving the whole form. */}
               <div>
-                <label>Provider</label>
+                <label>{t('appointments.labelProvider')}</label>
                 <span className="appt-assign-field">
                   <Select
                     value={providerId}
@@ -461,39 +461,39 @@ export default function AppointmentEditModal({
               <AppointmentDetailFields section="provider" {...detailProps} onAssignStaff={save} staffAssignDisabled={saving || (detail.staffId === (appointment.staffId || '') && !nurseDiverged)} />
             </>
           ) : (
-            <div className="appointment-billing-panel" aria-label="Assigned care team">
-              <div><dt>Provider</dt><dd>{appointment.providerName || 'Unassigned'}</dd></div>
-              <div><dt>Nurse</dt><dd>{appointment.staffName || 'Unassigned'}</dd></div>
+            <div className="appointment-billing-panel" aria-label={t('ui.assignedCareTeam')}>
+              <div><dt>{t('appointments.labelProvider')}</dt><dd>{appointment.providerName || 'Unassigned'}</dd></div>
+              <div><dt>{t('adminUsers.role_nurse')}</dt><dd>{appointment.staffName || 'Unassigned'}</dd></div>
             </div>
           )}
 
-          {!inline && <h4 className="appt-edit-section">Visit detail</h4>}
+          {!inline && <h4 className="appt-edit-section">{t('ui.visitDetail')}</h4>}
           <div>
-            <label>Department</label>
+            <label>{t('adminUsers.department')}</label>
             {/* Locked with the slot: a department change re-links departmentId,
                 which only reception may amend. */}
             <Select value={department} disabled={!canReschedule} onChange={e => setDepartment(e.target.value)}>
               {(departments.length ? departments : [department]).map(d => <option key={d} value={d}>{d}</option>)}
             </Select>
           </div>
-          <div><label>Reason</label><textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} /></div>
+          <div><label>{t('appointments.labelReason')}</label><textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} /></div>
         </div>
         )}
 
         {(!inline || hideInlineTabs || tab === 'billing') && (
         <div className="appt-edit-col">
-          {!inline && <h4 className="appt-edit-section">Status &amp; priority</h4>}
+          {!inline && <h4 className="appt-edit-section">{t('ui.statusPriority')}</h4>}
           {/* See `statusInRow`: in a worklist row the pill above is the status
               picker, so this field would be the second one on screen. */}
           {!statusInRow && (
-            <div><label>Status</label><AppointmentStatusSelect status={status} layout="bare" onChange={setStatus} /></div>
+            <div><label>{t('billing.activityColumn.status')}</label><AppointmentStatusSelect status={status} layout="bare" onChange={setStatus} /></div>
           )}
           <div>
-            <label>Priority</label>
+            <label>{t('appointments.labelPriority')}</label>
             <Select value={priority} onChange={e => setPriority(e.target.value as AppointmentPriority)}>
-              <option value="routine">Routine</option>
-              <option value="urgent">Urgent</option>
-              <option value="emergency">Emergency</option>
+              <option value="routine">{t('appointments.priorityRoutine')}</option>
+              <option value="urgent">{t('appointments.priorityUrgent')}</option>
+              <option value="emergency">{t('appointments.priorityEmergency')}</option>
             </Select>
           </div>
           <AppointmentDetailFields section="billing" {...detailProps} />
@@ -502,13 +502,13 @@ export default function AppointmentEditModal({
         )}
       </div>
       {inline && hideInlineTabs && headerActions && (
-        <div {...stopsClickPropagation} className="ehr-row-detail__actions appt-edit-inline-actions" role="group" aria-label="Patient actions">
+        <div {...stopsClickPropagation} className="ehr-row-detail__actions appt-edit-inline-actions" role="group" aria-label={t('ui.patientActions')}>
           {headerActions}
         </div>
       )}
       {inline && (dirty || checkingIn) && (
       <div className="appt-edit-actions">
-        <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
+        <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>{t('action.cancel')}</button>
         <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
           {saving ? 'Saving…' : checkingIn ? t('frontDesk.checkInTab') : `Save${status !== appointment.status ? ` · ${appointmentStatusLabel(status)}` : ''}`}
         </button>
@@ -522,7 +522,7 @@ export default function AppointmentEditModal({
   // field, with Cancel and Save always in view.
   return (
     <FormSlider
-      title="Edit appointment"
+      title={t('ui.editAppointment')}
       subtitle={`${appointment.appointmentDate} · ${appointment.appointmentTime}`}
       className="tamam-dialog"
       onClose={onClose}

@@ -25,6 +25,7 @@ import StaffAvatar from '@/components/staff/StaffAvatar';
 import type { Slot } from '@/lib/booking/slot-engine';
 import { addDays, datesBetween } from '@/lib/booking/slot-engine';
 import { to12Hour, dayParts } from './SlotPicker';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export interface GridProvider {
   providerId: string;
@@ -58,6 +59,7 @@ export default function WeekSlotGrid({
   maxPerCell?: number;
   minDate?: string;
 }) {
+  const { t } = useTranslation();
   const columns = useMemo(
     () => datesBetween(startDate, addDays(startDate, days - 1)),
     [startDate, days],
@@ -105,7 +107,7 @@ export default function WeekSlotGrid({
             direction="back"
             disabled={!canGoBack || loading}
             onClick={() => onStartDateChange(addDays(startDate, -days))}
-            label="Previous days"
+            label={t('ui.previousDays')}
           />
         </div>
         {columns.map((date, index) => {
@@ -127,7 +129,7 @@ export default function WeekSlotGrid({
                     direction="forward"
                     disabled={loading}
                     onClick={() => onStartDateChange(addDays(startDate, days))}
-                    label="Next days"
+                    label={t('ui.nextDays')}
                   />
                 </div>
               )}
@@ -140,12 +142,12 @@ export default function WeekSlotGrid({
       {loading ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '32px 0', color: 'var(--text-muted)' }}>
           <Loader2 className="w-4 h-4 animate-spin" />
-          <span style={{ fontSize: 13 }}>Checking availability…</span>
+          <span style={{ fontSize: 13 }}>{t('ui.checkingAvailability')}</span>
         </div>
       ) : rows.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '28px 8px' }}>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
-            No clinician has openings in these days.
+            {t('ui.noClinicianHasOpeningsIn')}
           </p>
           <button
             type="button"
@@ -153,7 +155,7 @@ export default function WeekSlotGrid({
             onClick={() => onStartDateChange(addDays(startDate, days))}
             style={{ marginTop: 10, width: 'auto', maxWidth: 'none', padding: '0 16px' }}
           >
-            Look at the next {days} days
+            {t('ui.lookAtTheNext')} {days} days
           </button>
         </div>
       ) : (

@@ -49,7 +49,7 @@ export default function PaymentHistoryTimeline({ patientId, limit = 20 }: Paymen
     <div className="bl-table-wrap">
       <table className="bl-table">
         <thead>
-          <tr><th>Entry</th><th>Date</th><th className="bl-right">Amount</th><th className="bl-right">Balance</th></tr>
+          <tr><th>{t('ui.entry')}</th><th>{t('billing.activityColumn.date')}</th><th className="bl-right">{t('billing.activityColumn.amount')}</th><th className="bl-right">{t('financialReview.due')}</th></tr>
         </thead>
         <tbody>
           {entries.length === 0 ? (

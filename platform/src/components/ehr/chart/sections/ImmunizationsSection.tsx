@@ -185,7 +185,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
 
   return (
     <>
-      <ChartSection title="Immunizations" addLabel="Add" onAdd={canRecord ? () => setAdding(true) : undefined} searchValue={search} onSearchChange={setSearch}>
+      <ChartSection title={t('admin.dbImmunizations')} addLabel="Add" onAdd={canRecord ? () => setAdding(true) : undefined} searchValue={search} onSearchChange={setSearch}>
         <div className="overflow-x-auto" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
             <table className="tamam-table tamam-table--fixed" style={{ minWidth: 840 }}>
               <colgroup>
@@ -196,7 +196,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
                   {['Vaccine', 'Dose', 'Date given', 'Next due', 'Site', 'Batch'].map(h => (
                     <th key={h}>{h}</th>
                   ))}
-                  <th>Status</th>
+                  <th>{t('billing.activityColumn.status')}</th>
                   <th>{t('chart.actions')}</th>
                 </tr>
               </thead>
@@ -206,7 +206,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
                     <td colSpan={8} style={{ cursor: 'default', background: 'transparent' }}>
                       <OmrsEmptyState
                         itemLabel="immunizations"
-                        actionLabel="Record immunizations"
+                        actionLabel={t('ui.recordImmunizations')}
                         onAction={canRecord ? () => setAdding(true) : undefined}
                         disabledReason={canRecord ? undefined : 'Requires vitals-recording permission'}
                       />
@@ -228,7 +228,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
                         {im.vaccine}
                         {im.adverseReaction && (
                           <div style={{ color: 'var(--color-danger-text)', fontSize: 12, fontWeight: 400 }}>
-                            Adverse reaction{im.adverseReactionDetails ? `: ${im.adverseReactionDetails}` : ''}
+                            {t('ui.adverseReaction')}{im.adverseReactionDetails ? `: ${im.adverseReactionDetails}` : ''}
                           </div>
                         )}
                       </td>
@@ -271,7 +271,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
           onClose={() => !submitting && resetForm()}
           busy={submitting}
           footer={<>
-              <button className="btn btn-secondary" disabled={submitting} onClick={resetForm}>Cancel</button>
+              <button className="btn btn-secondary" disabled={submitting} onClick={resetForm}>{t('action.cancel')}</button>
               <button className="btn btn-primary" disabled={submitting || !batchNumber.trim()} onClick={handleSubmit}>
                 {submitting ? 'Saving…' : editing ? t('chart.saveCorrection') : 'Save immunization'}
               </button>
@@ -280,13 +280,13 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="imm-vaccine" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Vaccine</label>
+                <label htmlFor="imm-vaccine" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('immun.colVaccine')}</label>
                 <Select id="imm-vaccine" value={vaccine} onChange={e => setVaccine(e.target.value)}>
                   {VACCINE_NAMES.map(v => <option key={v} value={v}>{v}</option>)}
                 </Select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="imm-dose" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Dose number</label>
+                <label htmlFor="imm-dose" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('ui.doseNumber')}</label>
                 <NumberInput
                   id="imm-dose" step="1"
                   min={1}
@@ -301,7 +301,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 {/* Capped at today: a dose cannot have been given in the future. */}
-                <label htmlFor="imm-given" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Date given</label>
+                <label htmlFor="imm-given" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('ui.dateGiven')}</label>
                 <input
                   id="imm-given"
                   type="date"
@@ -313,7 +313,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="imm-next" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Next dose due (optional)</label>
+                <label htmlFor="imm-next" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('ui.nextDoseDueOptional')}</label>
                 <input
                   id="imm-next"
                   type="date"
@@ -328,19 +328,19 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
 
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="imm-site" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Site</label>
+                <label htmlFor="imm-site" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('immun.site')}</label>
                 <Select id="imm-site" value={site} onChange={e => setSite(e.target.value as ImmunizationDoc['site'])}>
                   {SITES.map(s => <option key={s} value={s}>{s}</option>)}
                 </Select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="imm-batch" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Batch number</label>
+                <label htmlFor="imm-batch" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('ui.batchNumber')}</label>
                 <input
                   id="imm-batch"
                   type="text"
                   value={batchNumber}
                   onChange={e => setBatchNumber(e.target.value)}
-                  placeholder="e.g. BCG-2026-JTH-044"
+                  placeholder={t('ui.eGBcg2026Jth')}
                   className="w-full p-2.5 rounded-md text-[13px]"
                   style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
                 />
@@ -349,15 +349,15 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
 
             <label className="flex items-center gap-2 text-[12px]" style={{ color: 'var(--text-primary)' }}>
               <input type="checkbox" checked={adverseReaction} onChange={e => setAdverseReaction(e.target.checked)} />
-              Adverse reaction observed
+              {t('immun.adverseReactionObserved')}
             </label>
             {adverseReaction && (
               <textarea
                 rows={2}
                 value={adverseDetails}
                 onChange={e => setAdverseDetails(e.target.value)}
-                placeholder="Describe the reaction and what was done"
-                aria-label="Adverse reaction details"
+                placeholder={t('ui.describeTheReactionAndWhat')}
+                aria-label={t('ui.adverseReactionDetails')}
                 className="w-full p-2.5 rounded-md text-[13px]"
                 style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', resize: 'vertical' }}
               />

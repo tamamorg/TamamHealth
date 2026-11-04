@@ -73,20 +73,20 @@ export default function AvailabilityModal({ onClose, onCreated }: { onClose: () 
 
   return (
     <FormSlider
-      title="Add availability"
+      title={t('ui.addAvailability')}
       width={448}
       onClose={onClose}
       footer={<>
-          <button onClick={onClose} className="btn btn-secondary">Cancel</button>
+          <button onClick={onClose} className="btn btn-secondary">{t('action.cancel')}</button>
           <button onClick={handleSubmit} disabled={saving} className="btn btn-primary">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-            Publish availability
+            {t('ui.publishAvailability')}
           </button>
       </>}
     >
       <div className="space-y-4">
         <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
-          Publish a bookable window for <strong style={{ color: 'var(--text-primary)' }}>{currentUser?.name}</strong>
+          {t('ui.publishABookableWindowFor')} <strong style={{ color: 'var(--text-primary)' }}>{currentUser?.name}</strong>
           {currentUser?.hospitalName ? ` at ${currentUser.hospitalName}` : ''}.
         </p>
 
@@ -97,34 +97,34 @@ export default function AvailabilityModal({ onClose, onCreated }: { onClose: () 
         )}
 
         <div className="space-y-4">
-          <Field label="Date">
+          <Field label={t('billing.activityColumn.date')}>
             <input type="date" value={date} min={today} onChange={e => setDate(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={inputStyle} />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Start time">
+            <Field label={t('facilitySettings.departmentStartTime')}>
               <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={inputStyle} />
             </Field>
-            <Field label="End time">
+            <Field label={t('facilitySettings.departmentEndTime')}>
               <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm" style={inputStyle} />
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Slot length">
+            <Field label={t('ui.slotLength')}>
               <Select value={slotMinutes} onChange={e => setSlotMinutes(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg text-sm" style={inputStyle}>
                 {SLOT_OPTIONS.map(s => <option key={s} value={s}>{s} min</option>)}
               </Select>
             </Field>
           </div>
-          <Field label="Department (optional)">
-            <DepartmentInput type="text" value={department} onChange={e => setDepartment(e.target.value)} placeholder="e.g. OPD, Pediatrics" className="w-full px-3 py-2 rounded-lg text-sm" style={inputStyle} />
+          <Field label={t('ui.departmentOptional')}>
+            <DepartmentInput type="text" value={department} onChange={e => setDepartment(e.target.value)} placeholder={t('ui.eGOpdPediatrics')} className="w-full px-3 py-2 rounded-lg text-sm" style={inputStyle} />
           </Field>
-          <Field label="Notes (optional)">
+          <Field label={t('nurse.notesOptional')}>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="w-full px-3 py-2 rounded-lg text-sm" style={inputStyle} />
           </Field>
         </div>
 
         <div className="flex items-center gap-2 mt-4 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-          <Clock className="w-3 h-3" /> Patients and front-desk can book appointments into this window.
+          <Clock className="w-3 h-3" /> {t('ui.patientsAndFrontDeskCan')}
         </div>
       </div>
     </FormSlider>

@@ -269,7 +269,7 @@ export default function MedicationsSection({
   return (
     <>
     <ChartSection
-      title="Medications"
+      title={t('noteEditor.section.medications')}
       addLabel="Add"
       onAdd={handleAdd}
       searchValue={tableSearch}
@@ -298,15 +298,15 @@ export default function MedicationsSection({
           and the patient takes nothing". */}
       {(reconciliation || (patientRx.length === 0 && noKnownMedications)) && (
         <p className="tamam-attestation">
-          {patientRx.length === 0 && noKnownMedications && <strong>No known medications. </strong>}
+          {patientRx.length === 0 && noKnownMedications && <strong>{t('ui.noKnownMedications2')} </strong>}
           {reconciliation && (
-            <>Medication reconciliation: {reconciliation}{reconciledAt ? ` · ${formatDate(reconciledAt)}` : ''}.</>
+            <>{t('ui.medicationReconciliation2')} {reconciliation}{reconciledAt ? ` · ${formatDate(reconciledAt)}` : ''}.</>
           )}
         </p>
       )}
 
       {patientRx.length === 0 && reportedMeds.length === 0 && !noKnownMedications ? (
-        <OmrsEmptyState itemLabel="medications" actionLabel="Record medications" onAction={handleAdd} disabledReason={handleAdd ? undefined : 'Requires clinical permission'} />
+        <OmrsEmptyState itemLabel="medications" actionLabel={t('ui.recordMedications')} onAction={handleAdd} disabledReason={handleAdd ? undefined : 'Requires clinical permission'} />
       ) : patientRx.length === 0 ? null : (
         <table data-sort="data" className="tamam-table tamam-table--interactive tamam-table--medications">
           <colgroup>
@@ -314,10 +314,10 @@ export default function MedicationsSection({
           </colgroup>
           <thead>
             <tr>
-              <th {...columnSort.headerProps(0, rx => rx.medication)}>Medication</th>
-              <th {...columnSort.headerProps(1, rx => formatRxSig(rx))}>Dosage instructions</th>
-              <th {...columnSort.headerProps(2, rx => rx.createdAt || '')}>Start date</th>
-              <th {...columnSort.headerProps(3, rx => rxStatusLabel(rx, t))}>Status</th>
+              <th {...columnSort.headerProps(0, rx => rx.medication)}>{t('hospitals.colMedication')}</th>
+              <th {...columnSort.headerProps(1, rx => formatRxSig(rx))}>{t('ui.dosageInstructions')}</th>
+              <th {...columnSort.headerProps(2, rx => rx.createdAt || '')}>{t('ui.startDate2')}</th>
+              <th {...columnSort.headerProps(3, rx => rxStatusLabel(rx, t))}>{t('billing.activityColumn.status')}</th>
               <th>{t('chart.actions')}</th>
             </tr>
           </thead>

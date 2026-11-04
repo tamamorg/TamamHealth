@@ -172,7 +172,7 @@ export function TriagePriorityResult({ f }: { f: TriageFormState }) {
                     rows={2}
                     value={manualUpgradeReason}
                     onChange={event => setManualUpgradeReason(event.target.value)}
-                    placeholder="What did you observe that the ABCC and danger-sign screen above didn't capture?"
+                    placeholder={t('ui.whatDidYouObserveThat')}
                     className="w-full px-2 py-1.5 rounded-lg text-xs mt-1"
                     style={{ background: 'var(--bg-card)', border: '1px solid var(--color-danger)', color: 'var(--text-primary)' }}
                     required

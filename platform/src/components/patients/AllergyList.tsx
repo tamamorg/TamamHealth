@@ -87,10 +87,10 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
       {/* Section header */}
       <div style={{ background: 'var(--overlay-subtle)', borderBottom: '1px solid var(--border-light)', padding: '0 20px', height: 36, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <AlertTriangle className="w-3 h-3" style={{ color: 'var(--color-danger)' }} /> Allergies
+          <AlertTriangle className="w-3 h-3" style={{ color: 'var(--color-danger)' }} /> {t('noteEditor.section.allergies')}
         </p>
         {!hideAddButton && (
-          <button className="p-1 rounded transition-colors hover:bg-blue-50" disabled={busy} title="Add allergy" onClick={() => { setAdding(true); setError(null); }} style={{ color: 'var(--accent-primary)' }}>
+          <button className="p-1 rounded transition-colors hover:bg-blue-50" disabled={busy} title={t('createPage.allergyTitle')} onClick={() => { setAdding(true); setError(null); }} style={{ color: 'var(--accent-primary)' }}>
             <Plus className="w-3.5 h-3.5" />
           </button>
         )}
@@ -99,7 +99,7 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
       {/* Scrollable list */}
       <div className="flex-1 overflow-y-auto px-5 py-3 scrollbar-none">
         {active.length === 0 && (
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No known allergies recorded.</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('ui.noKnownAllergiesRecorded')}</p>
         )}
         <ul>
           {active.map((a) => {
@@ -113,10 +113,10 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
                 <span className="flex-1" />
                 {a.recordedAt && (
                   <div className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-1 rounded transition-colors hover:bg-blue-50" disabled={busy} title="Edit" onClick={() => openEdit(a)} style={{ color: 'var(--color-primary)' }}>
+                    <button className="p-1 rounded transition-colors hover:bg-blue-50" disabled={busy} title={t('action.edit')} onClick={() => openEdit(a)} style={{ color: 'var(--color-primary)' }}>
                       <Edit3 className="w-3 h-3" />
                     </button>
-                    <button className="p-1 rounded transition-colors hover:bg-red-50" disabled={busy} title="Remove" onClick={() => openRemove(a)} style={{ color: 'var(--color-danger-text)' }}>
+                    <button className="p-1 rounded transition-colors hover:bg-red-50" disabled={busy} title={t('action.remove')} onClick={() => openRemove(a)} style={{ color: 'var(--color-danger-text)' }}>
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
@@ -142,31 +142,31 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
       {/* Edit modal */}
       {editingEntry && (
         <FormSlider
-          title="Edit Allergy"
+          title={t('ui.editAllergy')}
           width={480}
           onClose={() => setEditingEntry(null)}
           footer={<>
-              <button className="btn btn-secondary" disabled={busy} onClick={() => setEditingEntry(null)}>Cancel</button>
-              <button className="btn btn-primary" disabled={busy || editForm.substance.trim().length === 0} onClick={() => run(async () => { const svc = await import('@/lib/services/allergy-service'); await svc.updateAllergy(patient._id, needScope(), editingEntry.id, editForm); }, () => setEditingEntry(null))}>Save changes</button>
+              <button className="btn btn-secondary" disabled={busy} onClick={() => setEditingEntry(null)}>{t('action.cancel')}</button>
+              <button className="btn btn-primary" disabled={busy || editForm.substance.trim().length === 0} onClick={() => run(async () => { const svc = await import('@/lib/services/allergy-service'); await svc.updateAllergy(patient._id, needScope(), editingEntry.id, editForm); }, () => setEditingEntry(null))}>{t('action.saveChanges')}</button>
           </>}
         >
           <div className="space-y-4">
-            <input value={editForm.substance} onChange={(e) => setEditForm({ ...editForm, substance: e.target.value })} placeholder="Substance" className={inputCls} style={inputStyle} />
+            <input value={editForm.substance} onChange={(e) => setEditForm({ ...editForm, substance: e.target.value })} placeholder={t('ui.substance')} className={inputCls} style={inputStyle} />
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Classification</label>
+                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('nutrition.classification')}</label>
                 <Select value={editForm.classification} onChange={(e) => setEditForm({ ...editForm, classification: e.target.value as AllergyEntry['classification'] })} className="p-2.5 rounded-md text-[12px]" style={inputStyle}>
                   {CLASSIFICATIONS.map((c) => <option key={c} value={c}>{c}</option>)}
                 </Select>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Criticality</label>
+                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('ui.criticality')}</label>
                 <Select value={editForm.criticality} onChange={(e) => setEditForm({ ...editForm, criticality: e.target.value as NonNullable<AllergyEntry['criticality']> })} className="p-2.5 rounded-md text-[12px]" style={inputStyle}>
                   {CRITICALITIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </Select>
               </div>
             </div>
-            <input value={editForm.reaction} onChange={(e) => setEditForm({ ...editForm, reaction: e.target.value })} placeholder="Reaction" className={inputCls} style={inputStyle} />
+            <input value={editForm.reaction} onChange={(e) => setEditForm({ ...editForm, reaction: e.target.value })} placeholder={t('ui.reaction')} className={inputCls} style={inputStyle} />
             {error && <FormError message={error} />}
           </div>
         </FormSlider>
@@ -176,17 +176,17 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
       {removingEntry && (
         <Modal variant="slider" onClose={() => setRemovingEntry(null)} width={560} labelledBy="remove-allergy-title">
           <DialogFrame>
-            <DialogHeader titleId="remove-allergy-title" title="Remove Allergy" onClose={() => setRemovingEntry(null)} />
+            <DialogHeader titleId="remove-allergy-title" title={t('ui.removeAllergy')} onClose={() => setRemovingEntry(null)} />
             <DialogBody className="space-y-4">
             <p className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>
-              Remove <strong>{removingEntry.substance}</strong> from the allergy list? A reason is required.
+              {t('action.remove')} <strong>{removingEntry.substance}</strong> {t('ui.fromTheAllergyListA')}
             </p>
-            <textarea rows={1} autoFocus value={removalReason} onChange={(e) => setRemovalReason(e.target.value)} placeholder="Reason for removal" className={inputCls} style={inputStyle} />
+            <textarea rows={1} autoFocus value={removalReason} onChange={(e) => setRemovalReason(e.target.value)} placeholder={t('ui.reasonForRemoval')} className={inputCls} style={inputStyle} />
             {error && <FormError message={error} />}
             </DialogBody>
             <DialogFooter>
-              <button className="btn btn-secondary" disabled={busy} onClick={() => setRemovingEntry(null)}>Cancel</button>
-              <button className="btn" disabled={busy || removalReason.trim().length === 0} onClick={() => run(async () => { const svc = await import('@/lib/services/allergy-service'); await svc.removeAllergy(patient._id, needScope(), removingEntry.id, removalReason); }, () => setRemovingEntry(null))} style={{ background: 'var(--color-danger)', color: '#fff', borderRadius: 8, padding: '6px 16px', fontSize: 13 }}>Confirm removal</button>
+              <button className="btn btn-secondary" disabled={busy} onClick={() => setRemovingEntry(null)}>{t('action.cancel')}</button>
+              <button className="btn" disabled={busy || removalReason.trim().length === 0} onClick={() => run(async () => { const svc = await import('@/lib/services/allergy-service'); await svc.removeAllergy(patient._id, needScope(), removingEntry.id, removalReason); }, () => setRemovingEntry(null))} style={{ background: 'var(--color-danger)', color: '#fff', borderRadius: 8, padding: '6px 16px', fontSize: 13 }}>{t('ui.confirmRemoval')}</button>
             </DialogFooter>
           </DialogFrame>
         </Modal>

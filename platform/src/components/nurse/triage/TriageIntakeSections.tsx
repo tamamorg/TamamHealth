@@ -5,6 +5,7 @@ import { O3TextField } from '@/components/forms/O3Form';
 import { patientFullName, patientGenderAge } from '@/lib/patient-utils';
 import { X, AlertTriangle } from '@/components/icons/lucide';
 import type { TriageFormState } from './useTriageForm';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export function TriagePatientPicker({ f }: { f: TriageFormState }) {
   const { t, setTriagePatientId, triagePatientSearch, setTriagePatientSearch, setOverrideVitalUrgency, setVitalUrgencyOverrideReason, triagePatientMatches, selectedTriagePatient, resetTriageBookkeeping, lockedPatientId } = f;
@@ -116,7 +117,7 @@ export function TriageVitalSafetySummary({ f }: { f: TriageFormState }) {
                   ))}
                   {recommendationRaisesPriority && !overrideVitalUrgency && (
                     <p className="text-[10px] font-semibold mt-2" style={{ color: 'var(--text-primary)' }}>
-                      Save will use {recommendedPriority} instead of the ABCC-only {triageData.priority} priority.
+                      {t('ui.saveWillUse')} {recommendedPriority} {t('ui.insteadOfTheAbccOnly')} {triageData.priority} {t('ui.priority2')}
                     </p>
                   )}
                   {recommendationRaisesPriority && (
@@ -135,14 +136,14 @@ export function TriageVitalSafetySummary({ f }: { f: TriageFormState }) {
                       {overrideVitalUrgency && (
                         <div className="mt-2">
                           <label htmlFor="triage-vital-override-reason" className="text-[9px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--color-danger)' }}>
-                            Clinical reason for override (required)
+                            {t('ui.clinicalReasonForOverrideRequired')}
                           </label>
                           <textarea
                             id="triage-vital-override-reason"
                             rows={2}
                             value={vitalUrgencyOverrideReason}
                             onChange={event => setVitalUrgencyOverrideReason(event.target.value)}
-                            placeholder="Document reassessment findings and why the lower urgency is clinically appropriate."
+                            placeholder={t('ui.documentReassessmentFindingsAndWhy')}
                             className="w-full px-2 py-1.5 rounded-lg text-xs mt-1"
                             style={{ background: 'var(--bg-card)', border: '1px solid var(--color-danger)', color: 'var(--text-primary)' }}
                             required

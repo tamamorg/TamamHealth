@@ -464,7 +464,7 @@ export default function PatientTimeline(props: PatientTimelineProps) {
         </td>
         <td>
           {e.badge?.dot
-            ? <i className="tamam-activity-severity" style={{ background: e.badge.color }} title="Priority indicator" />
+            ? <i className="tamam-activity-severity" style={{ background: e.badge.color }} title={t('ui.priorityIndicator')} />
             : e.badge?.label
               ? <em className="tamam-activity-badge clinical-status-pill" style={{ background: e.badge.bg, color: e.badge.color, borderColor: `${e.badge.color}30` }}>{e.badge.label}</em>
               : <span className="tamam-activity-dash">—</span>}
@@ -478,7 +478,7 @@ export default function PatientTimeline(props: PatientTimelineProps) {
     <ChartSection
       title={t('timeline.pageTitle')}
       filterSlot={(
-        <div className="tamam-activity-filters" role="tablist" aria-label="Filter patient activity">
+        <div className="tamam-activity-filters" role="tablist" aria-label={t('ui.filterPatientActivity')}>
           {categoryOptions.map(option => (
             <button
               key={option.id}
@@ -498,7 +498,7 @@ export default function PatientTimeline(props: PatientTimelineProps) {
     >
       <div className="tamam-activity-summary">
         <span><strong>{visibleCount}</strong> {filter === 'all' ? 'events' : 'matching events'}</span>
-        <span>Most recent first</span>
+        <span>{t('ui.mostRecentFirst')}</span>
       </div>
       {/* One line per VISIT (encounter), or per calendar day for events that
          belong to no encounter. A visit opens onto its item-level rows, which
@@ -511,10 +511,10 @@ export default function PatientTimeline(props: PatientTimelineProps) {
         </colgroup>
         <thead>
           <tr>
-            <th scope="col">Date</th>
-            <th scope="col">Type</th>
-            <th scope="col">Event</th>
-            <th scope="col">Status</th>
+            <th scope="col">{t('billing.activityColumn.date')}</th>
+            <th scope="col">{t('billing.activityColumn.type')}</th>
+            <th scope="col">{t('ui.event')}</th>
+            <th scope="col">{t('billing.activityColumn.status')}</th>
             {hasActions && <th scope="col" aria-label={t('timeline.actions')} />}
           </tr>
         </thead>

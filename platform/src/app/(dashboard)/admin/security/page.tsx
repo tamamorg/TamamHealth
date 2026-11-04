@@ -323,10 +323,10 @@ export default function SecurityCompliancePage() {
         {activeSection === 'access' && (
           <>
             <SadbPanelHeader
-              title="Access & authentication"
+              title={t('ui.accessAuthentication')}
               note="Authentication requirements applied platform-wide. Changes apply once saved above."
             />
-            <SadbSettingGroup title="Access & authentication">
+            <SadbSettingGroup title={t('ui.accessAuthentication')}>
               {accessFields.map(f => renderField(f, draft, setField, openEditor))}
             </SadbSettingGroup>
           </>
@@ -335,10 +335,10 @@ export default function SecurityCompliancePage() {
         {activeSection === 'phi' && (
           <>
             <SadbPanelHeader
-              title="PHI & data controls"
+              title={t('ui.phiDataControls')}
               note="Controls governing PHI export, deletion, and API key issuance across every tenant."
             />
-            <SadbSettingGroup title="PHI & data controls">
+            <SadbSettingGroup title={t('ui.phiDataControls')}>
               {PHI_FIELDS.map(f => renderField(f, draft, setField, openEditor))}
             </SadbSettingGroup>
           </>
@@ -347,10 +347,10 @@ export default function SecurityCompliancePage() {
         {activeSection === 'breakglass' && (
           <>
             <SadbPanelHeader
-              title="Break-glass & support access"
+              title={t('ui.breakGlassSupportAccess')}
               note="Emergency and support access paths, each with a required review window or audit trail."
             />
-            <SadbSettingGroup title="Break-glass & support access">
+            <SadbSettingGroup title={t('ui.breakGlassSupportAccess')}>
               {BREAKGLASS_FIELDS.map(f => renderField(f, draft, setField, openEditor))}
             </SadbSettingGroup>
           </>
@@ -359,13 +359,13 @@ export default function SecurityCompliancePage() {
         {activeSection === 'continuity' && (
           <>
             <SadbPanelHeader
-              title="Continuity objectives"
+              title={t('ui.continuityObjectives')}
               note="Backup recovery targets, plus the last backup age actually reported by the system."
             />
-            <SadbSettingGroup title="Continuity objectives">
+            <SadbSettingGroup title={t('ui.continuityObjectives')}>
               {CONTINUITY_FIELDS.map(f => renderField(f, draft, setField, openEditor))}
               <SadbKvRow
-                label="Current backup age"
+                label={t('ui.currentBackupAge')}
                 chip={backupUnknown ? 'Unknown — nothing reported' : `${Math.round(backupAgeHours ?? 0)}h ago`}
                 chipTone={TONE_CHIP[backupUnknown ? 'muted' : backupWithinRpo ? 'ok' : 'warn']}
               />
@@ -376,14 +376,14 @@ export default function SecurityCompliancePage() {
         {activeSection === 'watchlist' && (
           <>
             <SadbPanelHeader
-              title="Security watchlist"
+              title={t('ui.securityWatchlist')}
               note="High-risk privileged actions recorded in the last 7 days, worst first. Open a row for the full audit entry."
               tag="Last 7 days"
             />
             <SadbCard
-              title="High-risk actions"
+              title={t('ui.highRiskActions')}
               meta={auditLoading ? 'Loading…' : `${watchlist.length} recorded`}
-              action={<SadbHeadLink onClick={() => router.push('/admin/audit')}>Open Audit Logs</SadbHeadLink>}
+              action={<SadbHeadLink onClick={() => router.push('/admin/audit')}>{t('ui.openAuditLogs')}</SadbHeadLink>}
             >
               {watchlist.length === 0 ? (
                 <p className="sadb-empty">
@@ -407,21 +407,21 @@ export default function SecurityCompliancePage() {
         {activeSection === 'overview' && (
           <>
             <SadbPanelHeader
-              title="Security posture"
+              title={t('ui.securityPosture')}
               note="Live read of the persisted policy and the most recent backup report — nothing here is simulated."
             />
-            <SadbCard title="Security posture">
+            <SadbCard title={t('ui.securityPosture')}>
               {postureRows.map(r => (
                 <SadbKvRow key={r.label} label={r.label} chip={r.chip} chipTone={TONE_CHIP[r.tone]} />
               ))}
             </SadbCard>
 
             <SadbCard
-              title="Compliance evidence"
-              action={<SadbHeadLink onClick={() => router.push('/admin/audit')}>Open Audit Logs</SadbHeadLink>}
+              title={t('ui.complianceEvidence')}
+              action={<SadbHeadLink onClick={() => router.push('/admin/audit')}>{t('ui.openAuditLogs')}</SadbHeadLink>}
             >
               <p style={{ margin: '10px 14px 14px', color: 'var(--text-muted)', fontSize: 12.5, fontWeight: 600 }}>
-                Full audit trail export with user, org, action, and risk classification lives in Audit Logs.
+                {t('ui.fullAuditTrailExportWith')}
               </p>
             </SadbCard>
           </>

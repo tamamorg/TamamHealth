@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import ProviderProfile from '@/components/booking/ProviderProfile';
 import type { ProviderPayload } from '@/lib/booking/public-client';
+import T from '@/components/T';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +47,7 @@ export default async function ProviderProfilePage({
           )}
         </div>
         <a className="booking-btn is-ghost" href={`/book/${encodeURIComponent(practice)}`}>
-          All clinicians
+          <T k="ui.allClinicians" en="All clinicians" />
         </a>
       </header>
       <ProviderProfile data={data} />

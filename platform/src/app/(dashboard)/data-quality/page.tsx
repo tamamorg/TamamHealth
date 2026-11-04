@@ -219,7 +219,7 @@ export default function DataQualityPage() {
         {/* Facility-level views */}
         <div className="dash-card overflow-hidden" data-tour="dq-facility-table">
           <EhrListHeader
-            title="Facility data quality"
+            title={t('ui.facilityDataQuality')}
             count={listHeaderCount}
             stats={listHeaderStats}
             search={listHeaderSearch}
@@ -231,10 +231,10 @@ export default function DataQualityPage() {
           {view === 'completeness' && (
             <div className="overflow-x-auto">
               <table className="w-full" style={{ minWidth: 640 }}>
-                <thead><tr><Th>Facility</Th><Th>State</Th><Th>Reporting completeness</Th><Th>Last assessment</Th></tr></thead>
+                <thead><tr><Th>{t('births.colFacility')}</Th><Th>{t('births.colState')}</Th><Th>{t('ui.reportingCompleteness')}</Th><Th>{t('ui.lastAssessment')}</Th></tr></thead>
                 <tbody>
                   {filteredCompletenessRows.length === 0 && (
-                    <tr><td colSpan={4} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No facility assessments on file.</td></tr>
+                    <tr><td colSpan={4} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('ui.noFacilityAssessmentsOnFile')}</td></tr>
                   )}
                   {filteredCompletenessRows.map((e: DataCompletenessEntry) => (
                     <tr key={e.facilityId} style={{ borderBottom: '1px solid var(--border-light)' }}>
@@ -252,10 +252,10 @@ export default function DataQualityPage() {
           {view === 'timeliness' && (
             <div className="overflow-x-auto">
               <table className="w-full" style={{ minWidth: 640 }}>
-                <thead><tr><Th>Facility</Th><Th>State</Th><Th>Reporting timeliness</Th><Th>Last assessment</Th></tr></thead>
+                <thead><tr><Th>{t('births.colFacility')}</Th><Th>{t('births.colState')}</Th><Th>{t('ui.reportingTimeliness')}</Th><Th>{t('ui.lastAssessment')}</Th></tr></thead>
                 <tbody>
                   {filteredTimelinessRows.length === 0 && (
-                    <tr><td colSpan={4} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No facility assessments on file.</td></tr>
+                    <tr><td colSpan={4} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('ui.noFacilityAssessmentsOnFile')}</td></tr>
                   )}
                   {filteredTimelinessRows.map((e: DataCompletenessEntry) => (
                     <tr key={e.facilityId} style={{ borderBottom: '1px solid var(--border-light)' }}>
@@ -273,10 +273,10 @@ export default function DataQualityPage() {
           {view === 'scores' && (
             <div className="overflow-x-auto">
               <table className="w-full" style={{ minWidth: 640 }}>
-                <thead><tr><Th>Rank</Th><Th>Facility</Th><Th>State</Th><Th>Data quality score</Th><Th>Last assessment</Th></tr></thead>
+                <thead><tr><Th>{t('ui.rank')}</Th><Th>{t('births.colFacility')}</Th><Th>{t('births.colState')}</Th><Th>{t('ui.dataQualityScore')}</Th><Th>{t('ui.lastAssessment')}</Th></tr></thead>
                 <tbody>
                   {filteredScoreRows.length === 0 && (
-                    <tr><td colSpan={5} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No facility assessments on file.</td></tr>
+                    <tr><td colSpan={5} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('ui.noFacilityAssessmentsOnFile')}</td></tr>
                   )}
                   {filteredScoreRows.map((e: DataCompletenessEntry, i: number) => (
                     <tr key={e.facilityId} style={{ borderBottom: '1px solid var(--border-light)' }}>
@@ -297,18 +297,18 @@ export default function DataQualityPage() {
               <div className="px-4 py-3 flex items-start gap-2" style={{ borderBottom: '1px solid var(--border-light)', background: 'var(--overlay-subtle)' }}>
                 <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: AMBER }} />
                 <p className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>
-                  Possible data outliers — verify at source. Flagged where an alert&rsquo;s case count exceeds 3&times; the median for that disease. No validation rules are configured yet in TamamHealth; this is a heuristic, not a confirmed error.
+                  {t('ui.possibleDataOutliersVerifyAt')}
                 </p>
               </div>
               {alertsLoading ? (
-                <div className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>Loading surveillance alerts…</div>
+                <div className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('ui.loadingSurveillanceAlerts')}</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full" style={{ minWidth: 640 }}>
-                    <thead><tr><Th>Disease</Th><Th>Location</Th><Th right>Cases</Th><Th>Reported</Th></tr></thead>
+                    <thead><tr><Th>{t('epidemic.colDisease')}</Th><Th>{t('deaths.location')}</Th><Th right>{t('epidemic.colCases')}</Th><Th>{t('issues.colReported')}</Th></tr></thead>
                     <tbody>
                       {filteredOutliers.length === 0 && (
-                        <tr><td colSpan={4} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No outliers detected against this heuristic.</td></tr>
+                        <tr><td colSpan={4} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('ui.noOutliersDetectedAgainstThis')}</td></tr>
                       )}
                       {filteredOutliers.map(a => (
                         <tr key={a._id} style={{ borderBottom: '1px solid var(--border-light)' }}>

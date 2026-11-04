@@ -141,7 +141,7 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
   if (!facilityId) {
     return (
       <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-        Choose a facility to configure its visit types.
+        {t('ui.chooseAFacilityToConfigure')}
       </p>
     );
   }
@@ -149,13 +149,12 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
   return (
     <div>
       <p className="text-sm" style={{ color: 'var(--text-muted)', marginBottom: 12 }}>
-        What a patient can be booked for, and how long each takes. The booking screen
-        offers these and builds its times from each duration.
+        {t('ui.whatAPatientCanBe')}
         {usingDefaults && ' This facility is using the standard set — change anything to make it your own.'}
       </p>
 
       {loading ? (
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading visit types…</p>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('ui.loadingVisitTypes')}</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {reasons.map(reason => (
@@ -177,7 +176,7 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
                 )}
               </div>
 
-              <label className="sr-only" htmlFor={`dur-${reason._id}`}>Duration for {reason.name}</label>
+              <label className="sr-only" htmlFor={`dur-${reason._id}`}>{t('ui.durationFor')} {reason.name}</label>
               <Select
                 id={`dur-${reason._id}`}
                 className="fs-input"
@@ -189,7 +188,7 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
                 {DURATIONS.map(d => <option key={d} value={d}>{d} min</option>)}
               </Select>
 
-              <label className="sr-only" htmlFor={`type-${reason._id}`}>Recorded as, for {reason.name}</label>
+              <label className="sr-only" htmlFor={`type-${reason._id}`}>{t('ui.recordedAsFor')} {reason.name}</label>
               <Select
                 id={`type-${reason._id}`}
                 className="fs-input"
@@ -206,7 +205,7 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
                 onClick={() => remove(reason)}
                 disabled={busyId === reason._id}
                 aria-label={`Remove ${reason.name}`}
-                title="Remove from the booking menu"
+                title={t('ui.removeFromTheBookingMenu')}
                 style={{
                   width: 32, height: 32, borderRadius: 999, flexShrink: 0,
                   border: '1px solid var(--border-light)', background: 'transparent',
@@ -221,8 +220,7 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
 
           {reasons.length === 0 && (
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-              No visit types. Add one below — until then the booking screen asks for a
-              time by hand.
+              {t('ui.noVisitTypesAddOne')}
             </p>
           )}
 
@@ -240,18 +238,18 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
                 className="fs-input"
                 value={newName}
                 autoFocus
-                placeholder="e.g. Wound dressing"
+                placeholder={t('ui.eGWoundDressing')}
                 onChange={e => setNewName(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') add(); }}
                 style={{ flex: '1 1 200px', minWidth: 160 }}
-                aria-label="New visit type name"
+                aria-label={t('ui.newVisitTypeName')}
               />
               <Select
                 className="fs-input"
                 value={newDuration}
                 onChange={e => setNewDuration(Number(e.target.value))}
                 style={{ width: 'auto', minWidth: 104 }}
-                aria-label="New visit type duration"
+                aria-label={t('ui.newVisitTypeDuration')}
               >
                 {DURATIONS.map(d => <option key={d} value={d}>{d} min</option>)}
               </Select>
@@ -259,7 +257,7 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
                 {busyId === 'new' ? 'Adding…' : 'Add'}
               </button>
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setAdding(false); setNewName(''); }}>
-                Cancel
+                {t('action.cancel')}
               </button>
             </div>
           ) : (
@@ -269,7 +267,7 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
               style={{ alignSelf: 'flex-start' }}
               onClick={() => setAdding(true)}
             >
-              <Plus className="w-4 h-4" /> Add visit type
+              <Plus className="w-4 h-4" /> {t('ui.addVisitType')}
             </button>
           )}
         </div>
@@ -280,8 +278,7 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
         style={{ color: 'var(--text-muted)', marginTop: 14, display: 'flex', alignItems: 'center', gap: 6 }}
       >
         <ClipboardCheck className="w-3.5 h-3.5" />
-        Clinic hours are set per clinician from Appointments → Availability. The booking
-        screen shows real openings once a clinician has hours recorded.
+        {t('ui.clinicHoursAreSetPer')}
       </p>
     </div>
   );

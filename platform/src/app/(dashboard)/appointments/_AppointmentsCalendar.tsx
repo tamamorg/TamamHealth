@@ -9,6 +9,7 @@ import { format as dfFormat, parse as dfParse, startOfWeek as dfStartOfWeek, get
 import { enUS } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { jubaNow } from '@/lib/time-juba';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 // Google-Calendar-style localizer (date-fns, MIT) shared by the calendar view.
 const calendarLocalizer = dateFnsLocalizer({
@@ -199,6 +200,7 @@ const rbcNavBtn: React.CSSProperties = {
   transition: 'background 0.15s',
 };
 function CalToolbar({ onNavigate }: ToolbarProps<CalEvent, object>) {
+  const { t } = useTranslation();
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
       <button
@@ -214,12 +216,12 @@ function CalToolbar({ onNavigate }: ToolbarProps<CalEvent, object>) {
           whiteSpace: 'nowrap',
         }}
       >
-        Today
+        {t('hospitals.statToday')}
       </button>
-      <button type="button" onClick={() => onNavigate('PREV')} aria-label="Previous" style={rbcNavBtn}>
+      <button type="button" onClick={() => onNavigate('PREV')} aria-label={t('billing.activityPrevious')} style={rbcNavBtn}>
         <ChevronLeft size={16} />
       </button>
-      <button type="button" onClick={() => onNavigate('NEXT')} aria-label="Next" style={rbcNavBtn}>
+      <button type="button" onClick={() => onNavigate('NEXT')} aria-label={t('billing.activityNext')} style={rbcNavBtn}>
         <ChevronRight size={16} />
       </button>
     </div>
@@ -401,6 +403,7 @@ export default function AppointmentsCalendar({
   events, calView, calDate, today, statusConfig, priorityConfig,
   onNavigate, onView, onSelectEvent, onSelectSlot,
 }: AppointmentsCalendarProps) {
+  const { t } = useTranslation();
   const isMonth = calView === 'month';
 
   /**
@@ -664,7 +667,7 @@ export default function AppointmentsCalendar({
             <button
               type="button"
               className="gcal-daypop-close"
-              aria-label="Collapse day"
+              aria-label={t('ui.collapseDay')}
               onClick={closeExpanded}
             >
               <X size={14} />

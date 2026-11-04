@@ -27,11 +27,13 @@ import {
   ProviderAvatar,
 } from './primitives';
 import BookingFlow from './BookingFlow';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const DAYS = 5;
 const MAX_PER_CELL = 3;
 
 export default function PracticeBooking({ data }: { data: PracticePayload }) {
+  const { t } = useTranslation();
   const { practice, policy, providers, reasons } = data;
 
   const [patientClass, setPatientClass] = useState<'new' | 'returning'>('new');
@@ -125,7 +127,7 @@ export default function PracticeBooking({ data }: { data: PracticePayload }) {
     return (
       <div className="booking-page" style={{ maxWidth: 560 }}>
         <button type="button" className="booking-linkish" style={{ marginBottom: 14 }} onClick={() => setPicked(null)}>
-          ← Back to all times
+          {t('ui.backToAllTimes')}
         </button>
         <BookingFlow
           practiceSlug={practice.slug}
@@ -142,7 +144,7 @@ export default function PracticeBooking({ data }: { data: PracticePayload }) {
 
   return (
     <div className="booking-page">
-      <h1 className="booking-h1">Book an appointment</h1>
+      <h1 className="booking-h1">{t('ui.bookAnAppointment')}</h1>
       <p className="booking-sub">
         {practice.name}{practice.town ? ` · ${practice.town}` : ''}
       </p>
@@ -152,15 +154,15 @@ export default function PracticeBooking({ data }: { data: PracticePayload }) {
           <PatientClassToggle value={patientClass} onChange={setPatientClass} variant="checkbox" />
 
           <div className="booking-field-row">
-            <Field label="Reason for visit">
+            <Field label={t('visitSummary.reason')}>
               <BookingSelect value={reasonId} onChange={setReasonId} ariaLabel="Reason for visit">
-                {eligibleReasons.length === 0 && <option value="">Nothing bookable online</option>}
+                {eligibleReasons.length === 0 && <option value="">{t('ui.nothingBookableOnline')}</option>}
                 {eligibleReasons.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
               </BookingSelect>
             </Field>
-            <Field label="Provider">
+            <Field label={t('appointments.labelProvider')}>
               <BookingSelect value={providerFilter} onChange={setProviderFilter} ariaLabel="Provider">
-                <option value="">Any provider</option>
+                <option value="">{t('ui.anyProvider')}</option>
                 {providers.map(p => <option key={p.id} value={p.id}>{p.displayName}</option>)}
               </BookingSelect>
             </Field>
@@ -171,7 +173,7 @@ export default function PracticeBooking({ data }: { data: PracticePayload }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginInlineStart: 'auto' }}>
               <button
-                type="button" className="booking-round-btn" aria-label="Previous days"
+                type="button" className="booking-round-btn" aria-label={t('ui.previousDays')}
                 disabled={weekStart <= today}
                 onClick={() => setWeekStart(w => {
                   const back = addDays(w, -DAYS);
@@ -181,7 +183,7 @@ export default function PracticeBooking({ data }: { data: PracticePayload }) {
                 <ChevronLeft size={20} />
               </button>
               <button
-                type="button" className="booking-round-btn" aria-label="Next days"
+                type="button" className="booking-round-btn" aria-label={t('ui.nextDays')}
                 disabled={columns[columns.length - 1] >= horizon}
                 onClick={() => setWeekStart(w => addDays(w, DAYS))}
               >
@@ -207,9 +209,9 @@ export default function PracticeBooking({ data }: { data: PracticePayload }) {
             </div>
 
             {note && <p className="booking-empty-note">{note}</p>}
-            {!note && loading && <p className="booking-empty-note">Loading availability…</p>}
+            {!note && loading && <p className="booking-empty-note">{t('ui.loadingAvailability')}</p>}
             {!note && !loading && rows.length === 0 && (
-              <p className="booking-empty-note">This practice has no clinicians published for online booking yet.</p>
+              <p className="booking-empty-note">{t('ui.thisPracticeHasNoClinicians')}</p>
             )}
 
             {!note && !loading && rows.map(p => (
@@ -229,7 +231,7 @@ export default function PracticeBooking({ data }: { data: PracticePayload }) {
                   const shown = isOpen ? all : all.slice(0, MAX_PER_CELL);
                   return (
                     <div key={d} className="booking-cell">
-                      {all.length === 0 && <span className="booking-slot-empty" aria-label="No times">—</span>}
+                      {all.length === 0 && <span className="booking-slot-empty" aria-label={t('ui.noTimes')}>—</span>}
                       {shown.map(t => (
                         <button
                           key={t} type="button" className="booking-slot"

@@ -343,13 +343,13 @@ export default function MedicationsModal({
   return (
     <Modal variant="slider" onClose={onClose} width={1120} labelledBy="cn-meds-title">
       <DialogFrame busy={busy}>
-        <DialogHeader titleId="cn-meds-title" title="Medications" onClose={onClose} closeLabel="Close medications" />
+        <DialogHeader titleId="cn-meds-title" title={t('noteEditor.section.medications')} onClose={onClose} closeLabel={t('ui.closeMedications')} />
         <DialogBody flush className="cn-meds-shell">
         <div className="cn-meds-body">
           {/* ── Working med list ── */}
           <div className="cn-meds-left">
             <div className="cn-meds-controlrow">
-              <div className="cn-segmented" aria-label="Medication lists">
+              <div className="cn-segmented" aria-label={t('ui.medicationLists')}>
                 {(Object.keys(TAB_LABELS) as MedTab[]).map(key => (
                   <button
                     key={key}
@@ -363,10 +363,10 @@ export default function MedicationsModal({
               </div>
               <div className="cn-meds-adders">
                 <button type="button" className="cn-btn" onClick={() => setShowPrescribe(true)}>
-                  <Plus size={13} /> Prescription
+                  <Plus size={13} /> {t('ui.prescription')}
                 </button>
                 <button type="button" className="cn-btn" onClick={() => setShowAddMed(v => !v)} aria-expanded={showAddMed}>
-                  <Plus size={13} /> Med List
+                  <Plus size={13} /> {t('ui.medList')}
                 </button>
               </div>
             </div>
@@ -379,11 +379,11 @@ export default function MedicationsModal({
                 title={counts.active > 0 ? 'The patient has active medications' : undefined}
                 onChange={e => void savePatient({ noKnownMedications: e.target.checked })}
               />
-              No known medications
+              {t('ui.noKnownMedications')}
             </label>
 
             <label className="cn-meds-reconcile">
-              <span>Medication reconciliation</span>
+              <span>{t('ui.medicationReconciliation')}</span>
               <Select
                 className="cn-select"
                 value={patient?.medReconciliation || ''}
@@ -406,29 +406,29 @@ export default function MedicationsModal({
               // so this reads as a form rather than a strip of bare boxes.
               <div className="cn-meds-add">
                 <label className="cn-rx-field">
-                  Medication
-                  <input list="med-history-formulary" className="cn-input" placeholder="e.g. Amoxicillin" value={addMed.medication}
+                  {t('hospitals.colMedication')}
+                  <input list="med-history-formulary" className="cn-input" placeholder={t('ui.eGAmoxicillin')} value={addMed.medication}
                     onChange={e => setAddMed(m => ({ ...m, medication: e.target.value }))} />
                   <datalist id="med-history-formulary">{FORMULARY.map(drug => <option key={drug.name} value={drug.name} />)}</datalist>
                 </label>
                 <label className="cn-rx-field">
-                  Dose
+                  {t('consultation.rxDose')}
                   <input className="cn-input" placeholder="500mg" value={addMed.dose}
                     onChange={e => setAddMed(m => ({ ...m, dose: e.target.value }))} />
                 </label>
                 <label className="cn-rx-field">
-                  Frequency
+                  {t('consultation.rxFrequency')}
                   <input list="med-history-frequency" className="cn-input" placeholder="TDS" value={addMed.frequency}
                     onChange={e => setAddMed(m => ({ ...m, frequency: e.target.value }))} />
                   <datalist id="med-history-frequency">{['Once daily', 'Twice daily', 'Three times daily', 'Four times daily', 'Every 4 hours', 'Every 6 hours', 'Every 8 hours', 'Every 12 hours', 'Once weekly', 'As needed'].map(frequency => <option key={frequency} value={frequency} />)}</datalist>
                 </label>
-                <button type="button" className="cn-btn cn-btn-primary" onClick={handleAddMed} disabled={busy}>Add</button>
+                <button type="button" className="cn-btn cn-btn-primary" onClick={handleAddMed} disabled={busy}>{t('consultation.add')}</button>
               </div>
             )}
 
             <h3 className="cn-meds-listhead">{LIST_HEADINGS[tab]}</h3>
             <div className="cn-meds-list" role="listbox" aria-label={LIST_HEADINGS[tab]}>
-              {loading && <p className="cn-card-empty">Loading medications…</p>}
+              {loading && <p className="cn-card-empty">{t('ui.loadingMedications')}</p>}
               {!loading && rows.length === 0 && (
                 <p className="cn-card-empty">
                   {tab === 'active' && patient?.noKnownMedications
@@ -471,8 +471,8 @@ export default function MedicationsModal({
           {/* ── Network history behind the consent gate ── */}
           <div className="cn-meds-right">
             <h3 className="cn-meds-histhead">
-              Med History via TamamHealth Network
-              <span title="Prescriptions recorded for this patient across facilities in the shared record."><Info size={14} /></span>
+              {t('ui.medHistoryViaTamamhealthNetwork')}
+              <span title={t('ui.prescriptionsRecordedForThisPatient')}><Info size={14} /></span>
             </h3>
 
             {/* No standing consent furniture: the panel rests as a quiet
@@ -481,7 +481,7 @@ export default function MedicationsModal({
             {!showHistory && (
               <div className="cn-meds-histlock">
                 <p className="cn-card-empty">
-                  History from the shared record appears here once the patient consents.
+                  {t('ui.historyFromTheSharedRecord')}
                 </p>
                 <button
                   type="button"
@@ -489,7 +489,7 @@ export default function MedicationsModal({
                   onClick={() => setConsentPromptOpen(true)}
                   disabled={busy || loading}
                 >
-                  View history
+                  {t('ui.viewHistory')}
                 </button>
               </div>
             )}
@@ -497,13 +497,13 @@ export default function MedicationsModal({
             {showHistory && (
               <div className="cn-meds-history">
                 <p className="cn-consent-note cn-consent-note-granted">
-                  <Check size={13} aria-hidden /> Consent obtained — recorded by {consent?.byName || 'staff'} on {shortDate(consent?.at)}.{' '}
+                  <Check size={13} aria-hidden /> {t('ui.consentObtainedRecordedBy')} {consent?.byName || 'staff'} on {shortDate(consent?.at)}.{' '}
                   <button type="button" className="cn-card-head-action" onClick={() => setConsentConfirmed(false)}>
-                    Change
+                    {t('consultation.change')}
                   </button>
                 </p>
                 {prescriptions.length === 0 && (
-                  <p className="cn-card-empty">No medication history found in the network record.</p>
+                  <p className="cn-card-empty">{t('ui.noMedicationHistoryFoundIn')}</p>
                 )}
                 {prescriptions.map(rx => (
                   <div key={rx._id} className="cn-meds-histrow">
@@ -523,11 +523,11 @@ export default function MedicationsModal({
         </div>
         </DialogBody>
         <DialogFooter>
-              <button type="button" className="btn btn-secondary" onClick={handleRenew} disabled={busy || !selected}>Renew</button>
-              <button type="button" className="btn btn-secondary" onClick={handleDiscontinue} disabled={busy || !selected || selected.status === 'discontinued'}>Discontinue</button>
-              <button type="button" className="btn btn-secondary" onClick={handleMarkError} disabled={busy || !selected}>Mark as Error</button>
-              <button type="button" className="btn btn-secondary" onClick={handleCancelRx} disabled={busy || !selected || selected.status === 'discontinued'}>Cancel Rx</button>
-              <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
+              <button type="button" className="btn btn-secondary" onClick={handleRenew} disabled={busy || !selected}>{t('ui.renew')}</button>
+              <button type="button" className="btn btn-secondary" onClick={handleDiscontinue} disabled={busy || !selected || selected.status === 'discontinued'}>{t('confirm.discontinueMedConfirm')}</button>
+              <button type="button" className="btn btn-secondary" onClick={handleMarkError} disabled={busy || !selected}>{t('ui.markAsError')}</button>
+              <button type="button" className="btn btn-secondary" onClick={handleCancelRx} disabled={busy || !selected || selected.status === 'discontinued'}>{t('ui.cancelRx')}</button>
+              <button type="button" className="btn btn-secondary" onClick={onClose}>{t('billing.activityClose')}</button>
         </DialogFooter>
       </DialogFrame>
 
@@ -541,37 +541,33 @@ export default function MedicationsModal({
             <DialogFrame busy={busy}>
               <DialogHeader
                 titleId="cn-consent-title"
-                title="Obtain Consent from Patient"
+                title={t('ui.obtainConsentFromPatient')}
                 onClose={() => setConsentPromptOpen(false)}
-                closeLabel="Close consent"
+                closeLabel={t('ui.closeConsent')}
               />
               <DialogBody className="cn-consent-pop-body">
                 <p>
-                  You can view medication history retrieved from the TamamHealth shared record for
-                  this patient. You must obtain consent before viewing this information.
+                  {t('ui.youCanViewMedicationHistory')}
                 </p>
                 <p>
-                  Disclaimer: Certain information may not be available or accurate in this report,
-                  including medications the patient asked not to be disclosed, over-the-counter
-                  medicines, or records from facilities outside the network. The provider should
-                  independently verify medication history with the patient.
+                  {t('ui.disclaimerCertainInformationMayNot')}
                 </p>
                 <p className="cn-consent-question">
-                  Does the patient consent to viewing their medication history?
+                  {t('ui.doesThePatientConsentTo')}
                 </p>
                 {consent && (
                   <p className="cn-consent-note">
-                    Last answer: consent {consent.granted ? 'granted' : 'declined'} — recorded by{' '}
+                    {t('ui.lastAnswerConsent')} {consent.granted ? 'granted' : 'declined'} {t('ui.recordedBy')}{' '}
                     {consent.byName || 'staff'} on {shortDate(consent.at)}.
                   </p>
                 )}
               </DialogBody>
               <DialogFooter>
                 <button type="button" className="btn btn-secondary" onClick={() => answerConsent(false)} disabled={busy}>
-                  No — declined
+                  {t('ui.noDeclined')}
                 </button>
                 <button type="button" className="btn btn-primary" onClick={() => answerConsent(true)} disabled={busy}>
-                  Yes — consent given <Check aria-hidden="true" />
+                  {t('ui.yesConsentGiven')} <Check aria-hidden="true" />
                 </button>
               </DialogFooter>
             </DialogFrame>

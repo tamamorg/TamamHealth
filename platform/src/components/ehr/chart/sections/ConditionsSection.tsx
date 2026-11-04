@@ -209,20 +209,20 @@ export default function ConditionsSection({
   return (
     <>
       {!formOnly && <>
-      <ChartSection title="Conditions" addLabel="Add" onAdd={canEditClinical ? () => setAdding(true) : undefined} searchValue={tableSearch} onSearchChange={setTableSearch}>
+      <ChartSection title={t('patients.colConditions')} addLabel="Add" onAdd={canEditClinical ? () => setAdding(true) : undefined} searchValue={tableSearch} onSearchChange={setTableSearch}>
         {/* Attested at a problem review in a note: an empty list means nobody
             has asked, this means someone asked and the answer was none. */}
         {(reconciledAt || (ordered.length === 0 && noKnownProblems)) && (
           <p className="tamam-attestation">
-            {ordered.length === 0 && noKnownProblems && <strong>No known problems. </strong>}
-            {reconciledAt && <>Problem reconciliation performed · {formatDate(reconciledAt)}.</>}
+            {ordered.length === 0 && noKnownProblems && <strong>{t('ui.noKnownProblems')} </strong>}
+            {reconciledAt && <>{t('ui.problemReconciliationPerformed2')} {formatDate(reconciledAt)}.</>}
           </p>
         )}
 
         {ordered.length === 0 && !noKnownProblems ? (
           <OmrsEmptyState
             itemLabel="conditions"
-            actionLabel="Record conditions"
+            actionLabel={t('ui.recordConditions')}
             onAction={canEditClinical ? () => setAdding(true) : undefined}
             disabledReason={canEditClinical ? undefined : 'Requires clinical-editing permission'}
           />
@@ -236,9 +236,9 @@ export default function ConditionsSection({
             </colgroup>
             <thead>
               <tr>
-                <th>Condition</th>
-                <th>Date of onset</th>
-                <th>Status</th>
+                <th>{t('boma.conditionLabel')}</th>
+                <th>{t('ui.dateOfOnset')}</th>
+                <th>{t('billing.activityColumn.status')}</th>
                 <th>{t('chart.actions')}</th>
               </tr>
             </thead>
@@ -301,13 +301,13 @@ export default function ConditionsSection({
 
       {adding && (
         <FormSlider
-          title="Add condition"
+          title={t('ui.addCondition')}
           className="tamam-dialog"
           width={480}
           onClose={() => !submitting && resetForm()}
           busy={submitting}
           footer={<>
-              <button className="btn btn-secondary" disabled={submitting} onClick={resetForm}>Cancel</button>
+              <button className="btn btn-secondary" disabled={submitting} onClick={resetForm}>{t('action.cancel')}</button>
               <button className="btn btn-primary" disabled={submitting || !pickedCode} onClick={handleSubmit}>
                 {submitting ? 'Saving…' : 'Save condition'}
               </button>
@@ -318,14 +318,14 @@ export default function ConditionsSection({
               <div className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg" style={{ background: 'var(--accent-light)', border: '1px solid var(--border-accent)' }}>
                 <div className="min-w-0">
                   <div className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{pickedCode.title}</div>
-                  <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>ICD-11 · {pickedCode.code} · {pickedCode.chapter}</div>
+                  <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('ui.icd112')} {pickedCode.code} · {pickedCode.chapter}</div>
                 </div>
-                <button onClick={() => setPickedCode(null)} className="text-xs font-semibold underline shrink-0" style={{ color: 'var(--accent-primary)' }}>Change</button>
+                <button onClick={() => setPickedCode(null)} className="text-xs font-semibold underline shrink-0" style={{ color: 'var(--accent-primary)' }}>{t('consultation.change')}</button>
               </div>
             ) : (
               <CodedSearchField
-                label="Diagnosis"
-                placeholder="Search ICD-11 diagnoses…"
+                label={t('consultation.sectionDiagnosis')}
+                placeholder={t('ui.searchIcd11Diagnoses')}
                 options={icdOptions}
                 value={search}
                 onChange={setSearch}
@@ -334,7 +334,7 @@ export default function ConditionsSection({
               />
             )}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Date of onset</label>
+              <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('ui.dateOfOnset')}</label>
               <input
                 type="date"
                 value={onsetDate}

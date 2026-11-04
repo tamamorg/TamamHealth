@@ -101,6 +101,7 @@ export interface BillingOverviewCardsProps {
 export default function BillingOverviewCards({
   payments, claims, bills, collectedToday, todayByMethod, outstandingPatients, unbilledEncounters, showClaims,
 }: BillingOverviewCardsProps) {
+  const { t } = useTranslation();
   const cash = useMemo(() => {
     let received = 0;
     let pending = 0;
@@ -176,8 +177,8 @@ export default function BillingOverviewCards({
       <div className="dash-card overflow-hidden">
         <div className="bl-overview-heading px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid var(--border-light)' }}>
           <Wallet className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-          <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Cash Flow</h3>
-          <span className="text-[11px] ms-auto" style={{ color: 'var(--text-muted)' }}>All invoices</span>
+          <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('ui.cashFlow')}</h3>
+          <span className="text-[11px] ms-auto" style={{ color: 'var(--text-muted)' }}>{t('ui.allInvoices')}</span>
         </div>
         <div className="flex flex-col items-center gap-4 p-4">
           <div className="relative flex-shrink-0" style={{ width: 124, height: 124 }}>
@@ -187,17 +188,17 @@ export default function BillingOverviewCards({
                 {formatMoney(cash.total)}
               </span>
               <span className="text-[9px] uppercase tracking-wide leading-tight mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                Total invoiced
+                {t('ui.totalInvoiced')}
               </span>
             </div>
           </div>
           <div className="w-full min-w-0 space-y-2">
             <div className="rounded-xl px-3 py-2" style={{ background: 'rgba(15, 160, 106,0.10)', border: '1px solid rgba(15, 160, 106,0.28)' }}>
-              <p className="text-[10px] font-semibold uppercase tracking-wide leading-tight" style={{ color: 'var(--text-muted)' }}>Received</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide leading-tight" style={{ color: 'var(--text-muted)' }}>{t('facilityQueue.detailReceived')}</p>
               <p className="text-[13px] font-bold truncate leading-tight mt-0.5" style={{ color: CASH_RECEIVED }}>{formatMoney(cash.received)}</p>
             </div>
             <div className="rounded-xl px-3 py-2" style={{ background: 'rgba(255, 153, 51,0.12)', border: '1px solid rgba(255, 153, 51,0.35)' }}>
-              <p className="text-[10px] font-semibold uppercase tracking-wide leading-tight" style={{ color: 'var(--text-muted)' }}>Pending</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide leading-tight" style={{ color: 'var(--text-muted)' }}>{t('postConsult.status.pending')}</p>
               <p className="text-[13px] font-bold truncate leading-tight mt-0.5" style={{ color: CASH_PENDING_TEXT }}>{formatMoney(cash.pending)}</p>
             </div>
           </div>
@@ -211,36 +212,36 @@ export default function BillingOverviewCards({
         <div className="px-4 py-3 flex flex-col">
           <StatRow
             icon={<Banknote className="w-4 h-4" style={{ color: CASH_RECEIVED }} />}
-            label={<>Collected <b>Today</b></>}
+            label={<>{t('billing.kpiCollected')} <b>{t('hospitals.statToday')}</b></>}
             sub={methodSplit}
             value={formatMoney(collectedToday)}
             tone={collectedToday > 0 ? CASH_RECEIVED : undefined}
           />
           <StatRow
             icon={<Receipt className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />}
-            label={<>Total <b>Invoices</b></>}
+            label={<>{t('dashboard.total')} <b>{t('payments.invoices')}</b></>}
             value={counts.invoices}
           />
           <StatRow
             icon={<Clock className="w-4 h-4" style={{ color: CASH_PENDING_TEXT }} />}
-            label={<>Pending <b>Bills</b></>}
+            label={<>{t('postConsult.status.pending')} <b>{t('patientPortal.bills')}</b></>}
             value={counts.pending}
           />
           <StatRow
             icon={<Users className="w-4 h-4" style={{ color: RED }} />}
-            label={<>Outstanding <b>Patients</b></>}
+            label={<>{t('billing.kpiOutstanding')} <b>{t('admin.dbPatients')}</b></>}
             value={outstandingPatients}
           />
           {showClaims && (
             <StatRow
               icon={<Shield className="w-4 h-4" style={{ color: PURPLE }} />}
-              label={<>Open <b>Claims</b></>}
+              label={<>{t('dashboard.open')} <b>{t('payments.colClaims')}</b></>}
               value={counts.openClaims}
             />
           )}
           <StatRow
             icon={<AlertTriangle className="w-4 h-4" style={{ color: unbilledEncounters > 0 ? RED : 'var(--text-muted)' }} />}
-            label={<>Unbilled <b>Encounters</b> · 30d</>}
+            label={<>{t('ui.unbilled')} <b>{t('analytics.legendEncounters')}</b> · 30d</>}
             value={unbilledEncounters}
             last
           />

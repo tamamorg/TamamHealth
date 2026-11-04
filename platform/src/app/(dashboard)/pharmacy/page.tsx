@@ -509,8 +509,8 @@ export default function PharmacyPage() {
               <Select
                 value={activeTab}
                 onChange={e => setActiveTab(e.target.value as PharmacyTab)}
-                aria-label="Choose which pharmacy view to display"
-                title="Choose which pharmacy view to display"
+                aria-label={t('ui.chooseWhichPharmacyViewTo')}
+                title={t('ui.chooseWhichPharmacyViewTo')}
                 style={{
                   height: 38,
                   width: 'auto',
@@ -569,7 +569,7 @@ export default function PharmacyPage() {
                   <span>{t('pharmacy.patient')}</span>
                   <span>{t('pharmacy.medication')}</span>
                   <span>{t('pharmacy.prescribedBy')}</span>
-                  <span>Payment</span>
+                  <span>{t('billing.activityKind.payment')}</span>
                   <span>{t('pharmacy.statusLabel')}</span>
                 </div>
                 {filteredQueue.length === 0 && (
@@ -640,7 +640,7 @@ export default function PharmacyPage() {
                             onPick={action => setCounter({ id: rx._id, intent: action === 'hold' || action === 'stockout' ? action : undefined })}
                           />
                           {rx.urgency === 'immediate' && (
-                            <small style={{ color: 'var(--color-warning-text)' }}>Immediate</small>
+                            <small style={{ color: 'var(--color-warning-text)' }}>{t('rxFlow.urgencyImmediate')}</small>
                           )}
                         </div>
                       </div>

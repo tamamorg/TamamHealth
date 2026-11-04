@@ -62,7 +62,7 @@ export function WeeklyDiseaseTrendsChart({ data, chartType }: WeeklyDiseaseTrend
   if (data.length === 0) {
     return (
       <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <EmptyState icon={TrendingUp} title="No data yet" message="No weekly disease trends for this period." />
+        <EmptyState icon={TrendingUp} title={t('ui.noDataYet')} message="No weekly disease trends for this period." />
       </div>
     );
   }

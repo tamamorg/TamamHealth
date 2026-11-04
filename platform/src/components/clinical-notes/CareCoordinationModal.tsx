@@ -139,8 +139,8 @@ export default function CareCoordinationModal({
     const selectedProblems = problems.filter((_, index) => includeProblems && pickedProblems.has(index));
     const selectedSocial = socialHistory.filter((_, index) => includeSocial && pickedSocial.has(index));
     const body = `${noteSections}
-      ${selectedProblems.length ? `<section class="section"><h2 class="section-title">Problems</h2><table><thead><tr><th>Effective Date</th><th>Problem</th><th>Status</th></tr></thead><tbody>${selectedProblems.map(problem => `<tr><td>${escapeHtml(problem.effectiveDate || '—')}</td><td>${escapeHtml(problem.problem)}</td><td><span class="status">${escapeHtml(problem.status)}</span></td></tr>`).join('')}</tbody></table></section>` : ''}
-      ${selectedSocial.length ? `<section class="section"><h2 class="section-title">Social History</h2><table><thead><tr><th>Context</th><th>Description</th></tr></thead><tbody>${selectedSocial.map(item => `<tr><td>${escapeHtml(item.comment || '—')}</td><td>${escapeHtml(item.description)}</td></tr>`).join('')}</tbody></table></section>` : ''}
+      ${selectedProblems.length ? `<section class="section"><h2 class="section-title">${t('ui.problems')}</h2><table><thead><tr><th>Effective Date</th><th>${t('ui.problem')}</th><th>${t('billing.activityColumn.status')}</th></tr></thead><tbody>${selectedProblems.map(problem => `<tr><td>${escapeHtml(problem.effectiveDate || '—')}</td><td>${escapeHtml(problem.problem)}</td><td><span class="status">${escapeHtml(problem.status)}</span></td></tr>`).join('')}</tbody></table></section>` : ''}
+      ${selectedSocial.length ? `<section class="section"><h2 class="section-title">Social History</h2><table><thead><tr><th>${t('ui.context')}</th><th>${t('ui.description')}</th></tr></thead><tbody>${selectedSocial.map(item => `<tr><td>${escapeHtml(item.comment || '—')}</td><td>${escapeHtml(item.description)}</td></tr>`).join('')}</tbody></table></section>` : ''}
       ${includeInstructions && instructions.trim() ? `<section class="section"><h2 class="section-title">Referral Instructions</h2><p class="notice">${escapeHtml(instructions.trim()).replace(/\n/g, '<br>')}</p></section>` : ''}`;
     const html = buildClinicalPrintDocument({
       title: note.patientName,
@@ -185,17 +185,17 @@ export default function CareCoordinationModal({
 
   return (
     <FormSlider
-      title={<>Send Referral for {note.patientName}</>}
+      title={<>{t('ui.sendReferralFor')} {note.patientName}</>}
       width={780}
       onClose={onClose}
       footer={<>
           <button type="button" className="btn btn-secondary" onClick={handlePrint}>
-            <Printer size={14} /> Preview/Print
+            <Printer size={14} /> {t('ui.previewPrint')}
           </button>
           <button type="button" className="btn btn-secondary" onClick={handleDownload}>
-            <Download size={14} /> Download
+            <Download size={14} /> {t('patientQrCode.download')}
           </button>
-          <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>{t('billing.activityClose')}</button>
           <button
             type="button"
             className="btn btn-primary"
@@ -208,14 +208,14 @@ export default function CareCoordinationModal({
     >
       <div className="space-y-4">
         <div className="cn-field" style={{ marginBottom: 16 }}>
-          <span className="cn-label">Send via</span>
+          <span className="cn-label">{t('ui.sendVia')}</span>
           <div className="cn-segmented">
             <button
               type="button"
               aria-pressed={channel === 'direct_message'}
               onClick={() => setChannel('direct_message')}
             >
-              Direct Message
+              {t('ui.directMessage')}
             </button>
             <button
               type="button"
@@ -242,10 +242,10 @@ export default function CareCoordinationModal({
 
         <label className="cn-tree-option" style={{ marginBottom: 4 }}>
           <input type="checkbox" checked disabled readOnly />
-          <span style={{ fontWeight: 700 }}>Summary of Care (mandatory)</span>
+          <span style={{ fontWeight: 700 }}>{t('ui.summaryOfCareMandatory')}</span>
         </label>
         <p style={{ fontSize: 12.5, color: 'var(--color-text-muted, #5d728b)', margin: '0 0 14px 26px' }}>
-          Attaching the Summary of Care is mandatory, but you choose which information travels with it.
+          {t('ui.attachingTheSummaryOfCare')}
         </p>
 
         {problems.length > 0 && (
@@ -256,12 +256,12 @@ export default function CareCoordinationModal({
                 checked={includeProblems}
                 onChange={e => setIncludeProblems(e.target.checked)}
               />
-              <span style={{ fontWeight: 700 }}>Problems</span>
+              <span style={{ fontWeight: 700 }}>{t('ui.problems')}</span>
             </label>
             {includeProblems && (
               <table className="cn-coord-table">
                 <thead>
-                  <tr><th /><th>Effective Dates</th><th>Problem</th><th>Problem Status</th></tr>
+                  <tr><th /><th>{t('ui.effectiveDates')}</th><th>{t('ui.problem')}</th><th>{t('ui.problemStatus2')}</th></tr>
                 </thead>
                 <tbody>
                   {problems.map((p, i) => (
@@ -293,12 +293,12 @@ export default function CareCoordinationModal({
                 checked={includeSocial}
                 onChange={e => setIncludeSocial(e.target.checked)}
               />
-              <span style={{ fontWeight: 700 }}>Social History</span>
+              <span style={{ fontWeight: 700 }}>{t('noteEditor.section.social_history')}</span>
             </label>
             {includeSocial && (
               <table className="cn-coord-table">
                 <thead>
-                  <tr><th /><th>Comments</th><th>Description</th></tr>
+                  <tr><th /><th>{t('labOrder.comments')}</th><th>{t('ui.description')}</th></tr>
                 </thead>
                 <tbody>
                   {socialHistory.map((s, i) => (
@@ -328,7 +328,7 @@ export default function CareCoordinationModal({
               checked={includeInstructions}
               onChange={e => setIncludeInstructions(e.target.checked)}
             />
-            <span style={{ fontWeight: 700 }}>Instructions</span>
+            <span style={{ fontWeight: 700 }}>{t('consultation.rxInstructions')}</span>
           </label>
           {includeInstructions && (
             <textarea
@@ -336,16 +336,14 @@ export default function CareCoordinationModal({
               style={{ minHeight: 64 }}
               value={instructions}
               onChange={e => setInstructions(e.target.value)}
-              placeholder="What you would like the receiving provider to do…"
-              aria-label="Referral instructions"
+              placeholder={t('ui.whatYouWouldLikeThe')}
+              aria-label={t('ui.referralInstructions')}
             />
           )}
         </div>
 
         <p style={{ fontSize: 12, color: 'var(--color-text-muted, #5d728b)', margin: '4px 0 14px' }}>
-          This platform has no Direct Messaging or eFax gateway connected. The referral is created
-          here with your chosen channel recorded on it, so the receiving provider sees it in their
-          referral queue.
+          {t('ui.thisPlatformHasNoDirect')}
         </p>
       </div>
     </FormSlider>

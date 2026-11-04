@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES, loadTranslations, interpolate } from './index';
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, loadTranslations, interpolate, setActiveTranslations } from './index';
 import type { Locale, TranslationMap } from './index';
 import { CRITICAL_TRANSLATIONS } from './critical-translations';
 
@@ -23,6 +23,7 @@ export async function applyLocalePreference(locale: Locale): Promise<void> {
   const map = await loadTranslations(locale);
   cachedLocale = locale;
   cachedTranslations = map;
+  setActiveTranslations(map);
   localStorage.setItem(STORAGE_KEY, locale);
   const localeConfig = SUPPORTED_LOCALES.find(l => l.code === locale);
   if (localeConfig) {
@@ -69,6 +70,7 @@ export function useTranslation() {
         const load = loadTranslations(initial).then(map => {
           cachedLocale = initial;
           cachedTranslations = map;
+          setActiveTranslations(map);
           const localeConfig = SUPPORTED_LOCALES.find(l => l.code === initial);
           if (localeConfig) {
             document.documentElement.dir = localeConfig.dir;

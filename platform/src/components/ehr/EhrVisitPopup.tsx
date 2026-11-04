@@ -29,6 +29,7 @@ const IITT_YELLOW_LABELS = new Map<string, string>(IITT_YELLOW_CRITERIA);
  * full chart.
  */
 function TriageFindingsSummary({ triage }: { triage: TriageDoc }) {
+  const { t } = useTranslation();
   const redLabels = (triage.redCriteria || []).map(code => IITT_RED_LABELS.get(code) || code);
   const yellowLabels = (triage.yellowCriteria || []).map(code => IITT_YELLOW_LABELS.get(code) || code);
   const manualRaise = extractManualPriorityRaise(triage.notes);
@@ -38,26 +39,26 @@ function TriageFindingsSummary({ triage }: { triage: TriageDoc }) {
 
   return (
     <div className="ehr-visit-pop-row">
-      <span className="ehr-visit-pop-label">Triage findings</span>
+      <span className="ehr-visit-pop-label">{t('ui.triageFindings')}</span>
       <div>
         {triage.isolationRequired && (
-          <p><strong style={{ color: 'var(--acuity-red)' }}>ISOLATION required</strong></p>
+          <p><strong style={{ color: 'var(--acuity-red)' }}>{t('ui.isolationRequired')}</strong></p>
         )}
         {redLabels.length > 0 && (
-          <p><strong style={{ color: 'var(--acuity-red)' }}>Red:</strong> {redLabels.join('; ')}</p>
+          <p><strong style={{ color: 'var(--acuity-red)' }}>{t('ui.red')}</strong> {redLabels.join('; ')}</p>
         )}
         {yellowLabels.length > 0 && (
-          <p><strong style={{ color: 'var(--acuity-yellow)' }}>Yellow:</strong> {yellowLabels.join('; ')}</p>
+          <p><strong style={{ color: 'var(--acuity-yellow)' }}>{t('ui.yellow')}</strong> {yellowLabels.join('; ')}</p>
         )}
         {triage.vitalUrgencyOverridden && (
           <p>
-            <strong style={{ color: 'var(--acuity-red)' }}>Saved below recommended {triage.vitalUrgencyRecommendation || 'urgency'}:</strong>{' '}
+            <strong style={{ color: 'var(--acuity-red)' }}>{t('ui.savedBelowRecommended')} {triage.vitalUrgencyRecommendation || 'urgency'}:</strong>{' '}
             {triage.vitalUrgencyOverrideReason || 'no reason recorded'}
           </p>
         )}
         {manualRaise && (
           <p>
-            <strong style={{ color: 'var(--acuity-red)' }}>Raised to {manualRaise.priority} by nurse:</strong> {manualRaise.reason}
+            <strong style={{ color: 'var(--acuity-red)' }}>{t('ui.raisedTo')} {manualRaise.priority} {t('ui.byNurse')}</strong> {manualRaise.reason}
           </p>
         )}
       </div>
@@ -358,16 +359,16 @@ export default function EhrVisitPopup({
                 </span>
               )}
             </div>
-            <button type="button" className="ehr-visit-pop-close" aria-label="Close" onClick={onClose}><X className="w-4 h-4" /></button>
+            <button type="button" className="ehr-visit-pop-close" aria-label={t('billing.activityClose')} onClick={onClose}><X className="w-4 h-4" /></button>
           </div>
         )}
 
         <div className="ehr-visit-pop-tabs" role="tablist">
           <button type="button" role="tab" aria-selected={tab === 'current'} className={tab === 'current' ? 'active' : ''} onClick={() => setTab('current')}>
-            Current visit
+            {t('ui.currentVisit')}
           </button>
           <button type="button" role="tab" aria-selected={tab === 'previous'} className={tab === 'previous' ? 'active' : ''} onClick={() => setTab('previous')}>
-            Previous visit
+            {t('ui.previousVisit')}
           </button>
           {/* The action line sits on the tab row: the one row that is always
               visible, however far the visit scrolls. It carries only what
@@ -380,21 +381,21 @@ export default function EhrVisitPopup({
                 things. The note action keeps the glyph; this one says what it
                 does. */}
             {onOpenChart && (
-              <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={onOpenChart} title="Open chart">
-                <FileText className="w-4 h-4" aria-hidden /> Open chart
+              <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={onOpenChart} title={t('appointments.openChart')}>
+                <FileText className="w-4 h-4" aria-hidden /> {t('appointments.openChart')}
               </button>
             )}
             {/* An untriaged arrival's next step IS the triage, so "Start
                 triage" stays on the line. Once a triage exists the same verb
                 is a look back ("Review triage") and moves under More. */}
             {onStartTriage && !triage && (
-              <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={onStartTriage} title="Open the ETAT triage assessment">
-                <HeartPulse className="w-4 h-4" aria-hidden /> Start triage
+              <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={onStartTriage} title={t('ui.openTheEtatTriageAssessment')}>
+                <HeartPulse className="w-4 h-4" aria-hidden /> {t('ui.startTriage')}
               </button>
             )}
             {onAcknowledge && triage && triage.handoffStatus !== 'acknowledged' && triage.handoffStatus !== 'in_consultation' && (
-              <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={onAcknowledge} title="Acknowledge the nurse handoff">
-                <Check className="w-4 h-4" aria-hidden /> Acknowledge
+              <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={onAcknowledge} title={t('ui.acknowledgeTheNurseHandoff')}>
+                <Check className="w-4 h-4" aria-hidden /> {t('lab.acknowledge')}
               </button>
             )}
             {/* "End assignment" deliberately absent: it lives in the patient
@@ -424,7 +425,7 @@ export default function EhrVisitPopup({
             {/* No Status row here: the queue row this panel drops out of already
                 carries the status, the queue and where the patient came from. */}
             <div className="ehr-visit-pop-row">
-              <span className="ehr-visit-pop-label">Visit</span>
+              <span className="ehr-visit-pop-label">{t('financialReview.visit')}</span>
               <div>
                 <strong>{appointment ? `${appointment.reason || 'Facility visit'}` : triage?.chiefComplaint || 'Walk-in visit'}</strong>
                 <p>
@@ -442,7 +443,7 @@ export default function EhrVisitPopup({
             </div>
 
             <div className="ehr-visit-pop-row">
-              <span className="ehr-visit-pop-label">Visit note</span>
+              <span className="ehr-visit-pop-label">{t('ui.visitNote')}</span>
               <div>
                 {todaysNote ? (
                   <>
@@ -450,7 +451,7 @@ export default function EhrVisitPopup({
                     <p>{todaysNote.author} · {todaysNote.signed ? 'Signed' : 'Draft'}</p>
                   </>
                 ) : (
-                  <p>Visit form has not been completed for this visit</p>
+                  <p>{t('ui.visitFormHasNotBeen')}</p>
                 )}
                 {patientId && onCall && (
                   <button type="button" className="ehr-visit-pop-link" onClick={onCall}>
@@ -464,7 +465,7 @@ export default function EhrVisitPopup({
 
             {triage && (triage.disposition || triage.destinationClinic || triage.assignedProviderName || triage.handoffNote) && (
               <div className="ehr-visit-pop-row">
-                <span className="ehr-visit-pop-label">Handoff</span>
+                <span className="ehr-visit-pop-label">{t('routeContext.handoff')}</span>
                 <div>
                   <strong>{triage.destinationClinic || 'Provider review'}</strong>
                   <p>
@@ -483,7 +484,7 @@ export default function EhrVisitPopup({
               <span className="ehr-visit-pop-label">{vitalsTriage && !vitalsAreCurrent ? 'Last vitals' : 'Vitals'}</span>
               <div>
                 {vitals.length === 0 ? (
-                  <p>No triage vitals recorded yet.</p>
+                  <p>{t('ui.noTriageVitalsRecordedYet')}</p>
                 ) : (
                   <>
                     <div className="ehr-visit-pop-vitals">
@@ -517,7 +518,7 @@ export default function EhrVisitPopup({
             {previousNote ? (
               <>
                 <div className="ehr-visit-pop-row">
-                  <span className="ehr-visit-pop-label">Last visit</span>
+                  <span className="ehr-visit-pop-label">{t('ui.lastVisit')}</span>
                   <div>
                     <strong>{previousNote.chiefComplaint || 'Consultation'}</strong>
                     <p>{recordDay(previousNote)} · {previousNote.providerName} · {previousNote.department}</p>
@@ -525,7 +526,7 @@ export default function EhrVisitPopup({
                 </div>
                 {previousNote.diagnoses?.length > 0 && (
                   <div className="ehr-visit-pop-row">
-                    <span className="ehr-visit-pop-label">Diagnoses</span>
+                    <span className="ehr-visit-pop-label">{t('noteViewer.diagnoses')}</span>
                     <div>
                       {previousNote.diagnoses.map(diagnosis => (
                         <p key={`${diagnosis.icd10Code}-${diagnosis.name}`}>
@@ -539,8 +540,8 @@ export default function EhrVisitPopup({
               </>
             ) : (
               <div className="ehr-visit-pop-row">
-                <span className="ehr-visit-pop-label">Last visit</span>
-                <div><p>No previous visits recorded at this facility.</p></div>
+                <span className="ehr-visit-pop-label">{t('ui.lastVisit')}</span>
+                <div><p>{t('ui.noPreviousVisitsRecordedAt')}</p></div>
               </div>
             )}
           </div>
@@ -609,14 +610,14 @@ export function EhrQueueMoveDialog({ entry, saving, onClose, onMove, onEscalate 
         <DialogHeader
           className="ehr-queue-move-head"
           titleId="ehr-queue-move-title"
-          title={<>Move {shortenPersonName(entry.patientName)}</>}
+          title={<>{t('ward.movePatient')} {shortenPersonName(entry.patientName)}</>}
           onClose={onClose}
         />
         <DialogBody className="ehr-queue-move-body">
 
         {(movable || onEscalate) && (
           <fieldset>
-            <legend>Service location</legend>
+            <legend>{t('ui.serviceLocation')}</legend>
             {destinations.map(destination => (
               <label key={destination.stage} className="ehr-queue-move-option">
                 <input
@@ -627,17 +628,17 @@ export function EhrQueueMoveDialog({ entry, saving, onClose, onMove, onEscalate 
                 />
                 <span>
                   {destination.label}
-                  {entry.stage === destination.stage && <em> (current)</em>}
+                  {entry.stage === destination.stage && <em> {t('ui.current')}</em>}
                 </span>
               </label>
             ))}
             {stageChanged && stage === 'awaiting_consultation' && (
               <label className="ehr-queue-move-room">
-                <span>Exam room</span>
+                <span>{t('ui.examRoom')}</span>
                 <input
                   type="text"
                   value={room}
-                  placeholder="e.g. Room 3"
+                  placeholder={t('ui.eGRoom3')}
                   onChange={event => setRoom(event.target.value)}
                 />
               </label>
@@ -664,8 +665,7 @@ export function EhrQueueMoveDialog({ entry, saving, onClose, onMove, onEscalate 
         )}
         {!movable && (
           <p className="ehr-queue-move-note">
-            {STAGE_LABELS[entry.stage]} is driven by open orders, so this entry moves on its own
-            when the order closes. Priority and comments still apply.
+            {STAGE_LABELS[entry.stage]} {t('ui.isDrivenByOpenOrders')}
           </p>
         )}
 
@@ -674,7 +674,7 @@ export function EhrQueueMoveDialog({ entry, saving, onClose, onMove, onEscalate 
             outranks the attribute. */}
         {!escalating && (
           <fieldset>
-            <legend>Priority</legend>
+            <legend>{t('appointments.labelPriority')}</legend>
             <div className="ehr-queue-move-priorities">
               {(Object.keys(PRIORITY_META) as QueueEntry['acuity'][]).map(level => (
                 <label key={level} className="ehr-queue-move-option">
@@ -692,17 +692,17 @@ export function EhrQueueMoveDialog({ entry, saving, onClose, onMove, onEscalate 
         )}
 
         <label className="ehr-queue-move-comment">
-          <span>Comment</span>
+          <span>{t('feedback.comment')}</span>
           <textarea
             rows={3}
             value={comment}
-            placeholder="Reason for the change — kept on the triage record"
+            placeholder={t('ui.reasonForTheChangeKept')}
             onChange={event => setComment(event.target.value)}
           />
         </label>
         </DialogBody>
         <DialogFooter className="ehr-queue-move-footer">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>{t('action.cancel')}</button>
           {escalating ? (
             /* The dialog IS the confirmation: the destination was chosen on
                purpose and the note above says what it does, so this commits

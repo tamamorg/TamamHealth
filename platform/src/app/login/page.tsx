@@ -356,7 +356,7 @@ export default function LoginPage() {
       <header className="lg-topbar">
         <a href="https://tamamhealth.org" className="lg-topbar-link">
           {/* eslint-disable-next-line @next/next/no-img-element -- fixed-height SVG logo */}
-          <img src="/assets/tamamhealth-logo-full.svg" alt="Tamam Healthcare System" className="lg-topbar-logo" />
+          <img src="/assets/tamamhealth-logo-full.svg" alt={t('ui.tamamHealthcareSystem')} className="lg-topbar-logo" />
         </a>
       </header>
 
@@ -388,7 +388,7 @@ export default function LoginPage() {
                 className="lg-input"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="e.g. desk.amira"
+                placeholder={t('ui.eGDeskAmira')}
                 autoComplete="username"
               />
             </div>
@@ -433,7 +433,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     className="lg-clear"
-                    aria-label="Clear role"
+                    aria-label={t('ui.clearRole')}
                     onMouseDown={(e) => { e.preventDefault(); selectRole(null); }}
                   >
                     ×
@@ -441,7 +441,7 @@ export default function LoginPage() {
                 )}
               </div>
               {roleMenuOpen && (
-                <div id="tl-role-menu" className="lg-rolelist" role="listbox" aria-label="Roles">
+                <div id="tl-role-menu" className="lg-rolelist" role="listbox" aria-label={t('government.roles')}>
                   {/* onMouseDown (not click) so picking wins the race against
                       the input's blur closing the menu. */}
                   <button
@@ -464,7 +464,7 @@ export default function LoginPage() {
                   ))}
                   {roleMatches.length === 0 && (
                     <span className="lg-rolelist-empty">
-                      No role matches that. Ask your facility administrator which role your account carries.
+                      {t('ui.noRoleMatchesThatAsk')}
                     </span>
                   )}
                 </div>
@@ -537,8 +537,8 @@ export default function LoginPage() {
         {demoGroups.length > 0 ? (
           <aside className="lg-demo blueprint" aria-labelledby="lg-demo-title">
             <Corners />
-            <h2 id="lg-demo-title">Choose a demo account</h2>
-            <p>One tap signs you in — seeded data, no real patients.</p>
+            <h2 id="lg-demo-title">{t('ui.chooseADemoAccount')}</h2>
+            <p>{t('ui.oneTapSignsYouIn')}</p>
             {/* Same picture as the product panel: which door this is, not
                 which of the seeded accounts the pointer is over. */}
             <div className="lg-demo-shot blueprint">

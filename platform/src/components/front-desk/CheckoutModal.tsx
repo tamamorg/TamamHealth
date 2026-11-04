@@ -174,13 +174,13 @@ export default function CheckoutModal({
 
   return (
     <FormSlider
-      title="Final checkout"
+      title={t('ui.finalCheckout')}
       subtitle={<>{target.patientName}{target.hospitalNumber ? ` · ${target.hospitalNumber}` : ''}</>}
       width={440}
       onClose={onClose}
       footer={<>
           <button type="button" onClick={onClose} className="btn btn-secondary">
-            Cancel
+            {t('action.cancel')}
           </button>
           {(() => {
             const blocked = !!gate && gate.blocking.length > 0;
@@ -216,7 +216,7 @@ export default function CheckoutModal({
         <div className="p-4 space-y-3">
           {charges.length > 0 && (
             <div className="rounded-xl p-3" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-              <p className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>Visit charges</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('ui.visitCharges')}</p>
               <ul className="space-y-1">
                 {charges.map((c, i) => (
                   <li key={i} className="flex justify-between text-[12px]">
@@ -228,11 +228,11 @@ export default function CheckoutModal({
             </div>
           )}
           {balance === null ? (
-            <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>Checking balance…</p>
+            <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>{t('ui.checkingBalance')}</p>
           ) : owes ? (
             <div className="rounded-xl p-3" style={{ background: 'rgba(224, 49, 39,0.06)', border: '1px solid rgba(224, 49, 39,0.18)' }}>
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--color-danger-text)' }}>Outstanding balance</span>
+                <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--color-danger-text)' }}>{t('patients.filterOutstanding')}</span>
                 <Wallet className="w-4 h-4" style={{ color: 'var(--color-danger-text)' }} />
               </div>
               <p className="text-2xl font-bold mt-1 tabular-nums" style={{ color: 'var(--color-danger-text)' }}>{formatMoney(balance)}</p>
@@ -242,11 +242,11 @@ export default function CheckoutModal({
                   className="mt-2.5 w-full text-[12px] font-semibold py-2 rounded-lg text-white transition-opacity hover:opacity-90 flex items-center justify-center gap-1.5"
                   style={{ background: 'var(--color-danger)' }}
                 >
-                  <Wallet className="w-4 h-4" />Collect payment
+                  <Wallet className="w-4 h-4" />{t('ui.collectPayment')}
                 </button>
               ) : (
                 <p className="text-[11px] mt-2" style={{ color: 'var(--text-muted)' }}>
-                  Send this patient to cashier or billing to collect payment.
+                  {t('ui.sendThisPatientToCashier')}
                 </p>
               )}
             </div>
@@ -254,8 +254,8 @@ export default function CheckoutModal({
             <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: 'var(--accent-light)', border: '1px solid var(--border-light)' }}>
               <CheckCircle className="w-5 h-5" style={{ color: 'var(--color-success)' }} />
               <div>
-                <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Balance settled</p>
-                <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>No outstanding charges on this account.</p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('ui.balanceSettled')}</p>
+                <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{t('ui.noOutstandingChargesOnThis')}</p>
               </div>
             </div>
           )}
@@ -268,7 +268,7 @@ export default function CheckoutModal({
           {gate && gate.tier1Outstanding.length > 0 && (
             <div className="rounded-xl p-3" style={{ background: 'rgba(224, 49, 39,0.08)', border: '1px solid rgba(224, 49, 39,0.35)' }}>
               <p className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--color-danger)' }}>
-                Life-sustaining medication not dispensed
+                {t('ui.lifeSustainingMedicationNotDispensed')}
               </p>
               <ul className="space-y-1">
                 {gate.tier1Outstanding.map(rx => (
@@ -276,9 +276,9 @@ export default function CheckoutModal({
                 ))}
               </ul>
               <p className="text-[11.5px] mt-1.5" style={{ color: 'var(--text-secondary)' }}>
-                This is a clinical safety issue regardless of payment status and needs a manager or clinician to intervene before the patient leaves.
+                {t('ui.thisIsAClinicalSafety')}
                 {' '}
-                <Link href="/pharmacy" className="font-semibold underline" style={{ color: 'var(--accent-primary)' }}>Open pharmacy</Link>
+                <Link href="/pharmacy" className="font-semibold underline" style={{ color: 'var(--accent-primary)' }}>{t('ui.openPharmacy')}</Link>
               </p>
             </div>
           )}
@@ -286,7 +286,7 @@ export default function CheckoutModal({
           {gate && gate.blocking.length > 0 && (
             <div className="rounded-xl p-3" style={{ background: 'rgba(255, 127, 0,0.07)', border: '1px solid rgba(255, 127, 0,0.25)' }}>
               <p className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--color-warning-text)' }}>
-                Checkout blocked — unresolved items
+                {t('ui.checkoutBlockedUnresolvedItems')}
               </p>
               {awaitingClinicianRecords && (
                 <p role="status" className="text-[12px] mb-1.5" style={{ color: 'var(--text-secondary)' }}>
@@ -300,7 +300,7 @@ export default function CheckoutModal({
                     {condition.detail && <span style={{ color: 'var(--text-secondary)' }}> — {condition.detail}</span>}
                     {condition.resolveHref && chartHrefOpensForViewer(condition.resolveHref, chartTabs) && (
                       <Link href={condition.resolveHref} className="ms-1.5 font-semibold underline" style={{ color: 'var(--accent-primary)' }}>
-                        Resolve
+                        {t('feedback.resolve')}
                       </Link>
                     )}
                   </li>
@@ -314,7 +314,7 @@ export default function CheckoutModal({
               unrepresentable in the record. */}
           <label className="block">
             <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-              Disposition
+              {t('noteEditor.section.disposition')}
             </span>
             <Select
               value={disposition}
@@ -322,9 +322,9 @@ export default function CheckoutModal({
               className="mt-1 w-full rounded-lg px-3 py-2 text-[12px]"
               style={{ border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', color: 'var(--text-primary)' }}
             >
-              <option value="discharged">Routine discharge</option>
-              <option value="discharged_with_referral">Discharged with referral</option>
-              <option value="dismissed_without_formal_checkout">Patient left without formal checkout</option>
+              <option value="discharged">{t('ui.routineDischarge')}</option>
+              <option value="discharged_with_referral">{t('visitStages.dischargedWithReferral')}</option>
+              <option value="dismissed_without_formal_checkout">{t('ui.patientLeftWithoutFormalCheckout')}</option>
             </Select>
           </label>
           {(!!gate?.blocking.length || disposition === 'dismissed_without_formal_checkout') && (

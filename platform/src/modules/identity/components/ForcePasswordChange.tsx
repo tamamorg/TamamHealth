@@ -90,12 +90,11 @@ export default function ForcePasswordChange({
             <ShieldCheck className="w-6 h-6" />
           </div>
           <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            Set your password
+            {t('ui.setYourPassword')}
           </h1>
         </div>
         <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
-          Welcome, {userName}. For security, choose a new password before continuing.
-          Your temporary password was set by an administrator.
+          {t('ui.welcome')} {userName}{t('ui.forSecurityChooseANew')}
         </p>
 
         {error && (
@@ -109,21 +108,21 @@ export default function ForcePasswordChange({
 
         <div className="space-y-3">
           <PasswordField
-            label="Temporary password"
+            label={t('adminUsers.fieldTempPassword')}
             value={currentPassword}
             onChange={setCurrentPassword}
             show={show}
             autoFocus
           />
           <PasswordField
-            label="New password"
+            label={t('ui.newPassword')}
             value={newPassword}
             onChange={setNewPassword}
             show={show}
             hint={`At least ${MIN_LENGTH} characters`}
           />
           <PasswordField
-            label="Confirm new password"
+            label={t('ui.confirmNewPassword')}
             value={confirmPassword}
             onChange={setConfirmPassword}
             show={show}
@@ -131,7 +130,7 @@ export default function ForcePasswordChange({
           />
           <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: 'var(--text-muted)' }}>
             <input type="checkbox" checked={show} onChange={e => setShow(e.target.checked)} />
-            Show passwords
+            {t('ui.showPasswords')}
           </label>
         </div>
 
@@ -148,7 +147,7 @@ export default function ForcePasswordChange({
           className="w-full mt-2 text-xs font-bold py-2"
           style={{ color: 'var(--text-muted)' }}
         >
-          Sign out instead
+          {t('ui.signOutInstead')}
         </button>
       </div>
     </div>

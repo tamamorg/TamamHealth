@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { useAuth } from '@/lib/context';
 import { getRoleConfig } from '@/lib/permissions';
 import { abbreviateProviderName } from '@/lib/patient-utils';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /**
  * Shared greeting header for dashboards that don't use the full EhrCareDashboard
@@ -27,6 +28,7 @@ export default function DashboardGreetingHeader({
   /** The module half of the eyebrow, after the role. */
   module?: string;
 }) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
 
   // The role line, for the headers that pass no eyebrow of their own — the
@@ -39,7 +41,7 @@ export default function DashboardGreetingHeader({
     <div className="dashboard-greeting-header">
       <div className="dashboard-greeting-copy">
         <p className="ehr-care-greeting">
-          Welcome, {abbreviateProviderName(currentUser?.name) || 'there'}
+          {t('ui.welcome')} {abbreviateProviderName(currentUser?.name) || 'there'}
         </p>
         {eyebrow && <p className="ehr-care-greeting-sub">{eyebrow}</p>}
       </div>

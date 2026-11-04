@@ -133,7 +133,7 @@ export default function CheckoutPage() {
     return (
       <Shell>
         <div className="card-elevated" style={{ textAlign: 'center', padding: 48 }}>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading payment details…</p>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('ui.loadingPaymentDetails')}</p>
         </div>
       </Shell>
     );
@@ -170,26 +170,26 @@ export default function CheckoutPage() {
           <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
             <Clock size={56} style={{ color: 'var(--accent-primary)' }} />
           </div>
-          <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>Payment submitted</h1>
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>{t('ui.paymentSubmitted')}</h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>
-            We have recorded your payment and it is now being confirmed. {isMobileMoney(method)
+            {t('ui.weHaveRecordedYourPayment')} {isMobileMoney(method)
               ? 'If prompted on your phone, approve the mobile-money request to complete the transaction.'
               : 'The facility will confirm receipt shortly.'}
           </p>
           <div style={{ padding: 16, borderRadius: 10, background: 'var(--overlay-subtle)', border: '1px solid var(--border-medium)', textAlign: 'start', marginBottom: 16 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Reference</p>
+                <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('billing.activityColumn.reference')}</p>
                 <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-platform-mono)' }}>{reference}</p>
               </div>
               <div>
-                <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Amount</p>
+                <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('billing.activityColumn.amount')}</p>
                 <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{fmtAmount(link.amount, link.currency)}</p>
               </div>
             </div>
           </div>
           <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-            Keep this reference for your records. You can close this page.
+            {t('ui.keepThisReferenceForYour')}
           </p>
         </div>
       </Shell>
@@ -230,7 +230,7 @@ export default function CheckoutPage() {
         borderRadius: 14, padding: '22px 24px', color: '#fff', marginBottom: 16, position: 'relative', overflow: 'hidden',
       }}>
         <div style={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
-        <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.7, marginBottom: 6 }}>Amount due</p>
+        <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.7, marginBottom: 6 }}>{t('ui.amountDue')}</p>
         <p style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.1 }}>
           {link.amount.toLocaleString()} <span style={{ fontSize: 15, opacity: 0.7 }}>{link.currency}</span>
         </p>
@@ -239,8 +239,8 @@ export default function CheckoutPage() {
 
       {/* Method picker */}
       <div className="card-elevated" style={{ padding: 20 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Choose a payment method</h2>
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>Select how you would like to pay this amount.</p>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{t('ui.chooseAPaymentMethod')}</h2>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>{t('ui.selectHowYouWouldLike')}</p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
           {PAYMENT_METHODS.map(m => (
@@ -264,12 +264,12 @@ export default function CheckoutPage() {
 
         {isMobileMoney(method) && (
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Mobile money number</label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>{t('ui.mobileMoneyNumber')}</label>
             <input
               type="tel"
               value={payerPhone}
               onChange={e => setPayerPhone(e.target.value)}
-              placeholder="e.g. +211 9XX XXX XXX"
+              placeholder={t('ui.eG2119xxXxx')}
               style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-card-solid)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }}
             />
           </div>
@@ -307,7 +307,7 @@ export default function CheckoutPage() {
         </button>
 
         <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 12, textAlign: 'center' }}>
-          Your payment will be confirmed by the facility once received.
+          {t('ui.yourPaymentWillBeConfirmed')}
         </p>
       </div>
     </Shell>

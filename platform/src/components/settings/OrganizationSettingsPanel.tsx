@@ -150,16 +150,16 @@ export default function OrganizationSettingsPanel({ section, users = [], hospita
           {header(goButton('Edit brand details', 'org-branding-editor'))}
           <div className="org-set-readonly">
             <Lock />
-            <p>Core tenant identity is governed by the platform record. Branding and patient-facing copy can be edited from the branding page.</p>
+            <p>{t('ui.coreTenantIdentityIsGoverned')}</p>
           </div>
           <div className="org-set-grid two">
-            <OrgInfoCard title="Identity" icon={<Building2 />}>
+            <OrgInfoCard title={t('adminUsers.sectionIdentity')} icon={<Building2 />}>
               <InfoRow label={t('orgSettings.fieldName')} value={org?.name || '-'} />
               <InfoRow label={t('orgSettings.fieldSlug')} value={org?.slug || '-'} mono />
               <InfoRow label={t('orgSettings.fieldType')} value={org?.orgType === 'public' ? t('orgSettings.publicSector') : t('orgSettings.privateSector')} />
               <InfoRow label={t('orgSettings.fieldCountry')} value={org?.country || '-'} />
             </OrgInfoCard>
-            <OrgInfoCard title="Contact & status" icon={<Mail />}>
+            <OrgInfoCard title={t('orgHospitals.groupContact')} icon={<Mail />}>
               <InfoRow label={t('orgSettings.fieldContactEmail')} value={org?.contactEmail || '-'} />
               <InfoRow label={t('orgSettings.fieldStatus')} value={org?.isActive ? t('orgSettings.statusActive') : t('orgSettings.statusInactive')} badge badgeColor={org?.isActive ? 'var(--accent-primary)' : 'var(--color-danger)'} />
               <InfoRow label={t('orgSettings.fieldCreated')} value={formatDate(org?.createdAt)} />
@@ -173,18 +173,18 @@ export default function OrganizationSettingsPanel({ section, users = [], hospita
         <>
           {header()}
           <div className="org-set-meter-row">
-            <UsageMeter label="Users" value={users.length} max={org?.maxUsers || 0} />
-            <UsageMeter label="Facilities" value={hospitals.length} max={org?.maxHospitals || 0} />
+            <UsageMeter label={t('admin.dbUsers')} value={users.length} max={org?.maxUsers || 0} />
+            <UsageMeter label={t('government.colFacilities')} value={hospitals.length} max={org?.maxHospitals || 0} />
           </div>
           <div className="org-set-grid two">
-            <OrgInfoCard title="Plan" icon={<CreditCard />}>
+            <OrgInfoCard title={t('noteEditor.section.plan')} icon={<CreditCard />}>
               <InfoRow label={t('orgSettings.fieldPlan')} value={planLabels[org?.subscriptionPlan || ''] || '-'} badge badgeColor={brandColor} />
               <InfoRow label={t('orgSettings.fieldStatus')} value={org?.subscriptionStatus || '-'} badge badgeColor={statusColors[org?.subscriptionStatus || ''] || '#6B7F96'} />
               <InfoRow label={t('orgSettings.fieldMaxUsers')} value={String(org?.maxUsers || '-')} />
               <InfoRow label={t('orgSettings.fieldMaxHospitals')} value={String(org?.maxHospitals || '-')} />
             </OrgInfoCard>
-            <OrgInfoCard title="Plan changes" icon={<Info />}>
-              <p className="org-set-copy">Subscription changes are handled by the platform administrator so limits stay aligned with billing, reporting, and support commitments.</p>
+            <OrgInfoCard title={t('ui.planChanges')} icon={<Info />}>
+              <p className="org-set-copy">{t('ui.subscriptionChangesAreHandledBy')}</p>
             </OrgInfoCard>
           </div>
         </>
@@ -272,15 +272,15 @@ export default function OrganizationSettingsPanel({ section, users = [], hospita
         <>
           {header(goButton('Open branding editor', 'org-branding-editor'))}
           <div className="org-set-grid two">
-            <OrgInfoCard title="Brand identity" icon={<Palette />}>
-              <InfoRow label="Logo" value={org?.logoUrl ? 'Configured' : 'Not configured'} badge badgeColor={org?.logoUrl ? 'var(--accent-primary)' : '#6B7F96'} />
-              <InfoRow label="Primary color" value={org?.primaryColor || '-'} mono />
-              <InfoRow label="Secondary color" value={org?.secondaryColor || '-'} mono />
-              <InfoRow label="Accent color" value={org?.accentColor || '-'} mono />
+            <OrgInfoCard title={t('ui.brandIdentity')} icon={<Palette />}>
+              <InfoRow label={t('branding.logo')} value={org?.logoUrl ? 'Configured' : 'Not configured'} badge badgeColor={org?.logoUrl ? 'var(--accent-primary)' : '#6B7F96'} />
+              <InfoRow label={t('ui.primaryColor')} value={org?.primaryColor || '-'} mono />
+              <InfoRow label={t('ui.secondaryColor')} value={org?.secondaryColor || '-'} mono />
+              <InfoRow label={t('ui.accentColor')} value={org?.accentColor || '-'} mono />
             </OrgInfoCard>
-            <OrgInfoCard title="Patient-facing billing details" icon={<CreditCard />}>
-              <InfoRow label="Bank transfer details" value={org?.bankDetails ? 'Configured' : 'Not configured'} badge badgeColor={org?.bankDetails ? 'var(--accent-primary)' : '#6B7F96'} />
-              <p className="org-set-copy">Bank instructions appear in patient payment surfaces. Keep them in the branding editor so there is one source of truth.</p>
+            <OrgInfoCard title={t('ui.patientFacingBillingDetails')} icon={<CreditCard />}>
+              <InfoRow label={t('ui.bankTransferDetails')} value={org?.bankDetails ? 'Configured' : 'Not configured'} badge badgeColor={org?.bankDetails ? 'var(--accent-primary)' : '#6B7F96'} />
+              <p className="org-set-copy">{t('ui.bankInstructionsAppearInPatient')}</p>
             </OrgInfoCard>
           </div>
         </>
@@ -290,13 +290,13 @@ export default function OrganizationSettingsPanel({ section, users = [], hospita
         <>
           {header(goButton('Open service pricing', 'org-billing-editor'))}
           <div className="org-set-meter-row">
-            <MiniStat label="Catalog rows" value={fees.length} />
-            <MiniStat label="Active prices" value={fees.filter(fee => fee.isActive).length} />
-            <MiniStat label="Inactive prices" value={fees.filter(fee => !fee.isActive).length} />
+            <MiniStat label={t('ui.catalogRows')} value={fees.length} />
+            <MiniStat label={t('ui.activePrices')} value={fees.filter(fee => fee.isActive).length} />
+            <MiniStat label={t('ui.inactivePrices')} value={fees.filter(fee => !fee.isActive).length} />
           </div>
-          <OrgInfoCard title="Pricing source of truth" icon={<ExternalLink />}>
-            <p className="org-set-copy">Service prices are edited in the service pricing page. Settings only summarizes catalog health so billing controls are not duplicated.</p>
-            <InfoRow label="Bank details" value={org?.bankDetails ? 'Configured' : 'Not configured'} badge badgeColor={org?.bankDetails ? 'var(--accent-primary)' : '#6B7F96'} />
+          <OrgInfoCard title={t('ui.pricingSourceOfTruth')} icon={<ExternalLink />}>
+            <p className="org-set-copy">{t('ui.servicePricesAreEditedIn')}</p>
+            <InfoRow label={t('ui.bankDetails')} value={org?.bankDetails ? 'Configured' : 'Not configured'} badge badgeColor={org?.bankDetails ? 'var(--accent-primary)' : '#6B7F96'} />
           </OrgInfoCard>
         </>
       )}

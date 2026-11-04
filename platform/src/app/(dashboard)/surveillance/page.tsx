@@ -357,7 +357,7 @@ export default function SurveillancePage() {
         {/* Aggregate summary strip */}
         <section className="gov-panel mb-4">
           <div className="gov-panel-head">
-            <h3>This Week</h3>
+            <h3>{t('epidemic.colThisWeek')}</h3>
             <span className="gov-meta">{t('surveillance.updated', { date: formatDate(new Date().toISOString()) })}</span>
           </div>
           <div className="flex items-center gap-8 flex-wrap p-4">
@@ -448,7 +448,7 @@ export default function SurveillancePage() {
                     fill="none" stroke="rgba(33, 145, 208, 0.38)" strokeWidth="2" strokeLinecap="round" />
                   <text x={surveillanceProjector.project(7.5, 31.1).x + 8} y={surveillanceProjector.project(7.5, 31.1).y} fontSize="9"
                     fill="rgba(1, 86, 151, 0.45)" fontStyle="italic">
-                    White Nile
+                    {t('ui.whiteNile')}
                   </text>
 
                   {/* Heat layer: blurred alert-coloured intensity under the dots,
@@ -591,7 +591,7 @@ export default function SurveillancePage() {
                   <div className="p-4">
                     <EmptyState
                       icon={Shield}
-                      title="No active alerts"
+                      title={t('ui.noActiveAlerts')}
                       message="Disease surveillance alerts will appear here as they're reported."
                     />
                   </div>

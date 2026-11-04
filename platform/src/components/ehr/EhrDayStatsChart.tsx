@@ -5,6 +5,7 @@ import { BarChart3, ChevronLeft, ChevronRight } from '@/components/icons/lucide'
 import { addDays } from '@/components/ehr/EhrMiniCalendar';
 import { parseIsoDate, toIsoDate } from '@/lib/date-utils';
 import EhrPanelTitle from './EhrPanelTitle';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /** One unit of work plotted on the chart: a row, appointment or order. */
 export type DayStatsItem = {
@@ -43,6 +44,7 @@ export default function EhrDayStatsChart({
   todayIso: string;
   title?: string;
 }) {
+  const { t } = useTranslation();
   // Chart-local focus day: follows the dashboard's selected date, but the
   // ‹ › controls can step it independently without changing the work list.
   // Re-synced during render rather than in an effect (React's "adjusting state
@@ -94,10 +96,10 @@ export default function EhrDayStatsChart({
         <BarChart3 className="w-5 h-5" />
         <EhrPanelTitle title={title} />
         <div className="ehr-day-stats-nav">
-          <button type="button" aria-label="Previous day" onClick={() => stepFocus(-1)}>
+          <button type="button" aria-label={t('ui.previousDay')} onClick={() => stepFocus(-1)}>
             <ChevronLeft className="w-3.5 h-3.5" />
           </button>
-          <button type="button" aria-label="Next day" onClick={() => stepFocus(1)}>
+          <button type="button" aria-label={t('ui.nextDay')} onClick={() => stepFocus(1)}>
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -173,6 +175,7 @@ export function EhrWeekActivityChart({
   onSelectDate?: (iso: string) => void;
   title?: string;
 }) {
+  const { t } = useTranslation();
   const selected = parseIsoDate(selectedDate);
   // Sunday-start week, matching the mini-calendar's S M T W T F S header.
   const selectedWeekStart = addDays(selected, -selected.getDay());
@@ -211,7 +214,7 @@ export function EhrWeekActivityChart({
         <span className="ehr-week-activity-caption">{activeWeekIsCurrent ? 'This week' : 'Latest week'}</span>
       </div>
       {total === 0 ? (
-        <p className="ehr-day-stats-empty">No activity this week.</p>
+        <p className="ehr-day-stats-empty">{t('ui.noActivityThisWeek')}</p>
       ) : (
         <div className="ehr-week-activity-bars">
           {days.map(day => {

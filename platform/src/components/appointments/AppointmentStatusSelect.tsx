@@ -24,6 +24,7 @@ import { useState } from 'react';
 import { APPOINTMENT_STATUS_OPTIONS, APPOINTMENT_STATUS_DESCRIPTIONS, appointmentStatusLabel, canonicalAppointmentStatus } from '@/lib/appointment-status';
 import type { AppointmentStatus } from '@/lib/db-types';
 import { CalendarClock } from '@/components/icons/lucide';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export default function AppointmentStatusSelect({
   status,
@@ -44,6 +45,7 @@ export default function AppointmentStatusSelect({
   /** Narrows the offered rungs to this set (see module doc above). */
   allowedStatuses?: AppointmentStatus[];
 }) {
+  const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
   const base = allowedStatuses
     ? APPOINTMENT_STATUS_OPTIONS.filter(option => allowedStatuses.includes(option))
@@ -93,7 +95,7 @@ export default function AppointmentStatusSelect({
       <CalendarClock className="w-4 h-4" />
       <span>{label}</span>
       {select}
-      {saving && <span>Saving…</span>}
+      {saving && <span>{t('noteEditor.saving')}</span>}
     </div>
   );
 }

@@ -9,9 +9,11 @@ import { getRoleConfig } from '@/lib/permissions';
 import { patientFullName, patientGenderAge, initials, stateTint } from '@/lib/patient-utils';
 import RoomingWorkflow from '@/components/nurse/RoomingWorkflow';
 import { returnToFromSearch, withReturnTo } from '@/lib/navigation/return-to';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /** Focused rooming page opened from a patient row's visit details. */
 export default function PatientRoomingPage() {
+  const { t } = useTranslation();
   const params = useParams();
   const router = useRouter();
   const { currentUser } = useAuth();
@@ -43,7 +45,7 @@ export default function PatientRoomingPage() {
         className="flex items-center gap-1.5 text-[12px] font-bold mb-2 no-print"
         style={{ color: 'var(--accent-primary)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
       >
-        <ArrowLeft className="w-4 h-4" /> Back
+        <ArrowLeft className="w-4 h-4" /> {t('action.back')}
       </button>
 
       <div className="card-elevated flex items-center gap-3 px-4 py-3 mb-3 flex-shrink-0" style={{ borderRadius: 12 }}>
@@ -56,7 +58,7 @@ export default function PatientRoomingPage() {
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{[patient.hospitalNumber, patientGenderAge(patient)].filter(Boolean).join(' · ')}</p>
         </div>
         <button type="button" onClick={() => router.push(withReturnTo(`/patients/${patient._id}`, `${window.location.pathname}${window.location.search}`))} className="flex items-center gap-1.5 px-3 h-[32px] rounded-lg text-[12px] font-semibold flex-shrink-0" style={{ border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', color: 'var(--text-secondary)' }}>
-          <FileText className="w-4 h-4" /> Open chart
+          <FileText className="w-4 h-4" /> {t('appointments.openChart')}
         </button>
       </div>
 
@@ -64,8 +66,8 @@ export default function PatientRoomingPage() {
         <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderBottom: '1px solid var(--border-light)' }}>
           <BedDouble className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
           <div>
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Room patient</h2>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Assign a room, record vitals, and mark ready for the clinician.</p>
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('ui.roomPatient')}</h2>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('ui.assignARoomRecordVitals')}</p>
           </div>
         </div>
         <div className="p-3 flex-1 min-h-0 overflow-y-auto">

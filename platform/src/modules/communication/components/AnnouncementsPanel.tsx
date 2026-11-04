@@ -141,38 +141,38 @@ export default function AnnouncementsPanel({ onClose, onUnreadChange }: { onClos
       <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
         <div className="flex items-center gap-2">
           <Megaphone className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-          <span id="announcements-panel-title" className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Announcements</span>
+          <span id="announcements-panel-title" className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{t('topbar.announcements')}</span>
         </div>
         <div className="flex items-center gap-1">
           {canPost && !composing && (
             <button onClick={() => setComposing(true)} className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md" style={{ color: 'var(--accent-text)' }}>
-              <Plus className="w-3.5 h-3.5" /> New
+              <Plus className="w-3.5 h-3.5" /> {t('breadcrumb.new')}
             </button>
           )}
-          <button onClick={onClose} aria-label="Close" className="p-1"><X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /></button>
+          <button onClick={onClose} aria-label={t('billing.activityClose')} className="p-1"><X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /></button>
         </div>
       </div>
 
       {composing && (
         <div className="px-4 py-3 space-y-2" style={{ borderBottom: '1px solid var(--border-light)', background: 'var(--overlay-subtle)' }}>
           {error && <FormError message={error} />}
-          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title" className="w-full px-2.5 py-1.5 rounded-md text-sm" style={inputStyle} />
-          <textarea value={bodyText} onChange={e => setBodyText(e.target.value)} placeholder="Message…" rows={3} className="w-full px-2.5 py-1.5 rounded-md text-sm" style={inputStyle} />
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('ui.title')} className="w-full px-2.5 py-1.5 rounded-md text-sm" style={inputStyle} />
+          <textarea value={bodyText} onChange={e => setBodyText(e.target.value)} placeholder={t('ui.message')} rows={3} className="w-full px-2.5 py-1.5 rounded-md text-sm" style={inputStyle} />
           <div className="grid grid-cols-2 gap-2">
             <Select value={audience} onChange={e => setAudience(e.target.value as AnnouncementAudience)} className="px-2.5 py-1.5 rounded-md text-sm" style={inputStyle}>
-              <option value="organization">Whole organization</option>
+              <option value="organization">{t('ui.wholeOrganization')}</option>
               <option value="facility">{isOrgLevelAuthor ? 'One facility' : 'My facility'}</option>
-              <option value="role">Specific roles</option>
+              <option value="role">{t('ui.specificRoles')}</option>
             </Select>
             <Select value={priority} onChange={e => setPriority(e.target.value as AnnouncementPriority)} className="px-2.5 py-1.5 rounded-md text-sm" style={inputStyle}>
-              <option value="normal">Normal</option>
-              <option value="important">Important</option>
-              <option value="urgent">Urgent</option>
+              <option value="normal">{t('births.optNormal')}</option>
+              <option value="important">{t('ui.important')}</option>
+              <option value="urgent">{t('appointments.priorityUrgent')}</option>
             </Select>
           </div>
           {audience === 'facility' && isOrgLevelAuthor && (
             <Select value={facilityChoice} onChange={e => setFacilityChoice(e.target.value)} className="w-full px-2.5 py-1.5 rounded-md text-sm" style={inputStyle}>
-              <option value="">Choose a facility…</option>
+              <option value="">{t('ui.chooseAFacility')}</option>
               {facilities.map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
             </Select>
           )}
@@ -198,9 +198,9 @@ export default function AnnouncementsPanel({ onClose, onUnreadChange }: { onClos
             </div>
           )}
           <div className="flex justify-end gap-2 pt-1">
-            <button onClick={() => { setComposing(false); setError(''); }} className="btn btn-secondary btn-sm">Cancel</button>
+            <button onClick={() => { setComposing(false); setError(''); }} className="btn btn-secondary btn-sm">{t('action.cancel')}</button>
             <button onClick={handlePost} disabled={saving} className="btn btn-primary btn-sm">
-              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />} Post
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />} {t('ui.post')}
             </button>
           </div>
         </div>
@@ -212,7 +212,7 @@ export default function AnnouncementsPanel({ onClose, onUnreadChange }: { onClos
         ) : items.length === 0 ? (
           <div className="px-4 py-8 text-center">
             <Megaphone className="w-7 h-7 mx-auto mb-2" style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No announcements right now.</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('ui.noAnnouncementsRightNow')}</p>
           </div>
         ) : (
           items.map(a => {
@@ -226,7 +226,7 @@ export default function AnnouncementsPanel({ onClose, onUnreadChange }: { onClos
                       <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: p.bg, color: p.color }}>{p.label}</span>
                     )}
                   </div>
-                  <button onClick={() => handleDismiss(a._id)} className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" title="Dismiss">
+                  <button onClick={() => handleDismiss(a._id)} className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" title={t('action.dismiss')}>
                     <Check className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
                   </button>
                 </div>

@@ -89,7 +89,7 @@ export default function VisitNotePanel({ patient, currentUser, canConsult, onClo
     return (
       <div className="tamam-drawer-body">
         <div className="tamam-panel-permission-note">
-          <p>You don&apos;t have permission to add visit notes for this patient.</p>
+          <p>{t('ui.youDonTHavePermission')}</p>
         </div>
       </div>
     );
@@ -256,7 +256,7 @@ export default function VisitNotePanel({ patient, currentUser, canConsult, onClo
         </section>
 
         <section className="vn-section">
-          <label htmlFor="vn-note" className="vn-heading">Note</label>
+          <label htmlFor="vn-note" className="vn-heading">{t('rxFlow.note')}</label>
           <p className="vn-help">Write your notes</p>
           <textarea
             id="vn-note"
@@ -292,13 +292,13 @@ export default function VisitNotePanel({ patient, currentUser, canConsult, onClo
             onChange={handleImagesChosen}
           />
           <button type="button" className="vn-add-image" onClick={() => fileInputRef.current?.click()}>
-            Add image <Plus aria-hidden />
+            {t('ui.addImage')} <Plus aria-hidden />
           </button>
         </section>
       </div>
       <FormNotices />
       <div className="tm-action-bar">
-        <button type="button" className="tm-action-bar__btn tm-action-bar__btn--secondary" onClick={onClose} disabled={submitting}>Discard</button>
+        <button type="button" className="tm-action-bar__btn tm-action-bar__btn--secondary" onClick={onClose} disabled={submitting}>{t('consultation.discard')}</button>
         <button type="button" className="tm-action-bar__btn tm-action-bar__btn--primary" onClick={handleSave} disabled={!canSave || submitting}>
           {submitting ? 'Saving…' : 'Save and close'}
         </button>

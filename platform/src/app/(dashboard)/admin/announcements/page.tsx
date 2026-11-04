@@ -92,15 +92,15 @@ export default function AdminAnnouncementsPage() {
   return (
     <SadbPage>
       <SadbPanelHeader
-        title="Announcements"
+        title={t('topbar.announcements')}
         note="Messages broadcast to tenant staff, newest first."
         tag={announcementsLoading ? undefined : `${announcements.length} visible`}
       />
       <SadbCard>
         {announcementsLoading ? (
-          <p className="sadb-empty">Loading announcements…</p>
+          <p className="sadb-empty">{t('ui.loadingAnnouncements')}</p>
         ) : announcements.length === 0 ? (
-          <p className="sadb-empty">No announcements are currently visible.</p>
+          <p className="sadb-empty">{t('ui.noAnnouncementsAreCurrentlyVisible')}</p>
         ) : (
           announcements.slice(0, 10).map(a => (
             <SadbQueueRow
@@ -115,23 +115,23 @@ export default function AdminAnnouncementsPage() {
       </SadbCard>
 
       {currentUser && canPostAnnouncements(currentUser.role) && (
-        <SadbSettingGroup title="Post an announcement" meta="Organization audience">
+        <SadbSettingGroup title={t('ui.postAnAnnouncement')} meta="Organization audience">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px' }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span className="sadb-setting-label" style={{ fontSize: 11.5 }}>Title</span>
+              <span className="sadb-setting-label" style={{ fontSize: 11.5 }}>{t('ui.title')}</span>
               <input
                 type="text"
                 className="sadb-modal-input"
-                placeholder="Announcement title"
+                placeholder={t('ui.announcementTitle')}
                 value={annTitle}
                 onChange={e => setAnnTitle(e.target.value)}
               />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span className="sadb-setting-label" style={{ fontSize: 11.5 }}>Message</span>
+              <span className="sadb-setting-label" style={{ fontSize: 11.5 }}>{t('lab.message')}</span>
               <textarea
                 className="sadb-modal-input"
-                placeholder="Message"
+                placeholder={t('lab.message')}
                 rows={3}
                 value={annBody}
                 onChange={e => setAnnBody(e.target.value)}
@@ -139,7 +139,7 @@ export default function AdminAnnouncementsPage() {
             </label>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 200px' }}>
-                <span className="sadb-setting-label" style={{ fontSize: 11.5 }}>Organization</span>
+                <span className="sadb-setting-label" style={{ fontSize: 11.5 }}>{t('adminBilling.colOrganization')}</span>
                 <Select
                   className="sadb-modal-input"
                   value={annOrgId}
@@ -149,15 +149,15 @@ export default function AdminAnnouncementsPage() {
                 </Select>
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '0 0 160px' }}>
-                <span className="sadb-setting-label" style={{ fontSize: 11.5 }}>Priority</span>
+                <span className="sadb-setting-label" style={{ fontSize: 11.5 }}>{t('appointments.labelPriority')}</span>
                 <Select
                   className="sadb-modal-input"
                   value={annPriority}
                   onChange={e => setAnnPriority(e.target.value as AnnouncementPriority)}
                 >
-                  <option value="normal">Normal</option>
-                  <option value="important">Important</option>
-                  <option value="urgent">Urgent</option>
+                  <option value="normal">{t('births.optNormal')}</option>
+                  <option value="important">{t('ui.important')}</option>
+                  <option value="urgent">{t('appointments.priorityUrgent')}</option>
                 </Select>
               </label>
             </div>

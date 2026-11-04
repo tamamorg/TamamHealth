@@ -417,10 +417,10 @@ export default function EhrTopRail() {
             show-rule for one element is a coin toss the cascade keeps losing:
             it is what put a second logo on the rail. The full mark scales. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="ehr-top-brand-logo-full" src="/assets/tamamhealth-logo-full-white.svg" alt="Tamam Healthcare System" />
+        <img className="ehr-top-brand-logo-full" src="/assets/tamamhealth-logo-full-white.svg" alt={t('ui.tamamHealthcareSystem')} />
       </div>
 
-      <nav className="ehr-top-modules" aria-label="Primary EHR modules" ref={moduleRef}>
+      <nav className="ehr-top-modules" aria-label={t('ui.primaryEhrModules')} ref={moduleRef}>
         <Tooltip content={t('topbar.moduleMenu')}>
         <button
           ref={moduleTriggerRef}
@@ -469,18 +469,18 @@ export default function EhrTopRail() {
                   </span>
                 </div>
                 <button type="button" onClick={() => { setModuleOpen(false); openSettingsPage(); }}>
-                  <Settings className="w-4 h-4" /><span>Settings</span>
+                  <Settings className="w-4 h-4" /><span>{t('breadcrumb.settings')}</span>
                 </button>
                 <button type="button" onClick={openReportIssue}>
                   <Flag className="w-4 h-4" /><span>{t('issues.menuLink')}</span>
                 </button>
                 {tourAvailable && (
                   <button type="button" onClick={() => { setModuleOpen(false); startTour(); }}>
-                    <HelpCircle className="w-4 h-4" /><span>Take a tour</span>
+                    <HelpCircle className="w-4 h-4" /><span>{t('topbar.tour')}</span>
                   </button>
                 )}
                 <button type="button" className="danger" onClick={() => { setModuleOpen(false); logout(); }}>
-                  <LogOut className="w-4 h-4" /><span>Log out</span>
+                  <LogOut className="w-4 h-4" /><span>{t('topbar.logout')}</span>
                 </button>
               </>
             }
@@ -747,7 +747,7 @@ export default function EhrTopRail() {
     </header>
 
     {currentUser && mobileTabs.length > 0 && (
-      <nav className="ehr-mobile-tabbar" aria-label="Primary navigation">
+      <nav className="ehr-mobile-tabbar" aria-label={t('featureCatalog.capability.primary-navigation')}>
         {mobileTabs.slice(0, 2).map(tab => (
           <button
             key={tab.href}
@@ -760,7 +760,7 @@ export default function EhrTopRail() {
           </button>
         ))}
         {primaryCreateHref && (
-          <button type="button" className="ehr-mobile-tabbar-fab" aria-label="Quick create" onClick={() => router.push(primaryCreateHref)}>
+          <button type="button" className="ehr-mobile-tabbar-fab" aria-label={t('ui.quickCreate')} onClick={() => router.push(primaryCreateHref)}>
             <Plus className="w-6 h-6" />
           </button>
         )}
