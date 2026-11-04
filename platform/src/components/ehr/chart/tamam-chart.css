@@ -365,6 +365,72 @@
   box-shadow: inset 2px 0 0 var(--color-danger, #D92B20);
 }
 
+/* An open visit and the rows inside it read as one block: the visit row is
+   tinted, and its rows sit on a lighter tint, indented under a tree line that
+   runs from the visit to the last of them. The line lives in the date cell,
+   clear of the danger edge an abnormal row keeps at the very left. Tints go on
+   the row: the chart forces every cell's background to transparent. */
+.tamam-root .tamam-table tbody tr.tamam-activity-group.is-open {
+  background: var(--color-info-bg, #EEF4FB);
+}
+.tamam-root .tamam-table tbody tr.tamam-activity-group.is-open > td {
+  border-bottom-color: color-mix(in srgb, var(--accent-primary, #015697) 18%, transparent);
+}
+.tamam-root .tamam-table tbody tr.tamam-activity-group.is-open .tamam-activity-type {
+  color: var(--accent-primary, #015697);
+  font-weight: 600;
+}
+
+.tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested {
+  background: color-mix(in srgb, var(--color-info-bg, #EEF4FB) 45%, var(--bg-card-solid, #fff));
+}
+.tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested:hover {
+  background: color-mix(in srgb, var(--color-info-bg, #EEF4FB) 85%, var(--bg-card-solid, #fff));
+}
+.tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td {
+  border-bottom-color: color-mix(in srgb, var(--accent-primary, #015697) 10%, transparent);
+}
+.tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested-last > td {
+  border-bottom-color: color-mix(in srgb, var(--accent-primary, #015697) 28%, transparent);
+}
+/* `!important` because the chart pins every edge cell to 16px with it
+   (`body .tamam-root .tamam-table :is(thead th, tbody td):is(:first-child, …)`). */
+body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-activity-date {
+  position: relative;
+  padding-inline-start: 40px !important;
+  font-size: 12px;
+}
+.tamam-activity-tr.is-nested > td.tamam-activity-date::before,
+.tamam-activity-tr.is-nested > td.tamam-activity-date::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: 22px;
+  border-color: color-mix(in srgb, var(--accent-primary, #015697) 45%, transparent);
+  pointer-events: none;
+}
+/* The trunk: full height, stopping at the elbow on the last row. */
+.tamam-activity-tr.is-nested > td.tamam-activity-date::before {
+  top: 0;
+  bottom: 0;
+  border-inline-start: 1.5px solid;
+}
+.tamam-activity-tr.is-nested-last > td.tamam-activity-date::before { bottom: auto; height: 22px; }
+/* The elbow into this row's first line. */
+.tamam-activity-tr.is-nested > td.tamam-activity-date::after {
+  top: 21px;
+  width: 12px;
+  border-top: 1.5px solid;
+}
+.tamam-activity-tr.is-nested .tamam-activity-type { color: var(--ehr-muted, #5D728B); }
+
+/* Back from a record opened here: the row it was opened from, marked for the
+   moment the timeline holds the class (PatientTimeline clears it). */
+.tamam-root .tamam-table tbody tr.tamam-activity-tr.is-returned {
+  background: color-mix(in srgb, var(--color-warning, #CC6600) 14%, var(--bg-card-solid, #fff));
+  box-shadow: inset 3px 0 0 var(--color-warning, #CC6600);
+  transition: background-color 0.6s ease-out;
+}
+
 /* A read-only answer inside a form slider, on the same line as its inputs. */
 .tamam-slider-value { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text-primary); white-space: pre-wrap; overflow-wrap: anywhere; }
 .tamam-slider-meta { margin: 2px 0 0; font-size: 12px; color: var(--text-muted); }

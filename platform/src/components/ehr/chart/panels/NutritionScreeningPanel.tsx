@@ -24,7 +24,6 @@ import { classifyScreening } from '@/lib/services/nutrition-screening-service';
 import { patientFullName } from '@/lib/patient-utils';
 import { formatDate } from '@/lib/format-utils';
 import { describeError } from '@/lib/user-facing-error';
-import FormNotices from '@/components/overlay/FormNotices';
 import type { NutritionFollowUpAction, NutritionScreeningDoc, PatientDoc } from '@/lib/db-types';
 import type { ChartPanelUser } from './types';
 import './start-visit-panel.css';
@@ -220,7 +219,6 @@ export default function NutritionScreeningPanel({ patient, currentUser, onClose 
           },
         ],
       }]}
-      notice={<FormNotices />}
       onSave={() => void save()}
       saveDisabled={!muac}
       saveLabel={t('nutrition.formSave')}

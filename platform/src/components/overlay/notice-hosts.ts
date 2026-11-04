@@ -1,36 +1,13 @@
 'use client';
 
 /**
- * The registry that lets a form take its own errors (FormNotices) and the
- * title/detail split every notification uses. Kept out of Toast.tsx so a
- * test that mocks the toast module whole does not take these with it.
+ * The title/detail split every notification uses. Kept out of Toast.tsx so a
+ * test that mocks the toast module whole does not take it with it.
+ *
+ * This file also held the registry that routed a form's errors into the form
+ * (FormNotices). Every notification now shows in the bottom-left stack, so
+ * that registry is gone.
  */
-
-import { createContext, useContext } from 'react';
-
-/** A notice handed to a form's inline slot instead of the corner. */
-export interface RoutedNotice {
-  id: number;
-  type: 'error' | 'warning';
-  title?: string;
-  message: string;
-}
-
-export interface NoticeHost {
-  el: HTMLElement;
-  push: (notice: RoutedNotice) => void;
-}
-
-export const NoticeHostContext = createContext<{ register: (host: NoticeHost) => () => void } | null>(null);
-
-/** For FormNotices: register a form surface that takes its own errors. */
-export function useNoticeHosts() {
-  return useContext(NoticeHostContext);
-}
-
-/** How recently the user must have acted inside a form for an error to be
- *  read as that form's — long enough for a slow offline save to come back. */
-export const RELATED_WINDOW_MS = 20000;
 
 /** Titles that end in these are not a sentence break ("Dr. Igga…"). */
 const NOT_A_SENTENCE_END = /\b(?:Dr|Mr|Mrs|Ms|St|No|vs|e\.g|i\.e|approx)$/i;

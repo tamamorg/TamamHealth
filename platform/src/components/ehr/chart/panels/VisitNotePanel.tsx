@@ -23,7 +23,6 @@
 
 import { useMemo, useRef, useState } from 'react';
 import { Image as ImageIcon, Plus, X } from '@/components/icons/lucide';
-import FormNotices from '@/components/overlay/FormNotices';
 import './visit-note-panel.css';
 import CodedSearchField from '@/components/CodedSearchField';
 import { useToast } from '@/components/Toast';
@@ -296,7 +295,6 @@ export default function VisitNotePanel({ patient, currentUser, canConsult, onClo
           </button>
         </section>
       </div>
-      <FormNotices />
       <div className="tm-action-bar">
         <button type="button" className="tm-action-bar__btn tm-action-bar__btn--secondary" onClick={onClose} disabled={submitting}>Discard</button>
         <button type="button" className="tm-action-bar__btn tm-action-bar__btn--primary" onClick={handleSave} disabled={!canSave || submitting}>

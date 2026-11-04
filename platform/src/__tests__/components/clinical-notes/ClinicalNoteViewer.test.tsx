@@ -20,7 +20,8 @@ jest.mock('@/lib/context', () => {
   return { useAuth: () => auth };
 });
 const printEl = jest.fn((_id: string) => true);
-jest.mock('@/components/Toast', () => ({ useToast: () => ({ showToast: jest.fn() }) }));
+const mockShowToast = jest.fn();
+jest.mock('@/components/Toast', () => ({ useToast: () => ({ showToast: mockShowToast }) }));
 jest.mock('@/lib/safe-html', () => ({ printElementById: (id: string) => printEl(id) }));
 
 const base = {
@@ -66,8 +67,12 @@ describe('ClinicalNoteViewer', () => {
 
   it('shows a draft locked, with no Edit for someone who may not write notes', async () => {
     getById.mockResolvedValue({ ...base, status: 'draft' });
+    mockShowToast.mockClear();
     const m = await mountAndFlush(<ClinicalNoteViewer noteId="n1" kind="clinical" onClose={jest.fn()} />);
-    expect(m.container.querySelector('.tm-banner')).not.toBeNull();
+    // No "Locked" notice at all (2026-11-04): not a banner, not a notification.
+    // The draft reads locked by having no fields and, here, no Edit.
+    expect(m.container.querySelector('.tm-banner')).toBeNull();
+    expect(mockShowToast).not.toHaveBeenCalledWith(expect.stringMatching(/locked/i), expect.anything(), expect.anything());
     expect(btn(m.container, 'Edit')).toBeUndefined();
     expect(m.container.querySelector('textarea, input')).toBeNull();
     m.unmount();

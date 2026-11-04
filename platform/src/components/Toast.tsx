@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, createContext, useContext, useEffect, type ReactNode } from 'react';
 import { X } from '@/components/icons/lucide';
 import StatusGlyph from '@/components/overlay/StatusGlyph';
-import { NoticeHostContext, RELATED_WINDOW_MS, splitNotice, type NoticeHost } from '@/components/overlay/notice-hosts';
+import { splitNotice } from '@/components/overlay/notice-hosts';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /** An inline action rendered as a button in the toast — e.g. Undo. */
@@ -31,10 +31,9 @@ export interface ToastOptions {
   title?: string;
   /** Stay until dismissed — for a failed clinical save the user must not miss. */
   sticky?: boolean;
-  /** `corner` keeps an error in the toast stack even when the user is in a
-   *  form — for a failure that is not about that form (sync, a background
-   *  job). By default an error or warning raised right after the user acted
-   *  inside a form surface is shown inline in that form (see FormNotices). */
+  /** Every notification now shows in the bottom-left stack; errors are no
+   *  longer routed into the form the user is in. Kept so existing calls that
+   *  asked for the corner explicitly still compile. */
   placement?: 'auto' | 'corner';
 }
 
@@ -71,40 +70,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const timers = useRef(new Map<number, number>());
 
-  // Form surfaces that take their own errors, and where the user last acted —
-  // together they say whether an error belongs to an open form.
-  const hosts = useRef(new Set<NoticeHost>());
-  const lastAct = useRef<{ target: Element | null; at: number }>({ target: null, at: 0 });
-  useEffect(() => {
-    const note = (event: Event) => {
-      lastAct.current = { target: event.target instanceof Element ? event.target : null, at: Date.now() };
-    };
-    document.addEventListener('pointerdown', note, true);
-    document.addEventListener('keydown', note, true);
-    return () => {
-      document.removeEventListener('pointerdown', note, true);
-      document.removeEventListener('keydown', note, true);
-    };
-  }, []);
-  const hostRegistry = useRef({
-    register: (host: NoticeHost) => {
-      hosts.current.add(host);
-      return () => { hosts.current.delete(host); };
-    },
-  }).current;
-
-  /** The innermost open form the user just acted in, if any. */
-  const relatedHost = useCallback((): NoticeHost | null => {
-    const { target, at } = lastAct.current;
-    if (!target || Date.now() - at > RELATED_WINDOW_MS) return null;
-    let best: NoticeHost | null = null;
-    for (const host of hosts.current) {
-      if (!host.el.isConnected || !host.el.contains(target)) continue;
-      if (!best || best.el.contains(host.el)) best = host;
-    }
-    return best;
-  }, []);
-
   const remove = useCallback((id: number) => {
     const held = timers.current.get(id);
     if (held !== undefined) { window.clearTimeout(held); timers.current.delete(id); }
@@ -131,19 +96,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const showToast = useCallback((raw: string, type: ToastType = 'info', opts?: ToastOptions) => {
     const { title, message } = splitNotice(raw, opts?.title);
-    if ((type === 'error' || type === 'warning') && opts?.placement !== 'corner' && !opts?.action) {
-      const host = relatedHost();
-      if (host) { host.push({ id: ++toastId, type, title, message }); return; }
-    }
     const ttl = opts?.sticky ? null
       : opts?.durationMs ?? (opts?.action ? 10000 : type === 'error' ? 10000 : type === 'warning' ? 8000 : 5000);
     const same = live.current.find(toast => !toast.leaving && toast.message === message && toast.type === type && toast.title === title);
     const id = same ? same.id : ++toastId;
+    // Known at once, not only after the render: a form's status message can
+    // be raised twice in one tick (React runs effects twice in development),
+    // and the second call must find the first.
+    if (!same) live.current = [...live.current, { id, ttl, message, type, title, action: opts?.action }];
     setToasts(prev => (prev.some(toast => toast.id === id)
       ? prev.map(toast => (toast.id === id ? { ...toast, action: opts?.action, ttl } : toast))
       : [...prev, { id, ttl, message, type, title, action: opts?.action }]));
     arm(id, ttl);
-  }, [arm, relatedHost]);
+  }, [arm]);
 
   useEffect(() => {
     const held = timers.current;
@@ -152,9 +117,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   return (
     <ToastContext.Provider value={{ showToast }}>
-      <NoticeHostContext.Provider value={hostRegistry}>
       {children}
-      </NoticeHostContext.Provider>
       {/* Toast container */}
       <div
         role="region"

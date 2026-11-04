@@ -18,7 +18,7 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import FormSlider from '@/components/overlay/FormSlider';
 import O3Form, { o3MissingRequired, type O3Page } from '@/components/forms/O3Form';
-import InlineBanner from '@/components/overlay/InlineBanner';
+import NoticeToast from '@/components/overlay/NoticeToast';
 import CodedSearchField from '@/components/CodedSearchField';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
@@ -301,7 +301,7 @@ function WardRequestForm({ form, setForm, wards, wardLabel, beds, saving, onSave
       notice={<>
         {lead}
         {(notice || wards.length === 0) && (
-          <div className="o3f-notice"><InlineBanner tone={notice ? 'danger' : 'warning'}>{notice || t('ward.noWardsAvailable')}</InlineBanner></div>
+          <NoticeToast tone={notice ? 'danger' : 'warning'}>{notice || t('ward.noWardsAvailable')}</NoticeToast>
         )}
       </>}
     />
