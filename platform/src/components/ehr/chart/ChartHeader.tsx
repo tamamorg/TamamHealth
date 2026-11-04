@@ -25,6 +25,7 @@ import BackLink from '@/components/navigation/BackLink';
 import { useInlineRouteBack } from '@/components/navigation/RouteContextBar';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import './chart-frame.css';
+import './chart-buttons.css';
 import './chart-tables.css';
 
 

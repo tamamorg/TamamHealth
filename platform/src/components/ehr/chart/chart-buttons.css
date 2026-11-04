@@ -1,0 +1,75 @@
+/* Patient chart: one button voice, in Tamam blue.
+ *
+ * Measured on /patients/[id] (2026-11-04): most chart controls already
+ * spoke one voice, the body face at 14px / 400 in accent blue ("Actions",
+ * "Vitals history", "Record vitals", "Prescribe", "Add", "Record", "Review").
+ * The outliers were the summary's "Customize View" (12px / 700, its own
+ * blue), the header's close (grey), a settled balance (grey) and the row ⋮
+ * menus (grey). They join the house voice here.
+ *
+ * Not buttons, and deliberately left alone: the allergy chip and an
+ * outstanding balance stay in the danger colour (they are warnings), the
+ * segmented switches keep their secondary-ink options with a blue chosen
+ * one, and clickable record rows keep the ink of the record they open.
+ *
+ * Written `body .tamam-root …` like chart-frame.css so it out-ranks the
+ * older tamam-chart.css rules without !important (the svg colour rules are
+ * the exception: the global icon rules repaint with !important). */
+
+body .tamam-root :is(
+  .tamam-header-actions-btn,
+  .tamam-vitals-link,
+  .tamam-vitals-record-link,
+  .tebra-panel-action,
+  .tamam-section-add,
+  .tamam-panel-add-btn,
+  .tamam-empty-action:not(.tamam-empty-action--disabled),
+  .tebra-demo-edit,
+  .tebra-section-title > button
+) {
+  font-family: var(--font-platform);
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--accent-text, var(--accent-primary));
+}
+
+/* globals.css sets the summary's Customize View and Demographics' Edit to
+   caption size and semibold with !important ("tebra-section-title button,
+   .tebra-demo-edit"); only !important takes them back to the house voice. */
+body .tamam-root :is(.tebra-section-title > button, .tebra-demo-edit) {
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  line-height: 1.29 !important;
+}
+
+/* Icon-bearing controls: the header close, a settled balance and every
+   row ⋮ menu are blue too, glyph included. */
+body .tamam-root :is(.tamam-header-close, .tamam-header-balance:not(.tamam-header-balance--due), .tm-menu__trigger) {
+  color: var(--accent-text, var(--accent-primary));
+}
+body .tamam-root .tamam-header-close {
+  border-color: color-mix(in srgb, var(--accent-primary) 35%, var(--border-light));
+}
+body .tamam-root .tamam-header-balance:not(.tamam-header-balance--due) {
+  font-family: var(--font-platform);
+}
+
+body .tamam-root :is(
+  .tamam-header-actions-btn,
+  .tamam-vitals-link,
+  .tamam-vitals-record-link,
+  .tebra-panel-action,
+  .tamam-section-add,
+  .tamam-panel-add-btn,
+  .tamam-empty-action:not(.tamam-empty-action--disabled),
+  .tebra-demo-edit,
+  .tebra-section-title > button,
+  .tamam-header-close,
+  .tamam-header-balance:not(.tamam-header-balance--due),
+  .tm-menu__trigger
+) svg {
+  color: currentColor !important;
+  stroke: currentColor !important;
+}

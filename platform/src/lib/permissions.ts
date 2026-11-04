@@ -5,6 +5,7 @@ import {
   isPathAllowed as isPathAllowedFromTable,
   getDefaultDashboard as getDefaultDashboardFromTable,
 } from './role-routes';
+import { MODULE_HUBS } from './navigation/module-hubs';
 // Clean single-stroke Tailwind Labs Heroicons via the local compatibility shim.
 import {
   LayoutDashboard,
@@ -31,19 +32,13 @@ import {
   Wallet,
   Activity,
   BedDouble,
-  Package,
   Microscope,
   Droplets,
-  Biohazard,
-  ClipboardPen,
   Siren,
   Baby,
   UserX,
-  Shield,
   ShieldAlert,
-  Eye,
   TrendingUp,
-  GitCompareArrows,
   ArrowRightLeft,
   FileText,
   CalendarClock,
@@ -76,6 +71,12 @@ export interface NavItem {
    * just a stable React key / sentinel and is never navigated to.
    */
   action?: 'availability';
+  /**
+   * Set on a management hub's row (module-hubs.ts): the row stands for a
+   * task area, not for the page it opens, so it keeps its own name ("Clinical
+   * Services") rather than the canonical name of that page ("Pharmacy").
+   */
+  hub?: string;
 }
 
 export interface RoleConfig {
@@ -87,6 +88,54 @@ export interface RoleConfig {
   gradientFrom: string;
   gradientTo: string;
   badgeLabel: string;
+}
+
+/* ── Management navigation: one row per task (module hubs) ──────────────────
+   The five management roles' nav is built from lib/navigation/module-hubs.ts:
+   one row per task area, its pages as tabs at the top of each of them
+   (ModuleHubTabs), instead of a row per page. A row opens the hub's first
+   page the role may open; a hub the role can open just one page of is named
+   after that page. 2026-11-04: these roles carried 16–28 rows, with the same
+   records behind several of them. */
+const HUB_ICONS: Record<string, NavIcon> = {
+  national: Globe,
+  facilities: HospitalIcon,
+  workforce: CalendarClock,
+  patients: Users,
+  operations: BedDouble,
+  services: Pill,
+  finance: Wallet,
+  intelligence: Activity,
+  programs: Syringe,
+  'vital-events': Baby,
+  reports: BarChart3,
+};
+
+function hubNav(role: UserRole, lead: NavItem[], hubIds: string[]): NavItem[] {
+  const rows: NavItem[] = [...lead];
+  for (const id of hubIds) {
+    const hub = MODULE_HUBS.find(h => h.id === id);
+    if (!hub) throw new Error(`Unknown module hub: ${id}`);
+    const members = hub.members.filter(m => isHrefAllowedForRole(role, m.href));
+    if (members.length === 0) continue;
+    rows.push({
+      href: members[0].href,
+      label: members.length > 1 ? hub.label : titleCaseLabel(members[0].label),
+      icon: HUB_ICONS[id] ?? LayoutDashboard,
+      ...(members.length > 1 ? { hub: id } : {}),
+    });
+  }
+  return rows;
+}
+
+/* The nav is derived from the role's own table entry, never from
+   isPathAllowed (super_admin's total access would offer every hub). */
+function isHrefAllowedForRole(role: UserRole, href: string): boolean {
+  return ROLE_ROUTE_TABLE[role].allowed.some(route => href === route || href.startsWith(`${route}/`));
+}
+
+function titleCaseLabel(label: string): string {
+  return label.replace(/(^|[\s&/-])([a-z])/g, (_, sep: string, ch: string) => sep + ch.toUpperCase());
 }
 
 export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
@@ -156,66 +205,10 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
     // Main navigation is for daily operational work. Setup/configuration
     // destinations (users, pricing, branding, facility settings) live under
     // Settings so org admins do not see duplicate management surfaces.
-    navItems: [
+    navItems: hubNav('org_admin', [
       { href: '/facility-management', label: 'Dashboard', icon: Gauge },
-      // The three inbound queues (inquiries, pending leave, available staff)
-      // left the dashboard for their own page on 2026-08-24 — a surface you
-      // work, not a card you glance at.
-      { href: '/facility-management/queue', label: 'Work Queue', icon: ClipboardList },
       { href: '/messages', label: 'Messages', icon: MessageSquare },
-      // The separate /org-admin "Org Overview" dashboard was merged into this
-      // one on 2026-08-19 and deleted, so the org admin has one home rather
-      // than a nav entry and a hidden twin.
-      // This is staff-to-staff chat. It was labelled "Enquiries", which sent
-      // anyone looking for inbound patient enquiries to the wrong screen —
-      // those now have their own page, reachable from the People & HR menu.
-      { href: '/manage', label: 'Facilities & People', icon: HospitalIcon, section: 'FACILITIES & OPERATIONS' },
-      { href: '/wards', label: 'Bed Management', icon: BedDouble, section: 'FACILITIES & OPERATIONS' },
-      { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'FACILITIES & OPERATIONS' },
-      { href: '/departments', label: 'Departments', icon: HospitalIcon, section: 'FACILITIES & OPERATIONS' },
-      // One nav home for the money, same as every other role: /payments and
-      // /payments/claims are the SAME workspace (BillingWorkspace, opened on a
-      // different tab), so a separate Claims entry put two adjacent glyphs on
-      // the rail for one destination. Claims is the workspace's second tab —
-      // and its Actions menu still opens "New claim" — so the route stays
-      // routable for deep links, the biller tour and RoleGuard's explicit
-      // grant, it just no longer spends a second icon saying so. With Claims
-      // folded in, FINANCE would have been a heading over a single row, so the
-      // workspace joins the operations group rather than announcing itself.
-      { href: '/payments', label: 'Billing & Payments', icon: Wallet, section: 'FACILITIES & OPERATIONS' },
-      // PEOPLE & HR — one section, seven real destinations, so the whole
-      // workforce area is reachable from the module menu instead of hiding
-      // behind a single "Doctors & Staff" link that landed on a roster with
-      // no way back out to leave, shifts or payroll.
-      { href: '/hr/leave', label: 'Leave Requests', icon: ClipboardList, section: 'PEOPLE & HR' },
-      { href: '/hr/schedule', label: 'Shift Schedule', icon: CalendarClock, section: 'PEOPLE & HR' },
-      { href: '/hr/payroll', label: 'Payroll', icon: Wallet, section: 'PEOPLE & HR' },
-      { href: '/inquiries', label: 'Patient Inquiries', icon: MessageSquare, section: 'PEOPLE & HR' },
-      { href: '/patients', label: 'Patients', icon: Users, section: 'CLINICAL SERVICES' },
-      { href: '/transfers', label: 'Patient Transfers', icon: ArrowRightLeft, section: 'CLINICAL SERVICES' },
-      { href: '/pharmacy', label: 'Prescriptions & Medicines', icon: Pill, section: 'CLINICAL SERVICES' },
-      { href: '/controlled-substances', label: 'Controlled Substances', icon: ClipboardCheck, section: 'CLINICAL SERVICES' },
-      { href: '/blood-bank', label: 'Blood Bank', icon: Droplets, section: 'CLINICAL SERVICES' },
-      { href: '/reports', label: 'Reports', icon: ClipboardCheck, section: 'INTELLIGENCE & REPORTING' },
-      { href: '/org-admin/analytics', label: 'Usage Analytics', icon: Activity, section: 'INTELLIGENCE & REPORTING' },
-      { href: '/data-quality', label: 'Data Quality', icon: Database, section: 'INTELLIGENCE & REPORTING' },
-      { href: '/equipment', label: 'Assets', icon: Package, section: 'RISK, ASSETS & PREPAREDNESS' },
-      { href: '/emergency-preparedness', label: 'Emergency Prep', icon: ShieldAlert, section: 'RISK, ASSETS & PREPAREDNESS' },
-      // The six station workspaces that sat here from 2026-08-19 (Front Desk,
-      // Laboratory, Pharmacy, Radiology, Records/HMIS, Nutrition) were removed
-      // 2026-08-22 along with their routes. They are screens for doing a
-      // station's work — taking a patient in, resulting a specimen, dispensing
-      // — and an org admin staffs none of them. What the role needs from those
-      // areas is oversight: the numbers, the queue, and who is in the building.
-      // So this section carries the read side instead.
-      { href: '/facility-overview', label: 'Facility Statistics', icon: BarChart3, section: 'OVERSIGHT' },
-      { href: '/lab', label: 'Laboratory Activity', icon: Microscope, section: 'OVERSIGHT' },
-      // IT Operations and System Administration both live inside the personal
-      // Settings page now (Settings -> System administration); /it and
-      // /system-admin stay routable for deep links but have no nav entry.
-      // Org settings live inside the personal Settings page (Settings →
-      // Organization); /org-admin/settings redirects there, so no nav item.
-    ],
+    ], ['facilities', 'workforce', 'patients', 'operations', 'services', 'finance', 'reports']),
     color: BRAND_PRIMARY,
     gradientFrom: BRAND_SECONDARY,
     gradientTo: BRAND_PRIMARY,
@@ -418,42 +411,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
     // Public-health intelligence IA (WHO RHIS / DHIS2-aligned): command,
     // surveillance, system performance, programs, CRVS, data quality,
     // exchange, equity. Query-string hrefs deep-link into a page's view.
-    navItems: [
-      { href: '/government', label: 'National Dashboard', icon: LayoutDashboard, section: 'NATIONAL COMMAND' },
-      { href: '/government/alerts', label: 'Priority Alerts', icon: Siren, section: 'NATIONAL COMMAND' },
-      { href: '/government/briefing', label: 'Executive Briefing', icon: ClipboardPen, section: 'NATIONAL COMMAND' },
-      { href: '/surveillance', label: 'Surveillance', icon: Eye, section: 'SURVEILLANCE & RESPONSE' },
-      { href: '/epidemic-intelligence', label: 'Epidemic Intelligence', icon: Biohazard, section: 'SURVEILLANCE & RESPONSE' },
-      // 'Alert Verification' (?tab=alerts) was a second row onto the page above.
-      // Epidemic Intelligence has six tabs and the sidebar surfaced exactly one
-      // of them, which read as a separate destination rather than as the tab it
-      // is — reach it from the page's own tab strip.
-      { href: '/manage', label: 'Organizations', icon: HospitalIcon, section: 'HEALTH SYSTEM PERFORMANCE' },
-      { href: '/facility-assessments', label: 'Assessments & Readiness', icon: ClipboardCheck, section: 'HEALTH SYSTEM PERFORMANCE' },
-      // Equity is a health-system-performance question, so it sits with the
-      // other two rather than carrying a section of its own. Its 'High Burden'
-      // and 'Service Access Gaps' rows were `?view=` links onto this same page
-      // and are reached from its FilterTabs.
-      { href: '/government/equity', label: 'Equity & Access', icon: GitCompareArrows, section: 'HEALTH SYSTEM PERFORMANCE' },
-      { href: '/immunizations', label: 'Immunization', icon: Syringe, section: 'PROGRAMS' },
-      { href: '/anc', label: 'ANC / RMNCAH', icon: HeartPulse, section: 'PROGRAMS' },
-      { href: '/mch-analytics', label: 'MCH Analytics', icon: Baby, section: 'PROGRAMS' },
-      { href: '/government/programs', label: 'Disease Programs', icon: Shield, section: 'PROGRAMS' },
-      { href: '/births', label: 'Births', icon: Baby, section: 'VITAL EVENTS & CRVS' },
-      { href: '/deaths', label: 'Deaths', icon: UserX, section: 'VITAL EVENTS & CRVS' },
-      { href: '/vital-statistics', label: 'Vital Statistics', icon: TrendingUp, section: 'VITAL EVENTS & CRVS' },
-      { href: '/reports', label: 'Reports & Downloads', icon: ClipboardCheck, section: 'REPORTS & EXCHANGE' },
-      { href: '/dhis2-export', label: 'DHIS2 Export', icon: Download, section: 'REPORTS & EXCHANGE' },
-      { href: '/public-stats', label: 'Public Statistics', icon: Globe, section: 'REPORTS & EXCHANGE' },
-      // One row, not four. Completeness / Timeliness / Outliers / Facility
-      // Scores are the four VIEWS of this single page, each formerly its own
-      // sidebar row under a 'DATA QUALITY' heading — four rows that all opened
-      // the same screen, which no reader could tell apart from four
-      // destinations. The page's own view switcher moves between them, and it
-      // lands on Completeness by default exactly as the first row did. Filed
-      // with Reports because reporting quality is a reporting concern.
-      { href: '/data-quality', label: 'Data Quality', icon: Database, section: 'REPORTS & EXCHANGE' },
-    ],
+    navItems: hubNav('government', [], ['national', 'facilities', 'intelligence', 'programs', 'vital-events', 'reports']),
     color: BRAND_SECONDARY,
     gradientFrom: BRAND_DARKER,
     gradientTo: BRAND_SECONDARY,
@@ -464,24 +422,10 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
     label: 'County Health Director',
     defaultDashboard: ROLE_ROUTE_TABLE.county_health_director.defaultDashboard,
     allowedRoutes: [...ROLE_ROUTE_TABLE.county_health_director.allowed],
-    navItems: [
-      { href: '/dashboard/state', label: 'County Overview', icon: LayoutDashboard },
+    navItems: hubNav('county_health_director', [
+      { href: '/dashboard/state', label: 'County Overview', icon: Gauge },
       { href: '/messages', label: 'Messages', icon: MessageSquare },
-      { href: '/manage', label: 'Facilities', icon: HospitalIcon, section: 'OVERSIGHT' },
-      { href: '/facility-assessments', label: 'Facility Assessments', icon: ClipboardCheck, section: 'OVERSIGHT' },
-      { href: '/surveillance', label: 'Surveillance', icon: Eye, section: 'INTELLIGENCE' },
-      { href: '/epidemic-intelligence', label: 'Epidemic Intelligence', icon: Biohazard, section: 'INTELLIGENCE' },
-      { href: '/mch-analytics', label: 'MCH Analytics', icon: HeartPulse, section: 'INTELLIGENCE' },
-      { href: '/vital-statistics', label: 'Vital Statistics', icon: TrendingUp, section: 'POPULATION HEALTH' },
-      { href: '/immunizations', label: 'Immunizations', icon: Syringe, section: 'POPULATION HEALTH' },
-      { href: '/anc', label: 'Maternal Health', icon: HeartPulse, section: 'POPULATION HEALTH' },
-      { href: '/births', label: 'Births', icon: Baby, section: 'POPULATION HEALTH' },
-      { href: '/deaths', label: 'Deaths', icon: UserX, section: 'POPULATION HEALTH' },
-      { href: '/data-quality', label: 'Data Quality', icon: Database, section: 'GOVERNANCE' },
-      { href: '/reports', label: 'Reports', icon: BarChart3, section: 'GOVERNANCE' },
-      { href: '/dhis2-export', label: 'DHIS2 Export', icon: Download, section: 'GOVERNANCE' },
-      { href: '/public-stats', label: 'Public Statistics', icon: Globe, section: 'GOVERNANCE' },
-    ],
+    ], ['facilities', 'intelligence', 'programs', 'vital-events', 'reports']),
     color: BRAND_PRIMARY,
     gradientFrom: BRAND_SECONDARY,
     gradientTo: BRAND_PRIMARY,
@@ -513,60 +457,10 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
     label: 'Medical Superintendent',
     defaultDashboard: ROLE_ROUTE_TABLE.medical_superintendent.defaultDashboard,
     allowedRoutes: [...ROLE_ROUTE_TABLE.medical_superintendent.allowed],
-    navItems: [
-      // Sections must be CONTIGUOUS: `groupNavItemsBySection` groups by run, so
-      // an ADMINISTRATION row after PEOPLE & HR renders a second ADMINISTRATION
-      // heading. This list had ADMINISTRATION scattered across three runs and
-      // SERVICES across two — nine headings for six sections.
-      //
-      // The dashboard and the inbox sit ABOVE the first heading, ungrouped, the
-      // way every other role's list opens. Messages used to trail the list
-      // under a 'MORE' heading invented to introduce it.
-      { href: '/dashboard', label: 'Hospital Dashboard', icon: LayoutDashboard },
+    navItems: hubNav('medical_superintendent', [
+      { href: '/dashboard', label: 'Hospital Dashboard', icon: Gauge },
       { href: '/messages', label: 'Messages', icon: MessageSquare },
-      { href: '/manage', label: 'Facilities & People', icon: HospitalIcon, section: 'ADMINISTRATION' },
-      { href: '/my-facility', label: 'My Facility', icon: Building2, section: 'ADMINISTRATION' },
-      { href: '/equipment', label: 'Assets', icon: Package, section: 'ADMINISTRATION' },
-      { href: '/facility-assessments', label: 'Facility Assessments', icon: ClipboardCheck, section: 'ADMINISTRATION' },
-      { href: '/emergency-preparedness', label: 'Emergency Prep', icon: ShieldAlert, section: 'ADMINISTRATION' },
-
-      // '/facility-overview' removed: it is the second facility dashboard that
-      // FacilityManagementDashboard was built to replace, and '/my-facility'
-      // above already answers "my facility". '/it' removed: Settings renders
-      // <ItOperationsPanel /> itself (System administration → IT Operations),
-      // so the row was a second door onto an embedded panel. Both routes stay
-      // in allowedRoutes for deep links.
-      // PEOPLE & HR — the whole workforce area in one section (see org_admin).
-      { href: '/hr/leave', label: 'Leave Requests', icon: ClipboardList, section: 'PEOPLE & HR' },
-      { href: '/hr/schedule', label: 'Shift Schedule', icon: CalendarClock, section: 'PEOPLE & HR' },
-      { href: '/hr/payroll', label: 'Payroll', icon: Wallet, section: 'PEOPLE & HR' },
-      { href: '/inquiries', label: 'Patient Inquiries', icon: MessageSquare, section: 'PEOPLE & HR' },
-      { href: '/patients', label: 'Patients', icon: Users, section: 'CLINICAL' },
-      { href: '/transfers', label: 'Patient Transfers', icon: ArrowRightLeft, section: 'CLINICAL' },
-      { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
-      // No Consultation row. `/consultation` is a redirect stub: with no
-      // patient in the link it lands on /patients, which this list already
-      // offers a row above — and for the clinician roles it also held one of
-      // the four always-visible rail shortcuts (it sits second in
-      // PRIMARY_SHORTCUT_PRIORITY), so the fastest button on the rail led to
-      // the button beside it. The route stays in allowedRoutes so "Start
-      // consultation" deep links and old bookmarks still resolve; it just
-      // stopped being a destination of its own. Removed 2026-08-22.
-      { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL' },
-      { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
-      { href: '/departments', label: 'Departments', icon: HospitalIcon, section: 'CLINICAL' },
-      { href: '/controlled-substances', label: 'Controlled Substances', icon: ClipboardCheck, section: 'SERVICES' },
-      { href: '/lab', label: 'Laboratory', icon: Microscope, section: 'SERVICES' },
-      { href: '/pharmacy', label: 'Pharmacy', icon: Pill, section: 'SERVICES' },
-      { href: '/blood-bank', label: 'Blood Bank', icon: Droplets, section: 'SERVICES' },
-      { href: '/payments', label: 'Bills', icon: Wallet, section: 'SERVICES' },
-      { href: '/epidemic-intelligence', label: 'Epidemic Intel', icon: Biohazard, section: 'INTELLIGENCE' },
-      { href: '/mch-analytics', label: 'MCH Analytics', icon: HeartPulse, section: 'INTELLIGENCE' },
-      { href: '/surveillance', label: 'Surveillance', icon: Eye, section: 'INTELLIGENCE' },
-      { href: '/reports', label: 'Reports', icon: BarChart3, section: 'REPORTING' },
-      { href: '/data-quality', label: 'Data Quality', icon: Database, section: 'REPORTING' },
-      { href: '/vital-statistics', label: 'Vital Statistics', icon: TrendingUp, section: 'REPORTING' },
-    ],
+    ], ['facilities', 'workforce', 'patients', 'operations', 'services', 'finance', 'intelligence', 'reports']),
     color: BRAND_SECONDARY,
     gradientFrom: BRAND_DARKER,
     gradientTo: BRAND_SECONDARY,
@@ -636,35 +530,10 @@ export const ROLE_PERMISSIONS: Record<UserRole, RoleConfig> = {
     label: 'Hospital Manager',
     defaultDashboard: ROLE_ROUTE_TABLE.hospital_manager.defaultDashboard,
     allowedRoutes: [...ROLE_ROUTE_TABLE.hospital_manager.allowed],
-    navItems: [
-      { href: '/facility-management', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/facility-management/queue', label: 'Work Queue', icon: ClipboardList },
+    navItems: hubNav('hospital_manager', [
+      { href: '/facility-management', label: 'Dashboard', icon: Gauge },
       { href: '/messages', label: 'Messages', icon: MessageSquare },
-      { href: '/epidemic-intelligence', label: 'Epidemic Intelligence', icon: Biohazard, section: 'INTELLIGENCE' },
-      { href: '/mch-analytics', label: 'MCH Analytics', icon: HeartPulse, section: 'INTELLIGENCE' },
-      { href: '/surveillance', label: 'Surveillance', icon: Eye, section: 'INTELLIGENCE' },
-      { href: '/manage', label: 'Facilities & People', icon: HospitalIcon, section: 'FACILITY' },
-      { href: '/my-facility', label: 'My Facility', icon: Building2, section: 'FACILITY' },
-      { href: '/facility-assessments', label: 'Facility Assessments', icon: ClipboardCheck, section: 'FACILITY' },
-      { href: '/equipment', label: 'Assets & Equipment', icon: Package, section: 'FACILITY' },
-      // PEOPLE & HR — the whole workforce area in one section (see org_admin).
-      { href: '/hr/leave', label: 'Leave Requests', icon: ClipboardList, section: 'PEOPLE & HR' },
-      { href: '/hr/schedule', label: 'Shift Schedule', icon: CalendarClock, section: 'PEOPLE & HR' },
-      { href: '/hr/payroll', label: 'Payroll', icon: Wallet, section: 'PEOPLE & HR' },
-      { href: '/inquiries', label: 'Patient Inquiries', icon: MessageSquare, section: 'PEOPLE & HR' },
-      { href: '/payments', label: 'Revenue & Bills', icon: Wallet, section: 'REPORTING' },
-      { href: '/reports', label: 'Reports', icon: BarChart3, section: 'REPORTING' },
-      { href: '/data-quality', label: 'Data Quality', icon: Database, section: 'REPORTING' },
-      { href: '/vital-statistics', label: 'Vital Statistics', icon: TrendingUp, section: 'REPORTING' },
-      { href: '/dhis2-export', label: 'DHIS2 Export', icon: Download, section: 'REPORTING' },
-      { href: '/public-stats', label: 'Public Statistics', icon: Globe, section: 'REPORTING' },
-      { href: '/patients', label: 'Patients', icon: Users, section: 'CLINICAL' },
-      { href: '/transfers', label: 'Patient Transfers', icon: ArrowRightLeft, section: 'CLINICAL' },
-      { href: '/wards', label: 'Wards', icon: BedDouble, section: 'CLINICAL' },
-      { href: '/referrals', label: 'Referrals', icon: ArrowRightLeft, section: 'CLINICAL' },
-      { href: '/appointments', label: 'Appointments', icon: Calendar, section: 'CLINICAL' },
-      { href: '/departments', label: 'Departments', icon: HospitalIcon, section: 'CLINICAL' },
-    ],
+    ], ['facilities', 'workforce', 'patients', 'operations', 'services', 'finance', 'intelligence', 'reports']),
     color: BRAND_SECONDARY,
     gradientFrom: BRAND_DARKER,
     gradientTo: BRAND_SECONDARY,

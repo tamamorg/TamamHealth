@@ -13,6 +13,7 @@
 import { ROLE_ROUTE_TABLE, isPathAllowed } from '@/lib/role-routes';
 import { ROLE_PERMISSIONS } from '@/lib/permissions';
 import { isHrefAllowed } from '@/components/ehr/ehr-navigation';
+import { navReaches } from '@/lib/navigation/module-hubs';
 import { PATIENT_DUPLICATE_ROLES } from '@/lib/sync/write-permissions';
 import { findDuplicateCandidates } from '@/components/patients/duplicate-candidates';
 import type { PatientDoc } from '@/lib/db-types';
@@ -23,9 +24,11 @@ describe('every role that may mark a duplicate can open the review', () => {
     expect(isPathAllowed(role, '/data-quality')).toBe(true);
   });
 
-  test.each(['org_admin', 'hospital_manager'] as UserRole[])('%s has a nav row into it', role => {
-    const row = ROLE_PERMISSIONS[role].navItems.find(item => item.href === '/data-quality');
-    expect(row).toBeDefined();
+  // Since the 2026-11-04 navigation redesign the way in is the Reports row:
+  // Data quality is one of the Reports hub's tabs (module-hubs.ts).
+  test.each(['org_admin', 'hospital_manager'] as UserRole[])('%s has a nav way into it', role => {
+    const navHrefs = ROLE_PERMISSIONS[role].navItems.map(item => item.href);
+    expect(navReaches(navHrefs, ROLE_ROUTE_TABLE[role].allowed, '/data-quality')).toBe(true);
     expect(isHrefAllowed('/data-quality', ROLE_PERMISSIONS[role].allowedRoutes)).toBe(true);
   });
 

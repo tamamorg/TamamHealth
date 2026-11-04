@@ -5,6 +5,8 @@ import "./globals.css";
 import './print-typography.css';
 import "./tablet-desktop.css";
 import "./accent-pass.css";
+// After the tablet band and the accent pass: the management modules' chart frame (data-surface="management").
+import "./management-frame.css";
 import { AppProvider } from "@/lib/context";
 
 // Platform typeface. `--font-barlow` / `--font-barlow-condensed` /

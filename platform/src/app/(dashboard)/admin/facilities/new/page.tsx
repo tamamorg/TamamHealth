@@ -16,6 +16,7 @@ import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useConsoleTrail } from '@/components/navigation/ConsoleTrail';
+import FormPageHead from '@/components/navigation/FormPageHead';
 import { returnToFromSearch } from '@/lib/navigation/return-to';
 
 export default function AdminFacilityCreatePage() {
@@ -36,7 +37,7 @@ export default function AdminFacilityCreatePage() {
   const goBack = () => router.push(returnTo);
 
   // Title and Back are in the bar at the top (RouteContextBar).
-  useConsoleTrail('admin-facility-new', [{ label: t('orgAdmin.facilities'), href: returnTo }, { label: t('orgHospitals.modalTitle') }]);
+  useConsoleTrail('admin-facility-new', [{ label: t('orgAdmin.facilities'), href: returnTo }, { label: t('orgHospitals.modalTitle') }], { inline: true });
 
   return (
     <SadbPage>
@@ -44,6 +45,7 @@ export default function AdminFacilityCreatePage() {
 
         <div className="sadb-regpage">
           <aside className="sadb-regpage-rail">
+            <FormPageHead />
             <p className="sadb-regpage-note">{t('orgHospitals.modalSubtitle')}</p>
           </aside>
 
