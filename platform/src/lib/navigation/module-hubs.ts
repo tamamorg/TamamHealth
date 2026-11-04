@@ -68,7 +68,7 @@ export const MODULE_HUBS: readonly ModuleHub[] = [
     members: [
       { href: '/patients', label: 'Patients' },
       { href: '/appointments', label: 'Appointments' },
-      { href: '/inquiries', label: 'Inquiries' },
+      { href: '/inquiries', label: 'Reported issues' },
       { href: '/referrals', label: 'Referrals' },
       { href: '/transfers', label: 'Transfers' },
     ],

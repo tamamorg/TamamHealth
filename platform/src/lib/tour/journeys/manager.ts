@@ -93,10 +93,10 @@ export const MANAGER_STEPS: TourStep[] = [
   {
     id: 'inquiries',
     route: '/inquiries',
-    target: '[data-tour="inquiries-list"]',
+    target: '[data-tour="issues-list"]',
     placement: 'top',
-    title: 'Patient inquiries',
-    body: 'Messages patients send in through the app or SMS before they’re ever a visit. Triage each one to Contacted, Appointment scheduled, or Closed, and assign it to whoever’s following up.',
+    title: 'Reported issues',
+    body: 'Problems your staff report from their account menu. Open one to see its steps — Reported, Acknowledged, In progress, Resolved, Closed — assign an owner, reply to the reporter and move it forward.',
   },
   {
     id: 'equipment',

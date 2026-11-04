@@ -3,7 +3,7 @@
 /**
  * Request leave. Shared by /hr/leave and the "Add" menu, which opens it in
  * place wherever the user is and routes to /hr/leave only once the request
- * exists — see AddInquiryDialog for the reasoning.
+ * exists — see CreateRecordPage for the reasoning.
  */
 
 import { useState } from 'react';
