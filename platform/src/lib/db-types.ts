@@ -421,6 +421,8 @@ export interface MedicalRecordDoc extends BaseDoc, Omit<MedicalRecord, 'id'> {
 export interface ReferralDoc extends BaseDoc, Omit<Referral, 'id'> {
   type: 'referral';
   orgId?: string;
+  /** Each status the referral moved to, and when. Older referrals have none. */
+  statusHistory?: Array<{ status: Referral['status']; at: string }>;
 }
 
 export interface LabResultDoc extends BaseDoc {
@@ -1515,7 +1517,7 @@ export interface MessageDoc extends BaseDoc {
      encrypted at rest like any message text. Triage state lives here rather
      than in `status` (delivery) or `enquiryStatus` (patient enquiries). */
   issueStatus?: 'new' | 'in_progress' | 'resolved' | 'closed';
-  issueCategory?: 'bug' | 'wrong_data' | 'access' | 'sync' | 'performance' | 'other';
+  issueCategory?: 'bug' | 'wrong_data' | 'access' | 'sync' | 'performance' | 'drug_safety' | 'other';
   issueSeverity?: 'low' | 'medium' | 'high' | 'critical';
   /** The app path the reporter was on (ids only — never a query string). */
   issuePage?: string;

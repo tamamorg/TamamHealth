@@ -83,44 +83,60 @@
   cursor: pointer;
 }
 
-.omf-nav-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  /* Save / Sign / Cancel never scroll out of reach behind a long section
-     list: they stick to the foot of the column. */
-  position: sticky;
-  bottom: 0;
-  margin: 16px 8px 0;
-  padding: 16px 0;
-  border-top: 1px solid var(--border-medium, var(--border-light));
-  background: var(--ehr-panel, var(--bg-card-solid));
-}
-
-.omf-btn {
+/* Fold the section list away for room to write; a thin strip keeps the way back. */
+.omf-nav-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  width: 100%;
-  min-height: var(--control-height, 40px);
-  padding: 0 16px;
-  border-radius: 0;
-  font-size: 14px;
+  gap: 6px;
+  flex: none;
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--border-light);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
   text-align: start;
   cursor: pointer;
 }
+.omf-nav-toggle:hover { background: var(--bg-app); color: var(--text-primary); }
+.omf-nav-toggle:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+.omf-nav-toggle svg { width: 16px; height: 16px; flex: none; }
+.omf-body.is-nav-collapsed { grid-template-columns: 40px minmax(0, 1fr); }
+.omf-body.is-nav-collapsed .omf-nav { border-inline-end: 1px solid var(--border-light); }
+.omf-body.is-nav-collapsed .omf-nav-more { display: none; }
+.omf-body.is-nav-collapsed .omf-nav-toggle { justify-content: center; padding: 8px 0; border-bottom: 0; }
 
-.omf-btn:disabled { opacity: 0.55; cursor: default; }
-.omf-btn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
-.omf-btn svg { width: 16px; height: 16px; }
+/* ── Foot: the form's actions, the workspace action bar every panel uses ──
+   Equal square buttons across the full width, 64px, label top-start; Cancel
+   in the dark secondary on the left, Save / Sign in blue after it. */
+.omf-actionbar { flex: none; border-top: 1px solid var(--border-light); background: var(--ehr-panel, var(--bg-card-solid)); }
+.omf-actionbar .omf-saved { display: block; padding: 6px 16px; text-align: end; }
+.omf-actionbar .omf-saved:empty { display: none; }
+.omf-bar { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+.omf-bar-btn {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  min-height: var(--action-bar-h, 64px);
+  padding: var(--action-bar-pad, 16px 16px 32px);
+  border: 0;
+  border-radius: 0;
+  font-size: var(--action-bar-font, 14px);
+  line-height: 16px;
+  text-align: start;
+  cursor: pointer;
+}
+.omf-bar-btn svg { width: 16px; height: 16px; flex: none; }
+.omf-bar-btn--secondary { background: var(--action-secondary); color: var(--color-white, #fff); }
+.omf-bar-btn--primary { background: var(--accent-primary); color: var(--color-white, #fff); }
+.omf-bar-btn--primary + .omf-bar-btn--primary { border-inline-start: 1px solid color-mix(in srgb, #fff 25%, transparent); }
+.omf-bar-btn:hover:not(:disabled) { filter: brightness(1.08); }
+.omf-bar-btn:disabled { background: var(--action-disabled); color: var(--action-disabled-ink); cursor: default; }
+.omf-bar-btn:focus-visible { outline: 2px solid var(--color-white, #fff); outline-offset: -4px; }
 
-.omf-btn--primary { border: 1px solid var(--accent-primary); background: var(--accent-primary); color: #fff; }
-.omf-btn--primary:hover:not(:disabled) { background: var(--accent-hover, var(--accent-primary)); }
-.omf-btn--outline { border: 1px solid var(--accent-primary); background: transparent; color: var(--accent-text, var(--accent-primary)); }
-.omf-btn--ghost { border: 1px solid transparent; background: transparent; color: var(--accent-text, var(--accent-primary)); }
-.omf-btn--ghost:hover:not(:disabled), .omf-btn--outline:hover:not(:disabled) { background: var(--bg-app); }
-
-.omf-saved { min-height: 16px; font-size: 12px; color: var(--text-muted); }
+.omf-saved { font-size: 12px; color: var(--text-muted); }
 
 .omf-nav-more {
   display: flex;
@@ -346,6 +362,5 @@
   .omf-nav-add { justify-content: flex-start; margin: 8px 12px 0; font-size: 13px; text-align: start; }
   .omf-nav-more { margin: 8px 12px 12px; font-size: 13px; }
   .omf-nav-more button { font-size: 13px; text-align: start; }
-  .omf-nav-actions { margin: 12px 0 0; padding: 12px; background: var(--bg-app); }
   .omf-group-body { margin-inline-end: 0; }
 }

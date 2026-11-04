@@ -9,8 +9,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { todayIso } from '@/lib/date-utils';
-import Modal from '@/components/Modal';
-import PopupHeader from '@/components/PopupHeader';
+import FormSlider from '@/components/overlay/FormSlider';
 import { expandHref } from '@/lib/navigation/expand-to-page';
 import CodedSearchField from '@/components/CodedSearchField';
 import { COMMON_ALLERGENS, type AllergenClassification } from '@/data/allergens';
@@ -74,6 +73,15 @@ export default function AddAllergyModal({
     }
   };
 
+  const actions = (
+    <>
+      <button type="button" className="btn btn-secondary" disabled={busy} onClick={onClose}>Cancel</button>
+      <button type="button" className="btn btn-primary" disabled={busy || substance.trim().length === 0} onClick={save}>
+        {busy ? 'Saving…' : 'Save allergy'}
+      </button>
+    </>
+  );
+
   const body = <div className="space-y-3">
       <CodedSearchField
         label="Substance"
@@ -133,31 +141,25 @@ export default function AddAllergyModal({
 
       {error && <FormError message={error} />}
 
-      <div className="flex items-center justify-end gap-2 pt-1">
-        <button className="btn btn-sm btn-secondary" disabled={busy} onClick={onClose}>Cancel</button>
-        <button className="btn btn-sm btn-primary" disabled={busy || substance.trim().length === 0} onClick={save}>
-          {busy ? 'Saving…' : 'Save allergy'}
-        </button>
-      </div>
+      {presentation === 'page' && <div className="flex items-center justify-end gap-2 pt-1">{actions}</div>}
   </div>;
 
   if (presentation === 'page') return body;
 
   return (
-    <Modal variant="slider" onClose={busy ? () => {} : onClose} width={480} labelledBy="add-allergy-title">
-      <div className="sadb-modal">
-        <PopupHeader
-          titleId="add-allergy-title"
-          title="Add allergy"
-          subtitle="A reaction recorded here warns every prescriber on this chart."
-          onExpand={() => {
-            onClose();
-            router.push(expandHref(`/patients/${encodeURIComponent(patientId)}/allergies/new`));
-          }}
-          onClose={onClose}
-        />
-        {body}
-      </div>
-    </Modal>
+    <FormSlider
+      title="Add allergy"
+      width={480}
+      subtitle="A reaction recorded here warns every prescriber on this chart."
+      busy={busy}
+      onClose={onClose}
+      onExpand={() => {
+        onClose();
+        router.push(expandHref(`/patients/${encodeURIComponent(patientId)}/allergies/new`));
+      }}
+      footer={actions}
+    >
+      {body}
+    </FormSlider>
   );
 }

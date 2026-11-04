@@ -11,7 +11,7 @@ import { isPathAllowed } from '@/lib/role-routes';
 export const ISSUE_STATUSES = ['new', 'in_progress', 'resolved', 'closed'] as const;
 export type IssueStatus = (typeof ISSUE_STATUSES)[number];
 
-export const ISSUE_CATEGORIES = ['bug', 'wrong_data', 'access', 'sync', 'performance', 'other'] as const;
+export const ISSUE_CATEGORIES = ['bug', 'wrong_data', 'access', 'sync', 'performance', 'drug_safety', 'other'] as const;
 export type IssueCategory = (typeof ISSUE_CATEGORIES)[number];
 
 export const ISSUE_SEVERITIES = ['low', 'medium', 'high', 'critical'] as const;

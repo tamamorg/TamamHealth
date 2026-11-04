@@ -119,7 +119,7 @@ export default function PhotoCaptureModal({ onCapture, onClose }: PhotoCaptureMo
   };
 
   return (
-    <Modal onClose={handleClose} width={440} labelledBy="photo-capture-title">
+    <Modal variant="slider" onClose={handleClose} width={560} labelledBy="photo-capture-title">
       <DialogFrame>
         <DialogHeader
           titleId="photo-capture-title"

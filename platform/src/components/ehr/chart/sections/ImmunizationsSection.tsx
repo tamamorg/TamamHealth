@@ -367,7 +367,7 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
       )}
 
       {errorTarget && (
-        <Modal className="tamam-dialog" onClose={() => !submitting && setErrorTarget(null)} width={440} labelledBy="immunization-error-title">
+        <Modal variant="slider" className="tamam-dialog" onClose={() => !submitting && setErrorTarget(null)} width={560} labelledBy="immunization-error-title">
           <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
             <h2 id="immunization-error-title" className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>{t('chart.markImmunizationError')}</h2>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('chart.markImmunizationErrorHelp')}</p>

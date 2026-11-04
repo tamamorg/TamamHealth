@@ -16,10 +16,10 @@
 
 import { doseWarningText, hasSafetyStop, needsWeeklyReview, safetyStopPrompt } from '@/lib/pharmacy/rx-safety';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Maximize2, X } from '@/components/icons/lucide';
 import { useRouter } from 'next/navigation';
 import { expandHref } from '@/lib/navigation/expand-to-page';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { useToast } from '@/components/Toast';
 import { OFF_FORMULARY_CATEGORY } from '@/lib/data/formulary';
 import { useConfirm, useConfirmPrompt } from '@/components/ConfirmDialog';
@@ -43,6 +43,7 @@ import { checkAllergiesStructured } from '@/lib/services/drug-interaction-servic
 import type { PrescriptionCreateInput } from '@/lib/services/prescription-service';
 import { describeError } from '@/lib/user-facing-error';
 import './../clinical-notes.css';
+import './../slider-fit.css';
 
 /** The destination that hands the script to the patient instead of a queue. */
 const OUTSIDE_PHARMACY = 'Outside pharmacy (patient takes the script)';
@@ -489,38 +490,7 @@ export default function PrescribeModal({
     openIsolatedHtmlWindow(html, '', true);
   };
 
-  const panel = (
-      <div className={`cn-meds${presentation === 'page' ? ' cn-meds--page' : ''}`}>
-        {/* The header belongs to the slider. On a page — the chart's workspace
-            drawer or the /prescriptions/new route — the host already has a
-            title and a close, and a second set read as two dialogs nested. */}
-        {presentation === 'modal' && (
-          <div className="cn-meds-header modal-no-headband">
-            <h2 className="cn-meds-title" id="cn-rx-title">Prescribe Medications</h2>
-            {/* One group, so the header's space-between has two children — left
-                loose, Expand was the middle of three and sat dead centre. */}
-            <div className="cn-meds-header-actions">
-              <button
-                type="button"
-                className="cn-meds-close"
-                onClick={() => {
-                  if (!finish()) return;
-                  const query = encounterId ? `?encounter=${encodeURIComponent(encounterId)}` : '';
-                  router.push(expandHref(`/patients/${encodeURIComponent(patientId)}/prescriptions/new${query}`));
-                }}
-                aria-label="Open full page"
-                title="Open full page"
-                data-action="popup-expand"
-              >
-                <Maximize2 size={18} />
-              </button>
-              <button type="button" className="cn-meds-close" onClick={requestClose} aria-label="Close prescribe medications" title="Close" data-action="popup-close">
-                <X size={18} />
-              </button>
-            </div>
-          </div>
-        )}
-
+  const body = (
         <div className="cn-meds-body">
           <div className="cn-meds-left">
             <CollapsibleSection title="Drug Info" open={openDrug} onToggle={() => setOpenDrug(v => !v)}>
@@ -576,11 +546,15 @@ export default function PrescribeModal({
             />
           </div>
         </div>
+  );
 
-        {/* The shared action bar every chart slider ends on (Record vitals,
-            Book appointment, Order basket): pinned under both columns, the
-            dismissive choices dark, the one that sends blue. */}
-        <div className="tm-action-bar cn-meds-actions">
+  const panel = presentation === 'page' ? (
+    <div className="cn-meds cn-meds--page">
+      {body}
+      {/* The shared action bar every chart slider ends on (Record vitals,
+          Book appointment, Order basket): pinned under both columns, the
+          dismissive choices dark, the one that sends blue. */}
+      <div className="tm-action-bar cn-meds-actions">
           <button type="button" className="tm-action-bar__btn tm-action-bar__btn--secondary" onClick={requestClose}>Cancel</button>
           <button type="button" className="tm-action-bar__btn tm-action-bar__btn--secondary" onClick={handlePrintDraft}>Print draft</button>
           <button type="button" className="tm-action-bar__btn tm-action-bar__btn--secondary" onClick={handleAddRx} disabled={busy}>Add Rx</button>
@@ -593,8 +567,40 @@ export default function PrescribeModal({
               Send Medication
             </button>
           )}
-        </div>
       </div>
+    </div>
+  ) : (
+    <DialogFrame busy={busy}>
+      <DialogHeader
+        titleId="cn-rx-title"
+        title="Prescribe Medications"
+        onExpand={() => {
+          if (!finish()) return;
+          const query = encounterId ? `?encounter=${encodeURIComponent(encounterId)}` : '';
+          router.push(expandHref(`/patients/${encodeURIComponent(patientId)}/prescriptions/new${query}`));
+        }}
+        expandLabel="Open full page"
+        onClose={requestClose}
+        closeLabel="Close prescribe medications"
+      />
+      <DialogBody flush>
+        {body}
+      </DialogBody>
+      <DialogFooter>
+          <button type="button" className="btn btn-secondary" onClick={requestClose}>Cancel</button>
+          <button type="button" className="btn btn-secondary" onClick={handlePrintDraft}>Print draft</button>
+          <button type="button" className="btn btn-secondary" onClick={handleAddRx} disabled={busy}>Add Rx</button>
+          {external ? (
+            <button type="button" className="btn btn-primary" onClick={handleIssue} disabled={busy}>
+              Issue to patient
+            </button>
+          ) : (
+            <button type="button" className="btn btn-primary" onClick={handleSend} disabled={busy}>
+              Send Medication
+            </button>
+          )}
+      </DialogFooter>
+    </DialogFrame>
   );
 
   // The handover for scripts issued in this sitting. Closing it closes the

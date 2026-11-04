@@ -72,7 +72,7 @@ export default function PortalSlipDialog({ slip, onClose }: { slip: PortalSlip; 
   };
 
   return (
-    <Modal onClose={onClose} size="md" labelledBy={titleId} describedBy={descId}>
+    <Modal variant="slider" onClose={onClose} size="md" labelledBy={titleId} describedBy={descId}>
       <DialogFrame>
         <DialogHeader
           titleId={titleId}

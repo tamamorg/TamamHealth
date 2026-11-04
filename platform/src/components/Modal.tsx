@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import SliderResizeHandle from '@/components/overlay/SliderResizeHandle';
+import { closeSliderLayer, isSliderBuried, openSliderLayer, reserveOverlayOrder, subscribeOverlayOrder } from '@/lib/overlay-order';
 import { createPortal } from 'react-dom';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { useHistoryLayer } from '@/lib/navigation/history-layer';
@@ -65,15 +67,18 @@ interface ModalProps {
  */
 let modalSequence = 0;
 const openModals = new Set<number>();
+/** Sliders hidden under a newer chart workspace (lib/overlay-order.ts). */
+const buriedModals = new Set<number>();
 /** How many open modals hold the body scroll lock, and what it replaces. */
 /** Sliders open right now, oldest first: the newest sets the page's squeeze. */
 let openSliders: number[] = [];
 let scrollLocks = 0;
 let overflowBeforeLock = '';
-/** True while any modal is open — lets a docked workspace underneath leave
- *  Escape to the dialog, so one keypress closes only the top layer. */
+/** True while any modal is open and showing — lets a docked workspace
+ *  underneath leave Escape to the dialog, so one keypress closes only the top
+ *  layer. A slider hidden under a newer workspace does not count. */
 export function isAnyModalOpen(): boolean {
-  return openModals.size > 0;
+  return openModals.size > buriedModals.size;
 }
 
 function isTopModal(sequence: number): boolean {
@@ -120,8 +125,27 @@ export default function Modal({
 
   useEffect(() => {
     openModals.add(sequence);
-    return () => { openModals.delete(sequence); };
+    return () => { openModals.delete(sequence); buriedModals.delete(sequence); };
   }, [sequence]);
+
+  // A slider under a newer chart workspace steps aside until that closes
+  // (lib/overlay-order.ts): hidden, still mounted, keyboard left to the workspace.
+  const [layerOrder] = useState(() => (isSlider ? reserveOverlayOrder() : 0));
+  const buried = useSyncExternalStore(
+    subscribeOverlayOrder,
+    () => isSlider && isSliderBuried(layerOrder),
+    () => false,
+  );
+  const buriedRef = useRef(false);
+  useEffect(() => {
+    buriedRef.current = buried;
+    if (buried) buriedModals.add(sequence); else buriedModals.delete(sequence);
+  }, [buried, sequence]);
+  useEffect(() => {
+    if (!isSlider) return;
+    openSliderLayer(layerOrder);
+    return () => closeSliderLayer(layerOrder);
+  }, [isSlider, layerOrder]);
 
   // Portals require the DOM — only render after mount (also keeps SSR happy).
   useEffect(() => { setMounted(true); }, []);
@@ -178,7 +202,7 @@ export default function Modal({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // A modal with another open above it leaves the keyboard to that one.
-      if (!isTopModal(sequence)) return;
+      if (!isTopModal(sequence) || buriedRef.current) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         onClose();
@@ -237,7 +261,7 @@ export default function Modal({
     // listener above). There is nothing here for a key handler to add.
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events
     <div
-      className={isSlider ? 'modal-portal-backdrop modal-portal-backdrop--slider' : 'modal-portal-backdrop tm-motion tm-motion--backdrop'}
+      className={isSlider ? `modal-portal-backdrop modal-portal-backdrop--slider${buried ? ' is-buried' : ''}` : 'modal-portal-backdrop tm-motion tm-motion--backdrop'}
       onMouseDown={disableBackdropClose ? undefined : e => {
         // Arm only when the press STARTS on the backdrop. A drag that begins
         // inside the dialog (selecting text in a field) and releases over the
@@ -298,10 +322,10 @@ export default function Modal({
           'tm-elevated',
           'tm-motion',
           isDrawer ? 'tm-motion--drawer modal-portal-dialog--drawer' : 'tm-motion--dialog',
+          // Every slider is one size (globals.css `--slider-std-w`), except on a
+          // dashboard, where it docks over the right panel. A form wider than
+          // that panel (triage, ANC, the lab wizard) keeps its own width there.
           isSlider && 'tm-slider',
-          // A form wider than a side panel (triage, ANC, the lab wizard). On a
-          // dashboard a slider docks over the right panel; one this wide keeps
-          // its width there rather than being crushed to the panel's.
           isSlider && ((width ?? 0) > 560 || size === 'lg' || size === 'xl' || size === '2xl' || size === 'full') && 'tm-slider--wide',
           className,
         ].filter(Boolean).join(' ')}
@@ -315,11 +339,10 @@ export default function Modal({
         aria-describedby={describedBy}
         tabIndex={-1}
         style={{
-          // A slider is as wide as the form asked for (a wide booking grid or
-          // the lab wizard needs it); globals.css caps it at the screen.
+          // The form's own width, read only by the dashboard dock (globals.css).
           ...(isSlider && (size || width) ? { ['--slider-w' as string]: size ? SIZE_WIDTH[size] : `${width}px` } : {}),
           width: '100%',
-          maxWidth: size ? SIZE_WIDTH[size] : width,
+          maxWidth: isSlider ? undefined : size ? SIZE_WIDTH[size] : width,
           maxHeight: isSlider
             ? 'calc(100dvh - var(--app-slider-top))'
             : isDrawer
@@ -354,6 +377,8 @@ export default function Modal({
           margin: 0,
         }}
       >
+        {/* Sliders can be widened from their inner edge, and settle back on the standard width. */}
+        {isSlider && <SliderResizeHandle />}
         {children}
       </div>
     </div>,

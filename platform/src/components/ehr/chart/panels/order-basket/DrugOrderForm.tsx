@@ -25,6 +25,7 @@ import {
   type DrugOrderDraft, type DurationUnit,
 } from './basket-types';
 import PatientBanner from './PatientBanner';
+import UnlabelledDrugNotice from '@/components/clinical-notes/prescribe/UnlabelledDrugNotice';
 
 /** The −/+ number field O3 uses for durations and refills. */
 function Stepper({ id, value, onChange, min = 0, label }: {
@@ -115,6 +116,7 @@ export default function DrugOrderForm({
         <div className="obf-pad">
           <h2 className="obf-form-title">{t('basket.orderFormTitle')}</h2>
           <h3 ref={heading} className="obf-drug">{drugName}</h3>
+          <UnlabelledDrugNotice medication={order.drug.name} />
 
           {(allergyHits.length > 0 || interactions.length > 0 || weeklyConcern) && (
             <div className="obf-alerts" role="alert">

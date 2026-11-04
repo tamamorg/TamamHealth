@@ -19,7 +19,7 @@ import { useState, useMemo } from 'react';
 import { formatRxSig } from '@/lib/format-utils';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  ArrowLeft, Pill, CheckCircle2, X, AlertTriangle, ShieldAlert, Printer, BedDouble,
+  ArrowLeft, Pill, CheckCircle2, AlertTriangle, ShieldAlert, Printer, BedDouble,
   Plus,
 } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
@@ -35,7 +35,7 @@ import { todayIso } from '@/lib/date-utils';
 import { isPathAllowed } from '@/lib/role-routes';
 import Select from '@/components/Select';
 import { isScheduledDoseAllowed, scheduleForFrequency, scheduledForIso } from '@/lib/clinical-flow/medication-schedule';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import { printElementById } from '@/lib/safe-html';
 import { describeError } from '@/lib/user-facing-error';
 import { useGoBack } from '@/lib/navigation/nav-history';
@@ -490,40 +490,32 @@ export default function MARPage() {
 
         {/* Record-administration modal */}
         {modalRx && (
-          <Modal variant="slider" onClose={closeModal} width={448} labelledBy="mar-administration-title">
-            <div
-              className="modal-panel w-full card-elevated overflow-hidden"
-              style={{ boxShadow: 'var(--card-shadow-xl)' }}
-            >
-              <header
-                className="px-5 py-3 border-b flex items-start justify-between gap-3"
-                style={{ borderColor: 'var(--border-light)', background: 'var(--overlay-subtle)' }}
+          <FormSlider
+            title={modalRx.medication}
+            width={448}
+            subtitle={<>
+              {modalRx.dose} · {modalRx.route} · {t('mar.scheduled')}{' '}
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {new Date(modalScheduledFor).toLocaleString()}
+              </span>
+            </>}
+            onClose={closeModal}
+            busy={submitting}
+            footerNote={<>{t('mar.recordedAs')} <strong style={{ color: 'var(--text-primary)' }}>{currentUser?.name}</strong></>}
+            footer={<>
+              <button type="button" onClick={closeModal} className="btn btn-secondary">{t('action.cancel')}</button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={submitting || (modalStatus !== 'given' && !modalReason.trim())}
+                className="btn btn-primary inline-flex items-center gap-1.5"
               >
-                <div className="flex items-start gap-3 min-w-0">
-                  <div className="icon-box">
-                    <Pill className="w-4 h-4" style={{ color: 'var(--accent-hover)' }} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[10.5px] font-bold uppercase" style={{
-                      color: 'var(--text-muted)', letterSpacing: '0.06em',
-                    }}>{t('mar.administer')}</div>
-                    <h3 id="mar-administration-title" className="text-base font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>
-                      {modalRx.medication}
-                    </h3>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                      {modalRx.dose} · {modalRx.route} · {t('mar.scheduled')}{' '}
-                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                        {new Date(modalScheduledFor).toLocaleString()}
-                      </span>
-                    </p>
-                  </div>
-                </div>
-                <button onClick={closeModal} aria-label={t('action.close')} className="p-1 rounded hover:bg-gray-100 shrink-0">
-                  <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                </button>
-              </header>
-
-              <div className="px-5 py-4 space-y-4">
+                <CheckCircle2 className="w-4 h-4" />
+                {submitting ? t('mar.saving') : t('mar.record')}
+              </button>
+            </>}
+          >
+              <div className="space-y-4">
                 <div>
                   <label className="block text-[11px] font-bold uppercase mb-1.5" style={{
                     color: 'var(--text-muted)', letterSpacing: '0.06em',
@@ -598,27 +590,7 @@ export default function MARPage() {
                 </div>
               </div>
 
-              <footer
-                className="px-5 py-3 border-t flex items-center justify-between gap-2"
-                style={{ borderColor: 'var(--border-light)', background: 'var(--overlay-subtle)' }}
-              >
-                <p className="text-[10.5px]" style={{ color: 'var(--text-muted)' }}>
-                  {t('mar.recordedAs')} <strong style={{ color: 'var(--text-primary)' }}>{currentUser?.name}</strong>
-                </p>
-                <div className="flex items-center gap-2">
-                  <button onClick={closeModal} className="btn btn-secondary">{t('action.cancel')}</button>
-                  <button
-                    onClick={handleSubmit}
-                    disabled={submitting || (modalStatus !== 'given' && !modalReason.trim())}
-                    className="btn btn-primary inline-flex items-center gap-1.5"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    {submitting ? t('mar.saving') : t('mar.record')}
-                  </button>
-                </div>
-              </footer>
-            </div>
-          </Modal>
+          </FormSlider>
         )}
     </main>
   );

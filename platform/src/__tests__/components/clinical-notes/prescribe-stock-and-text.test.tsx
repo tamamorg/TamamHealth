@@ -13,6 +13,10 @@ import { FORMULARY } from '@/lib/data/formulary';
 import type { PharmacyInventoryDoc } from '@/lib/db-types';
 import type { RxDraft } from '@/components/clinical-notes/prescribe/types';
 
+// The no-US-label notice inside the form reads who is prescribing.
+jest.mock('@/lib/context', () => ({
+  useAuth: () => ({ currentUser: { _id: 'user-dr-wani', name: 'Dr. Wani', role: 'doctor', hospitalId: 'hosp-001' } }),
+}));
 jest.mock('@/lib/i18n/useTranslation', () => ({
   useTranslation: () => ({
     t: (key: string, vars?: Record<string, string | number>) => (vars ? `${key} ${JSON.stringify(vars)}` : key),

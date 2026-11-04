@@ -2850,9 +2850,9 @@ body .tamam-root .tamam-table.tamam-table--referrals td.tamam-num,
 /* Footer: the shared action bar (globals.css, ACTION BAR). */
 .obk-footer { flex: none; }
 
-/* The drawer header's "close all panels" arrow points the way the workspace
-   leaves: flipped in right-to-left locales. */
-[dir="rtl"] .tamam-drawer-back svg { transform: scaleX(-1); }
+/* → (Hide) points the way the workspace leaves: flipped in right-to-left locales. */
+[dir="rtl"] :is(.tamam-drawer-controls, .tm-dialog__controls) [aria-label] svg.lucide-arrow-right,
+[dir="rtl"] :is(.tamam-drawer-controls, .tm-dialog__controls) [data-action="popup-hide"] svg { transform: scaleX(-1); }
 
 /* Appointments tab: Upcoming / Today / Past content switcher (O3). */
 .tamam-appt-switcher {
@@ -3132,8 +3132,11 @@ body .tamam-root .tamam-table.tamam-table--referrals td.tamam-num,
    brings the drawer back. Sliders portal to <body> and dock beside the icon
    rail, so without this the two stood next to each other. The drawer steps
    out of the flow instead of unmounting — display:none would drop its
-   scroll position, and unmounting would drop an unsaved note. */
-html.tm-slider-open .tamam-root .tamam-drawer {
+   scroll position, and unmounting would drop an unsaved note.
+   The newest is always the one on top: a drawer opened (or given a new panel)
+   while a slider is up is newer, so the slider steps aside instead
+   (`tm-drawer-over`, lib/overlay-order.ts). */
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-drawer {
   position: absolute;
   top: 0;
   right: 0;
@@ -3227,24 +3230,8 @@ html.tm-chart-open .tm-slider .tamam-section-body { padding-inline: 0; overflow-
 html.tm-chart-open .tm-slider .tamam-table { width: 100%; table-layout: fixed; font-size: 13px; }
 html.tm-chart-open .tm-slider .tamam-table :is(th, td) { padding-inline: 8px; overflow-wrap: anywhere; }
 
-/* Back sits with the title; ✕ stays at the far edge and always means close. The
-   header's Back replaces the form's own link, so there is one way back. */
-.tamam-drawer-header .tamam-drawer-back {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  padding: 0;
-  border: 0;
-  border-inline-end: 1px solid var(--ehr-border, var(--border-light));
-  background: transparent;
-  color: var(--accent-text);
-  cursor: pointer;
-}
-.tamam-drawer-header:has(.tamam-drawer-back) .tamam-drawer-title { flex: 1 1 auto; margin-inline-start: 16px; text-align: start; }
-.tamam-drawer-header .tamam-drawer-back:hover { background: var(--bg-app); }
-.tamam-drawer-header .tamam-drawer-back:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
-.tamam-drawer-header .tamam-drawer-back svg { width: 18px; height: 18px; color: currentColor !important; }
+/* No Back text in a panel: the header's → (Hide) is the one way back
+   (drawer-back.ts), so the forms' own back links are not shown in the drawer. */
 .tamam-drawer .omf-back,
-.tamam-drawer .o3f-back { display: none; }
+.tamam-drawer .o3f-back,
+.tamam-drawer .obf-back { display: none; }

@@ -17,7 +17,7 @@
 
 import { useState } from 'react';
 import { apiFetch } from '@/lib/api-fetch';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import { Check, Loader2, Upload } from '@/components/icons/lucide';
 import { IMPORT_TEMPLATE_CSV, type ImportRow } from '@/modules/identity/provisioning/bulk-user-import';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -106,17 +106,58 @@ export default function BulkUserImportModal({
   const readyCount = preview?.filter(r => !r.problem).length ?? 0;
   const blockedCount = preview?.filter(r => r.problem).length ?? 0;
 
+  const footer = !orgId ? (
+    <button type="button" className="btn btn-primary" onClick={onClose}>Close</button>
+  ) : results ? (
+    <>
+        {results.some(r => r.temporaryPassword) && (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => download('tamamhealth-credentials.csv', [
+              t('bui.csvHeader'),
+              ...results.filter(r => r.temporaryPassword)
+                .map(r => `${r.name},${r.username},${r.temporaryPassword}`),
+            ].join('\n'))}
+          >
+            {t('bui.downloadPasswords')}
+          </button>
+        )}
+        <button type="button" className="btn btn-primary" onClick={onClose}>{t('bui.done')}</button>
+    </>
+  ) : (
+    <>
+        <button type="button" className="btn btn-secondary" onClick={onClose} disabled={busy}>
+          {t('bui.cancel')}
+        </button>
+        {!preview ? (
+          <button type="button" className="btn btn-primary" onClick={check} disabled={busy || !csv.trim()}>
+            {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('bui.checking')}</> : t('bui.checkList')}
+          </button>
+        ) : (
+          <button type="button" className="btn btn-primary" onClick={commit} disabled={busy || readyCount === 0}>
+            {busy
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('bui.creating')}</>
+              : readyCount === 1 ? t('bui.createAccountOne') : t('bui.createAccounts', { count: readyCount })}
+          </button>
+        )}
+    </>
+  );
+
   return (
-    <Modal variant="slider" onClose={onClose} width={720} labelledBy="bulk-import-title">
-      <div className="sadb-modal bui">
-        <div className="sadb-modal-copy">
-          <h2 id="bulk-import-title" className="sadb-modal-title">{t('bui.title')}</h2>
-          <p className="sadb-modal-sub">
-            {t('bui.ledePre')} <strong>{t('bui.colName')}</strong> {t('bui.ledeAnd')}{' '}
-            <strong>{t('bui.colRole')}</strong>{t('bui.ledePost')}
-          </p>
-          {orgName && <p className="sadb-modal-sub"><strong>Importing into {orgName}.</strong></p>}
-        </div>
+    <FormSlider
+      width={720}
+      title={t('bui.title')}
+      subtitle={<>
+        {t('bui.ledePre')} <strong>{t('bui.colName')}</strong> {t('bui.ledeAnd')}{' '}
+        <strong>{t('bui.colRole')}</strong>{t('bui.ledePost')}
+      </>}
+      onClose={onClose}
+      busy={busy}
+      footer={footer}
+    >
+      <div className="bui">
+        {orgName && <p className="bui-org"><strong>Importing into {orgName}.</strong></p>}
 
         {!orgId ? (
           <>
@@ -124,9 +165,6 @@ export default function BulkUserImportModal({
               Choose an organization in the list filter first — imported accounts have to belong
               to one, and picking a tenant on your behalf is not something this should do.
             </p>
-            <div className="sadb-modal-actions">
-              <button type="button" className="btn btn-primary btn-sm" onClick={onClose}>Close</button>
-            </div>
           </>
         ) : results ? (
           <>
@@ -160,22 +198,6 @@ export default function BulkUserImportModal({
                   ))}
                 </tbody>
               </table>
-            </div>
-            <div className="sadb-modal-actions">
-              {results.some(r => r.temporaryPassword) && (
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => download('tamamhealth-credentials.csv', [
-                    t('bui.csvHeader'),
-                    ...results.filter(r => r.temporaryPassword)
-                      .map(r => `${r.name},${r.username},${r.temporaryPassword}`),
-                  ].join('\n'))}
-                >
-                  {t('bui.downloadPasswords')}
-                </button>
-              )}
-              <button type="button" className="btn btn-primary btn-sm" onClick={onClose}>{t('bui.done')}</button>
             </div>
           </>
         ) : (
@@ -244,22 +266,6 @@ export default function BulkUserImportModal({
               </>
             )}
 
-            <div className="sadb-modal-actions">
-              <button type="button" className="btn btn-secondary btn-sm" onClick={onClose} disabled={busy}>
-                {t('bui.cancel')}
-              </button>
-              {!preview ? (
-                <button type="button" className="btn btn-primary btn-sm" onClick={check} disabled={busy || !csv.trim()}>
-                  {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('bui.checking')}</> : t('bui.checkList')}
-                </button>
-              ) : (
-                <button type="button" className="btn btn-primary btn-sm" onClick={commit} disabled={busy || readyCount === 0}>
-                  {busy
-                    ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('bui.creating')}</>
-                    : readyCount === 1 ? t('bui.createAccountOne') : t('bui.createAccounts', { count: readyCount })}
-                </button>
-              )}
-            </div>
           </>
         )}
 
@@ -290,10 +296,11 @@ export default function BulkUserImportModal({
             font-size: 13.5px; color: var(--text-primary);
           }
           .bui-scroll { max-height: 260px; overflow: auto; border: 1px solid var(--border-light); border-radius: 8px; }
-          .bui-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+          .bui-org { margin: 0; font-size: 13px; color: var(--text-secondary); }
+          .bui-table { width: 100%; border-collapse: collapse; font-size: 12.5px; table-layout: fixed; }
           .bui-table th, .bui-table td {
             text-align: start; padding: 7px 10px; border-bottom: 1px solid var(--border-light);
-            vertical-align: top; color: var(--text-secondary);
+            vertical-align: top; color: var(--text-secondary); overflow-wrap: anywhere;
           }
           .bui-table thead th {
             position: sticky; top: 0; background: var(--bg-card-solid);
@@ -304,6 +311,6 @@ export default function BulkUserImportModal({
           .bui-error { margin: 0; font-size: 13px; color: var(--color-danger-text); }
         `}</style>
       </div>
-    </Modal>
+    </FormSlider>
   );
 }

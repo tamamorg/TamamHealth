@@ -4,12 +4,10 @@ import { activeCountry, usesAddressLists } from '@/lib/country/country-pack';
 import { IDENTITY_DOCUMENT_TYPES } from '@/lib/country/patient-identity';
 import { worldCountries } from '@/lib/country/world-lists';
 import type { PatientDoc } from '@/lib/db-types';
-import Modal from '@/components/Modal';
-import { X } from '@/components/icons/lucide';
+import FormSlider from '@/components/overlay/FormSlider';
 import { toIsoDate } from '@/lib/date-utils';
 import { locationLabel, states as SOUTH_SUDAN_STATES, tribes } from '@/lib/data/south-sudan-reference';
 import Select from '@/components/Select';
-import { stopsClickPropagation } from '@/lib/a11y';
 import type { Dispatch, SetStateAction } from 'react';
 export interface PatientEditForm {
   firstName: string; middleName: string; surname: string; phone: string;
@@ -36,19 +34,20 @@ export default function PatientEditModal({ editSubmitting, setShowEditModal, edi
   const listed = usesAddressLists(editForm.residenceCountry);
   const countries = useMemo(() => worldCountries(), []);
   return (
-        <Modal variant="slider" className="tamam-dialog" onClose={() => !editSubmitting && setShowEditModal(false)}>
-          {/* No max-width here: Modal already sizes the dialog panel (600px) and
-              paints it opaque, so a narrower child left ~90px of empty panel
-              showing past the form's right edge. Matches the message modal above. */}
-          <div className="modal-content card-elevated p-5 w-full" {...stopsClickPropagation}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold">{t('ptDetail.editDemographics')}</h3>
-              <button onClick={() => setShowEditModal(false)} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+    <FormSlider
+      title={t('ptDetail.editDemographics')}
+      width={600}
+      busy={editSubmitting}
+      onClose={() => setShowEditModal(false)}
+      footer={<>
+        <button type="button" onClick={() => setShowEditModal(false)} className="btn btn-secondary" disabled={editSubmitting}>Cancel</button>
+        <button type="button" onClick={handleEditSubmit} className="btn btn-primary" disabled={editSubmitting}>
+          {editSubmitting ? 'Saving…' : 'Save changes'}
+        </button>
+      </>}
+    >
             <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="edit-first-name" className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('patientNew.firstName')}</label>
                   <input id="edit-first-name" type="text" value={editForm.firstName} onChange={e => setEditForm({ ...editForm, firstName: e.target.value })} />
@@ -204,7 +203,7 @@ export default function PatientEditModal({ editSubmitting, setShowEditModal, edi
                 </div>
               </div>
               </>)}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="edit-id-type" className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('patientNew.idType')}</label>
                   <Select id="edit-id-type" value={editForm.idType} onChange={e => setEditForm({ ...editForm, idType: e.target.value })}>
@@ -227,13 +226,6 @@ export default function PatientEditModal({ editSubmitting, setShowEditModal, edi
                 </div>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-2 mt-5">
-              <button onClick={() => setShowEditModal(false)} className="btn btn-sm btn-secondary" disabled={editSubmitting}>Cancel</button>
-              <button onClick={handleEditSubmit} className="btn btn-sm btn-primary" disabled={editSubmitting}>
-                {editSubmitting ? 'Saving…' : 'Save changes'}
-              </button>
-            </div>
-          </div>
-        </Modal>
+    </FormSlider>
   );
 }

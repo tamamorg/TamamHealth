@@ -16,8 +16,8 @@ import { dispenseMedication, DispenseError } from '@/lib/services/dispensing-ser
 import { safetyStops, unreviewedAllergyConflicts } from '@/lib/pharmacy/rx-safety';
 import type { PrescriptionDoc } from '@/lib/db-types';
 
-const DRUG_A = 'Warfarin 5mg';
-const DRUG_B = 'Metronidazole 400mg';
+const DRUG_A = 'Lopinavir + ritonavir';
+const DRUG_B = 'Rifampicin 300mg';
 const HOSP = 'hosp-001';
 const ORG = 'org-moh-ss';
 const SCOPE = { role: 'super_admin' } as const;
@@ -137,13 +137,13 @@ describe('an allergy recorded after prescribing', () => {
 describe('a contraindicated pair nobody answered', () => {
   it('stops the handover until the pharmacist writes a review', async () => {
     const { _rev: _ignored, ...batch } = await pharmacyInventoryDB().get('inv-amox') as unknown as Record<string, unknown>;
-    await pharmacyInventoryDB().put({ ...batch, _id: 'inv-quinine', medicationName: 'Quinine' } as never);
-    const { prescription } = await order('Quinine');
+    await pharmacyInventoryDB().put({ ...batch, _id: 'inv-ergotamine', medicationName: 'Ergotamine' } as never);
+    const { prescription } = await order('Ergotamine');
     await advancePrescription(prescription._id, 'cleared_for_dispensing', undefined, PHARMACIST._id);
     const cleared = (await getPrescriptionsByPatient('pat-1', SCOPE)).find(r => r._id === prescription._id)!;
     // Written before this pair had a rule, so no prescriber ever answered it.
     const { _rev, ...doc } = cleared;
-    await prescriptionsDB().put({ ...doc, _id: 'rx-coartem', medication: 'Artemether-Lumefantrine (Coartem)', medicationSafety: undefined } as never);
+    await prescriptionsDB().put({ ...doc, _id: 'rx-ritonavir', medication: 'Ritonavir', medicationSafety: undefined } as never);
 
     const dispense = (allergyReview?: string) => dispenseMedication({
       prescription: cleared, quantity: 5, dispenserId: PHARMACIST._id, dispenserName: PHARMACIST.name,
@@ -151,9 +151,9 @@ describe('a contraindicated pair nobody answered', () => {
     });
     const refused = await dispense().catch(err => err);
     expect(refused.code).toBe('ALLERGY_REVIEW_REQUIRED');
-    expect(refused.message).toContain('artemether-lumefantrine + quinine');
+    expect(refused.message).toContain('ritonavir + ergotamine');
 
     const { prescription: filled } = await dispense('Prescriber confirmed by phone, course finished.');
-    expect(filled.dispenseAllergyReview?.interactions).toEqual(['artemether-lumefantrine + quinine']);
+    expect(filled.dispenseAllergyReview?.interactions).toEqual(['ritonavir + ergotamine']);
   });
 });

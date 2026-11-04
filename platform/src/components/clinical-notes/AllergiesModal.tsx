@@ -23,6 +23,7 @@ import type { AllergyEntry } from '@/lib/types/patient-clinical';
 import type { PatientDoc } from '@/lib/db-types';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import './clinical-notes.css';
+import './slider-fit.css';
 import Select from '@/components/Select';
 import { describeError } from '@/lib/user-facing-error';
 
@@ -159,6 +160,19 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
       title="Allergies"
       width={760}
       onClose={onClose}
+      flush
+      footer={<>
+              {tab === 'active' ? (
+                <>
+                  <button type="button" className="btn btn-secondary" onClick={() => handleRemove('inactive', 'discontinued')} disabled={busy || !selected}>Discontinue</button>
+                  <button type="button" className="btn btn-secondary" onClick={() => handleRemove('resolved', 'resolved')} disabled={busy || !selected}>Resolve</button>
+                </>
+              ) : (
+                <button type="button" className="btn btn-secondary" onClick={handleReactivate} disabled={busy || !selected}>Reactivate</button>
+              )}
+              <button type="button" className="btn btn-secondary" onClick={() => handleRemove('entered_in_error', 'entered in error')} disabled={busy || !selected}>Mark as Error</button>
+              <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
+      </>}
     >
       <div className="space-y-4">
         <div className="cn-meds-body cn-meds-body--single">
@@ -285,18 +299,6 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
               ))}
             </div>
 
-            <div className="cn-meds-footer">
-              {tab === 'active' ? (
-                <>
-                  <button type="button" className="cn-btn" onClick={() => handleRemove('inactive', 'discontinued')} disabled={busy || !selected}>Discontinue</button>
-                  <button type="button" className="cn-btn" onClick={() => handleRemove('resolved', 'resolved')} disabled={busy || !selected}>Resolve</button>
-                </>
-              ) : (
-                <button type="button" className="cn-btn" onClick={handleReactivate} disabled={busy || !selected}>Reactivate</button>
-              )}
-              <button type="button" className="cn-btn" onClick={() => handleRemove('entered_in_error', 'entered in error')} disabled={busy || !selected}>Mark as Error</button>
-              <button type="button" className="cn-btn" onClick={onClose}>Close</button>
-            </div>
           </div>
         </div>
       </div>

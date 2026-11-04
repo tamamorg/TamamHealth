@@ -13,6 +13,7 @@ import type { PatientDoc } from '../db-types';
 import { getPatientById } from './patient-service';
 import type { DataScope } from './data-scope';
 import { mutatePatientListField } from './patient-list-field';
+import { chartCareAlerts } from '../care-alert-rules';
 
 /** All care alerts for a patient (active + resolved). */
 export async function getCareAlerts(patientId: string, scope: DataScope): Promise<CareAlertEntry[]> {
@@ -22,7 +23,7 @@ export async function getCareAlerts(patientId: string, scope: DataScope): Promis
 
 /** Active care alerts only — what the chart banner shows. */
 export async function getActiveCareAlerts(patientId: string, scope: DataScope): Promise<CareAlertEntry[]> {
-  return (await getCareAlerts(patientId, scope)).filter((a) => a.status === 'active');
+  return chartCareAlerts(await getCareAlerts(patientId, scope));
 }
 
 export interface AddCareAlertInput {

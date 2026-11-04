@@ -45,8 +45,6 @@ import {
   UserPlus,
   Plus,
   LogOut,
-  X,
-  Maximize2,
   Stethoscope,
   FileText,
   RotateCcw,
@@ -71,6 +69,7 @@ import CheckInModal from '@/components/front-desk/CheckInModal';
 import CheckInSlider from '@/components/appointments/CheckInSlider';
 import FormSlider from '@/components/overlay/FormSlider';
 import '@/components/ehr/chart/panels/start-visit-panel.css';
+import './registration-slider.css';
 import StatusChangeSlider from '@/components/appointments/StatusChangeSlider';
 import AppointmentRequestsPanel from '@/components/front-desk/AppointmentRequestsPanel';
 import { pendingRequests } from '@/lib/appointment-requests';
@@ -2060,26 +2059,15 @@ export default function FrontDeskDashboardPage() {
 
         {registerOpen && (
           <Modal variant="slider" onClose={() => setRegisterOpen(false)} width={1180} disableBackdropClose labelledBy="patient-registration-dialog-title">
-            <div className="ehr-checkin-dialog ehr-registration-dialog">
-              {/* No header band. The form states its own title in the rail
-                  ("Register New Patient"), so the bar above it repeated that
-                  and spent 60px of a dialog that has to hold a long form.
-                  The two controls it carried are pinned over the body instead
-                  — they stay put while the form scrolls under them. The
-                  heading the dialog is labelled by moves with them, visually
-                  hidden, so `aria-labelledby` still resolves. */}
-              <div className="ehr-registration-dialog-actions modal-no-headband">
-                <h2 id="patient-registration-dialog-title" className="sr-only">
-                  {t('frontDesk.registerNewPatient')}
-                </h2>
-                <button type="button" onClick={openFullRegistration} aria-label="Expand patient registration">
-                  <Maximize2 className="w-4 h-4" />
-                </button>
-                <button type="button" onClick={() => setRegisterOpen(false)} aria-label="Close patient registration">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="ehr-checkin-dialog-body">
+            <DialogFrame>
+              <DialogHeader
+                titleId="patient-registration-dialog-title"
+                title={t('frontDesk.registerNewPatient')}
+                onClose={() => setRegisterOpen(false)}
+                onExpand={openFullRegistration}
+              />
+              <DialogBody flush>
+              <div className="ehr-checkin-dialog-body fd-reg-slider">
                 <PatientRegistrationForm
                   embedded
                   onDraftChange={captureRegistrationDraft}
@@ -2100,7 +2088,8 @@ export default function FrontDeskDashboardPage() {
                   }}
                 />
               </div>
-            </div>
+              </DialogBody>
+            </DialogFrame>
           </Modal>
         )}
 

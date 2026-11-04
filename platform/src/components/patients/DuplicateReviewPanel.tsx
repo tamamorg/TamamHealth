@@ -171,7 +171,7 @@ export default function DuplicateReviewPanel({ review, standalone = false }: {
         </SadbCard>
 
         {marking && (
-          <Modal onClose={closeMark} size="sm" labelledBy="dup-mark-title" describedBy="dup-mark-desc">
+          <Modal variant="slider" onClose={closeMark} size="md" labelledBy="dup-mark-title" describedBy="dup-mark-desc">
             <DialogFrame busy={saving}>
               <DialogHeader titleId="dup-mark-title" title={t('dup.dialogTitle')} onClose={closeMark} />
               <DialogBody tight>

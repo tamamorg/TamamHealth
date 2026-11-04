@@ -1,7 +1,7 @@
 'use client';
 
 import Modal from '@/components/Modal';
-import PopupHeader from '@/components/PopupHeader';
+import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { UserForm } from '@/components/admin/UserForm';
 import type { InvitationOutcome } from '@/modules/identity/provisioning/user-invite';
 import type { HospitalDoc } from '@/lib/db-types';
@@ -47,24 +47,28 @@ export default function CreateUserModal({
   };
   return (
     <Modal variant="slider" onClose={onClose} width={620} labelledBy="create-user-title">
-      <div className="sadb-modal mgmt-user-modal">
-        <PopupHeader
+      <DialogFrame>
+        <DialogHeader
           titleId="create-user-title"
           title={t('orgUsers.createNewUser')}
-          subtitle={preset ? t('hospitals.addUserForFacility', { name: preset.name }) : undefined}
+          description={preset ? t('hospitals.addUserForFacility', { name: preset.name }) : undefined}
           onExpand={expandToPage}
           onClose={onClose}
         />
-        <UserForm
-          presetOrgId={presetOrgId || preset?.orgId}
-          presetHospitalId={presetHospitalId}
-          lockOrganization={!!preset?.orgId}
-          lockFacility={lockFacility}
-          onCancel={onClose}
-          onAddFacility={onAddFacility}
-          onSaved={({ handoff }) => void onCreated(handoff)}
-        />
-      </div>
+        <DialogBody>
+          <div className="sadb-modal mgmt-user-modal">
+            <UserForm
+              presetOrgId={presetOrgId || preset?.orgId}
+              presetHospitalId={presetHospitalId}
+              lockOrganization={!!preset?.orgId}
+              lockFacility={lockFacility}
+              onCancel={onClose}
+              onAddFacility={onAddFacility}
+              onSaved={({ handoff }) => void onCreated(handoff)}
+            />
+          </div>
+        </DialogBody>
+      </DialogFrame>
     </Modal>
   );
 }

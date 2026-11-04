@@ -2,7 +2,7 @@
 
 /**
  * The chart's Lab tab: the patient's results list, and — once a row is picked
- * or deep-linked from the lab queue — the workflow for that order.
+ * or deep-linked from the lab queue — the workflow for that order, in a slider.
  *
  * This is where diagnostics work now happens. The queue links here rather than
  * opening a popup, so the technician works with the chart around them: the same
@@ -19,8 +19,9 @@ import ResultsSection from '@/components/ehr/chart/sections/ResultsSection';
 import RadiologyWorkflowPanel from '@/components/radiology/workflow/RadiologyWorkflowPanel';
 import { isImagingStudy } from '@/lib/clinical-flow/lab-catalog';
 import { useLabResults } from '@/lib/hooks/useLabResults';
+import FormSlider from '@/components/overlay/FormSlider';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { ArrowLeft } from '@/components/icons/lucide';
+import { ImagingReportSheet, LabReportSheet, ReportView } from '@/components/reports/clinical-reports';
 import LabWorkflowPanel from './LabWorkflowPanel';
 
 export default function LabWorkspace({
@@ -51,45 +52,59 @@ export default function LabWorkspace({
   useEffect(() => { if (focusId) setSelectedId(focusId); }, [focusId]);
 
   const selected = selectedId ? (results || []).find(lab => lab._id === selectedId) : undefined;
+  // A finished result read as its report, in the tab ("View report").
+  const [reportId, setReportId] = useState<string | undefined>();
+  const report = reportId ? (results || []).find(lab => lab._id === reportId) : undefined;
+  const reportIsImaging = !!report && (report.orderKind === 'imaging' || isImagingStudy(report));
 
-  if (!selected) {
-    return (
-      <ResultsSection
-        patientId={patientId}
-        canOrderLabs={canOrderLabs}
-        onAdd={onAdd}
-        focusId={focusId}
-        onSelect={setSelectedId}
-      />
-    );
-  }
+  const imaging = !!selected && (selected.orderKind === 'imaging' || isImagingStudy(selected));
+  const close = () => setSelectedId(undefined);
 
-  const imaging = selected.orderKind === 'imaging' || isImagingStudy(selected);
-
+  // The list stays in place; the picked order opens beside it as a slider,
+  // the way every other chart workspace opens.
   return (
-    <div>
-      <button
-        type="button"
-        className="labord-btn labord-btn--ghost"
-        style={{ marginBottom: 10 }}
-        onClick={() => setSelectedId(undefined)}
-      >
-        <ArrowLeft className="w-4 h-4" aria-hidden /> {t('labFlow.backToResults')}
-      </button>
-      {imaging ? (
-        <RadiologyWorkflowPanel
-          study={selected}
-          canWork={canWorkImaging}
-          onClose={() => setSelectedId(undefined)}
-        />
+    <>
+      {report ? (
+        <ReportView
+          backLabel={t('labFlow.backToResults')}
+          onBack={() => setReportId(undefined)}
+          openLabel={t('chart.resultOpenWorkflow')}
+          onOpen={() => setSelectedId(report._id)}
+          documentLabel={t(reportIsImaging ? 'report.imagingReport' : 'print.labReport')}
+          date={report.completedAt || report.orderedAt}
+        >
+          {reportIsImaging ? <ImagingReportSheet study={report} /> : <LabReportSheet order={report} />}
+        </ReportView>
       ) : (
-        <LabWorkflowPanel
-          order={selected}
-          canWork={canWork}
-          seedResult={seedResult}
-          onClose={() => setSelectedId(undefined)}
+        <ResultsSection
+          patientId={patientId}
+          canOrderLabs={canOrderLabs}
+          onAdd={onAdd}
+          focusId={focusId}
+          onSelect={setSelectedId}
+          onViewReport={setReportId}
         />
       )}
-    </div>
+      {selected && (
+        <FormSlider
+          title={selected.testName}
+          subtitle={[selected.accessionNumber, selected.specimen].filter(Boolean).join(' · ') || undefined}
+          className="tamam-dialog"
+          width={560}
+          flush
+          onClose={close}
+        >
+          {/* The bench fills the slider and pins its own footer, as on the
+              dashboard (LabBenchSlider); the slider header carries the title. */}
+          {imaging ? (
+            <div className="station-orders__body">
+              <RadiologyWorkflowPanel study={selected} canWork={canWorkImaging} onClose={close} />
+            </div>
+          ) : (
+            <LabWorkflowPanel key={selected._id} order={selected} canWork={canWork} seedResult={seedResult} onClose={close} hideTitle />
+          )}
+        </FormSlider>
+      )}
+    </>
   );
 }

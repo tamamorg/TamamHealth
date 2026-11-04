@@ -95,7 +95,7 @@ export default function VisitSummaryDialog({
 
   return (
     <>
-      <Modal onClose={onClose} size="lg" labelledBy={titleId} describedBy={descId}>
+      <Modal variant="slider" onClose={onClose} size="lg" labelledBy={titleId} describedBy={descId}>
         <DialogFrame>
           <DialogHeader
             titleId={titleId}
