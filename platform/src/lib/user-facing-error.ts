@@ -12,7 +12,12 @@
  * Message style (see the 2026-10 message rewrite): say what did not happen,
  * why when it is known, and what to do next. Sentence case, a full stop,
  * clinical words rather than system words, no exclamation marks.
+ *
+ * The returned sentence is shown in the current language when it is also a
+ * locale value (localizeText), so services keep throwing English.
  */
+
+import { localizeText } from './i18n';
 
 // Neutral on purpose: a failed fetch may be a password change or a payment,
 // where nothing was kept on the device, so never promise that work was saved.
@@ -101,6 +106,9 @@ const USER_FACING_ERRORS = new Set([
 /** Text that gives away an internal message: codes, identifiers, HTTP, JS runtime noise. */
 const TECHNICAL = /\b\w+_\w+\b|\bHTTP\b|\bstatus \d{3}\b|undefined|\bnull\b|\[object|Cannot read|is not a function|Unexpected token|JSON|\bfetch\b|pouch|couch|Upstash|\[[A-Z-]+\]/i;
 
+/** Developer messages that happen to read like sentences (API validation, crypto, config). */
+const DEVELOPER_TEXT = /^(Invalid|Malformed|Unsupported)\b|^(Internal server error|Not found|Range too wide)$|unsupported fields|\bnonce\b|Web Crypto|production configuration|has no id\b|Seeded data|does not belong to this practice|schema id|Terminology identifiers|canonical organization ID/i;
+
 /** True when a message reads as a sentence written for a user. */
 export function isUserFacingText(message: string): boolean {
   const text = message.trim();
@@ -108,7 +116,7 @@ export function isUserFacingText(message: string): boolean {
   if (!/^[A-Z"'‘“0-9]/.test(text) || !/\s/.test(text)) return false;
   // camelCase identifiers (patientId, orgId) are a case-sensitive check.
   if (/\b[a-z]+[A-Z][A-Za-z]*\b/.test(text)) return false;
-  return !TECHNICAL.test(text);
+  return !TECHNICAL.test(text) && !DEVELOPER_TEXT.test(text);
 }
 
 /**
@@ -137,6 +145,10 @@ function codeOf(err: unknown): string | undefined {
  * text is not fit for a user.
  */
 export function describeError(err: unknown, fallback: string): string {
+  return localizeText(describeErrorText(err, fallback));
+}
+
+function describeErrorText(err: unknown, fallback: string): string {
   const code = codeOf(err);
   if (code) return CODE_MESSAGES[code];
   if (!err || typeof err !== 'object') return fallback;
@@ -164,6 +176,6 @@ export function describeApiError(body: unknown, fallback: string): string {
   const error = body && typeof body === 'object' ? (body as { error?: unknown }).error : undefined;
   if (typeof error !== 'string') return fallback;
   const code = leadingCode(error);
-  if (code) return CODE_MESSAGES[code];
-  return isUserFacingText(error) ? error.trim() : fallback;
+  if (code) return localizeText(CODE_MESSAGES[code]);
+  return isUserFacingText(error) ? localizeText(error.trim()) : fallback;
 }

@@ -55,7 +55,7 @@ export default function PublicStatsPage() {
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <aside style={{ width: 224, flexShrink: 0 }}>
-            <nav className="ehr-set-nav" aria-label="Public statistics sections">
+            <nav className="ehr-set-nav" aria-label={t('ui.publicStatisticsSections')}>
               {sections.map(item => {
                 const Icon = item.icon;
                 return (

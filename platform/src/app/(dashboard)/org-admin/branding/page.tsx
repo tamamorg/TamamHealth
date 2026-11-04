@@ -265,7 +265,7 @@ export default function OrgBrandingPage() {
                       onClick={() => set('logoUrl', undefined)}
                       className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center"
                       style={{ background: 'var(--color-danger)', color: '#fff' }}
-                      aria-label="Remove logo"
+                      aria-label={t('ui.removeLogo')}
                     >
                       <X className="w-3 h-3" />
                     </button>

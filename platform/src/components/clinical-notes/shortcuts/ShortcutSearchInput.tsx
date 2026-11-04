@@ -18,6 +18,7 @@ import { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Search } from '@/components/icons/lucide';
 import type { ShortcutSearch } from './useShortcutSearch';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const POP_WIDTH = 360;
 const POP_MAX_HEIGHT = 320;
@@ -32,6 +33,7 @@ interface PopPosition {
 }
 
 export default function ShortcutSearchInput({ search }: { search: ShortcutSearch }) {
+  const { t } = useTranslation();
   const fieldRef = useRef<HTMLDivElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<PopPosition | null>(null);
@@ -96,7 +98,7 @@ export default function ShortcutSearchInput({ search }: { search: ShortcutSearch
       ref={popRef}
       id="cn-shortcut-results"
       role="listbox"
-      aria-label="Text shortcut suggestions"
+      aria-label={t('ui.textShortcutSuggestions')}
       className="cn-shortcut-pop"
       style={{
         top: pos.top ?? undefined,
@@ -109,7 +111,7 @@ export default function ShortcutSearchInput({ search }: { search: ShortcutSearch
       // the blur would close the list out from under the click.
       onMouseDown={e => e.preventDefault()}
     >
-      {search.loading && <p className="cn-popover-empty">Loading…</p>}
+      {search.loading && <p className="cn-popover-empty">{t('admin.loading')}</p>}
 
       {!search.loading && search.results.length === 0 && (
         <p className="cn-popover-empty">
@@ -143,9 +145,9 @@ export default function ShortcutSearchInput({ search }: { search: ShortcutSearch
       <Search size={12} aria-hidden />
       <input
         className="cn-shortcut-input"
-        placeholder="Shortcut…"
+        placeholder={t('ui.shortcut')}
         value={search.query}
-        aria-label="Search text shortcuts"
+        aria-label={t('ui.searchTextShortcuts')}
         // Without role="combobox" this is a plain textbox, which has no
         // expanded state — so aria-expanded was announced as nothing and a
         // screen-reader user never heard the suggestion list open.

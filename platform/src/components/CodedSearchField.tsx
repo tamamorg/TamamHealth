@@ -16,6 +16,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus, Search } from '@/components/icons/lucide';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export interface CodedOption {
   code: string;
@@ -64,6 +65,7 @@ export default function CodedSearchField({
    *  just a plain name row instead of implying a code that doesn't exist. */
   showCodeBadge?: boolean;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const listId = useId();
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -217,7 +219,7 @@ export default function CodedSearchField({
               className="csf-row csf-row--add"
             >
               <Plus className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--accent-primary)' }} aria-hidden />
-              <span className="csf-row-name">Add &ldquo;{customText}&rdquo;</span>
+              <span className="csf-row-name">{t('ui.add')}{customText}&rdquo;</span>
             </button>
           )}
         </div>,

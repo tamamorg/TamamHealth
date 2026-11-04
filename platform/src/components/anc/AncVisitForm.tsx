@@ -12,7 +12,6 @@
 import { O3Layout, O3MultiSelectField } from '@/components/forms/O3Form';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import FormSlider from '@/components/overlay/FormSlider';
-import FormNotices from '@/components/overlay/FormNotices';
 import Select from '@/components/Select';
 import { Users } from '@/components/icons/lucide';
 import { useToast } from '@/components/Toast';
@@ -449,7 +448,6 @@ export default function AncVisitForm({ layout, lockedPatient, onClose, onSaved }
         label: s.label,
         sections: [{ id: s.id, label: s.label, body: stepBody[i] }],
       }))}
-      notice={<FormNotices />}
       onSave={submit}
       saveLabel={t('anc.registerVisit')}
       saving={saving}

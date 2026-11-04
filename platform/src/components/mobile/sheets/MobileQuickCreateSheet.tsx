@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/context';
 import { getRoleConfig } from '@/lib/permissions';
 import { uniqueAllowedNavItems, getPrimaryShortcutItems } from '@/components/ehr/ehr-navigation';
 import MobileBottomSheet from '../MobileBottomSheet';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface MobileQuickCreateSheetProps {
   open: boolean;
@@ -13,6 +14,7 @@ interface MobileQuickCreateSheetProps {
 }
 
 export default function MobileQuickCreateSheet({ open, onClose }: MobileQuickCreateSheetProps) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const router = useRouter();
   const roleConfig = currentUser ? getRoleConfig(currentUser.role) : undefined;
@@ -30,7 +32,7 @@ export default function MobileQuickCreateSheet({ open, onClose }: MobileQuickCre
   );
 
   return (
-    <MobileBottomSheet open={open} onClose={onClose} title="Quick create">
+    <MobileBottomSheet open={open} onClose={onClose} title={t('ui.quickCreate')}>
       <div className="mobile-sheet-grid">
         {shortcuts.map((item) => {
           const ItemIcon = item.icon;

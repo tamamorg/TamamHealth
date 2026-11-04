@@ -18,6 +18,7 @@ import { useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Loader2 } from '@/components/icons/lucide';
 import type { Slot } from '@/lib/booking/slot-engine';
 import { addDays } from '@/lib/booking/slot-engine';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /** "09:30" → "9:30 AM". The patient-facing clock, matching the chips. */
 export function to12Hour(hhmm: string): string {
@@ -64,6 +65,7 @@ export default function SlotPicker({
   /** Label each chip with the clinician — for an any-provider search. */
   showProvider?: boolean;
 }) {
+  const { t } = useTranslation();
   const daySlots = useMemo(
     () => slots.filter(s => s.date === date),
     [slots, date],
@@ -90,7 +92,7 @@ export default function SlotPicker({
           direction="back"
           disabled={!canGoBack || loading}
           onClick={() => jump(-1)}
-          label="Previous day with openings"
+          label={t('ui.previousDayWithOpenings')}
         />
         <div style={{ textAlign: 'center', lineHeight: 1.25 }}>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
@@ -102,7 +104,7 @@ export default function SlotPicker({
           direction="forward"
           disabled={!canGoForward || loading}
           onClick={() => jump(1)}
-          label="Next day with openings"
+          label={t('ui.nextDayWithOpenings')}
         />
       </div>
 
@@ -110,7 +112,7 @@ export default function SlotPicker({
       {loading ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '28px 0', color: 'var(--text-muted)' }}>
           <Loader2 className="w-4 h-4 animate-spin" />
-          <span style={{ fontSize: 13 }}>Checking availability…</span>
+          <span style={{ fontSize: 13 }}>{t('ui.checkingAvailability')}</span>
         </div>
       ) : daySlots.length === 0 ? (
         <EmptyDay onNext={() => jump(1)} hasLater={slots.some(s => s.date > date)} />
@@ -199,10 +201,11 @@ function NavButton({
  * with no way forward is where a patient gives up and phones instead.
  */
 function EmptyDay({ onNext, hasLater }: { onNext: () => void; hasLater: boolean }) {
+  const { t } = useTranslation();
   return (
     <div style={{ textAlign: 'center', padding: '22px 8px' }}>
       <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
-        No appointments available on this day.
+        {t('ui.noAppointmentsAvailableOnThis')}
       </p>
       {hasLater && (
         <button
@@ -220,7 +223,7 @@ function EmptyDay({ onNext, hasLater }: { onNext: () => void; hasLater: boolean 
             cursor: 'pointer',
           }}
         >
-          Go to next available day
+          {t('ui.goToNextAvailableDay')}
         </button>
       )}
     </div>

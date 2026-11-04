@@ -18,13 +18,15 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export default function NotesQueueRetiredPage() {
+  const { t } = useTranslation();
   const router = useRouter();
 
   useEffect(() => {
     router.replace('/patients');
   }, [router]);
 
-  return <div className="cn-empty">Opening the patient registry…</div>;
+  return <div className="cn-empty">{t('ui.openingThePatientRegistry')}</div>;
 }

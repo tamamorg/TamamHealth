@@ -62,7 +62,7 @@ export default function ForgotPasswordPage() {
       <header className="lg-topbar">
         <a href="https://tamamhealth.org" className="lg-topbar-link">
           {/* eslint-disable-next-line @next/next/no-img-element -- brand mark, fixed size */}
-          <img src="/assets/tamamhealth-logo-full.svg" alt="Tamam Healthcare System" className="lg-topbar-logo" />
+          <img src="/assets/tamamhealth-logo-full.svg" alt={t('ui.tamamHealthcareSystem')} className="lg-topbar-logo" />
         </a>
       </header>
 
@@ -92,7 +92,7 @@ export default function ForgotPasswordPage() {
                     required
                     autoComplete="username"
                     autoFocus
-                    placeholder="e.g. desk.amira"
+                    placeholder={t('ui.eGDeskAmira')}
                   />
                   <span className="lg-hint">{t('forgotPassword.usernameHint')}</span>
                 </div>

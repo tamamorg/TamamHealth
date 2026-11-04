@@ -204,7 +204,6 @@ export default function TamamChartShell({
   onNoteSaved,
   panelRequest, onPanelRequestHandled, workspace, formFocusId,
 }: TamamChartShellProps) {
-
   // Workspaces stack. Opening one while another is open keeps the earlier one
   // underneath; closing the top one (✕, Cancel, Back, Escape) shows the one
   // below it, and so on down. The top entry is what the drawer shows. A rail
@@ -641,7 +640,7 @@ export default function TamamChartShell({
       <div className="tamam-rail-col no-print">
       {/* Drag the list's edge to resize it; squeezed far enough it becomes icons only. */}
       <RailResizeHandle />
-      <nav className="tamam-left-rail" aria-label="Patient chart sections">
+      <nav className="tamam-left-rail" aria-label={t('ui.patientChartSections')}>
         {/* One flat list of sections. The rail used to split into "Clinical"
             and "Record" cards, but the headings named where a tab came from
             rather than anything a clinician chooses by, and the break in the

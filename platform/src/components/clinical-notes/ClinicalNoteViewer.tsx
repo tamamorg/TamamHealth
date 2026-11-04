@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
-import InlineBanner from '@/components/overlay/InlineBanner';
+import NoticeToast from '@/components/overlay/NoticeToast';
 import { canEditDraft } from '@/lib/clinical-notes/draft-access';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { printElementById } from '@/lib/safe-html';
@@ -339,9 +339,9 @@ export default function ClinicalNoteViewer({
   return shell(
     <div className={`tamam-note-viewer modal-no-headband${inSlider ? ' tamam-note-viewer--slider' : ''}`}>
       {missing.length > 0 && (
-        <InlineBanner compact className="no-print" title={t('noteEditor.missingTitle')}>
+        <NoticeToast title={t('noteEditor.missingTitle')}>
           {missing.map(id => sectionLabel(t, id)).join(', ')}
-        </InlineBanner>
+        </NoticeToast>
       )}
       {error && !adding && <FormError message={error} />}
       <div id={printId} className="tamam-nv-doc modal-no-headband">

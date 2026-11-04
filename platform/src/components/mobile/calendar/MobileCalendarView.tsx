@@ -11,8 +11,10 @@ import MobileWeekStrip from './MobileWeekStrip';
 import { useAuth } from '@/lib/context';
 import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
 import { appointmentStatusLabel } from '@/lib/appointment-status';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export default function MobileCalendarView() {
+  const { t } = useTranslation();
   const { appointments, loading } = useAppointments();
   const { currentUser } = useAuth();
   const shell = useMobileShellState();
@@ -40,7 +42,7 @@ export default function MobileCalendarView() {
       <MobileWeekStrip selectedDay={shell.day} onSelect={shell.setDay} daysWithAppointments={daysWithAppointments} />
       <div className="mobile-calendar-list">
         {dayAppointments.length === 0 ? (
-          <EmptyState title="No appointments this day" message="Nothing scheduled for this date." />
+          <EmptyState title={t('ui.noAppointmentsThisDay')} message="Nothing scheduled for this date." />
         ) : (
           dayAppointments.map((appt) => {
             const initials = patientInitials({ firstName: appt.patientName.split(' ')[0], surname: appt.patientName.split(' ').slice(-1)[0] });

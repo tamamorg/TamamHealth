@@ -24,6 +24,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNo
 import { createPortal } from 'react-dom';
 import { ChevronDown, Filter, Search, X } from '@/components/icons/lucide';
 import EhrPageTitle from '@/components/ehr/EhrPageTitle';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export interface EhrListHeaderStat {
   label: string;
@@ -355,6 +356,7 @@ function FilterPanel({
   onClose: () => void;
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
   return createPortal(
     <div
       ref={panelRef}
@@ -367,9 +369,9 @@ function FilterPanel({
         <span>{label}</span>
         <div className="flex items-center gap-2">
           {activeCount > 0 && onClear && (
-            <button type="button" onClick={onClear} className="text-[11px] font-semibold" style={{ color: 'var(--accent-primary)' }}>Clear all</button>
+            <button type="button" onClick={onClear} className="text-[11px] font-semibold" style={{ color: 'var(--accent-primary)' }}>{t('ui.clearAll')}</button>
           )}
-          <button type="button" onClick={onClose} className="p-1 rounded hover:bg-[var(--overlay-subtle)]" aria-label="Close">
+          <button type="button" onClick={onClose} className="p-1 rounded hover:bg-[var(--overlay-subtle)]" aria-label={t('billing.activityClose')}>
             <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
           </button>
         </div>

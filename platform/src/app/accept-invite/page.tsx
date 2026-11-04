@@ -79,11 +79,11 @@ function AcceptInviteForm() {
   if (done) {
     return (
       <>
-        <h1 className="lg-h1">Your password is set</h1>
+        <h1 className="lg-h1">{t('ui.yourPasswordIsSet')}</h1>
         <div className="lg-form">
-          <p className="lg-lede">You can sign in with it now.</p>
+          <p className="lg-lede">{t('ui.youCanSignInWith')}</p>
           <button type="button" className="lg-btn blueprint" onClick={() => router.push('/login')}>
-            Go to sign in
+            {t('ui.goToSignIn')}
             <Corners />
           </button>
         </div>
@@ -131,7 +131,7 @@ function AcceptInviteForm() {
       <Heading isReset={isReset} />
       <form onSubmit={submit} className="lg-form">
       <div className="lg-field">
-        <label htmlFor="ai-password">New password</label>
+        <label htmlFor="ai-password">{t('ui.newPassword')}</label>
         <input
           id="ai-password"
           type="password"
@@ -145,7 +145,7 @@ function AcceptInviteForm() {
       </div>
 
       <div className="lg-field">
-        <label htmlFor="ai-confirm">Confirm password</label>
+        <label htmlFor="ai-confirm">{t('ui.confirmPassword')}</label>
         <input
           id="ai-confirm"
           type="password"
@@ -189,12 +189,13 @@ function Heading({ isReset }: { isReset: boolean }) {
 }
 
 export default function AcceptInvitePage() {
+  const { t } = useTranslation();
   return (
     <div className="lg-root">
       <header className="lg-topbar">
         <a href="https://tamamhealth.org" className="lg-topbar-link">
           {/* eslint-disable-next-line @next/next/no-img-element -- fixed-height SVG logo */}
-          <img src="/assets/tamamhealth-logo-full.svg" alt="Tamam Healthcare System" className="lg-topbar-logo" />
+          <img src="/assets/tamamhealth-logo-full.svg" alt={t('ui.tamamHealthcareSystem')} className="lg-topbar-logo" />
         </a>
       </header>
 
@@ -203,7 +204,7 @@ export default function AcceptInvitePage() {
           {/* useSearchParams needs a Suspense boundary in the App Router, and
               the heading lives inside it: the page title depends on the query,
               so rendering it outside meant the wrong words on first paint. */}
-          <Suspense fallback={<div className="lg-boot"><span className="lg-spin" /> Loading…</div>}>
+          <Suspense fallback={<div className="lg-boot"><span className="lg-spin" /> {t('admin.loading')}</div>}>
             <AcceptInviteForm />
           </Suspense>
         </div>

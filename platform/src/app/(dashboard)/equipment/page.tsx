@@ -255,7 +255,7 @@ export default function AssetsPage() {
                 </div>
                 <div>
                   <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelAssetTag')}</label>
-                  <input value={form.assetTag} onChange={e => setForm({ ...form, assetTag: e.target.value })} placeholder="JTH-US-001" />
+                  <input value={form.assetTag} onChange={e => setForm({ ...form, assetTag: e.target.value })} placeholder={t('ui.jthUs001')} />
                 </div>
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelCategory')}</label>

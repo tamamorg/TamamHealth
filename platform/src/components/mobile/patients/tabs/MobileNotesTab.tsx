@@ -61,7 +61,7 @@ export default function MobileNotesTab({ patientId }: { patientId: string }) {
   }
 
   if (rows.length === 0) {
-    return <EmptyState title="No notes" message="Clinical notes for this patient will appear here." />;
+    return <EmptyState title={t('ui.noNotes')} message="Clinical notes for this patient will appear here." />;
   }
 
   return (

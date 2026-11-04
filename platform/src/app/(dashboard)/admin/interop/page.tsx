@@ -119,14 +119,14 @@ export default function AdminInteropPage() {
 
   return (
     <SadbPage>
-      <SadbCard title="Interoperability" meta={loading || configLoading ? 'Loading…' : 'Integration endpoints'}>
+      <SadbCard title={t('routeContext.interoperability')} meta={loading || configLoading ? 'Loading…' : 'Integration endpoints'}>
         <div className="sadb-status-grid">
           <SadbStatusCard
             name="DHIS2 export"
             status={dhisLabel}
             tone={TONE_CHIP[dhisTone]}
             detail={`Aggregate export · ${dhisHost || 'Not configured'} · Last activity ${dhisLastActivity}`}
-            actionLabel="Open DHIS2 export"
+            actionLabel={t('ui.openDhis2Export')}
             onAction={() => router.push('/dhis2-export')}
           />
           <SadbStatusCard
@@ -156,7 +156,7 @@ export default function AdminInteropPage() {
         </div>
       </SadbCard>
 
-      <SadbCard title="DHIS2 push log" meta={loading ? 'Loading…' : `${entries.length} entries`}>
+      <SadbCard title={t('ui.dhis2PushLog')} meta={loading ? 'Loading…' : `${entries.length} entries`}>
         <SaTable
           columns={[
             { label: 'When', w: 0.9 }, { label: 'Dataset', w: 1.4 }, { label: 'Period', w: 0.8 },
@@ -168,7 +168,7 @@ export default function AdminInteropPage() {
           {entries.map((e, i) => (
             <tr key={`${e.time}-${i}`}>
               <td>{formatWhen(e.time)}</td>
-              <td>DHIS2 export</td>
+              <td>{t('product.roadmap.done4')}</td>
               <td>{i === 0 && dhisLog?.lastDataset ? dhisLog.lastDataset.period : '—'}</td>
               <td><SaPill tone={RESULT_TONE[e.status] || 'muted'}>{humanizeStatus(e.status)}</SaPill></td>
               <td>{e.message}</td>
@@ -178,7 +178,7 @@ export default function AdminInteropPage() {
       </SadbCard>
 
       <SadbCard
-        title="Failed pushes & retry"
+        title={t('ui.failedPushesRetry')}
         meta={loading ? 'Loading…' : `${failedEvents.length} shown${failedEvents.length === 50 ? ' (capped)' : ''}`}
         action={
           <button type="button" className="btn btn-secondary btn-sm" disabled={retrying} onClick={handleRetryBatch}>
@@ -207,12 +207,12 @@ export default function AdminInteropPage() {
       </SadbCard>
 
       <SadbCard
-        title="Terminology & code mappings"
-        action={<SadbHeadLink onClick={() => router.push('/dhis2-export')}>Open DHIS2 export</SadbHeadLink>}
+        title={t('ui.terminologyCodeMappings')}
+        action={<SadbHeadLink onClick={() => router.push('/dhis2-export')}>{t('ui.openDhis2Export')}</SadbHeadLink>}
       >
-        <SadbKvRow label="ICD-11 reference set" value="Bundled client-side (icd11-codes.ts) for diagnosis coding" />
+        <SadbKvRow label={t('ui.icd11ReferenceSet')} value="Bundled client-side (icd11-codes.ts) for diagnosis coding" />
         <SadbKvRow
-          label="DHIS2 data-element mappings"
+          label={t('ui.dhis2DataElementMappings')}
           value="Facility & workforce, births/deaths (CRVS), laboratory, pharmacy, immunizations, ANC, disease surveillance, data quality"
         />
       </SadbCard>

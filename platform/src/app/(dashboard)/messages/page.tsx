@@ -248,14 +248,14 @@ export default function MessagesPage() {
   return (
     <>
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-      <EhrPageTitle className="flex-shrink-0 mb-2">Messages</EhrPageTitle>
+      <EhrPageTitle className="flex-shrink-0 mb-2">{t('breadcrumb.messages')}</EhrPageTitle>
       <div className="msgs-shell">
 
         {/* ── Conversation list ── */}
         <section className="msgs-panel msgs-panel--list">
           <div className="msgs-list-head">
-            <h2>Conversations</h2>
-            <button onClick={() => setNewChatOpen(true)} title="New chat" aria-label="New chat" className="msgs-new-btn">
+            <h2>{t('ui.conversations')}</h2>
+            <button onClick={() => setNewChatOpen(true)} title={t('ui.newChat')} aria-label={t('ui.newChat')} className="msgs-new-btn">
               <Plus className="w-4 h-4" />
             </button>
           </div>
@@ -266,15 +266,15 @@ export default function MessagesPage() {
               type="search"
               value={convSearch}
               onChange={e => setConvSearch(e.target.value)}
-              placeholder="Search conversations"
+              placeholder={t('ui.searchConversations')}
             />
           </div>
 
           <div className="msgs-conv-list">
-            {filtered.length === 0 && <p className="text-center text-[12px] py-10" style={{ color: 'var(--ehr-muted)' }}>No conversations yet.</p>}
-            {pinned.length > 0 && <p className="msgs-sec-label">Pinned</p>}
+            {filtered.length === 0 && <p className="text-center text-[12px] py-10" style={{ color: 'var(--ehr-muted)' }}>{t('ui.noConversationsYet')}</p>}
+            {pinned.length > 0 && <p className="msgs-sec-label">{t('ui.pinned')}</p>}
             {pinned.map(c => <ConvItem key={c._id} c={c} />)}
-            {pinned.length > 0 && recent.length > 0 && <p className="msgs-sec-label">Recent</p>}
+            {pinned.length > 0 && recent.length > 0 && <p className="msgs-sec-label">{t('admin.backupRecent')}</p>}
             {recent.map(c => <ConvItem key={c._id} c={c} />)}
           </div>
 
@@ -315,21 +315,21 @@ export default function MessagesPage() {
                   <p className="msgs-thread-sub">{convSubtitle(activeConversation)}</p>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => toggleMute(activeConversation._id)} title="Mute" className="msgs-iconbtn">{activeConversation.mutedBy?.includes(meId) ? <BellOff className="w-[18px] h-[18px]" /> : <Bell className="w-[18px] h-[18px]" />}</button>
-                  <button onClick={() => setInfoOpen(o => !o)} title="Details" className={`msgs-iconbtn${infoOpen ? ' is-on' : ''}`}><Info className="w-[18px] h-[18px]" /></button>
-                  <button onClick={() => setMenuOpen(o => !o)} title="More" className="msgs-iconbtn"><MoreVertical className="w-[18px] h-[18px]" /></button>
+                  <button onClick={() => toggleMute(activeConversation._id)} title={t('ui.mute')} className="msgs-iconbtn">{activeConversation.mutedBy?.includes(meId) ? <BellOff className="w-[18px] h-[18px]" /> : <Bell className="w-[18px] h-[18px]" />}</button>
+                  <button onClick={() => setInfoOpen(o => !o)} title={t('admin.colDetails')} className={`msgs-iconbtn${infoOpen ? ' is-on' : ''}`}><Info className="w-[18px] h-[18px]" /></button>
+                  <button onClick={() => setMenuOpen(o => !o)} title={t('visitActions.more')} className="msgs-iconbtn"><MoreVertical className="w-[18px] h-[18px]" /></button>
                 </div>
                 {menuOpen && (
                   <div className="msgs-menu">
                     <button onClick={() => { setMenuOpen(false); togglePin(activeConversation._id); }}><ShieldCheck className="w-4 h-4" /> {activeConversation.pinnedBy?.includes(meId) ? 'Unpin' : 'Pin to top'}</button>
                     {activeConversation.kind === 'group' && (
                       <>
-                        <button onClick={() => { setMenuOpen(false); setInfoOpen(true); }}><Settings className="w-4 h-4" /> Group settings</button>
-                        <button onClick={() => { setMenuOpen(false); setAddMembersOpen(true); }}><UserPlus className="w-4 h-4" /> Add members</button>
-                        <button onClick={() => { setMenuOpen(false); leaveConversation(activeConversation._id); }}><LogOut className="w-4 h-4" /> Leave group</button>
+                        <button onClick={() => { setMenuOpen(false); setInfoOpen(true); }}><Settings className="w-4 h-4" /> {t('ui.groupSettings')}</button>
+                        <button onClick={() => { setMenuOpen(false); setAddMembersOpen(true); }}><UserPlus className="w-4 h-4" /> {t('ui.addMembers')}</button>
+                        <button onClick={() => { setMenuOpen(false); leaveConversation(activeConversation._id); }}><LogOut className="w-4 h-4" /> {t('ui.leaveGroup')}</button>
                       </>
                     )}
-                    <button onClick={() => { setMenuOpen(false); archiveConversation(activeConversation._id); }} title="Hides it from your list only. Messages are kept, and it returns on the next message."><Archive className="w-4 h-4" /> Archive conversation</button>
+                    <button onClick={() => { setMenuOpen(false); archiveConversation(activeConversation._id); }} title={t('ui.hidesItFromYourList')}><Archive className="w-4 h-4" /> {t('ui.archiveConversation')}</button>
                   </div>
                 )}
               </div>
@@ -371,8 +371,8 @@ export default function MessagesPage() {
                                   <div className="msgs-edit-box">
                                     <textarea value={editDraft} onChange={e => setEditDraft(e.target.value)} rows={2} />
                                     <div className="flex gap-2 justify-end">
-                                      <button onClick={() => setEditingId(null)} className="text-[11px] px-2 py-1 rounded" style={{ color: 'var(--ehr-muted)' }}>Cancel</button>
-                                      <button onClick={saveEdit} className="btn btn-primary btn-sm">Save</button>
+                                      <button onClick={() => setEditingId(null)} className="text-[11px] px-2 py-1 rounded" style={{ color: 'var(--ehr-muted)' }}>{t('action.cancel')}</button>
+                                      <button onClick={saveEdit} className="btn btn-primary btn-sm">{t('action.save')}</button>
                                     </div>
                                   </div>
                                 ) : (
@@ -404,10 +404,10 @@ export default function MessagesPage() {
                                 {/* hover action toolbar */}
                                 {!m.deleted && editingId !== m._id && (
                                   <div className="msgs-msg-tools">
-                                    <button onClick={() => { setReactingId(reactingId === m._id ? null : m._id); }} title="React">😀</button>
-                                    <button onClick={() => { setReplyTo(m); }} title="Reply"><ArrowLeft className="w-3.5 h-3.5" /></button>
-                                    {editable && <button onClick={() => startEdit(m)} title="Edit"><Edit3 className="w-3.5 h-3.5" /></button>}
-                                    {mine && <button className="is-danger" onClick={() => removeMessage(m)} title="Remove from conversation"><Trash2 className="w-3.5 h-3.5" /></button>}
+                                    <button onClick={() => { setReactingId(reactingId === m._id ? null : m._id); }} title={t('ui.react')}>😀</button>
+                                    <button onClick={() => { setReplyTo(m); }} title={t('messages.reply')}><ArrowLeft className="w-3.5 h-3.5" /></button>
+                                    {editable && <button onClick={() => startEdit(m)} title={t('action.edit')}><Edit3 className="w-3.5 h-3.5" /></button>}
+                                    {mine && <button className="is-danger" onClick={() => removeMessage(m)} title={t('ui.removeFromConversation')}><Trash2 className="w-3.5 h-3.5" /></button>}
                                     {reactingId === m._id && (
                                       <div className="msgs-react-pop">
                                         {QUICK_REACTIONS.map(em => <button key={em} onClick={() => { react(m._id, em); setReactingId(null); }}>{em}</button>)}
@@ -456,13 +456,13 @@ export default function MessagesPage() {
                   <aside className="msgs-info">
                     <div className="p-4">
                       <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-bold" style={{ color: 'var(--text-strong)' }}>Details</h3>
-                        <button onClick={() => setInfoOpen(false)} className="msgs-iconbtn" aria-label="Close details"><X className="w-4 h-4" /></button>
+                        <h3 className="text-sm font-bold" style={{ color: 'var(--text-strong)' }}>{t('admin.colDetails')}</h3>
+                        <button onClick={() => setInfoOpen(false)} className="msgs-iconbtn" aria-label={t('ui.closeDetails')}><X className="w-4 h-4" /></button>
                       </div>
 
                       {activeConversation.kind === 'group' && (
                         <div className="mb-4">
-                          <p className="msgs-info-label">Group name</p>
+                          <p className="msgs-info-label">{t('ui.groupName')}</p>
                           <input
                             type="text"
                             defaultValue={activeConversation.name || ''}
@@ -482,7 +482,7 @@ export default function MessagesPage() {
                             </div>
                             {activeConversation.kind === 'group' && p.id !== meId
                               && (!activeConversation.createdById || activeConversation.createdById === meId) && (
-                              <button onClick={() => removeMember(activeConversation._id, p.id)} title="Remove" className="p-1 rounded" style={{ color: 'var(--ehr-muted)' }}><X className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => removeMember(activeConversation._id, p.id)} title={t('action.remove')} className="p-1 rounded" style={{ color: 'var(--ehr-muted)' }}><X className="w-3.5 h-3.5" /></button>
                             )}
                           </div>
                         ))}
@@ -490,13 +490,13 @@ export default function MessagesPage() {
 
                       {activeConversation.kind === 'group' && (
                         <button onClick={() => setAddMembersOpen(true)} className="w-full text-[12px] font-semibold flex items-center justify-center gap-1.5 py-2 rounded-lg mb-3" style={{ border: '1px solid var(--ehr-border)', color: 'var(--accent-primary)', background: 'transparent', cursor: 'pointer' }}>
-                          <UserPlus className="w-4 h-4" /> Add members
+                          <UserPlus className="w-4 h-4" /> {t('ui.addMembers')}
                         </button>
                       )}
 
                       <div className="rounded-lg p-3 flex items-start gap-2" style={{ background: 'var(--ehr-head)' }}>
                         <ShieldCheck className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-success)' }} />
-                        <p className="text-[11px]" style={{ color: 'var(--ehr-muted)' }}>Messages are part of the facility record and every one is audit-logged. Removing or editing a message does not erase it: the original stays on file. Copying from the thread is restricted for PHI safety.</p>
+                        <p className="text-[11px]" style={{ color: 'var(--ehr-muted)' }}>{t('ui.messagesArePartOfThe')}</p>
                       </div>
                     </div>
                   </aside>
@@ -507,8 +507,8 @@ export default function MessagesPage() {
               <div className="msgs-composer">
                 {replyTo && (
                   <div className="msgs-replying">
-                    <span className="truncate">Replying to {replyTo.fromDoctorName}: {replyTo.body.slice(0, 50)}</span>
-                    <button onClick={() => setReplyTo(null)} className="p-0.5" style={{ color: 'var(--ehr-muted)', background: 'transparent', border: 0, cursor: 'pointer' }} aria-label="Cancel reply"><X className="w-3.5 h-3.5" /></button>
+                    <span className="truncate">{t('ui.replyingTo')} {replyTo.fromDoctorName}: {replyTo.body.slice(0, 50)}</span>
+                    <button onClick={() => setReplyTo(null)} className="p-0.5" style={{ color: 'var(--ehr-muted)', background: 'transparent', border: 0, cursor: 'pointer' }} aria-label={t('ui.cancelReply')}><X className="w-3.5 h-3.5" /></button>
                   </div>
                 )}
                 <div className="msgs-composer-row">
@@ -518,14 +518,14 @@ export default function MessagesPage() {
                       onChange={e => setDraft(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                       rows={1}
-                      placeholder="Write a message…"
+                      placeholder={t('ui.writeAMessage')}
                     />
                   </div>
                   <button
                     onClick={handleSend}
                     disabled={!draft.trim()}
-                    title="Send message"
-                    aria-label="Send message"
+                    title={t('patientPortal.sendMessage')}
+                    aria-label={t('patientPortal.sendMessage')}
                     className="msgs-send"
                   >
                     <Send className="w-[18px] h-[18px]" />
@@ -536,7 +536,7 @@ export default function MessagesPage() {
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center" style={{ color: 'var(--ehr-muted)' }}>
               <MessageSquare className="w-12 h-12 mb-3" style={{ opacity: 0.3 }} />
-              <p className="text-sm">Select a conversation or start a new chat.</p>
+              <p className="text-sm">{t('ui.selectAConversationOrStart')}</p>
             </div>
           )}
         </section>
@@ -545,7 +545,7 @@ export default function MessagesPage() {
 
       {newChatOpen && currentUser && (
         <StaffPickerModal
-          title="New conversation"
+          title={t('ui.newConversation')}
           mode="new"
           staff={messageableStaff}
           onClose={() => setNewChatOpen(false)}
@@ -556,7 +556,7 @@ export default function MessagesPage() {
 
       {addMembersOpen && activeConversation && (
         <StaffPickerModal
-          title="Add members"
+          title={t('ui.addMembers')}
           mode="add"
           staff={messageableStaff.filter(u => !activeConversation.participantIds.includes(u._id))}
           onClose={() => setAddMembersOpen(false)}
@@ -580,6 +580,7 @@ function StaffPickerModal({
   onCreateGroup?: (name: string, members: StaffUser[]) => void;
   onAdd?: (members: StaffUser[]) => void;
 }) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<'dm' | 'group'>(mode === 'add' ? 'group' : 'dm');
   const [search, setSearch] = useState('');
   const [groupName, setGroupName] = useState('');
@@ -619,7 +620,7 @@ function StaffPickerModal({
               type="text"
               value={groupName}
               onChange={e => setGroupName(e.target.value)}
-              placeholder="Group name (e.g. Morning RN Shift)"
+              placeholder={t('ui.groupNameEGMorning')}
               className="w-full text-[13px] mb-2.5"
               style={{
                 padding: '9px 12px', borderRadius: 8,
@@ -637,7 +638,7 @@ function StaffPickerModal({
               type="search"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search staff by name or role"
+              placeholder={t('ui.searchStaffByNameOr')}
               className="w-full text-[13px]"
               style={{
                 paddingInlineStart: 34, paddingTop: 9, paddingBottom: 9, borderRadius: 8,
@@ -657,7 +658,7 @@ function StaffPickerModal({
                 <span key={u._id} className="inline-flex items-center gap-1 ps-1 pe-2 py-0.5 rounded-full text-[11px] font-semibold" style={{ background: 'var(--ehr-info-bg)', color: 'var(--accent-text)' }}>
                   <Avatar name={u.name} seed={u.name} size={18} />
                   {u.name.split(' ')[0]}
-                  <button onClick={() => toggle(u)} aria-label="Remove" className="ms-0.5"><X className="w-3 h-3" /></button>
+                  <button onClick={() => toggle(u)} aria-label={t('action.remove')} className="ms-0.5"><X className="w-3 h-3" /></button>
                 </span>
               ))}
             </div>
@@ -666,7 +667,7 @@ function StaffPickerModal({
 
         {/* Staff list */}
         <div style={{ maxHeight: 300, overflowY: 'auto' }} className="px-2 pb-2">
-          {filtered.length === 0 && <p className="text-center text-[12px] py-6" style={{ color: 'var(--ehr-muted)' }}>No staff found.</p>}
+          {filtered.length === 0 && <p className="text-center text-[12px] py-6" style={{ color: 'var(--ehr-muted)' }}>{t('ui.noStaffFound2')}</p>}
           {filtered.map(u => {
             const isSel = !!selected[u._id];
             const sub = [ROLE_LABEL[u.role] || '', u.department].filter(Boolean).join(' · ');
@@ -700,17 +701,17 @@ function StaffPickerModal({
             <span className="text-[12px]" style={{ color: 'var(--ehr-muted)' }}>{selectedList.length} selected</span>
             {mode === 'add' ? (
               <button onClick={() => onAdd?.(selectedList)} disabled={!canCreate} className="btn btn-primary btn-sm" style={{ opacity: canCreate ? 1 : 0.5 }}>
-                <UserPlus className="w-4 h-4" /> Add{selectedList.length > 0 ? ` ${selectedList.length}` : ''}
+                <UserPlus className="w-4 h-4" /> {t('consultation.add')}{selectedList.length > 0 ? ` ${selectedList.length}` : ''}
               </button>
             ) : (
               <button onClick={() => onCreateGroup?.(groupName.trim(), selectedList)} disabled={!canCreate} className="btn btn-primary btn-sm" style={{ opacity: canCreate ? 1 : 0.5 }}>
-                <Plus className="w-4 h-4" /> Create group
+                <Plus className="w-4 h-4" /> {t('ui.createGroup')}
               </button>
             )}
           </div>
         ) : (
           <div className="px-5 py-2.5 border-t" style={{ borderColor: 'var(--ehr-border)' }}>
-            <p className="text-[11px] text-center" style={{ color: 'var(--ehr-muted)' }}>Select a staff member to open a direct message.</p>
+            <p className="text-[11px] text-center" style={{ color: 'var(--ehr-muted)' }}>{t('ui.selectAStaffMemberTo')}</p>
           </div>
         )}
       </div>

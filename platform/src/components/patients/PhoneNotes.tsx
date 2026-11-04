@@ -95,7 +95,7 @@ export default function PhoneNotes({ patient }: { patient: PatientDoc }) {
   }
 
   return (
-    <ChartSection title="Phone notes" addLabel="Log call" onAdd={() => setAdding(true)}>
+    <ChartSection title={t('ui.phoneNotes')} addLabel="Log call" onAdd={() => setAdding(true)}>
       <p className="tamam-nl-helper">{t('notesList.phoneHelper')}</p>
       <table className="tamam-table tamam-table--fixed">
           <colgroup>
@@ -103,19 +103,19 @@ export default function PhoneNotes({ patient }: { patient: PatientDoc }) {
           </colgroup>
           <thead>
             <tr>
-              <th>Subject</th>
-              <th>Message</th>
-              <th>Caller</th>
-              <th>Received</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th>{t('message.subject')}</th>
+              <th>{t('lab.message')}</th>
+              <th>{t('noteEditor.section.caller')}</th>
+              <th>{t('facilityQueue.detailReceived')}</th>
+              <th>{t('billing.activityColumn.status')}</th>
+              <th>{t('adminBilling.colActions')}</th>
             </tr>
           </thead>
           <tbody>
             {notes.length === 0 && (
               <tr>
                 <td colSpan={6} style={{ cursor: 'default', background: 'transparent' }}>
-                  <OmrsEmptyState itemLabel="phone notes" actionLabel="Log call" onAction={() => setAdding(true)} />
+                  <OmrsEmptyState itemLabel="phone notes" actionLabel={t('ui.logCall')} onAction={() => setAdding(true)} />
                 </td>
               </tr>
             )}

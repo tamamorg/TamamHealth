@@ -157,28 +157,28 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
 
   return (
     <FormSlider
-      title="Allergies"
+      title={t('noteEditor.section.allergies')}
       width={760}
       onClose={onClose}
       flush
       footer={<>
               {tab === 'active' ? (
                 <>
-                  <button type="button" className="btn btn-secondary" onClick={() => handleRemove('inactive', 'discontinued')} disabled={busy || !selected}>Discontinue</button>
-                  <button type="button" className="btn btn-secondary" onClick={() => handleRemove('resolved', 'resolved')} disabled={busy || !selected}>Resolve</button>
+                  <button type="button" className="btn btn-secondary" onClick={() => handleRemove('inactive', 'discontinued')} disabled={busy || !selected}>{t('confirm.discontinueMedConfirm')}</button>
+                  <button type="button" className="btn btn-secondary" onClick={() => handleRemove('resolved', 'resolved')} disabled={busy || !selected}>{t('feedback.resolve')}</button>
                 </>
               ) : (
-                <button type="button" className="btn btn-secondary" onClick={handleReactivate} disabled={busy || !selected}>Reactivate</button>
+                <button type="button" className="btn btn-secondary" onClick={handleReactivate} disabled={busy || !selected}>{t('orgUsers.reactivate')}</button>
               )}
-              <button type="button" className="btn btn-secondary" onClick={() => handleRemove('entered_in_error', 'entered in error')} disabled={busy || !selected}>Mark as Error</button>
-              <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
+              <button type="button" className="btn btn-secondary" onClick={() => handleRemove('entered_in_error', 'entered in error')} disabled={busy || !selected}>{t('ui.markAsError')}</button>
+              <button type="button" className="btn btn-secondary" onClick={onClose}>{t('billing.activityClose')}</button>
       </>}
     >
       <div className="space-y-4">
         <div className="cn-meds-body cn-meds-body--single">
           <div className="cn-meds-left">
             <div className="cn-meds-controlrow">
-              <div className="cn-segmented" aria-label="Allergy lists">
+              <div className="cn-segmented" aria-label={t('ui.allergyLists')}>
                 {(['active', 'inactive'] as AllergyTab[]).map(key => (
                   <button
                     key={key}
@@ -192,7 +192,7 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
               </div>
               <div className="cn-meds-adders">
                 <button type="button" className="cn-btn" onClick={() => setShowAdd(v => !v)} aria-expanded={showAdd}>
-                  <Plus size={13} /> Allergy
+                  <Plus size={13} /> {t('patients.allergyBadge')}
                 </button>
               </div>
             </div>
@@ -205,14 +205,14 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
                 title={counts.active > 0 ? 'The patient has active allergies' : undefined}
                 onChange={e => void savePatient({ noKnownDrugAllergies: e.target.checked })}
               />
-              No known drug allergies
+              {t('ui.noKnownDrugAllergies')}
             </label>
 
             {showAdd && (
               <div className="cn-allergy-add">
                 <CodedSearchField
-                  label="Allergen"
-                  placeholder="Search common allergens…"
+                  label={t('ui.allergen')}
+                  placeholder={t('ui.searchCommonAllergens')}
                   options={allergenOptions}
                   value={addQuery}
                   onChange={setAddQuery}
@@ -229,16 +229,16 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
                 <div className="cn-allergy-add-row">
                   <input
                     className="cn-input"
-                    placeholder="Reaction (e.g. rash, anaphylaxis)"
+                    placeholder={t('ui.reactionEGRashAnaphylaxis')}
                     value={draft.reaction}
                     onChange={e => setDraft(d => ({ ...d, reaction: e.target.value }))}
-                    aria-label="Reaction"
+                    aria-label={t('ui.reaction')}
                   />
                   <Select
                     className="cn-select"
                     value={draft.criticality || 'unknown'}
                     onChange={e => setDraft(d => ({ ...d, criticality: e.target.value as AllergyEntry['criticality'] }))}
-                    aria-label="Severity"
+                    aria-label={t('epidemic.colSeverity')}
                   >
                     {CRITICALITY_OPTIONS.map(c => <option key={c} value={c}>{c[0].toUpperCase() + c.slice(1)}</option>)}
                   </Select>
@@ -247,16 +247,16 @@ export default function AllergiesModal({ patientId, currentUser, onClose }: Alle
                     className="cn-input"
                     value={draft.onsetDate}
                     onChange={e => setDraft(d => ({ ...d, onsetDate: e.target.value }))}
-                    aria-label="Onset date"
+                    aria-label={t('problemList.onsetDate')}
                   />
-                  <button type="button" className="cn-btn cn-btn-primary" onClick={handleAdd} disabled={busy}>Add</button>
+                  <button type="button" className="cn-btn cn-btn-primary" onClick={handleAdd} disabled={busy}>{t('consultation.add')}</button>
                 </div>
               </div>
             )}
 
             <h3 className="cn-meds-listhead">{tab === 'active' ? 'Active Allergies' : 'Inactive Allergies'}</h3>
             <div className="cn-meds-list" role="listbox" aria-label={tab === 'active' ? 'Active allergies' : 'Inactive allergies'}>
-              {loading && <p className="cn-card-empty">Loading allergies…</p>}
+              {loading && <p className="cn-card-empty">{t('ui.loadingAllergies')}</p>}
               {!loading && rows.length === 0 && (
                 <p className="cn-card-empty">
                   {tab === 'active' && patient?.noKnownDrugAllergies

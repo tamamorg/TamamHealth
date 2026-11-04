@@ -28,14 +28,12 @@ export default function PatientDeceasedModal({ deceasedSubmitting, setShowDeceas
           descriptionId={descId}
           description={patient.isDeceased ? (
             <>
-              This clears the deceased status recorded on {patientFullName(patient)}&apos;s chart
-              {patient.deceasedDate ? ` (date of death ${patient.deceasedDate})` : ''} and
-              reactivates the record. Use it to correct a record marked in error.
+              {t('ui.thisClearsTheDeceasedStatus')} {patientFullName(patient)}{t('ui.sChart')}
+              {patient.deceasedDate ? ` (date of death ${patient.deceasedDate})` : ''} {t('ui.andReactivatesTheRecordUse')}
             </>
           ) : (
             <>
-              This marks {patientFullName(patient)}&apos;s chart deceased and deactivates the
-              record. To complete the civil record, register the death in the Deaths module.
+              {t('ui.thisMarks')} {patientFullName(patient)}{t('ui.sChartDeceasedAndDeactivates')}
             </>
           )}
           tone={patient.isDeceased ? 'plain' : 'danger'}
@@ -51,7 +49,7 @@ export default function PatientDeceasedModal({ deceasedSubmitting, setShowDeceas
           </DialogBody>
         )}
         <DialogFooter>
-          <button type="button" onClick={close} className="btn btn-secondary" disabled={deceasedSubmitting}>Cancel</button>
+          <button type="button" onClick={close} className="btn btn-secondary" disabled={deceasedSubmitting}>{t('action.cancel')}</button>
           <button
             type="button"
             onClick={handleToggleDeceased}

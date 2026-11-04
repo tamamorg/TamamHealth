@@ -41,9 +41,9 @@ describe('the primary button shortens without changing its name', () => {
   test('both labels are rendered, and only the painted one changes', () => {
     // Swapping the accessible name with the viewport would mean the same
     // control answered to two different names depending on the device.
-    expect(dashboard).toContain('aria-label="Book appointment"');
-    expect(dashboard).toContain('<span className="ehr-label-full">Book appointment</span>');
-    expect(dashboard).toContain('<span className="ehr-label-compact">Appointment</span>');
+    expect(dashboard).toContain("aria-label={t('ui.bookAppointment')}");
+    expect(dashboard).toContain(`<span className="ehr-label-full">{t('ui.bookAppointment')}</span>`);
+    expect(dashboard).toContain(`<span className="ehr-label-compact">{t('frontDesk.syncKind.appointment')}</span>`);
   });
 
   test('the compact label is hidden by default and shown only on tablet', () => {

@@ -4,8 +4,10 @@ import { Loader2 } from '@/components/icons/lucide';
 import Badge, { toneForStatus } from '@/components/Badge';
 import EmptyState from '@/components/EmptyState';
 import { useLabResults } from '@/lib/hooks/useLabResults';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export default function MobileLabsTab({ patientId }: { patientId: string }) {
+  const { t } = useTranslation();
   const { results, loading } = useLabResults();
 
   if (loading) {
@@ -18,7 +20,7 @@ export default function MobileLabsTab({ patientId }: { patientId: string }) {
 
   const mine = results.filter((r) => r.patientId === patientId);
   if (mine.length === 0) {
-    return <EmptyState title="No lab results" message="Results for this patient will appear here." />;
+    return <EmptyState title={t('ui.noLabResults')} message="Results for this patient will appear here." />;
   }
 
   return (

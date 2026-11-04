@@ -16,6 +16,7 @@ import MobileInboxView from './inbox/MobileInboxView';
 import MobileQuickCreateSheet from './sheets/MobileQuickCreateSheet';
 import MobileModulesSheet from './sheets/MobileModulesSheet';
 import RouteContextBar from '@/components/navigation/RouteContextBar';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface MobileAppShellProps {
   archetype: MobileDashboardArchetype;
@@ -23,6 +24,7 @@ interface MobileAppShellProps {
 }
 
 export default function MobileAppShell({ archetype, children }: MobileAppShellProps) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { isOnline } = useSync();
   const shell = useMobileShellState();
@@ -51,7 +53,7 @@ export default function MobileAppShell({ archetype, children }: MobileAppShellPr
       {!isOnline && (
         <div className="mobile-shell-offline-banner" role="status">
           <WifiOff className="w-4 h-4" />
-          <span>Working offline — changes sync when connection returns.</span>
+          <span>{t('ui.workingOfflineChangesSyncWhen')}</span>
         </div>
       )}
       {shell.chartId ? (

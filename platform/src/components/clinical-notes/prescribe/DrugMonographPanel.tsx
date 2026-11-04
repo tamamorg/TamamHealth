@@ -25,6 +25,7 @@
 import { useState } from 'react';
 import type { FormularyDrug } from '@/lib/data/formulary';
 import type { StockPosition } from '@/lib/pharmacy-stock-position';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export interface MonographWarning {
   severity: 'contraindicated' | 'serious' | 'moderate' | 'minor' | 'allergy';
@@ -60,10 +61,11 @@ function genericOf(drug: FormularyDrug): string {
 export default function DrugMonographPanel({
   drug, warnings, observations, stock, currentMedications,
 }: DrugMonographPanelProps) {
+  const { t } = useTranslation();
   const [openSection, setOpenSection] = useState<'warnings' | 'uses' | 'cautions'>('warnings');
 
   if (!drug) {
-    return <p className="cn-card-empty">Pick a drug to see what it means for this patient.</p>;
+    return <p className="cn-card-empty">{t('ui.pickADrugToSee')}</p>;
   }
 
   const brand = brandOf(drug);
@@ -102,15 +104,15 @@ export default function DrugMonographPanel({
         {[drug.form, drug.category].filter(Boolean).join(' · ')}
       </p>
 
-      <h4 className="cn-rx-panelhead">Common Brand Names</h4>
+      <h4 className="cn-rx-panelhead">{t('ui.commonBrandNames')}</h4>
       <p className="cn-rx-panelbody">{brand || 'Not recorded in the formulary.'}</p>
 
-      <h4 className="cn-rx-panelhead">Recommended Dosage</h4>
+      <h4 className="cn-rx-panelhead">{t('ui.recommendedDosage')}</h4>
       <p className="cn-rx-panelbody">
         {observations || 'No patient observations available.'}
       </p>
 
-      <div className="cn-rx-tabs" role="tablist" aria-label="Drug information">
+      <div className="cn-rx-tabs" role="tablist" aria-label={t('ui.drugInformation')}>
         {(['warnings', 'uses', 'cautions'] as const).map(key => (
           <button
             key={key}
@@ -129,7 +131,7 @@ export default function DrugMonographPanel({
         <>
           {warnings.length === 0 ? (
             <p className="cn-rx-panelbody">
-              No interaction or allergy warnings for this patient.
+              {t('ui.noInteractionOrAllergyWarnings')}
             </p>
           ) : (
             <ul className="cn-rx-warnings">
@@ -140,7 +142,7 @@ export default function DrugMonographPanel({
           )}
           {currentMedications.length > 0 && (
             <>
-              <h4 className="cn-rx-panelhead">Checked against</h4>
+              <h4 className="cn-rx-panelhead">{t('ui.checkedAgainst')}</h4>
               <ul className="cn-rx-warnings cn-rx-currentmeds">
                 {currentMedications.slice(0, 8).map(m => <li key={m}>{m}</li>)}
               </ul>
@@ -151,12 +153,11 @@ export default function DrugMonographPanel({
 
       {openSection === 'uses' && (
         <ul className="cn-rx-warnings">
-          <li>Class: {drug.category}</li>
-          <li>WHO ATC: {drug.atc}</li>
-          {drug.form && <li>Form: {drug.form}</li>}
+          <li>{t('ui.class')} {drug.category}</li>
+          <li>{t('ui.whoAtc')} {drug.atc}</li>
+          {drug.form && <li>{t('ui.form')} {drug.form}</li>}
           <li className="cn-rx-note">
-            Indication text is not bundled with this formulary — record the
-            indication in Reason For Rx so it reaches the pharmacy.
+            {t('ui.indicationTextIsNotBundled')}
           </li>
         </ul>
       )}

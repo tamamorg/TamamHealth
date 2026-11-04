@@ -102,7 +102,7 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
 
   return (
     <ChartSection
-      title="Results"
+      title={t('ui.results')}
       // The same flask the patient header's "Order labs" carries: this button
       // opens that identical flow, so it should read as the same action rather
       // than as a generic "add a row".
@@ -134,12 +134,12 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
           </colgroup>
           <thead>
             <tr>
-              <th {...columnSort.headerProps(0, l => l.testName)}>Test</th>
-              <th {...columnSort.headerProps(1, l => l.result || '')}>Result</th>
-              <th {...columnSort.headerProps(2, l => l.referenceRange || '')}>Reference range</th>
-              <th {...columnSort.headerProps(3, l => t(benchActionLabel(effectiveOrderStatus(l))))}>Next step</th>
-              <th {...columnSort.headerProps(4, l => l.completedAt || l.orderedAt || l.createdAt || '')}>Date</th>
-              <th {...columnSort.headerProps(5, l => humanizeStatus(effectiveOrderStatus(l)))}>Status</th>
+              <th {...columnSort.headerProps(0, l => l.testName)}>{t('lab.testName')}</th>
+              <th {...columnSort.headerProps(1, l => l.result || '')}>{t('lab.result')}</th>
+              <th {...columnSort.headerProps(2, l => l.referenceRange || '')}>{t('ui.referenceRange')}</th>
+              <th {...columnSort.headerProps(3, l => t(benchActionLabel(effectiveOrderStatus(l))))}>{t('ui.nextStep')}</th>
+              <th {...columnSort.headerProps(4, l => l.completedAt || l.orderedAt || l.createdAt || '')}>{t('billing.activityColumn.date')}</th>
+              <th {...columnSort.headerProps(5, l => humanizeStatus(effectiveOrderStatus(l)))}>{t('billing.activityColumn.status')}</th>
               <th className="tamam-col-actions">{t('chart.actions')}</th>
             </tr>
           </thead>
@@ -147,7 +147,7 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
             {patientLabs.length === 0 && (
               <tr>
                 <td colSpan={7} style={{ cursor: 'default', background: 'transparent' }}>
-                  <OmrsEmptyState itemLabel="results" actionLabel="Record results" onAction={canOrderLabs ? onAdd : undefined} disabledReason={canOrderLabs ? undefined : 'Requires lab-ordering permission'} />
+                  <OmrsEmptyState itemLabel="results" actionLabel={t('ui.recordResults')} onAction={canOrderLabs ? onAdd : undefined} disabledReason={canOrderLabs ? undefined : 'Requires lab-ordering permission'} />
                 </td>
               </tr>
             )}

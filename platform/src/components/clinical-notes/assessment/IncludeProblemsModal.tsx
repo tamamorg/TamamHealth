@@ -209,18 +209,18 @@ export default function IncludeProblemsModal({
 
   return (
     <FormSlider
-      title="Include Problems"
+      title={t('ui.includeProblems')}
       width={1060}
       onClose={onClose}
       flush
       footer={<>
-        <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-        <button type="button" className="btn btn-secondary" onClick={handleMarkError} disabled={busy || checked.size === 0}>Mark as Error</button>
+        <button type="button" className="btn btn-secondary" onClick={onClose}>{t('action.cancel')}</button>
+        <button type="button" className="btn btn-secondary" onClick={handleMarkError} disabled={busy || checked.size === 0}>{t('ui.markAsError')}</button>
         <button type="button" className="btn btn-secondary" onClick={handleDeactivate} disabled={busy || checked.size === 0}>
           {tab === 'active' ? 'Deactivate' : 'Reactivate'}
         </button>
         <button type="button" className="btn btn-primary" onClick={handleInclude} disabled={busy || checked.size === 0}>
-          Include
+          {t('reports.controlInclude')}
         </button>
       </>}
     >
@@ -228,7 +228,7 @@ export default function IncludeProblemsModal({
         <div className="cn-meds-body cn-meds-body--single">
           <div className="cn-meds-left">
             <div className="cn-meds-controlrow">
-              <div className="cn-segmented" aria-label="Problem lists">
+              <div className="cn-segmented" aria-label={t('ui.problemLists')}>
                 {(['active', 'inactive'] as ProblemTab[]).map(key => (
                   <button
                     key={key}
@@ -242,7 +242,7 @@ export default function IncludeProblemsModal({
               </div>
               <div className="cn-meds-adders">
                 <button type="button" className="cn-btn" onClick={() => setShowAdd(v => !v)} aria-expanded={showAdd}>
-                  <Plus size={13} /> Problem
+                  <Plus size={13} /> {t('ui.problem')}
                 </button>
               </div>
             </div>
@@ -254,7 +254,7 @@ export default function IncludeProblemsModal({
                 disabled={busy}
                 onChange={e => void handleReconcile(e.target.checked)}
               />
-              Problem reconciliation performed
+              {t('ui.problemReconciliationPerformed')}
               {patient?.problemReconciledAt && (
                 <span className="cn-meds-reconcile-at">{shortDate(patient.problemReconciledAt)}</span>
               )}
@@ -265,26 +265,26 @@ export default function IncludeProblemsModal({
               <table className="cn-inc-table">
                 <thead>
                   <tr>
-                    <th aria-label="Include" />
-                    <th>Problem/Issue</th>
-                    <th>Diagnosis description</th>
-                    <th>ICD-11</th>
-                    <th>ICD-10</th>
-                    <th>Start Date</th>
-                    <th>Comments</th>
-                    <th>Last Edited</th>
+                    <th aria-label={t('reports.controlInclude')} />
+                    <th>{t('ui.problemIssue')}</th>
+                    <th>{t('ui.diagnosisDescription')}</th>
+                    <th>{t('ui.icd11')}</th>
+                    <th>{t('ui.icd10')}</th>
+                    <th>{t('ui.startDate')}</th>
+                    <th>{t('labOrder.comments')}</th>
+                    <th>{t('ui.lastEdited')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {!loading && rows.length === 0 && (
                     <tr>
                       <td colSpan={8} className="cn-inc-empty">
-                        No {tab} problems recorded.
+                        {t('action.no')} {tab} {t('ui.problemsRecorded')}
                       </td>
                     </tr>
                   )}
                   {loading && (
-                    <tr><td colSpan={8} className="cn-inc-empty">Loading problems…</td></tr>
+                    <tr><td colSpan={8} className="cn-inc-empty">{t('ui.loadingProblems')}</td></tr>
                   )}
                   {rows.map(p => (
                     <tr
@@ -315,8 +315,8 @@ export default function IncludeProblemsModal({
 
             {showAdd && (
               <div className="cn-inc-add">
-                <h4>Add to Problem List</h4>
-                <div className="cn-inc-add-status" role="radiogroup" aria-label="Problem status">
+                <h4>{t('ui.addToProblemList')}</h4>
+                <div className="cn-inc-add-status" role="radiogroup" aria-label={t('ui.problemStatus')}>
                   {(['active', 'inactive'] as const).map(s => (
                     <label key={s} className="cn-consent-option">
                       <input
@@ -331,13 +331,13 @@ export default function IncludeProblemsModal({
                 </div>
 
                 <label className="cn-inc-add-search">
-                  <span className="field-required">ICD-11</span>
+                  <span className="field-required">{t('ui.icd11')}</span>
                   <input
                     className="cn-input"
-                    placeholder="Search for problem or ICD-11 code"
+                    placeholder={t('ui.searchForProblemOrIcd')}
                     value={picked ? `${picked.code} — ${picked.title}` : query}
                     onChange={e => { setPicked(null); setQuery(e.target.value); }}
-                    aria-label="Search for problem or ICD-11 code"
+                    aria-label={t('ui.searchForProblemOrIcd')}
                   />
                 </label>
                 {results.length > 0 && (
@@ -361,29 +361,29 @@ export default function IncludeProblemsModal({
                   onClick={() => setShowDetails(v => !v)}
                   aria-expanded={showDetails}
                 >
-                  Details {showDetails ? '▾' : '▸'}
+                  {t('admin.colDetails')} {showDetails ? '▾' : '▸'}
                 </button>
                 {showDetails && (
                   <div className="cn-inc-details">
                     <label className="cn-dx-field">
-                      <span>Start date</span>
-                      <input type="date" className="cn-input" value={startDate} onChange={e => setStartDate(e.target.value)} aria-label="Start date" />
+                      <span>{t('ui.startDate2')}</span>
+                      <input type="date" className="cn-input" value={startDate} onChange={e => setStartDate(e.target.value)} aria-label={t('ui.startDate2')} />
                     </label>
                     <textarea rows={1}
                       className="cn-input"
-                      placeholder="Comments"
+                      placeholder={t('labOrder.comments')}
                       value={comments}
                       onChange={e => setComments(e.target.value)}
-                      aria-label="Comments"
+                      aria-label={t('labOrder.comments')}
                     />
                   </div>
                 )}
 
                 <div className="cn-meds-footer">
-                  <button type="button" className="cn-btn" onClick={() => { clearAddForm(); setShowAdd(false); }}>Cancel</button>
-                  <button type="button" className="cn-btn" onClick={clearAddForm} disabled={busy}>Clear</button>
-                  <button type="button" className="cn-btn" onClick={() => saveProblem(true)} disabled={busy}>Save and Add Another</button>
-                  <button type="button" className="cn-btn cn-btn-primary" onClick={() => saveProblem(false)} disabled={busy}>Save</button>
+                  <button type="button" className="cn-btn" onClick={() => { clearAddForm(); setShowAdd(false); }}>{t('action.cancel')}</button>
+                  <button type="button" className="cn-btn" onClick={clearAddForm} disabled={busy}>{t('action.clear')}</button>
+                  <button type="button" className="cn-btn" onClick={() => saveProblem(true)} disabled={busy}>{t('ui.saveAndAddAnother')}</button>
+                  <button type="button" className="cn-btn cn-btn-primary" onClick={() => saveProblem(false)} disabled={busy}>{t('action.save')}</button>
                 </div>
               </div>
             )}

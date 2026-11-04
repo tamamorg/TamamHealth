@@ -349,7 +349,7 @@ export default function FacilityFormModal({
                   <input
                     type="text" style={inputStyle} data-field="facility-internetType"
                     value={form.internetType} onChange={e => set('internetType', e.target.value)}
-                    placeholder="VSAT, fibre, mobile…"
+                    placeholder={t('ui.vsatFibreMobile')}
                   />
                 </div>
               )}

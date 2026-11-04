@@ -28,9 +28,13 @@ jest.mock('@/modules/communication/services/patient-text-service', () => ({
   sendPatientText: (...args: unknown[]) => sendPatientText(...args),
 }));
 
+const mockShowToast = jest.fn();
+jest.mock('@/components/Toast', () => ({ useToast: () => ({ showToast: mockShowToast }) }));
+
 afterEach(() => {
   document.body.innerHTML = '';
   sendPatientText.mockReset();
+  mockShowToast.mockReset();
 });
 
 const TODAY = '2026-10-03';
@@ -230,7 +234,9 @@ describe('PatientTextDialog', () => {
       kind: 'prescription', consentConfirmed: true, prescriptionIds: ['rx-1'],
     }));
     expect(onDone).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'sent' }));
-    expect(q(dialog, '.tm-banner--success')!.textContent).toContain('patientText.outcomeTitle.sent');
+    // The outcome is the bottom-left notification, not a banner in the dialog.
+    expect(q(dialog, '.tm-banner')).toBeNull();
+    expect(mockShowToast).toHaveBeenCalledWith(expect.stringContaining('patientText.outcomeSent'), 'success', { title: 'patientText.outcomeTitle.sent' });
     // Nothing left to send twice.
     expect(sendButton()).toBeUndefined();
   });
@@ -240,9 +246,8 @@ describe('PatientTextDialog', () => {
     const { dialog, sendButton } = open();
     setChecked(q<HTMLInputElement>(dialog, '.ptx-consent input')!, true);
     await clickAsync(sendButton()!);
-    const banner = q(dialog, '.tm-banner--warning')!;
-    expect(banner.textContent).toContain('patientText.outcomeTitle.not_connected');
-    expect(banner.textContent).toContain('patientText.outcomeNotConnected');
+    expect(q(dialog, '.tm-banner')).toBeNull();
+    expect(mockShowToast).toHaveBeenCalledWith('patientText.outcomeNotConnected', 'warning', { title: 'patientText.outcomeTitle.not_connected' });
   });
 
   it('reports a queued text as saved, not as sent', async () => {
@@ -250,13 +255,13 @@ describe('PatientTextDialog', () => {
     const { dialog, sendButton } = open();
     setChecked(q<HTMLInputElement>(dialog, '.ptx-consent input')!, true);
     await clickAsync(sendButton()!);
-    expect(q(dialog, '.tm-banner--success')).toBeNull();
-    expect(q(dialog, '.tm-banner')!.textContent).toContain('patientText.outcomeTitle.queued');
+    expect(mockShowToast).not.toHaveBeenCalledWith(expect.anything(), 'success', expect.anything());
+    expect(mockShowToast).toHaveBeenCalledWith('patientText.outcomeQueued', 'info', { title: 'patientText.outcomeTitle.queued' });
   });
 
   it('cannot send to a patient with no phone number', () => {
     const { dialog, sendButton } = open({ patient: { _id: 'pat-1', name: 'Mary Akol' } });
-    expect(q(dialog, '.tm-banner--danger')!.textContent).toContain('patientText.noPhoneTitle');
+    expect(mockShowToast).toHaveBeenCalledWith('patientText.noPhoneBody', 'error', { title: 'patientText.noPhoneTitle' });
     expect(q<HTMLInputElement>(dialog, '.ptx-consent input')!.disabled).toBe(true);
     expect(sendButton()!.disabled).toBe(true);
   });

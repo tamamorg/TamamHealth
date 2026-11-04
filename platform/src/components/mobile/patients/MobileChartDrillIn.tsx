@@ -10,6 +10,7 @@ import MobileVitalsTab from './tabs/MobileVitalsTab';
 import MobileMedicationsTab from './tabs/MobileMedicationsTab';
 import MobileLabsTab from './tabs/MobileLabsTab';
 import MobileNotesTab from './tabs/MobileNotesTab';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 type ChartTab = 'facesheet' | 'vitals' | 'medications' | 'labs' | 'notes';
 
@@ -27,6 +28,7 @@ interface MobileChartDrillInProps {
 }
 
 export default function MobileChartDrillIn({ patientId, onClose }: MobileChartDrillInProps) {
+  const { t } = useTranslation();
   const { patients, loading } = usePatients();
   const [tab, setTab] = useState<ChartTab>('facesheet');
   const router = useRouter();
@@ -46,8 +48,8 @@ export default function MobileChartDrillIn({ patientId, onClose }: MobileChartDr
     return (
       <div className="mobile-chart-drillin">
         <header className="mobile-chart-header">
-          <button type="button" onClick={onClose} aria-label="Back"><ChevronLeft className="w-5 h-5" /></button>
-          <p>Patient not found</p>
+          <button type="button" onClick={onClose} aria-label={t('action.back')}><ChevronLeft className="w-5 h-5" /></button>
+          <p>{t('err.patientNotFound')}</p>
         </header>
       </div>
     );
@@ -56,7 +58,7 @@ export default function MobileChartDrillIn({ patientId, onClose }: MobileChartDr
   return (
     <div className="mobile-chart-drillin">
       <header className="mobile-chart-header">
-        <button type="button" onClick={onClose} aria-label="Back">
+        <button type="button" onClick={onClose} aria-label={t('action.back')}>
           <ChevronLeft className="w-5 h-5" />
         </button>
         <span className="mobile-chart-header-avatar" style={avatarTint(patientFullName(patient))}>
@@ -87,9 +89,9 @@ export default function MobileChartDrillIn({ patientId, onClose }: MobileChartDr
         {tab === 'notes' && <MobileNotesTab patientId={patient._id} />}
       </div>
       <div className="mobile-chart-actions">
-        <button type="button" onClick={() => router.push(`/lab?patient=${encodeURIComponent(patientFullName(patient))}`)}>Order labs</button>
+        <button type="button" onClick={() => router.push(`/lab?patient=${encodeURIComponent(patientFullName(patient))}`)}>{t('ui.orderLabs')}</button>
         <button type="button" className="primary" onClick={() => router.push(`/consultation?patientId=${patient._id}`)}>
-          Start consultation
+          {t('ui.startConsultation')}
         </button>
       </div>
     </div>

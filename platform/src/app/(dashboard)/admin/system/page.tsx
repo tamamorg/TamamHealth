@@ -66,7 +66,7 @@ export default function AdminSystemPage() {
   return (
     <SadbPage>
       <SadbCard
-        title="System Health"
+        title={t('system.systemHealth')}
         meta={dbStatsLoading ? '…' : `${dbStats.length} stores · ${totalDocs.toLocaleString()} documents`}
       >
         <SadbGridList
@@ -100,7 +100,7 @@ export default function AdminSystemPage() {
         <SadbKvRow label={t('system.platform')} value="Next.js (App Router)" />
         <SadbKvRow label={t('system.uiFramework')} value="Tailwind CSS" />
         <SadbKvRow label={t('system.auth')} value="JWT (Client-side)" />
-        <SadbKvRow label="Build version" value={process.env.NEXT_PUBLIC_APP_VERSION || '—'} />
+        <SadbKvRow label={t('ui.buildVersion')} value={process.env.NEXT_PUBLIC_APP_VERSION || '—'} />
       </SadbCard>
     </SadbPage>
   );

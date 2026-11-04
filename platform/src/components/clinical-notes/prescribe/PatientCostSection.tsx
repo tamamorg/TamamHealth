@@ -12,6 +12,7 @@
 
 import { formatMoney } from '@/lib/format-utils';
 import type { PatientDoc } from '@/lib/db-types';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface PatientCostSectionProps {
   patient: PatientDoc | null;
@@ -35,14 +36,15 @@ function coverageLine(patient: PatientDoc | null): string {
 }
 
 export default function PatientCostSection({ patient, balance }: PatientCostSectionProps) {
+  const { t } = useTranslation();
   return (
     <div className="cn-rx-cost">
       <div>
-        <h4 className="cn-rx-panelhead">Coverage</h4>
+        <h4 className="cn-rx-panelhead">{t('labOrder.fieldCoverage')}</h4>
         <p className="cn-rx-panelbody">{coverageLine(patient)}</p>
       </div>
       <div>
-        <h4 className="cn-rx-panelhead">Account balance</h4>
+        <h4 className="cn-rx-panelhead">{t('ui.accountBalance')}</h4>
         <p className="cn-rx-panelbody">
           {balance === null ? 'Checking…'
             : balance > 0

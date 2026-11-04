@@ -19,7 +19,6 @@ import type { StockPosition } from '@/lib/pharmacy-stock-position';
 import type { PatientDoc } from '@/lib/db-types';
 import { needsWeeklyReview } from '@/lib/pharmacy/rx-safety';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import FormNotices from '@/components/overlay/FormNotices';
 import {
   DOSE_UNITS, FREQUENCIES, ROUTES, drugOrderGaps, frequencyText, quantityFor,
   type DrugOrderDraft, type DurationUnit,
@@ -267,7 +266,6 @@ export default function DrugOrderForm({
           </section>
         </div>
       </div>
-      <FormNotices />
       <div className="obk-footer">
         <button type="button" className="obk-footer-btn obk-footer-btn--secondary" onClick={onDiscard}>{t('basket.discard')}</button>
         <button type="button" className="obk-footer-btn obk-footer-btn--primary" onClick={save}>{t('basket.saveOrder')}</button>

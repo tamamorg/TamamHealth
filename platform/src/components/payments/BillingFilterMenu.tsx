@@ -21,6 +21,7 @@ import { Filter } from '@/components/icons/lucide';
 
 import Select from '@/components/Select';
 import type { FilterOption } from '@/components/filters';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export interface FilterField {
   key: string;
@@ -35,6 +36,7 @@ export interface FilterField {
 const PANEL_WIDTH = 250;
 
 export default function BillingFilterMenu({ fields }: { fields: FilterField[] }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -101,7 +103,7 @@ export default function BillingFilterMenu({ fields }: { fields: FilterField[] })
           ref={panelRef}
           id={panelId}
           role="dialog"
-          aria-label="Filters"
+          aria-label={t('government.filters')}
           className="bl-root"
           style={{
             position: 'fixed', top: coords.top, left: coords.left, width: PANEL_WIDTH,
@@ -132,7 +134,7 @@ export default function BillingFilterMenu({ fields }: { fields: FilterField[] })
               disabled={activeCount === 0}
               onClick={clearAll}
             >
-              Clear
+              {t('action.clear')}
             </button>
             <button
               type="button"
@@ -140,7 +142,7 @@ export default function BillingFilterMenu({ fields }: { fields: FilterField[] })
               style={{ padding: '5px 12px', fontSize: 12 }}
               onClick={() => { setOpen(false); btnRef.current?.focus(); }}
             >
-              Done
+              {t('common.done')}
             </button>
           </div>
         </div>,

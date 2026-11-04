@@ -116,8 +116,9 @@ function buildStatementHTML(opts: {
   preparedBy?: string;
   overview: FinancialOverview;
   balance: number;
+  t: (key: string) => string;
 }): string {
-  const { patientName, hospitalNumber, dateOfBirth, gender, phone, facilityName, preparedBy, overview, balance } = opts;
+  const { patientName, hospitalNumber, dateOfBirth, gender, phone, facilityName, preparedBy, overview, balance, t } = opts;
   const currency = overview.payments[0]?.currency || defaultCurrency();
   const generatedAt = new Date();
   const fmt = (n: number) => `${n.toLocaleString()} ${currency}`;
@@ -136,7 +137,7 @@ function buildStatementHTML(opts: {
   // a ledger balance; invoices raised by lab orders and prescriptions were in
   // the balance and not on the page.)
   const activityRows = ledger.rows.length === 0
-    ? `<tr><td colspan="5" class="empty">No account activity on file</td></tr>`
+    ? `<tr><td colspan="5" class="empty">${t('ui.noAccountActivityOnFile')}</td></tr>`
     : ledger.rows.map(row => `
       <tr>
         <td>${e(printDate(row.date))}</td>
@@ -150,7 +151,7 @@ function buildStatementHTML(opts: {
   const body = `
     <section class="section">
       <h2 class="section-title">Account Activity</h2>
-      <table><thead><tr><th>Date</th><th>Description</th><th>Type</th><th class="num">Amount</th><th class="num">Balance</th></tr></thead><tbody>${activityRows}</tbody></table>
+      <table><thead><tr><th>${t('billing.activityColumn.date')}</th><th>${t('ui.description')}</th><th>${t('billing.activityColumn.type')}</th><th class="num">${t('billing.activityColumn.amount')}</th><th class="num">${t('financialReview.due')}</th></tr></thead><tbody>${activityRows}</tbody></table>
     </section>
     <div class="totals">
       ${totalRow('Total Charged', fmt(ledger.charged))}
@@ -395,6 +396,7 @@ export default function BillingTab({
   const handlePrintStatement = () => {
     if (!data) return;
     const html = buildStatementHTML({
+      t,
       patientName,
       hospitalNumber: patient.hospitalNumber,
       dateOfBirth: patient.dateOfBirth,

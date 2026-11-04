@@ -12,6 +12,7 @@
 
 import { useState, type ReactNode } from 'react';
 import Select from '@/components/Select';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export type ChartType = 'line' | 'area' | 'bar';
 export type ChartPeriod = 'week' | 'month' | 'quarter' | 'year';
@@ -21,15 +22,16 @@ export type ChartPeriod = 'week' | 'month' | 'quarter' | 'year';
  *  arrived; these quiet bars preserve the plot's geometry and explain the
  *  temporary state to assistive technology. */
 export function ChartLoadingState({ height = 208, fill = false }: { height?: number; fill?: boolean }) {
+  const { t } = useTranslation();
   return (
     <div
       className="chart-loading-state"
       style={fill ? { height: '100%', minHeight: height } : { height }}
       role="status"
-      aria-label="Loading chart"
+      aria-label={t('ui.loadingChart')}
     >
       <span /><span /><span /><span /><span />
-      <small>Loading chart…</small>
+      <small>{t('ui.loadingChart2')}</small>
     </div>
   );
 }

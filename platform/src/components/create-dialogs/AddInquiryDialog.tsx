@@ -86,25 +86,25 @@ export default function AddInquiryDialog({ onClose, onCreated, presentation = 'm
     <>
       <div className="space-y-3">
         <div>
-          <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Patient name</label>
-          <input value={form.patientName} onChange={e => setForm(f => ({ ...f, patientName: e.target.value }))} placeholder="Full name" />
+          <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('boma.patientNameLabel')}</label>
+          <input value={form.patientName} onChange={e => setForm(f => ({ ...f, patientName: e.target.value }))} placeholder={t('adminUsers.fieldFullName')} />
         </div>
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Phone</label>
-          <input value={form.patientPhone} onChange={e => setForm(f => ({ ...f, patientPhone: e.target.value }))} placeholder="Optional" />
+          <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('noteEditor.type.phone')}</label>
+          <input value={form.patientPhone} onChange={e => setForm(f => ({ ...f, patientPhone: e.target.value }))} placeholder={t('hr.optional')} />
         </div>
         <div>
-          <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Subject</label>
-          <input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder="e.g. Prescription refill" />
+          <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('message.subject')}</label>
+          <input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder={t('ui.eGPrescriptionRefill')} />
         </div>
         <div>
-          <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Message</label>
-          <textarea rows={3} value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} placeholder="What the patient asked, in their own words" />
+          <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('lab.message')}</label>
+          <textarea rows={3} value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} placeholder={t('ui.whatThePatientAskedIn')} />
         </div>
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Assign to</label>
+          <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.assignTo')}</label>
           <Select value={form.assigneeId} onChange={e => setForm(f => ({ ...f, assigneeId: e.target.value }))}>
-            <option value="">Unassigned</option>
+            <option value="">{t('noteEditor.unassigned')}</option>
             {facilityUsers.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
           </Select>
         </div>
@@ -114,7 +114,7 @@ export default function AddInquiryDialog({ onClose, onCreated, presentation = 'm
   );
   const actions = (
     <>
-        <button onClick={onClose} className="btn btn-secondary flex-1" disabled={saving}>Cancel</button>
+        <button onClick={onClose} className="btn btn-secondary flex-1" disabled={saving}>{t('action.cancel')}</button>
         <button onClick={submit} className="btn btn-primary flex-1" disabled={saving}>
           {saving ? 'Saving\u2026' : 'Log inquiry'}
         </button>

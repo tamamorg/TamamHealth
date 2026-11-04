@@ -374,7 +374,7 @@ export default function BloodBankPage() {
             data-tour: guided-tour anchor for the lab journey's blood-bank step. */}
         <div className="dash-card mb-4" data-tour="bb-availability">
           <div className="px-5 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
-            <h3 className="font-semibold text-sm">Availability by blood group</h3>
+            <h3 className="font-semibold text-sm">{t('ui.availabilityByBloodGroup')}</h3>
           </div>
           <div className="p-3 overflow-x-auto">
             <table className="w-full text-center" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
@@ -415,7 +415,7 @@ export default function BloodBankPage() {
         {/* Units table */}
         <div className="dash-card flex flex-col" style={{ flex: 1, minHeight: 0 }}>
           <EhrListHeader
-            title="Blood units"
+            title={t('ui.bloodUnits')}
             count={unitStats.total}
             stats={[
               { label: 'Available', value: unitStats.available, color: LIST_STAT_COLORS.blue },
@@ -425,13 +425,13 @@ export default function BloodBankPage() {
             search={{ value: unitSearch, onChange: setUnitSearch, placeholder: 'Filter table', ariaLabel: 'Search units by ID, group, status' }}
             actions={
               <button onClick={openModal} className="btn btn-primary" style={{ height: 38, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                <Plus className="w-4 h-4" /> Add unit
+                <Plus className="w-4 h-4" /> {t('ui.addUnit')}
               </button>
             }
           />
           <div className="ehr-list-scroll">
           {loading ? (
-            <div className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>Loading…</div>
+            <div className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('admin.loading')}</div>
           ) : (
             <table className="data-table" style={{ minWidth: 960, tableLayout: 'fixed' }}>
               <colgroup>
@@ -446,13 +446,13 @@ export default function BloodBankPage() {
               </colgroup>
               <thead>
                 <tr>
-                  <th>Unit ID</th>
-                  <th>Blood group</th>
-                  <th>Component</th>
-                  <th>Volume (ml)</th>
-                  <th>Collected</th>
-                  <th>Expires</th>
-                  <th>Status</th>
+                  <th>{t('ui.unitId')}</th>
+                  <th>{t('ui.bloodGroup')}</th>
+                  <th>{t('ui.component')}</th>
+                  <th>{t('ui.volumeMl')}</th>
+                  <th>{t('billing.kpiCollected')}</th>
+                  <th>{t('billing.expires')}</th>
+                  <th>{t('billing.activityColumn.status')}</th>
                   <th>{t('chart.actions')}</th>
                 </tr>
               </thead>
@@ -462,7 +462,7 @@ export default function BloodBankPage() {
                     <td colSpan={8} style={{ padding: 0 }}>
                       <EmptyState
                         icon={Droplets}
-                        title="No blood units stocked yet"
+                        title={t('ui.noBloodUnitsStockedYet')}
                         message="Use “Add unit” to register one."
                       />
                     </td>
@@ -470,7 +470,7 @@ export default function BloodBankPage() {
                 ) : visibleUnits.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
-                      No units match “{unitSearch}”.
+                      {t('ui.noUnitsMatch')}{unitSearch}”.
                     </td>
                   </tr>
                 ) : visibleUnits.map(u => {
@@ -509,33 +509,33 @@ export default function BloodBankPage() {
         {/* Add unit modal */}
         {open && (
           <FormSlider
-            title="Add blood unit"
+            title={t('ui.addBloodUnit')}
             onClose={() => setOpen(false)}
             footer={<>
-                <button onClick={() => setOpen(false)} className="btn btn-secondary">Cancel</button>
-                <button onClick={handleAdd} className="btn btn-primary">Stock unit</button>
+                <button onClick={() => setOpen(false)} className="btn btn-secondary">{t('action.cancel')}</button>
+                <button onClick={handleAdd} className="btn btn-primary">{t('ui.stockUnit')}</button>
             </>}
           >
             <div className="space-y-4">
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Unit ID</label>
+                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.unitId')}</label>
                   <input
                     type="text"
                     value={form.unitId}
                     onChange={e => setForm({ ...form, unitId: e.target.value })}
-                    placeholder="BU-2026-XXXXX"
+                    placeholder={t('ui.bu2026Xxxxx')}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Blood group</label>
+                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.bloodGroup')}</label>
                     <Select value={form.bloodGroup} onChange={e => setForm({ ...form, bloodGroup: e.target.value as BloodBankDoc['bloodGroup'] })}>
                       {BLOOD_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Component</label>
+                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.component')}</label>
                     <Select value={form.component} onChange={e => setForm({ ...form, component: e.target.value as BloodBankDoc['component'] })}>
                       {COMPONENTS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                     </Select>
@@ -543,7 +543,7 @@ export default function BloodBankPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Volume (ml)</label>
+                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.volumeMl')}</label>
                     <NumberInput step="any"
                       min={1}
                       value={form.volume || ''}
@@ -551,28 +551,28 @@ export default function BloodBankPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Donor name</label>
+                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.donorName')}</label>
                     <input
                       type="text"
                       value={form.donorName}
                       onChange={e => setForm({ ...form, donorName: e.target.value })}
-                      placeholder="Optional"
+                      placeholder={t('hr.optional')}
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Collection date</label>
+                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.collectionDate')}</label>
                     <input type="date" value={form.collectionDate} onChange={e => setForm({ ...form, collectionDate: e.target.value })} />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Expiry date</label>
+                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.expiryDate')}</label>
                     <input type="date" value={form.expiryDate} onChange={e => setForm({ ...form, expiryDate: e.target.value })} />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Notes</label>
-                  <textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Optional" />
+                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('postConsult.link.notes')}</label>
+                  <textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder={t('hr.optional')} />
                 </div>
               </div>
             </div>
@@ -586,10 +586,10 @@ export default function BloodBankPage() {
           const isCompatible = reserveCompatibleGroups ? reserveCompatibleGroups.includes(unit.bloodGroup) : null;
           return (
             <FormSlider
-              title={<>Reserve unit {unit.unitId}</>}
+              title={<>{t('ui.reserveUnit')} {unit.unitId}</>}
               onClose={closeReserve}
               footer={<>
-                  <button onClick={closeReserve} className="btn btn-secondary">Cancel</button>
+                  <button onClick={closeReserve} className="btn btn-secondary">{t('action.cancel')}</button>
                   <button onClick={handleReserve} disabled={!reservePatient || reserving} className="btn btn-primary">
                     {reserving ? 'Reserving…' : 'Reserve unit'}
                   </button>
@@ -607,7 +607,7 @@ export default function BloodBankPage() {
                         </p>
                       </div>
                       <button type="button" onClick={() => { setReservePatient(null); setReserveQuery(''); }} className="btn btn-sm btn-secondary">
-                        <X className="w-3.5 h-3.5" /> Change
+                        <X className="w-3.5 h-3.5" /> {t('consultation.change')}
                       </button>
                     </div>
                   ) : (
@@ -617,7 +617,7 @@ export default function BloodBankPage() {
                         autoFocus
                         value={reserveQuery}
                         onChange={e => setReserveQuery(e.target.value)}
-                        placeholder="Search by name, patient ID, or phone…"
+                        placeholder={t('ui.searchByNamePatientId')}
                         style={{ paddingInlineStart: 40 }}
                       />
                       {reserveMatches.length > 0 && (
@@ -664,7 +664,7 @@ export default function BloodBankPage() {
                     <div className="icon-box-sm">
                       <Trash2 className="w-4 h-4" style={{ color: 'var(--color-danger)' }} />
                     </div>
-                    <h3 className="text-base font-semibold">Discard unit {unit.unitId}</h3>
+                    <h3 className="text-base font-semibold">{t('ui.discardUnit')} {unit.unitId}</h3>
                   </div>
                   <button onClick={closeDiscard} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>
                     <X className="w-4 h-4" />
@@ -672,19 +672,19 @@ export default function BloodBankPage() {
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Reason</label>
+                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('appointments.labelReason')}</label>
                     <textarea
                       autoFocus
                       rows={3}
                       value={discardReason}
                       onChange={e => setDiscardReason(e.target.value)}
-                      placeholder="e.g. Failed screening, temperature excursion…"
+                      placeholder={t('ui.eGFailedScreeningTemperature')}
                     />
                   </div>
                 </div>
                 <hr className="section-divider" />
                 <div className="flex gap-2 mt-2">
-                  <button onClick={closeDiscard} className="btn btn-secondary flex-1">Cancel</button>
+                  <button onClick={closeDiscard} className="btn btn-secondary flex-1">{t('action.cancel')}</button>
                   <button onClick={handleDiscard} disabled={!discardReason.trim() || discarding} className="btn btn-danger flex-1">
                     {discarding ? 'Discarding…' : 'Discard unit'}
                   </button>
@@ -700,10 +700,10 @@ export default function BloodBankPage() {
           if (!unit) return null;
           return (
             <FormSlider
-              title={<>Record crossmatch — {unit.unitId}</>}
+              title={<>{t('ui.recordCrossmatch')} {unit.unitId}</>}
               onClose={closeCrossmatch}
               footer={<>
-                  <button onClick={closeCrossmatch} className="btn btn-secondary">Cancel</button>
+                  <button onClick={closeCrossmatch} className="btn btn-secondary">{t('action.cancel')}</button>
                   <button onClick={handleCrossmatch} disabled={crossmatching} className="btn btn-primary">
                     {crossmatching ? 'Saving…' : 'Save result'}
                   </button>
@@ -720,7 +720,7 @@ export default function BloodBankPage() {
                         ? { background: 'var(--color-success-bg, rgba(10, 110, 74,0.12))', color: 'var(--color-success-text)', border: '1px solid var(--color-success)' }
                         : { background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}
                     >
-                      <CheckCircle2 className="w-4 h-4" /> Compatible
+                      <CheckCircle2 className="w-4 h-4" /> {t('ui.compatible')}
                     </button>
                     <button
                       type="button"
@@ -730,7 +730,7 @@ export default function BloodBankPage() {
                         ? { background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)', border: '1px solid var(--color-danger)' }
                         : { background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}
                     >
-                      <XCircle className="w-4 h-4" /> Incompatible
+                      <XCircle className="w-4 h-4" /> {t('ui.incompatible')}
                     </button>
                   </div>
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -751,10 +751,10 @@ export default function BloodBankPage() {
           const patient = patients.find(p => p._id === unit.reservedForPatient);
           return (
             <FormSlider
-              title={<>Record transfusion — {unit.unitId}</>}
+              title={<>{t('ui.recordTransfusion')} {unit.unitId}</>}
               onClose={closeTransfuse}
               footer={<>
-                  <button onClick={closeTransfuse} className="btn btn-secondary">Cancel</button>
+                  <button onClick={closeTransfuse} className="btn btn-secondary">{t('action.cancel')}</button>
                   <button onClick={handleTransfuse} disabled={transfusing || !unit.reservedForPatient} className="btn btn-primary">
                     {transfusing ? 'Recording…' : 'Confirm transfusion'}
                   </button>
@@ -772,11 +772,11 @@ export default function BloodBankPage() {
                     </div>
                   ) : (
                     <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                      Reserved patient: {unit.reservedForPatient || 'unknown'} (details unavailable)
+                      {t('ui.reservedPatient')} {unit.reservedForPatient || 'unknown'} {t('ui.detailsUnavailable')}
                     </p>
                   )}
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    Recorded by {currentUser?.name || currentUser?.username || 'you'}.
+                    {t('meds.reported.colRecorded')} {currentUser?.name || currentUser?.username || 'you'}.
                   </p>
                 </div>
               </div>

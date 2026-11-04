@@ -15,6 +15,7 @@ import { aoeKey, type LabOrderDraft, type LabOrderReceipt } from './lab-order-ty
 import { coverageLabel } from './LabOrderPatientStrip';
 import type { AoeQuestion, OrderedTest } from './lab-order-types';
 import type { PatientDoc } from '@/lib/db-types';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /**
  * A deterministic bar pattern derived from the accession string. Not a real
@@ -47,6 +48,7 @@ export default function LabRequisition({
   facilityName: string;
   schedule: { test: OrderedTest; questions: AoeQuestion[] }[];
 }) {
+  const { t } = useTranslation();
   const accession = receipt.accessionNumbers[0] || receipt.orderGroupId;
   const priorityLabel = draft.priority.toUpperCase();
   const imaging = draft.kind === 'imaging';
@@ -61,7 +63,7 @@ export default function LabRequisition({
             {draft.processing === 'send_out'
               ? (imaging ? 'Referred out — external imaging' : 'Send-out — reference laboratory')
               : (imaging ? 'In-house imaging unit' : 'In-house laboratory')}<br />
-            Printed: {formatDateTime(receipt.placedAt)}
+            {t('ui.printed')} {formatDateTime(receipt.placedAt)}
           </div>
         </div>
         <div style={{ textAlign: 'end' }}>
@@ -73,11 +75,11 @@ export default function LabRequisition({
 
       <div className="labord-req-grid">
         <div>
-          <div className="labord-req-label">Patient</div>
+          <div className="labord-req-label">{t('appointments.labelPatient')}</div>
           <div className="labord-req-value">{patient.surname?.toUpperCase()}, {patient.firstName}</div>
         </div>
         <div>
-          <div className="labord-req-label">Hospital number</div>
+          <div className="labord-req-label">{t('labOrder.fieldHospitalNumber')}</div>
           <div className="labord-req-value">{patient.hospitalNumber || '—'}</div>
         </div>
         <div>
@@ -85,15 +87,15 @@ export default function LabRequisition({
           <div className="labord-req-value">{patient.dateOfBirth ? formatDate(patient.dateOfBirth) : '—'}</div>
         </div>
         <div>
-          <div className="labord-req-label">Age / Sex</div>
+          <div className="labord-req-label">{t('labOrder.fieldAgeSex')}</div>
           <div className="labord-req-value">{patientAgeLabel(patient)} / {patient.gender || '—'}</div>
         </div>
         <div>
-          <div className="labord-req-label">Coverage</div>
+          <div className="labord-req-label">{t('labOrder.fieldCoverage')}</div>
           <div className="labord-req-value">{coverageLabel(patient)}</div>
         </div>
         <div>
-          <div className="labord-req-label">Ordered by</div>
+          <div className="labord-req-label">{t('ui.orderedBy')}</div>
           <div className="labord-req-value">{draft.orderedByName || '—'}</div>
         </div>
         <div>
@@ -105,14 +107,14 @@ export default function LabRequisition({
           </div>
         </div>
         <div>
-          <div className="labord-req-label">Fasting</div>
+          <div className="labord-req-label">{t('labOrder.fastingYes')}</div>
           <div className="labord-req-value">{draft.fasting === 'yes' ? 'Yes' : draft.fasting === 'no' ? 'No' : 'Not stated'}</div>
         </div>
       </div>
 
       <div className="labord-req-grid" style={{ borderBottom: 0 }}>
         <div style={{ gridColumn: '1 / -1' }}>
-          <div className="labord-req-label">Reason for test</div>
+          <div className="labord-req-label">{t('labOrder.reasons')}</div>
           <div className="labord-req-value">
             {draft.indications.length
               ? draft.indications.map(indication => `${indication.code} ${indication.title}`).join('  ·  ')
@@ -127,7 +129,7 @@ export default function LabRequisition({
             <th style={{ width: '30%' }}>{imaging ? 'Study' : 'Test'}</th>
             <th style={{ width: '16%' }}>{imaging ? 'Modality' : 'Specimen'}</th>
             <th style={{ width: '14%' }}>LOINC</th>
-            <th>Order-entry answers</th>
+            <th>{t('ui.orderEntryAnswers')}</th>
           </tr>
         </thead>
         <tbody>
@@ -158,7 +160,7 @@ export default function LabRequisition({
           )}
           {draft.comments.trim() && (
             <div style={{ marginTop: 6 }}>
-              <div className="labord-req-label">Internal comment</div>
+              <div className="labord-req-label">{t('labOrder.internalComment')}</div>
               <div className="labord-req-value" style={{ fontWeight: 400 }}>{draft.comments}</div>
             </div>
           )}

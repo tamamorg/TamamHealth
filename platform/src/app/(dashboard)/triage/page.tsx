@@ -16,13 +16,15 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export default function TriageIndexPage() {
+  const { t } = useTranslation();
   const router = useRouter();
 
   useEffect(() => {
     router.replace('/dashboard');
   }, [router]);
 
-  return <div className="cn-empty">Opening your worklist…</div>;
+  return <div className="cn-empty">{t('ui.openingYourWorklist')}</div>;
 }

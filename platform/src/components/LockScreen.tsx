@@ -209,7 +209,7 @@ export default function LockScreen({ userName, hasPin, variant = 'lock', pinSupp
       <div className="fixed inset-0 z-[10000] flex flex-col items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
         <div className="flex flex-col items-center gap-4 w-full max-w-xs px-6 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/assets/tamamhealth-logo.svg" alt="TamamHealth" className="w-16 h-16" />
+          <img src="/assets/tamamhealth-logo.svg" alt={t('app.name')} className="w-16 h-16" />
           <div>
             <p className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{userName}</p>
             <div className="flex items-center gap-1.5 justify-center mt-1" style={{ color: 'var(--text-muted)' }}>
@@ -249,7 +249,7 @@ export default function LockScreen({ userName, hasPin, variant = 'lock', pinSupp
       <div className="flex flex-col items-center gap-4 w-full max-w-xs px-6">
         {/* TamamHealth logo */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/assets/tamamhealth-logo.svg" alt="TamamHealth" className="w-16 h-16" />
+        <img src="/assets/tamamhealth-logo.svg" alt={t('app.name')} className="w-16 h-16" />
 
         {/* Name & status */}
         <div className="text-center">

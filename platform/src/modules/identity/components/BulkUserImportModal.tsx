@@ -157,13 +157,12 @@ export default function BulkUserImportModal({
       footer={footer}
     >
       <div className="bui">
-        {orgName && <p className="bui-org"><strong>Importing into {orgName}.</strong></p>}
+        {orgName && <p className="bui-org"><strong>{t('ui.importingInto')} {orgName}.</strong></p>}
 
         {!orgId ? (
           <>
             <p className="bui-error" role="alert">
-              Choose an organization in the list filter first — imported accounts have to belong
-              to one, and picking a tenant on your behalf is not something this should do.
+              {t('ui.chooseAnOrganizationInThe')}
             </p>
           </>
         ) : results ? (

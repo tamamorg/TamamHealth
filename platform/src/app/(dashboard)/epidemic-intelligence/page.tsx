@@ -260,7 +260,7 @@ export default function EpidemicIntelligencePage() {
             <h1>{t('epidemic.pageTitle')}</h1>
             <Chip tone={riskTone} className="epi-chip--lg">{t('epidemic.riskSuffix', { level: summary.overallRiskLevel })}</Chip>
           </div>
-          <p>South Sudan · IDSR week {idsrReport.reportingWeek} · computed live from facility reports</p>
+          <p>{t('ui.southSudanIdsrWeek')} {idsrReport.reportingWeek} {t('ui.computedLiveFromFacilityReports')}</p>
         </div>
       </div>
 
@@ -338,7 +338,7 @@ export default function EpidemicIntelligencePage() {
             )}
             {moreAlertsCount > 0 && (
               <button type="button" className="epi-alert-more" onClick={() => setActiveTabAndUrl('alerts')}>
-                {moreAlertsCount} more {moreAlertsCount === 1 ? 'alert' : 'alerts'} — open the EWARS tab
+                {moreAlertsCount} more {moreAlertsCount === 1 ? 'alert' : 'alerts'} {t('ui.openTheEwarsTab')}
                 <ChevronRight className="w-3 h-3" />
               </button>
             )}

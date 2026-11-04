@@ -444,7 +444,7 @@ export default function BookAppointmentModal({
   };
 
   if (!canBookAppointments) {
-    const deniedTitle = 'Booking not available for your role';
+    const deniedTitle = t('ui.bookingNotAvailableForYour');
     const deniedBody = 'Clinical and reception staff book appointments; reception then edits and confirms them. Your role can view visits already assigned to you.';
     if (presentation === 'page') {
       return (
@@ -505,7 +505,7 @@ export default function BookAppointmentModal({
               <button
                 type="button"
                 onClick={() => setStep(step - 1)}
-                aria-label="Back"
+                aria-label={t('action.back')}
                 style={{
                   background: 'var(--overlay-subtle)', border: 'none', cursor: 'pointer',
                   width: 32, height: 32, borderRadius: 10, display: 'flex',
@@ -521,7 +521,7 @@ export default function BookAppointmentModal({
               </h2>
               {!fullPage && stepped && (
                 <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
-                  Step {step + 1} of {STEPS.length} · {STEPS[step]}
+                  {t('ui.step')} {step + 1} of {STEPS.length} · {STEPS[step]}
                 </p>
               )}
             </div>
@@ -535,8 +535,8 @@ export default function BookAppointmentModal({
               <button
                 type="button"
                 onClick={() => { onClose(); router.push(expandHref('/appointments/new')); }}
-                aria-label="Open full page"
-                title="Open full page"
+                aria-label={t('facilityQueue.openFullPage')}
+                title={t('facilityQueue.openFullPage')}
                 data-action="popup-expand"
                 style={{
                   background: 'var(--overlay-subtle)', border: 'none', cursor: 'pointer',
@@ -549,7 +549,7 @@ export default function BookAppointmentModal({
               <button
                 type="button"
                 onClick={onClose}
-                aria-label="Close"
+                aria-label={t('billing.activityClose')}
                 data-action="popup-close"
                 style={{
                   background: 'var(--overlay-subtle)', border: 'none', cursor: 'pointer',
@@ -582,7 +582,7 @@ export default function BookAppointmentModal({
             <>
               {fullPage && <h3 id="booking-section-0" tabIndex={-1}>{t(sectionKeys[0])}</h3>}
               <div>
-                <label>Reason for visit</label>
+                <label>{t('visitSummary.reason')}</label>
                 <Select
                   value={visitReasonId}
                   disabled={reasonsLoading}
@@ -636,7 +636,7 @@ export default function BookAppointmentModal({
                         value={providerFilter}
                         onChange={e => { setProviderFilter(e.target.value); setTime(''); }}
                       >
-                        <option value="">Any clinician</option>
+                        <option value="">{t('ui.anyClinician')}</option>
                         {providerOptions.map(person => (
                           <option key={person._id} value={person._id}>
                             {staffOptionLabel(person, providerSlotContext)}
@@ -645,7 +645,7 @@ export default function BookAppointmentModal({
                       </Select>
                     </div>
                     <div>
-                      <label>Nurse or second staff</label>
+                      <label>{t('ui.nurseOrSecondStaff')}</label>
                       <Select
                         value={staffId}
                         onChange={e => {
@@ -655,7 +655,7 @@ export default function BookAppointmentModal({
                           setTime('');
                         }}
                       >
-                        <option value="">Not needed</option>
+                        <option value="">{t('ui.notNeeded')}</option>
                         {nurseOptions.map(person => (
                           <option key={person._id} value={person._id}>
                             {staffOptionLabel(person, providerSlotContext)}
@@ -687,7 +687,7 @@ export default function BookAppointmentModal({
                 >
                   <strong style={{ color: 'var(--text-primary)', fontSize: 13 }}>{visitReason.name}</strong>
                   <span>· {t('appointments.durationMin', { count: duration })}</span>
-                  {staffName && <span>· with {staffName}</span>}
+                  {staffName && <span>{t('ui.with')} {staffName}</span>}
                 </div>
               )}
 
@@ -793,7 +793,7 @@ export default function BookAppointmentModal({
                   <div>
                     <label>{t('appointments.labelStatus')}</label>
                     <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
-                      Scheduled — booked into your own diary. Reception confirms it from their list.
+                      {t('ui.scheduledBookedIntoYourOwn')}
                     </p>
                   </div>
                 ) : (
@@ -835,14 +835,13 @@ export default function BookAppointmentModal({
                 onChange={() => setStep(1)}
               />}
               <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
-                Optional. Recording cover now is what lets eligibility be checked before the visit,
-                rather than at the desk on the day.
+                {t('ui.optionalRecordingCoverNowIs')}
               </p>
 
-              <div><label>Insurance provider</label><input type="text" value={insuranceProvider} onChange={e => setInsuranceProvider(e.target.value)} placeholder="e.g. NHIF" /></div>
+              <div><label>{t('ui.insuranceProvider')}</label><input type="text" value={insuranceProvider} onChange={e => setInsuranceProvider(e.target.value)} placeholder={t('ui.eGNhif')} /></div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
-                <div><label>Member ID</label><input type="text" value={insuranceMemberId} onChange={e => setInsuranceMemberId(e.target.value)} /></div>
-                <div><label>Group ID</label><input type="text" value={insuranceGroupId} onChange={e => setInsuranceGroupId(e.target.value)} /></div>
+                <div><label>{t('billing.memberId')}</label><input type="text" value={insuranceMemberId} onChange={e => setInsuranceMemberId(e.target.value)} /></div>
+                <div><label>{t('ui.groupId')}</label><input type="text" value={insuranceGroupId} onChange={e => setInsuranceGroupId(e.target.value)} /></div>
               </div>
               <div><label>{t('appointments.labelNotes')}</label><textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder={t('appointments.notesPlaceholder')} /></div>
             </>
@@ -878,7 +877,7 @@ export default function BookAppointmentModal({
                   opacity: canAdvance ? 1 : 0.5, cursor: canAdvance ? 'pointer' : 'not-allowed',
                 }}
               >
-                Next <ArrowRight size={15} />
+                {t('billing.activityNext')} <ArrowRight size={15} />
               </button>
             ) : (
               <button
@@ -944,17 +943,15 @@ function ManualTimeFallback({
       }}
     >
       <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
-        No clinic hours have been recorded for this facility yet, so there are no
-        openings to choose from. Book by entering a time below — or set each
-        clinician&apos;s hours in <strong>Settings → Visit types &amp; availability</strong>
-        {' '}and this step will show their real openings.
+        {t('ui.noClinicHoursHaveBeen')} <strong>{t('ui.settingsVisitTypesAvailability')}</strong>
+        {' '}{t('ui.andThisStepWillShow')}
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', alignItems: 'stretch', gap: 12 }}>
         <div><label className="field-required">{t('appointments.labelDate')}</label><input type="date" value={date} onChange={e => setDate(e.target.value)} min={today} /></div>
         <div>
           <label className="field-required">{t('appointments.labelTime')}</label>
           <Select value={time} onChange={e => setTime(e.target.value)}>
-            <option value="">Select a time…</option>
+            <option value="">{t('ui.selectATime')}</option>
             {TIME_SLOTS.map(ts => <option key={ts} value={ts}>{ts}</option>)}
           </Select>
         </div>
@@ -963,7 +960,7 @@ function ManualTimeFallback({
       <div>
         <label>{t('appointments.labelProvider')}</label>
         <Select value={providerId} onChange={e => onProviderChange(e.target.value)}>
-          <option value="">Unassigned</option>
+          <option value="">{t('noteEditor.unassigned')}</option>
           {providerOptions.map(person => (
             <option key={person._id} value={person._id}>{staffOptionLabel(person as never, providerSlotContext)}</option>
           ))}

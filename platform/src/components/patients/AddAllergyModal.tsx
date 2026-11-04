@@ -75,7 +75,7 @@ export default function AddAllergyModal({
 
   const actions = (
     <>
-      <button type="button" className="btn btn-secondary" disabled={busy} onClick={onClose}>Cancel</button>
+      <button type="button" className="btn btn-secondary" disabled={busy} onClick={onClose}>{t('action.cancel')}</button>
       <button type="button" className="btn btn-primary" disabled={busy || substance.trim().length === 0} onClick={save}>
         {busy ? 'Saving…' : 'Save allergy'}
       </button>
@@ -84,8 +84,8 @@ export default function AddAllergyModal({
 
   const body = <div className="space-y-3">
       <CodedSearchField
-        label="Substance"
-        placeholder="Search or type a substance (e.g. Penicillin)"
+        label={t('ui.substance')}
+        placeholder={t('ui.searchOrTypeASubstance')}
         options={allergenOptions}
         value={substance}
         onChange={setSubstance}
@@ -99,13 +99,13 @@ export default function AddAllergyModal({
 
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Classification</label>
+          <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('nutrition.classification')}</label>
           <Select value={classification} onChange={e => setClassification(e.target.value as AllergyEntry['classification'])} className="p-2.5 rounded-md text-[12px]" style={inputStyle}>
             {CLASSIFICATIONS.map(c => <option key={c} value={c}>{c}</option>)}
           </Select>
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Criticality</label>
+          <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('ui.criticality')}</label>
           <Select value={criticality} onChange={e => setCriticality(e.target.value as NonNullable<AllergyEntry['criticality']>)} className="p-2.5 rounded-md text-[12px]" style={inputStyle}>
             {CRITICALITIES.map(c => <option key={c} value={c}>{c}</option>)}
           </Select>
@@ -114,11 +114,11 @@ export default function AddAllergyModal({
 
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Reaction</label>
+          <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('ui.reaction')}</label>
           <input
             value={reaction}
             onChange={e => setReaction(e.target.value)}
-            placeholder="e.g. anaphylaxis, rash"
+            placeholder={t('ui.eGAnaphylaxisRash')}
             className={inputCls} style={inputStyle}
           />
         </div>
@@ -127,13 +127,13 @@ export default function AddAllergyModal({
               had no field to fill it, so every allergy added here was stored
               with an empty one. `AllergiesModal` — the same record, reached
               from a note — has always had this input. */}
-          <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Onset date</label>
+          <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('problemList.onsetDate')}</label>
           <input
             type="date"
             value={onsetDate}
             onChange={e => setOnsetDate(e.target.value)}
             max={todayIso()}
-            aria-label="Onset date"
+            aria-label={t('problemList.onsetDate')}
             className={inputCls} style={inputStyle}
           />
         </div>
@@ -148,9 +148,9 @@ export default function AddAllergyModal({
 
   return (
     <FormSlider
-      title="Add allergy"
+      title={t('createPage.allergyTitle')}
       width={480}
-      subtitle="A reaction recorded here warns every prescriber on this chart."
+      subtitle={t('createPage.allergyNote')}
       busy={busy}
       onClose={onClose}
       onExpand={() => {

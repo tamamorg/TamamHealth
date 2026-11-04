@@ -58,11 +58,11 @@ export default function PatientEducationModal({
 
   return (
     <FormSlider
-      title={<>Send Patient Education to {patientName}</>}
+      title={<>{t('ui.sendPatientEducationTo')} {patientName}</>}
       width={520}
       onClose={onClose}
       footer={<>
-          <button type="button" className="cn-btn" onClick={onClose} disabled={sending}>Cancel</button>
+          <button type="button" className="cn-btn" onClick={onClose} disabled={sending}>{t('action.cancel')}</button>
           <button type="button" className="cn-btn cn-btn-primary" onClick={handleSend} disabled={sending}>
             <Send size={14} /> {sending ? 'Sending…' : 'Send'}
           </button>
@@ -70,11 +70,11 @@ export default function PatientEducationModal({
     >
       <div className="space-y-4">
         <p style={{ fontSize: 13, color: 'var(--color-text-muted, #5d728b)', margin: '0 0 14px' }}>
-          Sent as a message to the patient and filed under the chart&rsquo;s Documents ▸ Patient education.
+          {t('ui.sentAsAMessageTo')}
         </p>
 
         <label className="cn-field" style={{ marginBottom: 12, width: '100%' }}>
-          <span className="cn-label" style={{ minWidth: 68 }}>Subject</span>
+          <span className="cn-label" style={{ minWidth: 68 }}>{t('message.subject')}</span>
           <input
             className="cn-input"
             style={{ flex: 1 }}
@@ -88,8 +88,8 @@ export default function PatientEducationModal({
           style={{ minHeight: 140 }}
           value={body}
           onChange={e => setBody(e.target.value)}
-          placeholder="What the patient should know…"
-          aria-label="Patient education content"
+          placeholder={t('ui.whatThePatientShouldKnow')}
+          aria-label={t('ui.patientEducationContent')}
           autoFocus
         />
 

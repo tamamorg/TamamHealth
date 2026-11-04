@@ -158,7 +158,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
   };
 
   if (loading) {
-    return <div className="p-6 text-sm" style={{ color: 'var(--text-muted)' }}>Loading the rooming worklist…</div>;
+    return <div className="p-6 text-sm" style={{ color: 'var(--text-muted)' }}>{t('ui.loadingTheRoomingWorklist')}</div>;
   }
   if (error) {
     return <div className="p-6 text-sm" style={{ color: 'var(--color-danger-text)' }}>{error}</div>;
@@ -169,9 +169,9 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
       {visibleEntries.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <BedDouble className="w-6 h-6 mb-2" style={{ color: 'var(--text-muted)' }} />
-          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Nobody waiting</p>
+          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('ui.nobodyWaiting')}</p>
           <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-            Patients appear here the moment reception checks them in.
+            {t('ui.patientsAppearHereTheMoment')}
           </p>
         </div>
       ) : (
@@ -203,7 +203,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                         className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
                         style={{ background: 'var(--accent-light)', color: 'var(--accent-primary)' }}
                       >
-                        Room {encounter.roomNumber}
+                        {t('ui.room')} {encounter.roomNumber}
                       </span>
                     )}
                   </div>
@@ -215,7 +215,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                       </span>
                     )}
                     {vitalsRecorded[encounter._id] && (
-                      <span className="text-xs font-semibold" style={{ color: 'var(--color-success-text)' }}>· Vitals recorded</span>
+                      <span className="text-xs font-semibold" style={{ color: 'var(--color-success-text)' }}>{t('ui.vitalsRecorded')}</span>
                     )}
                   </div>
                 </div>
@@ -223,7 +223,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                 <span
                   className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded flex-shrink-0"
                   style={{ background: tone.bg, color: tone.fg }}
-                  title="Time since this visit started"
+                  title={t('ui.timeSinceThisVisitStarted')}
                 >
                   <Clock className="w-3 h-3" /> {waitingMinutes}m
                 </span>
@@ -238,7 +238,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                       className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded"
                       style={{ background: 'var(--accent-primary)', color: '#fff' }}
                     >
-                      <Activity className="w-3.5 h-3.5" style={{ stroke: '#fff' }} /> Triage
+                      <Activity className="w-3.5 h-3.5" style={{ stroke: '#fff' }} /> {t('routeContext.triage')}
                     </button>
                   )}
 
@@ -250,7 +250,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                       className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded"
                       style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)' }}
                     >
-                      <LogIn className="w-3.5 h-3.5" /> Arrived
+                      <LogIn className="w-3.5 h-3.5" /> {t('appointments.statusArrived')}
                     </button>
                   )}
 
@@ -259,7 +259,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                       <input
                         value={roomDraft[encounter._id] || ''}
                         onChange={e => setRoomDraft(d => ({ ...d, [encounter._id]: e.target.value }))}
-                        placeholder="Room"
+                        placeholder={t('ui.room')}
                         aria-label={`Room for ${encounter.patientName}`}
                         className="text-xs px-2 py-1.5 rounded"
                         style={{ width: 76, border: '1px solid var(--border-light)', background: 'var(--bg-app)' }}
@@ -275,7 +275,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                         className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded"
                         style={{ background: 'var(--accent-primary)', color: '#fff' }}
                       >
-                        <BedDouble className="w-3.5 h-3.5" /> Assign
+                        <BedDouble className="w-3.5 h-3.5" /> {t('frontDesk.assign')}
                       </button>
                     </>
                   )}
@@ -289,7 +289,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                         className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded"
                         style={{ background: 'var(--overlay-subtle)', color: 'var(--accent-primary)', border: '1px solid var(--accent-border)' }}
                       >
-                        <Activity className="w-3.5 h-3.5" /> Vitals
+                        <Activity className="w-3.5 h-3.5" /> {t('noteEditor.section.vitals')}
                       </button>
                       <button
                         type="button"
@@ -304,7 +304,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                         className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded"
                         style={{ background: 'var(--accent-primary)', color: '#fff' }}
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Ready
+                        <CheckCircle2 className="w-3.5 h-3.5" /> {t('bui.ready')}
                       </button>
                     </>
                   )}
@@ -324,7 +324,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                           run(encounter._id, () => transferClinic(encounter._id, clinic, actor), 'Patient re-routed');
                         }
                       }}
-                      title="Route to a different clinic"
+                      title={t('ui.routeToADifferentClinic')}
                       aria-label={`Route ${encounter.patientName} to a different clinic`}
                       className="flex items-center justify-center rounded"
                       style={{ width: 30, height: 30, color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}
@@ -341,12 +341,12 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
 
       {vitalsEntry && (
         <FormSlider
-          title="Record vitals"
+          title={t('createPage.vitalsTitle')}
           width={620}
           subtitle={<>{vitalsEntry.encounter.patientName} · {vitalsEntry.encounter.hospitalNumber || 'No ID'}</>}
           onClose={() => { if (!vitalsSaving) setVitalsEntry(null); }}
           footer={<>
-              <button type="button" onClick={() => setVitalsEntry(null)} disabled={vitalsSaving} className="px-3 py-2 rounded text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>Cancel</button>
+              <button type="button" onClick={() => setVitalsEntry(null)} disabled={vitalsSaving} className="px-3 py-2 rounded text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>{t('action.cancel')}</button>
               <button type="button" onClick={() => void saveVitals()} disabled={vitalsSaving} className="flex items-center gap-1.5 px-3 py-2 rounded text-sm font-semibold text-white disabled:opacity-50" style={{ background: 'var(--accent-primary)' }}>
                 <Save className="w-3.5 h-3.5" /> {vitalsSaving ? 'Saving…' : 'Save vitals'}
               </button>
@@ -369,14 +369,14 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                       className="w-full rounded border px-2.5 py-2 text-sm"
                       style={{ borderColor: flagged ? 'var(--color-danger)' : 'var(--border-light)', background: 'var(--bg-input, var(--bg-app))', color: 'var(--text-primary)' }}
                     />
-                    {flagged && <span className="block mt-1 text-[10px]" style={{ color: 'var(--color-danger-text)' }}>Check this value</span>}
+                    {flagged && <span className="block mt-1 text-[10px]" style={{ color: 'var(--color-danger-text)' }}>{t('ui.checkThisValue')}</span>}
                   </label>
                 );
               })}
             </div>
             <label className="block mt-3 text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
-              Notes
-              <textarea value={vitalsDraft.notes || ''} onChange={event => setVitalsDraft(current => ({ ...current, notes: event.target.value }))} rows={2} className="w-full mt-1 rounded border px-2.5 py-2 text-sm resize-y" placeholder="Position, oxygen, symptoms, or other observation" style={{ borderColor: 'var(--border-light)', background: 'var(--bg-input, var(--bg-app))', color: 'var(--text-primary)' }} />
+              {t('postConsult.link.notes')}
+              <textarea value={vitalsDraft.notes || ''} onChange={event => setVitalsDraft(current => ({ ...current, notes: event.target.value }))} rows={2} className="w-full mt-1 rounded border px-2.5 py-2 text-sm resize-y" placeholder={t('ui.positionOxygenSymptomsOrOther')} style={{ borderColor: 'var(--border-light)', background: 'var(--bg-input, var(--bg-app))', color: 'var(--text-primary)' }} />
             </label>
           </div>
         </FormSlider>

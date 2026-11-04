@@ -15,6 +15,7 @@
  */
 
 import { Plus, ChevronLeft, ChevronRight, ClipboardList, Search } from '@/components/icons/lucide';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export interface ChartSectionPagination {
   page: number;
@@ -48,6 +49,7 @@ export default function ChartSection({
   title, subtitle, addLabel = 'Add', addIcon, onAdd, filterSlot, toggleSlot,
   searchValue = '', searchPlaceholder, onSearchChange, pagination, className, children,
 }: ChartSectionProps) {
+  const { t } = useTranslation();
   const totalPages = pagination ? Math.max(1, Math.ceil(pagination.total / pagination.pageSize)) : 1;
   const shown = pagination
     ? Math.max(0, Math.min(pagination.pageSize, pagination.total - (pagination.page - 1) * pagination.pageSize))
@@ -92,7 +94,7 @@ export default function ChartSection({
                 type="button"
                 disabled={pagination.page <= 1}
                 onClick={() => pagination.onPageChange(pagination.page - 1)}
-                aria-label="Previous page"
+                aria-label={t('ui.previousPage')}
               >
                 <ChevronLeft />
               </button>
@@ -101,7 +103,7 @@ export default function ChartSection({
                 type="button"
                 disabled={pagination.page >= totalPages}
                 onClick={() => pagination.onPageChange(pagination.page + 1)}
-                aria-label="Next page"
+                aria-label={t('ui.nextPage')}
               >
                 <ChevronRight />
               </button>
@@ -131,10 +133,11 @@ export function OmrsEmptyState({
    *  coming-soon note instead of a link. */
   disabledReason?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="tamam-empty-state">
       <ClipboardList />
-      <p>There are no {itemLabel} to display for this patient</p>
+      <p>{t('ui.thereAreNo')} {itemLabel} {t('ui.toDisplayForThisPatient')}</p>
       {onAction && (
         <button type="button" className="tamam-empty-action" onClick={onAction}>
           <Plus aria-hidden /> {actionLabel || `Record ${itemLabel}`}

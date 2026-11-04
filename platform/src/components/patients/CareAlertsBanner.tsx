@@ -85,7 +85,7 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
     return (
       <div className="lg:col-span-3 lg:order-1 flex justify-end">
         <button className="btn btn-xs btn-secondary" onClick={() => setAdding(true)}>
-          <Plus className="w-3 h-3" /> Add care alert
+          <Plus className="w-3 h-3" /> {t('ui.addCareAlert')}
         </button>
       </div>
     );
@@ -132,7 +132,7 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
         hideAddButton ? null : (
           <div className="flex justify-end">
             <button className="btn btn-xs btn-secondary" onClick={() => setAdding(true)}>
-              <Plus className="w-3 h-3" /> Add care alert
+              <Plus className="w-3 h-3" /> {t('ui.addCareAlert')}
             </button>
           </div>
         )
@@ -147,8 +147,8 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
             onMessageChange={message => setForm({ ...form, message })}
           />
           <div className="flex items-center gap-2">
-            <button className="btn btn-sm btn-primary" disabled={busy || form.message.trim().length === 0} onClick={() => run(doAdd)}>Save alert</button>
-            <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => setAdding(false)}>Cancel</button>
+            <button className="btn btn-sm btn-primary" disabled={busy || form.message.trim().length === 0} onClick={() => run(doAdd)}>{t('ui.saveAlert')}</button>
+            <button className="btn btn-sm btn-secondary" disabled={busy} onClick={() => setAdding(false)}>{t('action.cancel')}</button>
           </div>
         </div>
       )}
@@ -166,13 +166,12 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
           <DialogFrame busy={busy}>
             <DialogHeader
               titleId="care-alert-resolve-title"
-              title="Resolve this care alert?"
+              title={t('ui.resolveThisCareAlert')}
               onClose={closeResolve}
             />
             <DialogBody tight>
               <p id="care-alert-resolve-desc">
-                It stops showing on the chart banner. The alert is kept with the reason you
-                give here — it is never deleted.
+                {t('ui.itStopsShowingOnThe')}
               </p>
 
               <div className="rounded-lg p-3 mt-3" style={{ background: 'var(--overlay-subtle)' }}>
@@ -184,7 +183,7 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
                 </p>
                 {resolvingAlert.recordedByName && (
                   <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                    Added by {resolvingAlert.recordedByName}
+                    {t('ui.addedBy')} {resolvingAlert.recordedByName}
                   </p>
                 )}
               </div>
@@ -197,14 +196,14 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
                     className="fs-input"
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
-                    placeholder="e.g. Reassessed — no longer a fall risk"
+                    placeholder={t('ui.eGReassessedNoLonger')}
                   />
                 )}
               </FormField>
             </DialogBody>
             <DialogFooter>
               <button type="button" className="btn btn-secondary" disabled={busy} onClick={closeResolve}>
-                Cancel
+                {t('action.cancel')}
               </button>
               <button
                 type="button"

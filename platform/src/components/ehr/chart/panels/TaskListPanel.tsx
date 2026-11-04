@@ -77,26 +77,26 @@ export default function TaskListPanel({ patient, currentUser, onClose, onGoToRec
     <>
       <div className="tamam-drawer-body">
         <div className="tamam-panel-section-head" style={{ cursor: 'default' }}>
-          <span className="tamam-panel-section-title">Tasks ({reminders.length})</span>
+          <span className="tamam-panel-section-title">{t('ui.tasks')}{reminders.length})</span>
           {!adding && (
             <button type="button" className="tamam-panel-add-btn" onClick={() => setAdding(true)}>
-              <Plus /> Add task
+              <Plus /> {t('ui.addTask')}
             </button>
           )}
         </div>
 
         {adding && (
           <div className="tamam-panel-field" style={{ marginTop: 4 }}>
-            <label className="tamam-panel-label">Task</label>
+            <label className="tamam-panel-label">{t('ui.task')}</label>
             <textarea
               className="tamam-panel-textarea"
               style={{ minHeight: 50 }}
-              placeholder="e.g. Call patient about missed dose"
+              placeholder={t('ui.eGCallPatientAbout')}
               value={message}
               onChange={e => setMessage(e.target.value)}
               autoFocus
             />
-            <label className="tamam-panel-label" style={{ marginTop: 8 }}>Due date</label>
+            <label className="tamam-panel-label" style={{ marginTop: 8 }}>{t('screenings.colDue')}</label>
             <input
               type="date"
               className="tamam-panel-input"
@@ -105,7 +105,7 @@ export default function TaskListPanel({ patient, currentUser, onClose, onGoToRec
             />
             <div className="flex items-center gap-2" style={{ marginTop: 10 }}>
               <button type="button" className="tamam-btn-ghost" style={{ background: 'var(--ehr-soft, #ECEEF1)', color: 'var(--ehr-text-body, #3C5574)' }} onClick={() => { setAdding(false); setMessage(''); }}>
-                Cancel
+                {t('action.cancel')}
               </button>
               <button type="button" className="tamam-btn-primary" disabled={!message.trim() || submitting} onClick={handleAdd}>
                 <Plus aria-hidden /> {submitting ? 'Adding…' : 'Add task'}
@@ -115,7 +115,7 @@ export default function TaskListPanel({ patient, currentUser, onClose, onGoToRec
         )}
 
         {!loading && reminders.length === 0 && !adding && (
-          <p className="tamam-panel-empty">No tasks yet.</p>
+          <p className="tamam-panel-empty">{t('ui.noTasksYet')}</p>
         )}
 
         {reminders.map(r => (
@@ -123,7 +123,7 @@ export default function TaskListPanel({ patient, currentUser, onClose, onGoToRec
             <div>
               <div className="tamam-panel-row-main">{r.message}</div>
               <div className="tamam-panel-row-sub" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Calendar className="w-3 h-3" /> Due {r.sendDate}
+                <Calendar className="w-3 h-3" /> {t('dhis2.due')} {r.sendDate}
               </div>
             </div>
             <span className={badgeClass(r.status)}>{humanizeStatus(r.status)}</span>

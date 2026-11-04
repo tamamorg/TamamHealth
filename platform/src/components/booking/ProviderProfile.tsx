@@ -16,6 +16,7 @@ import { useMemo, useState } from 'react';
 import type { ProviderPayload } from '@/lib/booking/public-client';
 import { CallNowCard, ProviderAvatar } from './primitives';
 import BookingFlow from './BookingFlow';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 type TabKey = 'about' | 'services' | 'locations';
 
@@ -26,6 +27,7 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 export default function ProviderProfile({ data }: { data: ProviderPayload }) {
+  const { t } = useTranslation();
   const { practice, policy, provider, locations, reasons } = data;
   const [tab, setTab] = useState<TabKey>('about');
 
@@ -58,7 +60,7 @@ export default function ProviderProfile({ data }: { data: ProviderPayload }) {
                     <>
                       {' '}
                       <button type="button" className="booking-linkish" onClick={() => setTab('locations')}>
-                        +{extraLocations} more location{extraLocations > 1 ? 's' : ''}
+                        +{extraLocations} {t('ui.moreLocation')}{extraLocations > 1 ? 's' : ''}
                       </button>
                     </>
                   )}
@@ -66,13 +68,13 @@ export default function ProviderProfile({ data }: { data: ProviderPayload }) {
               )}
               {!provider.acceptingNewPatients && (
                 <p className="booking-hint" style={{ marginTop: 8 }}>
-                  Not currently accepting new patients.
+                  {t('ui.notCurrentlyAcceptingNewPatients')}
                 </p>
               )}
             </div>
           </div>
 
-          <nav className="booking-tabs" aria-label="Provider information">
+          <nav className="booking-tabs" aria-label={t('ui.providerInformation')}>
             {TABS.map(t => (
               <button
                 key={t.key}
@@ -88,11 +90,11 @@ export default function ProviderProfile({ data }: { data: ProviderPayload }) {
 
           {tab === 'about' && (
             <section className="booking-section">
-              <h2>About</h2>
+              <h2>{t('landing.footer.about')}</h2>
               <p>{provider.bio || `${provider.displayName} practises at ${practice.name}.`}</p>
               {languages.length > 0 && (
                 <>
-                  <h2 style={{ marginTop: 20 }}>Languages</h2>
+                  <h2 style={{ marginTop: 20 }}>{t('ui.languages')}</h2>
                   <div className="booking-chips">
                     {languages.map(l => <span key={l} className="booking-chip">{l}</span>)}
                   </div>
@@ -103,9 +105,9 @@ export default function ProviderProfile({ data }: { data: ProviderPayload }) {
 
           {tab === 'services' && (
             <section className="booking-section">
-              <h2>Services</h2>
+              <h2>{t('ui.services')}</h2>
               {reasons.length === 0
-                ? <p>Nothing is bookable online with this clinician yet.</p>
+                ? <p>{t('ui.nothingIsBookableOnlineWith')}</p>
                 : (
                   <div className="booking-chips">
                     {reasons.map(r => (
@@ -120,9 +122,9 @@ export default function ProviderProfile({ data }: { data: ProviderPayload }) {
 
           {tab === 'locations' && (
             <section className="booking-section">
-              <h2>Locations</h2>
+              <h2>{t('ui.locations')}</h2>
               {locations.length === 0
-                ? <p>No published locations.</p>
+                ? <p>{t('ui.noPublishedLocations')}</p>
                 : locations.map(l => (
                   <p key={l.id} style={{ marginBottom: 10 }}>
                     <b>{l.name}</b><br />

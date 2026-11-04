@@ -89,11 +89,11 @@ export default function FollowUpModal({
 
   return (
     <FormSlider
-      title={<>Schedule Follow-up for {patientName}</>}
+      title={<>{t('ui.scheduleFollowUpFor')} {patientName}</>}
       width={480}
       onClose={onClose}
       footer={<>
-          <button type="button" className="cn-btn" onClick={onClose} disabled={saving}>Cancel</button>
+          <button type="button" className="cn-btn" onClick={onClose} disabled={saving}>{t('action.cancel')}</button>
           <button type="button" className="cn-btn cn-btn-primary" onClick={handleSave} disabled={saving}>
             {saving ? 'Scheduling…' : 'Schedule follow-up'}
           </button>
@@ -101,19 +101,19 @@ export default function FollowUpModal({
     >
       <div className="space-y-4">
         <label className="cn-field" style={{ marginBottom: 12, width: '100%' }}>
-          <span className="cn-label" style={{ minWidth: 96 }}>Condition</span>
+          <span className="cn-label" style={{ minWidth: 96 }}>{t('boma.conditionLabel')}</span>
           <input
             className="cn-input"
             style={{ flex: 1 }}
             value={condition}
             onChange={e => setCondition(e.target.value)}
-            placeholder="What is being followed up…"
+            placeholder={t('ui.whatIsBeingFollowedUp')}
             autoFocus
           />
         </label>
 
         <label className="cn-field" style={{ marginBottom: 12, width: '100%' }}>
-          <span className="cn-label" style={{ minWidth: 96 }}>Follow-up date</span>
+          <span className="cn-label" style={{ minWidth: 96 }}>{t('ward.followUpDate')}</span>
           <input
             type="date"
             className="cn-input"
@@ -124,7 +124,7 @@ export default function FollowUpModal({
         </label>
 
         <label className="cn-field" style={{ marginBottom: 12, width: '100%' }}>
-          <span className="cn-label" style={{ minWidth: 96 }}>Assigned to</span>
+          <span className="cn-label" style={{ minWidth: 96 }}>{t('noteEditor.assignedTo')}</span>
           <Select
             className="cn-input"
             style={{ flex: 1 }}
@@ -136,13 +136,13 @@ export default function FollowUpModal({
         </label>
 
         <label className="cn-field" style={{ marginBottom: 4, width: '100%', alignItems: 'flex-start' }}>
-          <span className="cn-label" style={{ minWidth: 96, marginTop: 8 }}>Notes</span>
+          <span className="cn-label" style={{ minWidth: 96, marginTop: 8 }}>{t('postConsult.link.notes')}</span>
           <textarea
             className="cn-textarea"
             style={{ flex: 1, minHeight: 64 }}
             value={notes}
             onChange={e => setNotes(e.target.value)}
-            placeholder="Anything the follow-up worker should know (optional)…"
+            placeholder={t('ui.anythingTheFollowUpWorker')}
           />
         </label>
 

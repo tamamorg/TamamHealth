@@ -26,6 +26,7 @@ import { AlertTriangle, ChevronDown, ChevronRight, ChevronUp, Minus, Pencil, Sea
 import type { SaSeverity } from '@/components/admin/sa-ui';
 import { FilterDisclosure } from '@/components/ehr/EhrListHeader';
 import type { UserRole } from '@/lib/db-types';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /* ── Tones ─────────────────────────────────────────────────────────── */
 
@@ -485,9 +486,10 @@ export function SadbShell({ groups, active, onSelect, children }: {
   onSelect: (id: string) => void;
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="sadb-shell">
-      <nav className="sadb-rail sadb-card" aria-label="Sections">
+      <nav className="sadb-rail sadb-card" aria-label={t('ui.sections')}>
         {groups.map((g, gi) => (
           <div key={g.title ?? gi} className="sadb-rail-group">
             {g.title && <p className="sadb-rail-title">{g.title}</p>}
@@ -681,6 +683,7 @@ export function SadbEditorModal({ title, sub, value, onChange, onCancel, onApply
   title: string; sub?: ReactNode; value: string; onChange: (v: string) => void;
   onCancel: () => void; onApply: () => void; applyLabel?: string; multiline?: boolean; busy?: boolean;
 }) {
+  const { t } = useTranslation();
   // Built on the shared dialog kit, so the console's prompts read like every
   // other popup in the platform.
   return (
@@ -701,7 +704,7 @@ export function SadbEditorModal({ title, sub, value, onChange, onCancel, onApply
           )}
         </DialogBody>
         <DialogFooter>
-          <button type="button" className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+          <button type="button" className="btn btn-secondary" onClick={onCancel}>{t('action.cancel')}</button>
           <button type="button" className="btn btn-primary" onClick={onApply} disabled={busy}>{applyLabel}</button>
         </DialogFooter>
       </DialogFrame>
@@ -768,13 +771,14 @@ export function SadbConfirmModal({ title, body, confirmLabel = 'Confirm', cancel
 export function SadbSaveBar({ dirtyCount, saving, onSave, onDiscard }: {
   dirtyCount: number; saving?: boolean; onSave: () => void; onDiscard: () => void;
 }) {
+  const { t } = useTranslation();
   if (dirtyCount === 0) {
-    return <span className="sadb-saved-chip">All changes saved</span>;
+    return <span className="sadb-saved-chip">{t('ui.allChangesSaved')}</span>;
   }
   return (
     <div className="sadb-savebar">
-      <span className="sadb-savebar-note">{dirtyCount} unsaved change{dirtyCount === 1 ? '' : 's'}</span>
-      <button type="button" className="btn btn-secondary btn-sm" onClick={onDiscard} disabled={saving}>Discard</button>
+      <span className="sadb-savebar-note">{dirtyCount} {t('ui.unsavedChange')}{dirtyCount === 1 ? '' : 's'}</span>
+      <button type="button" className="btn btn-secondary btn-sm" onClick={onDiscard} disabled={saving}>{t('consultation.discard')}</button>
       <button type="button" className="btn btn-primary btn-sm" onClick={onSave} disabled={saving}>
         {saving ? 'Saving…' : 'Save changes'}
       </button>

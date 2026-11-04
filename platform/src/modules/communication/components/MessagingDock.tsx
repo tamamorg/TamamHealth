@@ -387,7 +387,7 @@ export default function MessagingDock() {
         onPointerMove={handleLauncherPointerMove}
         onPointerUp={handleLauncherPointerUp}
         onPointerCancel={handleLauncherPointerUp}
-        aria-label="Open messages"
+        aria-label={t('ui.openMessages')}
         data-tour="messaging-dock"
         className="messaging-dock-launcher fixed flex items-center justify-center rounded-full text-white shadow-lg"
         style={{
@@ -436,7 +436,7 @@ export default function MessagingDock() {
       <div className="flex items-center gap-2 px-3 py-2.5 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-light)' }}>
         {inThread ? (
           <>
-            <button onClick={() => setActiveId(null)} className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 hover:bg-[var(--overlay-subtle)]" style={{ color: 'var(--text-muted)' }} aria-label="Back">
+            <button onClick={() => setActiveId(null)} className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 hover:bg-[var(--overlay-subtle)]" style={{ color: 'var(--text-muted)' }} aria-label={t('action.back')}>
               <ArrowLeft className="w-[18px] h-[18px]" />
             </button>
             <Avatar name={convTitle(activeConversation!)} size={30} group={activeConversation!.kind === 'group'} />
@@ -449,7 +449,7 @@ export default function MessagingDock() {
           </>
         ) : view === 'new' || view === 'newTeam' ? (
           <>
-            <button onClick={() => { setView('list'); setStaffSearch(''); }} className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 hover:bg-[var(--overlay-subtle)]" style={{ color: 'var(--text-muted)' }} aria-label="Back">
+            <button onClick={() => { setView('list'); setStaffSearch(''); }} className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 hover:bg-[var(--overlay-subtle)]" style={{ color: 'var(--text-muted)' }} aria-label={t('action.back')}>
               <ArrowLeft className="w-[18px] h-[18px]" />
             </button>
             <h2 className="text-[15px] font-bold flex-1 truncate tracking-tight" style={{ color: 'var(--text-primary)' }}>
@@ -459,7 +459,7 @@ export default function MessagingDock() {
         ) : (
           <>
             <MessageSquare className="w-[18px] h-[18px] flex-shrink-0" style={{ color: 'var(--accent-primary)' }} />
-            <h2 className="text-[15px] font-bold flex-1 truncate tracking-tight" style={{ color: 'var(--text-primary)' }}>Messages</h2>
+            <h2 className="text-[15px] font-bold flex-1 truncate tracking-tight" style={{ color: 'var(--text-primary)' }}>{t('breadcrumb.messages')}</h2>
             {/* Availability status dot + picker */}
             <div className="relative">
               <button
@@ -490,9 +490,9 @@ export default function MessagingDock() {
                 onClick={() => setComposeOpen(o => !o)}
                 className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                 style={{ background: 'var(--accent-light)', color: 'var(--accent-primary)' }}
-                aria-label="Start something new"
+                aria-label={t('ui.startSomethingNew')}
                 aria-expanded={composeOpen}
-                title="Start something new"
+                title={t('ui.startSomethingNew')}
               >
                 <Plus className="w-4 h-4" />
               </button>
@@ -535,7 +535,7 @@ export default function MessagingDock() {
             </div>
           </>
         )}
-        <button onClick={closeDock} className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 hover:bg-[var(--overlay-subtle)]" style={{ color: 'var(--text-muted)' }} aria-label="Minimize" title="Minimize">
+        <button onClick={closeDock} className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 hover:bg-[var(--overlay-subtle)]" style={{ color: 'var(--text-muted)' }} aria-label={t('ui.minimize')} title={t('ui.minimize')}>
           <Minus className="w-[18px] h-[18px]" />
         </button>
       </div>
@@ -546,13 +546,13 @@ export default function MessagingDock() {
         <>
           <div ref={threadRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2" style={{ minHeight: 0, background: 'var(--bg-app)' }}>
             {messages.length === 0 ? (
-              <p className="text-center text-[12px] py-8" style={{ color: 'var(--text-muted)' }}>No messages yet. Say hello 👋</p>
+              <p className="text-center text-[12px] py-8" style={{ color: 'var(--text-muted)' }}>{t('ui.noMessagesYetSayHello')}</p>
             ) : messages.map(m => {
               const mine = m.fromDoctorId === meId;
               if (m.deleted) {
                 return (
                   <div key={m._id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                    <span className="text-[11px] italic px-3 py-1.5 rounded-2xl" style={{ color: 'var(--text-muted)', background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)' }}>{mine ? 'You removed this message' : `${m.deletedByName || m.fromDoctorName} removed this message`} · kept on record</span>
+                    <span className="text-[11px] italic px-3 py-1.5 rounded-2xl" style={{ color: 'var(--text-muted)', background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)' }}>{mine ? 'You removed this message' : `${m.deletedByName || m.fromDoctorName} removed this message`} {t('ui.keptOnRecord')}</span>
                   </div>
                 );
               }
@@ -598,7 +598,7 @@ export default function MessagingDock() {
                             );
                           })}
                           {m.phiAcknowledged && (
-                            <p className="text-[10px] italic" style={{ color: mine ? 'rgba(255,255,255,0.6)' : 'var(--text-muted)' }}>PHI — confidential</p>
+                            <p className="text-[10px] italic" style={{ color: mine ? 'rgba(255,255,255,0.6)' : 'var(--text-muted)' }}>{t('ui.phiConfidential')}</p>
                           )}
                         </div>
                       )}
@@ -619,11 +619,11 @@ export default function MessagingDock() {
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style={{ color: 'var(--color-warning-600)' }} />
                   <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
-                    This message may contain patient-identifiable information (PHI). Only share with authorized staff. Do you confirm?
+                    {t('ui.thisMessageMayContainPatient')}
                   </p>
                 </div>
                 <div className="flex gap-2 mt-2 justify-end">
-                  <button onClick={() => setPhiWarning(false)} className="text-[11px] px-2.5 py-1 rounded-lg font-semibold" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)' }}>Cancel</button>
+                  <button onClick={() => setPhiWarning(false)} className="text-[11px] px-2.5 py-1 rounded-lg font-semibold" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)' }}>{t('action.cancel')}</button>
                   <button
                     onClick={async () => {
                       const body = draft.trim();
@@ -635,7 +635,7 @@ export default function MessagingDock() {
                     className="text-[11px] px-2.5 py-1 rounded-lg font-semibold text-white"
                     style={{ background: 'var(--color-warning)' }}
                   >
-                    Confirm &amp; Send
+                    {t('ui.confirmSend')}
                   </button>
                 </div>
               </div>
@@ -654,7 +654,7 @@ export default function MessagingDock() {
             )}
             <div className="flex items-end gap-2 p-2.5">
               {/* File attach button */}
-              <label className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 cursor-pointer hover:bg-[var(--overlay-subtle)]" title="Attach file (PDF, JPG, PNG · 5 MB max)" style={{ color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}>
+              <label className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 cursor-pointer hover:bg-[var(--overlay-subtle)]" title={t('ui.attachFilePdfJpgPng')} style={{ color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}>
                 <Paperclip className="w-4 h-4" />
                 <input ref={fileInputRef} type="file" className="sr-only" accept=".pdf,image/jpeg,image/png,image/webp" multiple onChange={handleFileAttach} />
               </label>
@@ -662,7 +662,7 @@ export default function MessagingDock() {
                 value={draft}
                 onChange={e => setDraft(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                placeholder="Type a message…"
+                placeholder={t('ui.typeAMessage')}
                 rows={1}
                 className="flex-1 resize-none text-[13px] px-3 py-2 rounded-2xl"
                 style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', fontFamily: "var(--font-platform)", maxHeight: 96, outline: 'none' }}
@@ -672,7 +672,7 @@ export default function MessagingDock() {
                 disabled={!draft.trim() && attachments.length === 0}
                 className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-white transition-opacity disabled:opacity-40"
                 style={{ background: 'var(--accent-primary)' }}
-                aria-label="Send"
+                aria-label={t('payments.send')}
               >
                 <Send className="w-[18px] h-[18px]" />
               </button>
@@ -689,7 +689,7 @@ export default function MessagingDock() {
             <input
               value={teamName}
               onChange={e => setTeamName(e.target.value)}
-              placeholder="Team name — e.g. Ward 3 night shift"
+              placeholder={t('ui.teamNameEGWard')}
               className="w-full text-[13px] px-3 py-2 rounded-xl"
               style={{ background: 'var(--bg-app)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', fontFamily: 'var(--font-platform)', outline: 'none' }}
             />
@@ -698,7 +698,7 @@ export default function MessagingDock() {
               <input
                 value={staffSearch}
                 onChange={e => setStaffSearch(e.target.value)}
-                placeholder="Add colleagues…"
+                placeholder={t('ui.addColleagues')}
                 className="w-full text-[13px] pe-3 py-2 rounded-xl"
                 style={{ paddingInlineStart: 34, background: 'var(--bg-app)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', fontFamily: 'var(--font-platform)', outline: 'none' }}
               />
@@ -766,7 +766,7 @@ export default function MessagingDock() {
               <input
                 value={staffSearch}
                 onChange={e => setStaffSearch(e.target.value)}
-                placeholder="Search staff…"
+                placeholder={t('hr.searchStaffPlaceholder')}
                 className="w-full text-[13px] ps-9 pe-3 py-2 rounded-xl"
                 style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', fontFamily: "var(--font-platform)", outline: 'none' }}
               />
@@ -774,7 +774,7 @@ export default function MessagingDock() {
           </div>
           <div className="flex-1 overflow-y-auto px-2 pb-2" style={{ minHeight: 0 }}>
             {messageableStaff.length === 0 ? (
-              <p className="text-center text-[12px] py-8" style={{ color: 'var(--text-muted)' }}>No staff found</p>
+              <p className="text-center text-[12px] py-8" style={{ color: 'var(--text-muted)' }}>{t('ui.noStaffFound')}</p>
             ) : messageableStaff.map(u => (
               <button
                 key={u._id}
@@ -801,32 +801,32 @@ export default function MessagingDock() {
               { key: 'chats',     label: 'Chats',     count: 0 },
               { key: 'teams',     label: 'Teams',     count: teamCount },
               { key: 'transfers', label: 'Transfers', count: transferCount },
-            ] as { key: DockTab; label: string; count: number }[]).map(t => {
-              const active = tab === t.key;
+            ] as { key: DockTab; label: string; count: number }[]).map(tabItem => {
+              const active = tab === tabItem.key;
               return (
                 <button
-                  key={t.key}
+                  key={tabItem.key}
                   role="tab"
                   aria-selected={active}
-                  onClick={() => setTab(t.key)}
+                  onClick={() => setTab(tabItem.key)}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold transition-colors"
                   style={{
                     background: active ? 'var(--accent-light)' : 'transparent',
                     color: active ? 'var(--accent-primary)' : 'var(--text-muted)',
                   }}
                 >
-                  {t.label}
-                  {t.count > 0 && (
+                  {tabItem.label}
+                  {tabItem.count > 0 && (
                     <span
                       className="inline-flex items-center justify-center min-w-[17px] h-[17px] px-1 rounded-full text-[10px] font-bold"
                       style={{
                         // Pending transfers are someone waiting on a decision,
                         // so they carry the alert tint; a team count is neutral.
-                        background: t.key === 'transfers' ? 'var(--color-danger)' : 'var(--overlay-medium)',
-                        color: t.key === 'transfers' ? '#fff' : 'var(--text-secondary)',
+                        background: tabItem.key === 'transfers' ? 'var(--color-danger)' : 'var(--overlay-medium)',
+                        color: tabItem.key === 'transfers' ? '#fff' : 'var(--text-secondary)',
                       }}
                     >
-                      {t.count}
+                      {tabItem.count}
                     </span>
                   )}
                 </button>
@@ -942,6 +942,7 @@ function TransfersPanel({
   busyId: string | null;
   onDecide: (id: string, decision: 'accept' | 'reject') => void;
 }) {
+  const { t } = useTranslation();
   if (incoming.length === 0 && outgoing.length === 0) {
     return (
       <div className="px-5 py-12 text-center">
@@ -951,9 +952,9 @@ function TransfersPanel({
         >
           <ArrowRightLeft className="w-5 h-5" />
         </div>
-        <p className="text-[13px] font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>No transfers of care</p>
+        <p className="text-[13px] font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{t('ui.noTransfersOfCare')}</p>
         <p className="text-[11.5px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-          Hand-overs you send or receive appear here until they are accepted.
+          {t('ui.handOversYouSendOr')}
         </p>
       </div>
     );
@@ -966,12 +967,12 @@ function TransfersPanel({
         <p className="px-2.5 pt-2 pb-1 text-[10.5px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
           {title}
         </p>
-        {rows.map(t => {
-          const tint = URGENCY_TINT[t.urgency] ?? URGENCY_TINT.routine;
-          const busy = busyId === t._id;
+        {rows.map(transfer => {
+          const tint = URGENCY_TINT[transfer.urgency] ?? URGENCY_TINT.routine;
+          const busy = busyId === transfer._id;
           return (
             <div
-              key={t._id}
+              key={transfer._id}
               className="mb-1.5 rounded-xl overflow-hidden"
               style={{ background: 'var(--bg-app)', border: '1px solid var(--border-light)' }}
             >
@@ -980,45 +981,45 @@ function TransfersPanel({
                 <div className="min-w-0 flex-1 px-2.5 py-2">
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="text-[13px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
-                      {t.patientName || 'Patient'}
+                      {transfer.patientName || 'Patient'}
                     </span>
                     <span className="text-[10px] font-bold uppercase tracking-wide flex-shrink-0" style={{ color: tint.text }}>
                       {tint.label}
                     </span>
                   </div>
-                  {t.hospitalNumber && (
-                    <p className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>{t.hospitalNumber}</p>
+                  {transfer.hospitalNumber && (
+                    <p className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>{transfer.hospitalNumber}</p>
                   )}
                   <p className="text-[11.5px] mt-1 flex items-center gap-1 flex-wrap" style={{ color: 'var(--text-secondary)' }}>
-                    <span className="truncate">{t.from?.providerName || t.from?.department || 'Unassigned'}</span>
+                    <span className="truncate">{transfer.from?.providerName || transfer.from?.department || 'Unassigned'}</span>
                     <ArrowRightLeft className="w-3 h-3 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-                    <span className="truncate">{t.to?.providerName || t.to?.department || 'Unassigned'}</span>
+                    <span className="truncate">{transfer.to?.providerName || transfer.to?.department || 'Unassigned'}</span>
                   </p>
-                  {t.reason && (
-                    <p className="text-[11.5px] mt-1 line-clamp-2" style={{ color: 'var(--text-muted)' }}>{t.reason}</p>
+                  {transfer.reason && (
+                    <p className="text-[11.5px] mt-1 line-clamp-2" style={{ color: 'var(--text-muted)' }}>{transfer.reason}</p>
                   )}
                   {actionable ? (
                     <div className="flex items-center gap-1.5 mt-2">
                       <button
-                        onClick={() => onDecide(t._id, 'accept')}
+                        onClick={() => onDecide(transfer._id, 'accept')}
                         disabled={busy}
                         className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11.5px] font-semibold text-white disabled:opacity-50"
                         style={{ background: 'var(--accent-primary)' }}
                       >
-                        <Check className="w-3.5 h-3.5" /> Accept
+                        <Check className="w-3.5 h-3.5" /> {t('lab.accept')}
                       </button>
                       <button
-                        onClick={() => onDecide(t._id, 'reject')}
+                        onClick={() => onDecide(transfer._id, 'reject')}
                         disabled={busy}
                         className="px-2.5 py-1 rounded-lg text-[11.5px] font-semibold disabled:opacity-50"
                         style={{ background: 'transparent', border: '1px solid var(--border-medium)', color: 'var(--text-secondary)' }}
                       >
-                        Decline
+                        {t('frontDesk.requestDecline')}
                       </button>
                     </div>
                   ) : (
                     <p className="flex items-center gap-1 text-[11px] mt-1.5" style={{ color: 'var(--text-muted)' }}>
-                      <Clock className="w-3 h-3" /> Awaiting a decision
+                      <Clock className="w-3 h-3" /> {t('ui.awaitingADecision')}
                     </p>
                   )}
                 </div>

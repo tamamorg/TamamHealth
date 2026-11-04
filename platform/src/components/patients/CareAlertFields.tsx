@@ -10,6 +10,7 @@
 
 import type { CareAlertCategory } from '@/data/mock';
 import Select from '@/components/Select';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export const CARE_ALERT_CATEGORY_LABELS: Record<CareAlertCategory, string> = {
   clinical_risk: 'Clinical risk',
@@ -39,6 +40,7 @@ export default function CareAlertFields({
   onMessageChange: (message: string) => void;
   autoFocus?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
@@ -48,14 +50,14 @@ export default function CareAlertFields({
         </Select>
         <Select value={priority} onChange={e => onPriorityChange(e.target.value as 'high' | 'normal')}
           className="p-2 rounded-md text-[12px]" style={inputStyle}>
-          <option value="high">High priority</option>
-          <option value="normal">Normal</option>
+          <option value="high">{t('ui.highPriority')}</option>
+          <option value="normal">{t('births.optNormal')}</option>
         </Select>
       </div>
       <input
         value={message}
         onChange={e => onMessageChange(e.target.value)}
-        placeholder="Alert (e.g. High fall risk; do not use right arm for BP)"
+        placeholder={t('ui.alertEGHighFall')}
         className="w-full p-2 rounded-md text-[13px]" style={inputStyle}
         autoFocus={autoFocus}
       />

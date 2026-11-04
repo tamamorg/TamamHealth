@@ -7,6 +7,7 @@
 
 import type { RxDraft } from './types';
 import Select from '@/components/Select';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface PharmacyInfoSectionProps {
   draft: RxDraft;
@@ -21,15 +22,16 @@ interface PharmacyInfoSectionProps {
 export default function PharmacyInfoSection({
   draft, onChange, pharmacies, pharmacy, onPharmacyChange, note,
 }: PharmacyInfoSectionProps) {
+  const { t } = useTranslation();
   return (
     <div className="cn-rx-grid">
       <label className="cn-rx-field cn-rx-field--wide">
-        <span className="field-required">Pharmacy</span>
+        <span className="field-required">{t('breadcrumb.pharmacy')}</span>
         <Select
           className="cn-select"
           value={pharmacy}
           onChange={e => onPharmacyChange(e.target.value)}
-          aria-label="Pharmacy"
+          aria-label={t('breadcrumb.pharmacy')}
         >
           {pharmacies.map(p => <option key={p} value={p}>{p}</option>)}
         </Select>
@@ -37,13 +39,13 @@ export default function PharmacyInfoSection({
       </label>
 
       <label className="cn-rx-field cn-rx-field--wide">
-        <span>Pharmacy Instructions</span>
+        <span>{t('ui.pharmacyInstructions')}</span>
         <textarea rows={1}
           className="cn-input"
           value={draft.pharmacyNote}
           onChange={e => onChange({ pharmacyNote: e.target.value })}
-          placeholder="Note to the dispensing pharmacist…"
-          aria-label="Pharmacy instructions"
+          placeholder={t('ui.noteToTheDispensingPharmacist')}
+          aria-label={t('ui.pharmacyInstructions2')}
         />
       </label>
     </div>

@@ -223,9 +223,9 @@ export default function DHIS2ExportPage() {
             {!snapshotValues ? (
               <div className="text-center py-12">
                 <Database className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
-                <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>No sync has run yet</p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('ui.noSyncHasRunYet')}</p>
                 <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                  Press “{t('dhis2.syncNow')}” to generate the current dataset and push it to DHIS2 — the real data elements will appear here.
+                  {t('ui.press')}{t('dhis2.syncNow')}{t('ui.toGenerateTheCurrentDataset')}
                 </p>
               </div>
             ) : (

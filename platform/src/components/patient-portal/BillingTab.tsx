@@ -325,9 +325,9 @@ export function BillingTab({ patient, sessionToken }: { patient: PatientDoc; ses
                   </>
                 ) : IS_DEMO ? (
                   <>
-                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-primary)' }}>{t('patientPortal.bankLabel')} <strong>KCB Bank South Sudan</strong></p>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-primary)' }}>{t('patientPortal.bankLabel')} <strong>{t('ui.kcbBankSouthSudan')}</strong></p>
                     <p style={{ margin: 0, fontSize: 12, color: 'var(--text-primary)' }}>{t('patientPortal.accountLabel')} <strong>720-184-2930</strong></p>
-                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-primary)' }}>{t('patientPortal.nameLabel')} <strong>TamamHealth Health Services</strong></p>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-primary)' }}>{t('patientPortal.nameLabel')} <strong>{t('ui.tamamhealthHealthServices')}</strong></p>
                     <p style={{ margin: 0, fontSize: 12, color: 'var(--text-primary)' }}>{t('patientPortal.refLabel')} <strong>{refNum}</strong></p>
                   </>
                 ) : (
@@ -441,7 +441,7 @@ export function BillingTab({ patient, sessionToken }: { patient: PatientDoc; ses
     <div className="pp-head">
       <div>
         <h1>{t('patientPortal.tabBilling')}</h1>
-        <p className="pp-head-note">Bills from your visits, and how to pay them.</p>
+        <p className="pp-head-note">{t('ui.billsFromYourVisitsAnd')}</p>
       </div>
     </div>
   );
@@ -530,7 +530,7 @@ export function BillingTab({ patient, sessionToken }: { patient: PatientDoc; ses
                 {remaining > 0 ? (
                   <button type="button" className="pp-row-pay"
                     onClick={() => { setSelectedBills([bill.id]); setStep('method'); }}>
-                    Pay
+                    {t('portal.pay')}
                   </button>
                 ) : (
                   <span className={`pp-chip pp-chip--${chip.tone}`}>{chip.label}</span>
@@ -541,7 +541,7 @@ export function BillingTab({ patient, sessionToken }: { patient: PatientDoc; ses
           {outstandingBills.length > 1 && (
             <button type="button" className="pp-card-foot"
               onClick={() => { setSelectedBills(outstandingBills.map(b => b.id)); setStep('method'); }}>
-              Pay all outstanding — {formatMoney(totalOwed)} ›
+              {t('ui.payAllOutstanding')} {formatMoney(totalOwed)} ›
             </button>
           )}
         </div>

@@ -47,6 +47,7 @@ import { useNow } from '@/lib/hooks/useNow';
 import type {
   AuditLogDoc, EncounterDoc, HospitalDoc, RiskResolutionDoc, SyncEventDoc, UserDoc,
 } from '@/lib/db-types';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 type Tone = 'ok' | 'warn' | 'danger' | 'muted';
 
@@ -98,6 +99,7 @@ function KvRow({ label, value, valueClass, chip, chipClass }: {
 
 
 export default function AdminDashboardPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { currentUser } = useAuth();
   const scope = useDataScope();
@@ -411,7 +413,7 @@ export default function AdminDashboardPage() {
           {/* Platform readiness — donut + the two signals that move it */}
           <div className="sadb-card">
             <div className="sadb-card-head">
-              <h3 className="sadb-card-title">Platform readiness</h3>
+              <h3 className="sadb-card-title">{t('ui.platformReadiness')}</h3>
               <span className={`sadb-chip ${TONE_CHIP[readinessTone]}`}>
                 {readinessTone === 'ok' ? 'Steady' : 'Attention required'}
               </span>
@@ -430,7 +432,7 @@ export default function AdminDashboardPage() {
                 <text x={62} y={59} textAnchor="middle" fontFamily="var(--font-condensed)" fontSize={28} fontWeight={700} fill="var(--text-primary)">
                   {loading ? '…' : `${readiness}%`}
                 </text>
-                <text x={62} y={77} textAnchor="middle" fontSize={9.5} letterSpacing={1.2} fill="var(--text-muted)">READINESS</text>
+                <text x={62} y={77} textAnchor="middle" fontSize={9.5} letterSpacing={1.2} fill="var(--text-muted)">{t('ui.readiness')}</text>
               </svg>
               <div className="sadb-readiness-signals">
                 <button type="button" className={`sadb-signal ${TONE_SIGNAL[openRiskTone]}`} onClick={() => router.push('/admin/risk')}>
@@ -438,13 +440,13 @@ export default function AdminDashboardPage() {
                   {/* When the conflict feed didn't load the count is understated,
                       so say so rather than present it as a clean platform. */}
                   <span>
-                    {failedAudits.length} audit failure{failedAudits.length === 1 ? '' : 's'} · last 7 days
+                    {failedAudits.length} {t('ui.auditFailure')}{failedAudits.length === 1 ? '' : 's'} {t('ui.last7Days')}
                     {conflictStatus === 'error' ? ' · conflict data unavailable' : ''}
                   </span>
                 </button>
                 <div className={`sadb-signal ${TONE_SIGNAL[syncTone]}`}>
-                  <b>Sync health {syncRate}%</b>
-                  <span>{syncStats.pending} pending · {syncStats.failed} failed · {syncStats.total.toLocaleString()} events</span>
+                  <b>{t('ui.syncHealth')} {syncRate}%</b>
+                  <span>{syncStats.pending} {t('ui.pending')} {syncStats.failed} {t('ui.failed')} {syncStats.total.toLocaleString()} events</span>
                 </div>
               </div>
             </div>
@@ -453,34 +455,34 @@ export default function AdminDashboardPage() {
           {/* Business snapshot */}
           <div className="sadb-card">
             <CardHead
-              title="Business snapshot"
+              title={t('ui.businessSnapshot')}
               action={
                 /* Billing merged into the Organizations registry 2026-08-23. */
-                <button type="button" className="sadb-head-link" onClick={() => router.push('/admin/organizations')}>Billing ›</button>
+                <button type="button" className="sadb-head-link" onClick={() => router.push('/admin/organizations')}>{t('ui.billing')}</button>
               }
             />
-            <KvRow label="Active subscriptions" value={organizations.filter(o => o.subscriptionStatus === 'active').length} />
-            <KvRow label="Trials" value={trialOrgs.length} />
-            <KvRow label="Suspended / cancelled" value={suspendedOrgs.length} valueClass={suspendedOrgs.length > 0 ? 'is-warn' : undefined} />
-            <KvRow label="Seats in use" value={loading ? '…' : `${users.length} / ${licensedSeats}`} />
+            <KvRow label={t('ui.activeSubscriptions')} value={organizations.filter(o => o.subscriptionStatus === 'active').length} />
+            <KvRow label={t('ui.trials')} value={trialOrgs.length} />
+            <KvRow label={t('ui.suspendedCancelled')} value={suspendedOrgs.length} valueClass={suspendedOrgs.length > 0 ? 'is-warn' : undefined} />
+            <KvRow label={t('ui.seatsInUse')} value={loading ? '…' : `${users.length} / ${licensedSeats}`} />
           </div>
 
           {/* Sync & interoperability — replication posture at a glance; the
               queue, job runners, and DHIS2 controls live on /admin/sync. */}
           <div className="sadb-card">
             <CardHead
-              title="Sync & interoperability"
-              action={<button type="button" className="sadb-head-link" onClick={() => router.push('/admin/sync')}>Open ›</button>}
+              title={t('ui.syncInteroperability')}
+              action={<button type="button" className="sadb-head-link" onClick={() => router.push('/admin/sync')}>{t('ui.open')}</button>}
             />
             <KvRow
-              label="Replication"
+              label={t('ui.replication')}
               chip={syncStats.failed > 0 ? 'Failing' : syncStats.pending > 0 ? 'Backlog' : 'Healthy'}
               chipClass={TONE_CHIP[syncTone]}
             />
-            <KvRow label="Pending events" value={syncStats.pending} />
-            <KvRow label="Failed events" value={syncStats.failed} valueClass={syncStats.failed > 0 ? 'is-warn' : undefined} />
+            <KvRow label={t('ui.pendingEvents')} value={syncStats.pending} />
+            <KvRow label={t('ui.failedEvents')} value={syncStats.failed} valueClass={syncStats.failed > 0 ? 'is-warn' : undefined} />
             <KvRow
-              label="Last DHIS2 push"
+              label={t('ui.lastDhis2Push')}
               chip={dhis2.configured ? (dhis2.lastPush ? formatWhen(dhis2.lastPush) : 'Never') : 'Not configured'}
               chipClass={dhis2.configured && dhis2.lastPush ? 'sadb-chip--green' : 'sadb-chip--neutral'}
             />
@@ -494,7 +496,7 @@ export default function AdminDashboardPage() {
             the one the console could not answer without leaving the page. */}
         <div className="sadb-card" style={{ flex: '1 1 auto', minHeight: 200 }}>
           <CardHead
-            title="Organizations"
+            title={t('admin.dbOrganizations')}
             meta={loading ? undefined : `${activeOrgs.length} active · ${trialOrgs.length} trial · ${suspendedOrgs.length} suspended`}
             action={
               /* ⤢ only (the Add button is gone, 2026-08-23): creating an
@@ -504,8 +506,8 @@ export default function AdminDashboardPage() {
                 type="button"
                 className="p-1.5 rounded-md flex-shrink-0"
                 onClick={() => router.push('/admin/organizations')}
-                aria-label="Open organizations"
-                title="Open organizations"
+                aria-label={t('ui.openOrganizations')}
+                title={t('ui.openOrganizations')}
                 data-action="orgs-expand"
               >
                 <Maximize2 className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />

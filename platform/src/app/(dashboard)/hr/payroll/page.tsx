@@ -95,7 +95,7 @@ export default function HrPayrollPage() {
     <HrPageShell>
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="hr-payroll-list">
         <EhrListHeader
-          title="Payroll register"
+          title={t('ui.payrollRegister')}
           count={summary ? summary.total : payroll.length}
           stats={summary ? [
             { label: t('hr.pillGross'), value: formatMoney(summary.totalGross), color: 'var(--accent-primary)' },
@@ -139,7 +139,7 @@ export default function HrPayrollPage() {
             {payroll.length === 0 && (
               <EmptyState
                 icon={Wallet}
-                title="No payroll entries"
+                title={t('ui.noPayrollEntries')}
                 message={`${t('hr.noPayrollEntries', { period })} ${t('hr.addPayrollEntry')} ${t('hr.aboveToStartRegister')}`}
                 action={{ label: t('hr.addPayrollEntry'), onClick: () => setOpen(true) }}
               />

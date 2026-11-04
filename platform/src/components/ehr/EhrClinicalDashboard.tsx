@@ -1655,7 +1655,7 @@ export default function EhrClinicalDashboard({
             <span className={`appointment-status-pill ${APPOINTMENT_STATUS_TONES[openAppointment.status]}`}>
               {statusLabel(openAppointment.status)}
             </span>
-            <button type="button" className="appointment-detail-modal__close" onClick={closeAppointmentPreview} aria-label="Close appointment details">
+            <button type="button" className="appointment-detail-modal__close" onClick={closeAppointmentPreview} aria-label={t('ui.closeAppointmentDetails')}>
               <X size={16} />
             </button>
           </div>
@@ -1685,11 +1685,11 @@ export default function EhrClinicalDashboard({
         </div>
 
         <div className="appointment-doctor-next">
-          <h3>Doctor next steps</h3>
+          <h3>{t('ui.doctorNextSteps')}</h3>
           <ul>
-            <li><Check className="w-4 h-4" /> Confirm the patient is ready to be seen.</li>
-            <li><Check className="w-4 h-4" /> Review the reason for visit and any intake note.</li>
-            <li><Check className="w-4 h-4" /> Start the consultation and document the clinical note.</li>
+            <li><Check className="w-4 h-4" /> {t('ui.confirmThePatientIsReady')}</li>
+            <li><Check className="w-4 h-4" /> {t('ui.reviewTheReasonForVisit')}</li>
+            <li><Check className="w-4 h-4" /> {t('ui.startTheConsultationAndDocument')}</li>
           </ul>
         </div>
       </div>
@@ -1700,15 +1700,15 @@ export default function EhrClinicalDashboard({
             <button
               type="button"
               className="btn btn-primary btn-sm appointment-detail-modal__split-main"
-              title="Create clinical note"
+              title={t('noteEditor.createNote')}
               onClick={() => router.push(`/consultation?patientId=${encodeURIComponent(openAppointment.patientId)}`)}
             >
-              <Stethoscope className="w-4 h-4" /> <span className="appointment-detail-modal__btn-label">Start Consultation</span>
+              <Stethoscope className="w-4 h-4" /> <span className="appointment-detail-modal__btn-label">{t('appointments.startConsultation')}</span>
             </button>
             <button
               type="button"
               className="appointment-detail-modal__split-toggle"
-              aria-label="More clinical note options"
+              aria-label={t('ui.moreClinicalNoteOptions')}
               aria-expanded={detailMenuOpen === 'note'}
               onClick={() => setDetailMenuOpen(current => (current === 'note' ? null : 'note'))}
             >
@@ -1720,10 +1720,10 @@ export default function EhrClinicalDashboard({
                   type="button"
                   onClick={() => { setDetailMenuOpen(null); router.push(`/consultation?patientId=${encodeURIComponent(openAppointment.patientId)}`); }}
                 >
-                  <Stethoscope size={14} /> Start consultation
+                  <Stethoscope size={14} /> {t('ui.startConsultation')}
                 </button>
                 <button type="button" onClick={() => { setDetailMenuOpen(null); openPatientRecord(openAppointment); }}>
-                  <ClipboardList size={14} /> Open patient record
+                  <ClipboardList size={14} /> {t('payments.openPatientRecord')}
                 </button>
               </div>
             )}
@@ -1734,18 +1734,18 @@ export default function EhrClinicalDashboard({
             className="btn btn-primary btn-sm"
             onClick={() => openPatientRecord(openAppointment)}
           >
-            Open patient record
+            {t('payments.openPatientRecord')}
           </button>
         )}
         <div className="appointment-detail-modal__split" ref={moreMenuRef}>
           <button
             type="button"
             className="appointment-detail-modal__more-toggle"
-            title="More options"
+            title={t('ui.moreOptions')}
             aria-expanded={detailMenuOpen === 'more'}
             onClick={() => setDetailMenuOpen(current => (current === 'more' ? null : 'more'))}
           >
-            <MoreVertical size={16} /> <span className="appointment-detail-modal__btn-label">More</span> {detailMenuOpen === 'more' ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            <MoreVertical size={16} /> <span className="appointment-detail-modal__btn-label">{t('visitActions.more')}</span> {detailMenuOpen === 'more' ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
           {detailMenuOpen === 'more' && (
             <div className="appointment-detail-modal__menu appointment-detail-modal__menu--right">
@@ -1753,10 +1753,10 @@ export default function EhrClinicalDashboard({
                 type="button"
                 onClick={() => { setDetailMenuOpen(null); router.push(openFullAppointmentHref); }}
               >
-                <Calendar size={14} /> Open full page
+                <Calendar size={14} /> {t('facilityQueue.openFullPage')}
               </button>
               <button type="button" onClick={() => { setDetailMenuOpen(null); printOpenAppointment(); }}>
-                <Printer size={14} /> Print appointment
+                <Printer size={14} /> {t('ui.printAppointment')}
               </button>
             </div>
           )}
@@ -1784,10 +1784,10 @@ export default function EhrClinicalDashboard({
                   made this button crowd its own column. Both are rendered and
                   one is hidden by width, so the accessible name (aria-label)
                   never changes with the viewport. */}
-              <button type="button" className="active" aria-label="Book appointment" onClick={() => setBookingOpen(true)}>
+              <button type="button" className="active" aria-label={t('ui.bookAppointment')} onClick={() => setBookingOpen(true)}>
                 <Plus className="w-4 h-4" />
-                <span className="ehr-label-full">Book appointment</span>
-                <span className="ehr-label-compact">Appointment</span>
+                <span className="ehr-label-full">{t('ui.bookAppointment')}</span>
+                <span className="ehr-label-compact">{t('frontDesk.syncKind.appointment')}</span>
               </button>
             </div>
           )}
@@ -1797,7 +1797,7 @@ export default function EhrClinicalDashboard({
             <div className="ehr-care-header-copy">
               {/* The design greets with the short name — "Welcome, Dr. Wani",
                   never the full legal name — over a small-caps role line. */}
-              <p className="ehr-care-greeting">Welcome, {abbreviateProviderName(clinicianName)}</p>
+              <p className="ehr-care-greeting">{t('ui.welcome')} {abbreviateProviderName(clinicianName)}</p>
               {/* This shell is shared by every clinical role (doctors,
                   clinicians and nurse-family roles alike) — the role line
                   under the greeting has to name the signed-in user's actual
@@ -1835,7 +1835,7 @@ export default function EhrClinicalDashboard({
                 setCalendarMonthOverride(null);
               }}
             >
-              <Calendar size={15} /> Go to today
+              <Calendar size={15} /> {t('ui.goToToday')}
             </button>
             <div className="ehr-mini-calendar-title">
               <button
@@ -1844,7 +1844,7 @@ export default function EhrClinicalDashboard({
                   selectedDate,
                   month: addMonths(current?.selectedDate === selectedDate ? current.month : startOfMonth(parseIsoDate(selectedDate)), -1),
                 }))}
-                aria-label="Previous month"
+                aria-label={t('ui.previousMonth')}
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -1855,7 +1855,7 @@ export default function EhrClinicalDashboard({
                   selectedDate,
                   month: addMonths(current?.selectedDate === selectedDate ? current.month : startOfMonth(parseIsoDate(selectedDate)), 1),
                 }))}
-                aria-label="Next month"
+                aria-label={t('ui.nextMonth')}
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -1904,7 +1904,7 @@ export default function EhrClinicalDashboard({
               triage colours of the doctor's own list, so the ring and the row
               plates can never disagree. */}
           <EhrStageDonut
-            title={acuityDonut?.title ?? 'Today by acuity'}
+            title={acuityDonut?.title ?? t('ui.todayByAcuity')}
             centerLabel={acuityDonut?.centerLabel ?? 'on list'}
             segments={acuityDonut?.segments ?? [
               { name: 'Emergency', value: visiblePatientRows.filter(row => row.triagePriority === 'RED').length, color: '#9E1B14' },
@@ -1924,7 +1924,7 @@ export default function EhrClinicalDashboard({
                     className="ehr-outstanding-back"
                     onClick={() => navigateDashboardState({ outstanding: null })}
                   >
-                    <ChevronLeft className="w-4 h-4" /> Schedule
+                    <ChevronLeft className="w-4 h-4" /> {t('boma.schedule')}
                   </button>
                   {activeOutstanding.label}
                 </h2>
@@ -1936,7 +1936,7 @@ export default function EhrClinicalDashboard({
                   </button>
                   {activeOutstanding.href && (
                     <button type="button" onClick={() => router.push(withReturnTo(activeOutstanding.href!, dashboardReturnTo))}>
-                      Open full page
+                      {t('facilityQueue.openFullPage')}
                     </button>
                   )}
                 </div>
@@ -1951,11 +1951,11 @@ export default function EhrClinicalDashboard({
                       label for whichever rows happen to be loaded). */}
                   <div className="appointment-card-flow">
                     <div className="appointment-card-head" aria-hidden="true">
-                      <span>Patient</span>
-                      <span>When</span>
-                      <span>Item</span>
-                      <span>Status</span>
-                      <span>Action</span>
+                      <span>{t('appointments.labelPatient')}</span>
+                      <span>{t('adminUsers.activityWhen')}</span>
+                      <span>{t('ui.item')}</span>
+                      <span>{t('billing.activityColumn.status')}</span>
+                      <span>{t('admin.colAction')}</span>
                     </div>
                     {visibleOutstandingEntries.length === 0 && (
                       <div className="ehr-empty-state">
@@ -1967,8 +1967,8 @@ export default function EhrClinicalDashboard({
                             : `${activeOutstanding.label} is clear — no items need your attention.`}
                         </span>
                         {appointmentQuery
-                          ? <button type="button" onClick={() => setAppointmentSearch('')}>Clear search</button>
-                          : <button type="button" onClick={() => navigateDashboardState({ outstanding: null })}>Back to schedule</button>}
+                          ? <button type="button" onClick={() => setAppointmentSearch('')}>{t('ui.clearSearch')}</button>
+                          : <button type="button" onClick={() => navigateDashboardState({ outstanding: null })}>{t('ui.backToSchedule')}</button>}
                       </div>
                     )}
                     {visibleOutstandingEntries.map(entry => {
@@ -2053,13 +2053,13 @@ export default function EhrClinicalDashboard({
 	              <Search className="ehr-queue-search-icon w-4 h-4" />
 	              <input
 	                type="search"
-	                placeholder="Search appointments"
-	                aria-label="Search the day's appointments"
+	                placeholder={t('ui.searchAppointments')}
+	                aria-label={t('ui.searchTheDaySAppointments')}
 	                value={appointmentSearch}
 	                onChange={event => setAppointmentSearch(event.target.value)}
 	              />
 	              {appointmentSearch && (
-	                <button type="button" className="ehr-queue-search-clear" aria-label="Clear search" onClick={() => setAppointmentSearch('')}>
+	                <button type="button" className="ehr-queue-search-clear" aria-label={t('ui.clearSearch')} onClick={() => setAppointmentSearch('')}>
 	                  <X className="w-3.5 h-3.5" />
 	                </button>
 	              )}
@@ -2095,11 +2095,11 @@ export default function EhrClinicalDashboard({
                       empty worklist or a lane with nothing in it, so the table
                       never collapses into a bare message. */}
                   <div className="appointment-card-head" aria-hidden="true">
-                    <span>Patient</span>
-                    <span>Time</span>
-                    <span>Care team</span>
-                    <span>Context</span>
-                    <span>Status</span>
+                    <span>{t('appointments.labelPatient')}</span>
+                    <span>{t('noteEditor.time')}</span>
+                    <span>{t('chartMessages.careTeam')}</span>
+                    <span>{t('ui.context')}</span>
+                    <span>{t('billing.activityColumn.status')}</span>
                   </div>
                   {visiblePatientRows.length === 0 && (
                     <div className="ehr-empty-state">
@@ -2117,16 +2117,16 @@ export default function EhrClinicalDashboard({
                             : 'Assigned patients will appear here with appointment times when scheduled.'}
                       </span>
                       {appointmentQuery
-                        ? <button type="button" onClick={() => setAppointmentSearch('')}>Clear search</button>
+                        ? <button type="button" onClick={() => setAppointmentSearch('')}>{t('ui.clearSearch')}</button>
                         : isNurseFamily
-                          ? <button type="button" onClick={() => router.push('/wards')}>Open ward board</button>
-                          : <button type="button" onClick={() => router.push('/patients')}>Open patient registry</button>}
+                          ? <button type="button" onClick={() => router.push('/wards')}>{t('ui.openWardBoard')}</button>
+                          : <button type="button" onClick={() => router.push('/patients')}>{t('ui.openPatientRegistry')}</button>}
                     </div>
                   )}
                   {visiblePatientRows.length > 0 && filteredPatientRows.length === 0 && (
                     <div className="ehr-empty-state">
-                      <strong>No {laneLabel(worklistFilter).toLowerCase()} patients</strong>
-                      <span>Nothing is in the {laneLabel(worklistFilter).toLowerCase()} lane right now.</span>
+                      <strong>{t('action.no')} {laneLabel(worklistFilter).toLowerCase()} patients</strong>
+                      <span>{t('ui.nothingIsInThe')} {laneLabel(worklistFilter).toLowerCase()} {t('ui.laneRightNow')}</span>
                     </div>
                   )}
                   {filteredPatientRows.map((row) => {
@@ -2398,14 +2398,14 @@ export default function EhrClinicalDashboard({
           {canDispense && findPatientOpen && (
             <Modal onClose={() => setFindPatientOpen(false)} width={480} labelledBy="find-patient-title">
               <DialogFrame>
-                <DialogHeader titleId="find-patient-title" title="Dispense to patient" onClose={() => setFindPatientOpen(false)} />
+                <DialogHeader titleId="find-patient-title" title={t('ui.dispenseToPatient')} onClose={() => setFindPatientOpen(false)} />
                 <DialogBody className="space-y-4">
                 <div className="ehr-find-patient-input">
                   <Search className="w-4 h-4" />
                   <input
                     ref={findPatientInputRef}
                     type="search"
-                    placeholder="Search by name, hospital number, or phone"
+                    placeholder={t('ui.searchByNameHospitalNumber')}
                     value={findPatientQuery}
                     onChange={event => setFindPatientQuery(event.target.value)}
                     onKeyDown={event => {
@@ -2417,9 +2417,9 @@ export default function EhrClinicalDashboard({
                   />
                 </div>
                 {findPatientQuery.trim() === '' ? (
-                  <p className="ehr-find-patient-hint">Start typing to find the patient to dispense to.</p>
+                  <p className="ehr-find-patient-hint">{t('ui.startTypingToFindThe')}</p>
                 ) : findPatientResults.length === 0 ? (
-                  <p className="ehr-find-patient-hint">No patients match &ldquo;{findPatientQuery.trim()}&rdquo;.</p>
+                  <p className="ehr-find-patient-hint">{t('ui.noPatientsMatch')}{findPatientQuery.trim()}&rdquo;.</p>
                 ) : (
                   <ul className="ehr-find-patient-results">
                     {findPatientResults.map(patient => {
@@ -2452,12 +2452,12 @@ export default function EhrClinicalDashboard({
 
           {followUpToComplete && (
             <FormSlider
-              title="Complete follow-up"
+              title={t('ui.completeFollowUp')}
               subtitle={<>{followUpToComplete.title} · {followUpToComplete.subtitle || 'Scheduled follow-up'}</>}
               width={480}
               onClose={() => { if (!followUpSaving) setFollowUpToComplete(null); }}
               footer={<>
-                  <button type="button" className="btn btn-secondary" disabled={followUpSaving} onClick={() => setFollowUpToComplete(null)}>Cancel</button>
+                  <button type="button" className="btn btn-secondary" disabled={followUpSaving} onClick={() => setFollowUpToComplete(null)}>{t('action.cancel')}</button>
                   <button type="button" className="btn btn-primary" disabled={followUpSaving} onClick={() => void completeFollowUp()}>
                     {followUpSaving ? 'Saving…' : 'Complete follow-up'}
                   </button>
@@ -2466,22 +2466,22 @@ export default function EhrClinicalDashboard({
               <div className="space-y-4">
                 <div className="space-y-3">
                   <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                    Outcome
+                    {t('feedback.outcome')}
                     <Select value={followUpOutcome} onChange={event => setFollowUpOutcome(event.target.value as NonNullable<FollowUpDoc['outcome']>)} className="w-full mt-1">
-                      <option value="recovered">Recovered</option>
-                      <option value="under_treatment">Under treatment</option>
-                      <option value="referred">Referred</option>
-                      <option value="died">Died</option>
+                      <option value="recovered">{t('ui.recovered')}</option>
+                      <option value="under_treatment">{t('ui.underTreatment')}</option>
+                      <option value="referred">{t('nutrition.referred')}</option>
+                      <option value="died">{t('ui.died')}</option>
                     </Select>
                   </label>
                   <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                    Notes
+                    {t('postConsult.link.notes')}
                     <textarea
                       value={followUpNotes}
                       onChange={event => setFollowUpNotes(event.target.value)}
                       rows={3}
                       className="w-full mt-1 p-2 rounded-lg text-sm"
-                      placeholder="Record what happened during the follow-up"
+                      placeholder={t('ui.recordWhatHappenedDuringThe')}
                     />
                   </label>
                 </div>
@@ -2491,7 +2491,7 @@ export default function EhrClinicalDashboard({
 
           {printOpen && (
             <PrintListDialog
-              title="Print worklist"
+              title={t('ui.printWorklist')}
               subtitle={`${new Date(`${selectedDate}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} — ${clinicianName}`}
               sections={printSections}
               filename={`worklist-${selectedDate}`}
@@ -2502,17 +2502,17 @@ export default function EhrClinicalDashboard({
         </main>
 
         {view === 'dashboard' && railOpen && (
-          <button type="button" className="ehr-rail-backdrop" aria-label="Close outstanding items panel" onClick={() => setRailOpen(false)} />
+          <button type="button" className="ehr-rail-backdrop" aria-label={t('ui.closeOutstandingItemsPanel')} onClick={() => setRailOpen(false)} />
         )}
         {view === 'dashboard' && (
         <aside ref={rightRailRef} className={`ehr-right-rail ${railOpen ? 'is-open' : ''}`}>
-          <button type="button" className="ehr-rail-close" aria-label="Close panel" onClick={() => setRailOpen(false)}>
+          <button type="button" className="ehr-rail-close" aria-label={t('ui.closePanel')} onClick={() => setRailOpen(false)}>
             <X className="w-4 h-4" />
           </button>
           <section className="ehr-side-card ehr-outstanding-card">
             <div className="ehr-side-card-head">
               <ClipboardList className="w-5 h-5" />
-              <EhrPanelTitle title="Outstanding items" />
+              <EhrPanelTitle title={t('ui.outstandingItems')} />
             </div>
             <div className="ehr-outstanding-chips">
               {outstanding.map(item => (

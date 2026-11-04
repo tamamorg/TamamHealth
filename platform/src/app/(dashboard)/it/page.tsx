@@ -9,12 +9,14 @@
 
 import EhrListHeader from '@/components/ehr/EhrListHeader';
 import ItOperationsPanel from '@/components/admin/ItOperationsPanel';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export default function ItOperationsPage() {
+  const { t } = useTranslation();
   return (
     <main className="page-container page-enter">
       <div className="dash-card overflow-hidden mb-4">
-        <EhrListHeader title="IT Operations" />
+        <EhrListHeader title={t('ui.itOperations')} />
       </div>
       <ItOperationsPanel />
     </main>
