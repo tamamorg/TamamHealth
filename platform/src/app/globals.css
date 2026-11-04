@@ -36429,3 +36429,123 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
 .tm-num > .tm-num-btn:hover:not(:disabled) { background: var(--accent-light); color: var(--accent-text, var(--accent-primary)); }
 .tm-num > .tm-num-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .tm-num > .tm-num-btn svg { width: 16px; height: 16px; color: inherit !important; stroke: currentColor !important; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   FILTER PANELS (2026-11-04) — every filter popover is drawn like a popup.
+
+   One markup (EhrListHeader's FilterPanel, which SadbSearch's FilterDisclosure
+   shares, and BillingFilterMenu): a grey title band with ✕, the fields on the
+   form surface — 14px sentence-case labels above white, square fields with
+   one bottom rule — and the popups' two-part action bar, Clear all | Done.
+   A field that narrows the list carries the accent on its rule and text.
+   Pages pass their own <label><span/><Select/></label> rows with inline
+   styles, so the field rules here use !important.
+   ═══════════════════════════════════════════════════════════════════════ */
+.ehr-list-filters-panel {
+  border: 1px solid var(--border-medium) !important;
+  border-radius: 0 !important;
+  background: var(--bg-card-solid) !important;
+  padding: 0 !important;
+  gap: 0 !important;
+}
+.ehr-list-filters-panel .ehr-list-filters-head {
+  min-height: 48px;
+  padding: 0 0 0 16px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--surface-overlay, var(--color-slate-100));
+}
+.ehr-list-filters-panel .ehr-list-filters-head > span {
+  font-family: var(--font-platform);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-primary);
+}
+.ehr-list-filters-panel .ehr-list-filters-close {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.ehr-list-filters-panel .ehr-list-filters-close:hover { background: var(--accent-light); }
+.ehr-list-filters-panel .ehr-list-filters-close svg { color: inherit !important; stroke: currentColor !important; }
+.ehr-list-filters-panel .ehr-list-filters-body {
+  gap: 16px;
+  padding: 16px;
+  background: var(--form-surface, var(--color-slate-100));
+}
+.ehr-list-filters-panel .ehr-list-filters-foot { flex: 0 0 auto; }
+
+/* Labels: a field's name above it, never a 9–11px caps micro-label. */
+.ehr-list-filters-body :is(label, .tm-filter-select) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin: 0;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+.ehr-list-filters-body :is(label > span:first-child, .tm-filter-select__label) {
+  font-family: var(--font-platform);
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  line-height: 1.4;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  color: var(--text-primary) !important;
+}
+/* A checkbox row stays a row. */
+.ehr-list-filters-body label:has(> input:is([type='checkbox'], [type='radio'])) {
+  flex-direction: row;
+  align-items: center;
+  font-size: 14px;
+}
+
+/* Fields: white on the grey surface, square, one bottom rule, 40px. */
+.ehr-list-filters-body :is(select, input:not([type='checkbox']):not([type='radio']):not([type='hidden'])),
+.tm-filter-select .tm-filter-select__control {
+  width: 100% !important;
+  min-height: 40px !important;
+  padding-block: 0 !important;
+  padding-inline: 12px 36px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--form-rule, var(--color-slate-400)) !important;
+  border-radius: 0 !important;
+  background-color: var(--bg-card-solid) !important;
+  box-shadow: none !important;
+  font-family: var(--font-platform);
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: var(--text-primary) !important;
+}
+.ehr-list-filters-body input:not([type='checkbox']):not([type='radio']) { padding-inline-end: 12px !important; }
+.ehr-list-filters-body :is(select, input):focus,
+.tm-filter-select .tm-filter-select__control:focus {
+  outline: 2px solid var(--accent-primary) !important;
+  outline-offset: -2px !important;
+}
+/* Narrowing the list: the accent on the rule and the value. */
+.tm-filter-select.is-active .tm-filter-select__control {
+  border-bottom: 2px solid var(--accent-primary) !important;
+  color: var(--accent-text, var(--accent-primary)) !important;
+}
+/* Some pages style their filter <select> with the `background` shorthand
+   inline, which wipes the dropdown arrow; put the platform's arrow back. */
+.ehr-list-filters-body select,
+.tm-filter-select .tm-filter-select__control {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 12px center !important;
+  background-size: 16px 16px !important;
+}
+[dir="rtl"] .ehr-list-filters-body select,
+[dir="rtl"] .tm-filter-select .tm-filter-select__control { background-position: left 12px center !important; }
+
