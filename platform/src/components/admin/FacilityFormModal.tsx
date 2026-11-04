@@ -206,7 +206,6 @@ export default function FacilityFormModal({
                   <option value="">{t('orgHospitals.selectOrganization')}</option>
                   {orgChoices.map(org => <option key={org._id} value={org._id}>{org.name}</option>)}
                 </Select>
-                <ChevronDown className="absolute end-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
               </div>
               {orgChoices.length === 0 && (
                 <p className="mt-1.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
@@ -232,7 +231,6 @@ export default function FacilityFormModal({
                 <option value="">{t('orgHospitals.selectState')}</option>
                 {SOUTH_SUDAN_STATES.map(s => <option key={s} value={s}>{locationLabel(s)}</option>)}
               </Select>
-              <ChevronDown className="absolute end-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
             </div>
           </div>
 
@@ -255,7 +253,6 @@ export default function FacilityFormModal({
               >
                 {FACILITY_TYPES.map(ft => <option key={ft.value} value={ft.value}>{t(ft.labelKey)}</option>)}
               </Select>
-              <ChevronDown className="absolute end-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
             </div>
           </div>
 
@@ -314,7 +311,6 @@ export default function FacilityFormModal({
                       <option key={status} value={status}>{t(OPERATIONAL_STATUS_LABEL_KEYS[status])}</option>
                     ))}
                   </Select>
-                  <ChevronDown className="absolute end-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                 </div>
               </div>
 

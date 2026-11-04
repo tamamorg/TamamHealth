@@ -32,7 +32,7 @@ body .tamam-root :is(
   font-weight: 400;
   letter-spacing: normal;
   text-transform: none;
-  color: var(--accent-text, var(--accent-primary));
+  color: var(--accent-link, var(--accent-text));
 }
 
 /* globals.css sets the summary's Customize View and Demographics' Edit to
@@ -47,7 +47,7 @@ body .tamam-root :is(.tebra-section-title > button, .tebra-demo-edit) {
 /* Icon-bearing controls: the header close, a settled balance and every
    row ⋮ menu are blue too, glyph included. */
 body .tamam-root :is(.tamam-header-close, .tamam-header-balance:not(.tamam-header-balance--due), .tm-menu__trigger) {
-  color: var(--accent-text, var(--accent-primary));
+  color: var(--accent-link, var(--accent-text));
 }
 body .tamam-root .tamam-header-close {
   border-color: color-mix(in srgb, var(--accent-primary) 35%, var(--border-light));

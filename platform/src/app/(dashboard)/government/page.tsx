@@ -18,12 +18,9 @@ import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Siren, FileText, ChevronRight, ChevronDown, Check,
+  ChevronRight, ChevronDown, Check,
 } from '@/components/icons/lucide';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
-import { getRoleConfig } from '@/lib/permissions';
-import { abbreviateProviderName } from '@/lib/patient-utils';
-import { useAuth } from '@/lib/context';
 import { SOUTH_SUDAN_STATES } from '@/data/south-sudan-geo';
 import { makeProjector } from '@/lib/maps/south-sudan-projection';
 import { useHospitals } from '@/lib/hooks/useHospitals';
@@ -183,7 +180,6 @@ const FACILITY_TYPE_META: Record<string, { label: string; color: string }> = {
 
 export default function GovernmentNationalDashboard() {
   const router = useRouter();
-  const { currentUser } = useAuth();
   const { alerts } = useSurveillance();
   const { hospitals } = useHospitals();
   const scope = useDataScope();
@@ -427,8 +423,6 @@ export default function GovernmentNationalDashboard() {
     </div>
   ) : null;
 
-  const now = new Date();
-  const periodLabel = now.toLocaleString('en', { month: 'long', year: 'numeric' });
 
 
   const selected = selectedState ? stateAgg.get(selectedState) : null;
@@ -436,33 +430,9 @@ export default function GovernmentNationalDashboard() {
   return (
     <main className="page-container page-enter gov-dash">
       {/* ── Header: what/where/when — no decorative hero ── */}
-      <div className="gov-page-head">
-        <div>
-          {/* Who is looking, then what they are looking at as the role they
-              hold — the shape every module header uses (see EhrListHeader).
-              This console named neither, so the one screen that speaks for the
-              whole country did not say whose session it was. */}
-          <h1>
-            {currentUser?.name
-              ? `Welcome, ${abbreviateProviderName(currentUser.name)}`
-              : 'National Dashboard'}
-          </h1>
-          {currentUser && (
-            <p className="ehr-care-greeting-sub">
-              {getRoleConfig(currentUser.role).label} · National dashboard
-            </p>
-          )}
-          <p>South Sudan · National · {periodLabel} — computed live from facility-reported data</p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <button type="button" className="btn btn-secondary" onClick={() => router.push('/government/briefing')}>
-            <FileText className="w-4 h-4" /> Executive briefing
-          </button>
-          <button type="button" className="btn btn-primary btn-alerts" onClick={() => router.push('/government/alerts')}>
-            <Siren className="w-4 h-4" /> Priority alerts
-          </button>
-        </div>
-      </div>
+      {/* No greeting header (removed 2026-11-04): Executive briefing and
+          Priority alerts are this hub's tabs now (ModuleHubTabs), and the
+          period each card covers is in that card's own head. */}
 
       {/* ── One viewport, no scrolling: the map fills the left 4/6 across
           both rows; the right 2/6 stacks Facility types over Weekly cases,

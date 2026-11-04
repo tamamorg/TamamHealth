@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
+import InlineBanner from '@/components/overlay/InlineBanner';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
@@ -315,21 +316,14 @@ export default function RiskCenterPage() {
             count is understated, so the queue says so and offers a retry rather
             than presenting a quietly-low number as a clean platform. */}
         {conflictStatus === 'error' && (
-          <div
-            role="status"
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-              padding: '8px 12px', marginBottom: 12, borderRadius: 8,
-              background: 'var(--overlay-subtle)',
-              borderInlineStart: '3px solid var(--color-warning-600)',
-              fontSize: 13, color: 'var(--text-primary)',
-            }}
+          <InlineBanner
+            tone="warning"
+            className="mb-3"
+            title={t('riskCenter.conflictsUnavailableTitle')}
+            action={{ label: t('riskCenter.retry'), onClick: reloadConflicts }}
           >
-            <span>{t('riskCenter.conflictsUnavailable')}</span>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={reloadConflicts}>
-              {t('riskCenter.retry')}
-            </button>
-          </div>
+            {t('riskCenter.conflictsUnavailable')}
+          </InlineBanner>
         )}
 
         <div className="sadb-search-row sadb-search-row--table-aligned">

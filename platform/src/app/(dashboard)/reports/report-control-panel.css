@@ -1,0 +1,116 @@
+/* Reports — "Choose a report": one row of fields across the page (2026-11-04
+ * redesign). It replaced a 244px rail holding a sixteen-row list, and the
+ * page's right-hand column (a ranked breakdown that repeated the chart and an
+ * "About this report" card that repeated the fields): the chart and its table
+ * now have the full width. Field type is the platform's form look; this file
+ * only lays the fields out. */
+
+/* Doubled class and !important on the box: the old rail's rules (globals.css
+   and the tablet band) set a column, a fixed width and a full height. */
+.rpt-rail.rpt-rail.rcp {
+  flex: 0 0 auto;
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: flex-start;
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+  padding: 12px 16px 16px;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  background: var(--bg-card-solid);
+  overflow: visible;
+}
+
+.rcp-head {
+  flex: 1 0 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.rcp-title {
+  margin: 0;
+  font-family: var(--font-platform);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--accent-text, var(--text-primary));
+}
+.rcp-pending {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text, var(--color-warning-700));
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* The fields share the row; Report gets the most room, because its names
+   are the longest and it is the one you read. */
+.rcp-body { display: contents; }
+.rcp-field {
+  flex: 1 1 170px;
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rcp-field:nth-last-child(2) { flex: 2 1 260px; }
+.rcp-label {
+  font-family: var(--font-platform);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-primary);
+}
+.rcp-field select { width: 100%; min-height: 40px; }
+.rcp-empty { margin: 0; min-height: 40px; display: flex; align-items: center; font-size: 13px; color: var(--text-secondary); }
+
+.rcp-foot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.rcp-foot .btn { min-height: 40px; }
+.rcp-undo {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-link, var(--accent-text));
+  font-size: 14px;
+  cursor: pointer;
+}
+.rcp-undo:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* The workspace is the plot and its table alone now. !important and the
+   doubled class: the tablet band (tablet-desktop.css) still sets the old
+   three-column grid with !important. */
+body .rpt-workspace.rpt-workspace { grid-template-columns: minmax(0, 1fr) !important; }
+.rpt-main { display: flex; flex-direction: column; gap: 10px; }
+.rpt-main .rpt-plot-card { min-height: 380px; }
+
+/* Three headline figures (the fourth, a row count, belongs to the table). The
+   tablet band forces four columns with !important. */
+body .rpt-kpis.rpt-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+
+/* The chart's and the table's titles in the card-title voice. */
+.rpt-plot-caption b,
+.rpt-table-cap > span {
+  font-family: var(--font-platform);
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  color: var(--accent-text, var(--text-primary));
+}
+.rpt-plot-caption i { font-size: 13px; font-style: normal; color: var(--text-secondary); }

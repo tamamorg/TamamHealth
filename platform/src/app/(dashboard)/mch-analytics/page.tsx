@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import TableCols from '@/components/TableCols';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHeader';
 import { useMCHAnalytics } from '@/lib/hooks/useMCHAnalytics';
 import {
   HeartPulse, Baby, Syringe, AlertTriangle,
@@ -64,26 +63,13 @@ export default function MCHAnalyticsPage() {
   return (
     <>
       <main className="page-container page-enter">
-        <DashboardGreetingHeader module="MCH analytics" actions={
-          <>
-            <div className="px-4 py-2 rounded-md flex items-center gap-2" style={{
-              background: grade.bg,
-              border: `1px solid ${grade.text}30`,
-            }}>
-              <Shield className="w-4 h-4" style={{ color: grade.text }} />
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: grade.text }}>
-                {t('mch.gradePrefix', { grade: summary.overallGrade })}
-              </span>
-            </div>
-            <div className="px-3 py-2 rounded-md" style={{ background: 'rgba(204, 102, 0,0.08)', border: '1px solid rgba(204, 102, 0,0.15)' }}>
-              <p className="text-[10px] font-semibold" style={{ color: 'var(--chart-2)' }}>{t('mch.highRiskCount', { count: summary.highRiskCount })}</p>
-            </div>
-          </>
-        } />
+        {/* No greeting row (removed 2026-11-04): the grade it carried is the
+            first KPI below, and its high-risk count already had a tile. */}
 
         {/* ═══ KPI STRIP ═══ */}
         <div className="kpi-grid mb-4">
           {[
+            { label: t('mch.kpiOverallGrade'), value: summary.overallGrade, icon: Shield, color: grade.text, bg: grade.bg },
             { label: t('mch.kpiMothersTracked'), value: summary.totalMothersTracked, icon: Users, color: 'var(--chart-2)', bg: 'rgba(204, 102, 0,0.12)' },
             { label: t('mch.kpiAnc4Rate'), value: `${summary.anc4PlusCoverage}%`, icon: HeartPulse, color: scoreColor(summary.anc4PlusCoverage, 50), bg: 'rgba(204, 102, 0,0.08)' },
             { label: t('mch.kpiMmr'), value: summary.maternalMortalityRatio.toLocaleString(), icon: Heart, color: summary.maternalMortalityRatio > 500 ? 'var(--color-danger-text)' : 'var(--color-warning-text)', bg: summary.maternalMortalityRatio > 500 ? 'rgba(242, 109, 100,0.12)' : 'rgba(255, 210, 166,0.12)' },

@@ -27,7 +27,6 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
-import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHeader';
 import DashboardCreateActions from '@/components/dashboard/DashboardCreateActions';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useHospitals } from '@/lib/hooks/useHospitals';
@@ -380,11 +379,8 @@ export default function AdminDashboardPage() {
      scrolls instead of squeezing it away. */
   return (
     <main className="page-container page-enter sadb-scope" style={{ display: 'flex', flexDirection: 'column' }}>
-      {/* The command center is a DASHBOARD, so it names who is signed in and
-          what they are looking at. The console screens behind it deliberately
-          do not (see SadbPage's `greeting`) — repeated on all of them the line
-          was noise, but on the screen a role lands on it is the header. */}
-      <DashboardGreetingHeader module="Platform dashboard" actions={<DashboardCreateActions />} />
+      {/* No greeting row (removed 2026-11-04): the create actions sit on the
+          Organizations list below, which is what they add to. */}
       <div className="sadb-page" style={{ flex: '1 1 auto', minHeight: 0 }}>
 
         {/* ═══ KPI tile row ═══ */}
@@ -497,9 +493,10 @@ export default function AdminDashboardPage() {
             title="Organizations"
             meta={loading ? undefined : `${activeOrgs.length} active · ${trialOrgs.length} trial · ${suspendedOrgs.length} suspended`}
             action={
-              /* ⤢ only (the Add button is gone, 2026-08-23): creating an
-                 organization lives on the registry page this promotes to,
-                 next to the list it adds to. */
+              /* The create actions (organization, facility, staff member) as
+                 O3 openers on the list they add to, then ⤢ to the registry. */
+              <span className="flex items-center gap-1">
+              <DashboardCreateActions variant="ghost" />
               <button
                 type="button"
                 className="p-1.5 rounded-md flex-shrink-0"
@@ -510,6 +507,7 @@ export default function AdminDashboardPage() {
               >
                 <Maximize2 className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />
               </button>
+              </span>
             }
           />
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>

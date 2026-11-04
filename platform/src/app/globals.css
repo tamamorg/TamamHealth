@@ -441,6 +441,12 @@
   --accent-primary:  var(--tb-blue-900);
   --accent-hover:    var(--tb-blue-800);
   --accent-text:     var(--color-brand-700);
+  /* Text-only openers ("New referral +", "Add +", "Prescribe +", "Record
+     vitals →"): the brighter Tamam blue, half the accent and half the brand
+     blue — #1174B4 by default, 5.0:1 on white and 4.7:1 on the page canvas,
+     so 14px labels stay readable; it still follows a tenant's accent. The
+     pure brand blue #2191D0 is 3.5:1, too faint for button text. */
+  --accent-link:     color-mix(in srgb, var(--accent-primary) 50%, var(--tm-blue));
   --accent-light:    color-mix(in srgb, var(--accent-primary) 8%, transparent);
   --accent-border:   var(--tb-blue-900);
   /* Foreground for content sitting ON the accent. Overwritten per-tenant by
@@ -794,6 +800,7 @@
      TEXT rungs brighten to stay readable on navy. */
   --accent-hover:  var(--tm-blue);
   --accent-text:   var(--brand-300);
+  --accent-link:   var(--brand-300);
   --focus-ring:    var(--brand-300);
   --accent-light:  color-mix(in srgb, var(--tm-dodger) 16%, transparent);
   --text-strong:   var(--brand-300);
@@ -35185,7 +35192,7 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  color: var(--accent-text);
+  color: var(--accent-link);
   font-size: 14px;
   font-weight: 400;
   text-decoration: none;
@@ -35198,7 +35205,7 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   .btn-primary:has(> svg.lucide-plus):not([role="dialog"] *):not(.modal-panel *)
 ):not(.tm-dialog__foot > *):not(.tm-action-bar > *):hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-slate-400) 12%, transparent);
-  color: var(--accent-hover, var(--accent-text));
+  color: var(--accent-hover, var(--accent-link));
   text-decoration: none;
 }
 
@@ -35218,7 +35225,7 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 ):not(.tm-dialog__foot > *):not(.tm-action-bar > *) svg.lucide {
   width: 16px;
   height: 16px;
-  color: var(--accent-text) !important;
+  color: var(--accent-link) !important;
   stroke: currentColor !important;
 }
 
