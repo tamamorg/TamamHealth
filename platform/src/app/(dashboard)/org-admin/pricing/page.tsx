@@ -30,6 +30,7 @@ import type { FeeScheduleDoc, ChargeCategory, BillingUnit } from '@/lib/db-types
 import { formatMoney } from '@/lib/format-utils';
 import Select from '@/components/Select';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import NumberInput from '@/components/forms/NumberInput';
 
 const CATEGORIES: { value: ChargeCategory; label: string }[] = [
   { value: 'consultation', label: 'Consultation' },
@@ -262,7 +263,7 @@ export default function ServicePricingPage() {
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <Field label="Price">
-                  <input className="sadb-modal-input" type="number" step="any" min={0} value={form.unitPrice} onChange={e => setForm({ ...form, unitPrice: Number(e.target.value) })} />
+                  <NumberInput className="sadb-modal-input" step="any" min={0} value={form.unitPrice} onChange={e => setForm({ ...form, unitPrice: Number(e.target.value) })} />
                 </Field>
                 <Field label="Currency">
                   <input className="sadb-modal-input" value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })} />

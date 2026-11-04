@@ -26,6 +26,7 @@ import {
 } from './basket-types';
 import PatientBanner from './PatientBanner';
 import UnlabelledDrugNotice from '@/components/clinical-notes/prescribe/UnlabelledDrugNotice';
+import NumberInput from '@/components/forms/NumberInput';
 
 /** The −/+ number field O3 uses for durations and refills. */
 function Stepper({ id, value, onChange, min = 0, label }: {
@@ -35,7 +36,7 @@ function Stepper({ id, value, onChange, min = 0, label }: {
   const step = (d: number) => onChange(String(Math.max(min, (Number.isFinite(n) ? n : min) + d)));
   return (
     <div className="obf-stepper">
-      <input id={id} type="number" inputMode="numeric" min={min} value={value} onChange={e => onChange(e.target.value)} />
+      <NumberInput id={id} inputMode="numeric" min={min} value={value} onChange={e => onChange(e.target.value)} />
       <button type="button" onClick={() => step(-1)} aria-label={`${label} −1`}><Minus aria-hidden /></button>
       <button type="button" onClick={() => step(1)} aria-label={`${label} +1`}><Plus aria-hidden /></button>
     </div>
@@ -245,7 +246,7 @@ export default function DrugOrderForm({
             <div className="obf-row">
               <label className="obf-field">
                 <span className="obf-label">{t('basket.quantity')}</span>
-                <input type="number" inputMode="numeric" min={1} value={order.quantity} placeholder={String(quantity)} onChange={e => patch({ quantity: e.target.value })} />
+                <NumberInput inputMode="numeric" min={1} value={order.quantity} placeholder={String(quantity)} onChange={e => patch({ quantity: e.target.value })} />
               </label>
               <label className="obf-field">
                 <span className="obf-label">{t('basket.quantityUnit')}</span>
@@ -261,7 +262,7 @@ export default function DrugOrderForm({
             </div>
             <label className="obf-field">
               <span className="obf-label">{t('basket.indication')}</span>
-              <input type="text" value={order.indication} placeholder={t('basket.indicationPlaceholder')} onChange={e => patch({ indication: e.target.value })} />
+              <textarea rows={1} value={order.indication} placeholder={t('basket.indicationPlaceholder')} onChange={e => patch({ indication: e.target.value })} />
             </label>
           </section>
         </div>

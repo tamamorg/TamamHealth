@@ -32,6 +32,7 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import { VisitFinancialReview } from '@/modules/financial-clearance/client';
 import { describeApiError, describeError } from '@/lib/user-facing-error';
 import RowActionsMenu, { type RowAction } from '@/components/RowActionsMenu';
+import NumberInput from '@/components/forms/NumberInput';
 
 const ADJUSTMENT_TYPES: AdjustmentType[] = ['write_off', 'bad_debt', 'charity', 'denial', 'contractual', 'correction'];
 const BILLING_ROLES = ['cashier', 'medical_biller', 'org_admin', 'medical_superintendent', 'super_admin'];
@@ -816,9 +817,8 @@ export default function BillingTab({
                 </div>
                 <div className="bl-field">
                   <label htmlFor="bl-refund-amount">{t('billing.refundAmount')}</label>
-                  <input
-                    id="bl-refund-amount"
-                    type="number" step="any"
+                  <NumberInput
+                    id="bl-refund-amount" step="any"
                     min={0}
                     max={selectedRefundPayment?.amount ?? 0}
                     value={refundAmount || ''}
@@ -863,7 +863,7 @@ export default function BillingTab({
             </div>
             <div className="bl-field">
               <label htmlFor="bl-adj-amount">{t('billing.amount')}</label>
-              <input id="bl-adj-amount" type="number" step="any" min={0} value={adjForm.amount || ''} onChange={e => setAdjForm({ ...adjForm, amount: parseFloat(e.target.value) || 0 })} />
+              <NumberInput id="bl-adj-amount" step="any" min={0} value={adjForm.amount || ''} onChange={e => setAdjForm({ ...adjForm, amount: parseFloat(e.target.value) || 0 })} />
             </div>
             <div className="bl-field">
               <label htmlFor="bl-adj-reasoncode">{t('billing.reasonCode')}</label>
@@ -920,9 +920,8 @@ export default function BillingTab({
               <>
                 <div className="bl-field">
                   <label htmlFor="bl-link-amount">{t('billing.amount')}</label>
-                  <input
-                    id="bl-link-amount"
-                    type="number" step="any" min={0} value={linkAmount || ''}
+                  <NumberInput
+                    id="bl-link-amount" step="any" min={0} value={linkAmount || ''}
                     onChange={e => setLinkAmount(parseFloat(e.target.value) || 0)}
                   />
                 </div>

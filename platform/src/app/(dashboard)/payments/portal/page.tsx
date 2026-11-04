@@ -15,6 +15,7 @@ import type { BillingDoc } from '@/lib/db-types-billing';
 import type { PaymentMethodType, PaymentStatus } from '@/lib/db-types-payments';
 import { formatMoney } from '@/lib/format-utils';
 import '@/components/billing/billing.css';
+import NumberInput from '@/components/forms/NumberInput';
 
 // Demo gate — must be EXPLICITLY enabled (=== 'true'): an absent build-time
 // env var must never show a patient invented invoices. In production the portal never
@@ -521,9 +522,8 @@ export default function PatientPortalPage() {
             <div className="bl-card" style={{ marginBottom: 16, padding: '16px 20px' }}>
               <div className="bl-field">
                 <label htmlFor="portal-amount">{t('portal.paymentAmountSsp')}</label>
-                <input
-                  id="portal-amount"
-                  type="number" step="any"
+                <NumberInput
+                  id="portal-amount" step="any"
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
                   style={{ fontSize: 16, fontWeight: 700 }}

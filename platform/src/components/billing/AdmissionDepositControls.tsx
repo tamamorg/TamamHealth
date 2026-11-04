@@ -10,6 +10,7 @@ import type { PaymentMethodType } from '@/lib/db-types-payments';
 import { describeError } from '@/lib/user-facing-error';
 import { FormError } from '@/components/overlay/FormNotices';
 import Select from '@/components/Select';
+import NumberInput from '@/components/forms/NumberInput';
 
 export default function AdmissionDepositControls({ admissionId }: { admissionId: string }) {
   const { currentUser } = useAuth();
@@ -53,8 +54,8 @@ export default function AdmissionDepositControls({ admissionId }: { admissionId:
   return <section className="ehr-card p-4 space-y-3">
     <h3>{t('deposit.controls')}</h3>
     <p>{t(`ward.depositStatus.${admission.admissionDepositStatus || 'due'}`)} · {admission.admissionDepositPaid ?? 0} / {admission.admissionDepositRequired} {admission.tariffCurrency}</p>
-    <label>{t('deposit.reason')}<input className="form-input" value={reason} onChange={event => setReason(event.target.value)} /></label>
-    <label>{t('deposit.amount')}<input className="form-input" type="number" min="0" step="0.01" value={amount} onChange={event => setAmount(event.target.value)} /></label>
+    <label>{t('deposit.reason')}<textarea rows={1} className="form-input" value={reason} onChange={event => setReason(event.target.value)} /></label>
+    <label>{t('deposit.amount')}<NumberInput className="form-input" min="0" step="0.01" value={amount} onChange={event => setAmount(event.target.value)} /></label>
     <label>{t('deposit.payment')}<Select className="form-input" value={paymentId} onChange={event => setPaymentId(event.target.value)}><option value="">{t('deposit.select')}</option>{payments.map(payment => <option key={payment.id} value={payment.id}>{payment.reference || payment.id} · {payment.amount} {admission.tariffCurrency}</option>)}</Select></label>
     <div className="flex flex-wrap gap-2">
       <label>{t('deposit.method')}<Select className="form-input" value={method} onChange={event => setMethod(event.target.value as PaymentMethodType)}>{(['cash', 'mobile_money', 'bank_transfer'] as const).map(value => <option key={value} value={value}>{t(`deposit.method.${value}`)}</option>)}</Select></label>

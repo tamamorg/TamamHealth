@@ -15,6 +15,7 @@ import {
 } from '@/components/admin/sadb-ui';
 import type { ChipTone } from '@/components/admin/sadb-ui';
 import { describeError } from '@/lib/user-facing-error';
+import NumberInput from '@/components/forms/NumberInput';
 
 // Roles this console page is routed to (lib/role-routes.ts) — medical_superintendent
 // and hospital_manager both carry '/my-facility' in their allowed list, and
@@ -143,8 +144,7 @@ export default function MyFacilityPage() {
   // just report it.
   const numberField = (label: string, value: number, onChange: (v: number) => void, max?: number) => (
     <SadbSettingRow key={label} label={label}>
-      <input
-        type="number" step="1"
+      <NumberInput step="1"
         min={0}
         max={max}
         className="sadb-modal-input"

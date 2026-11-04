@@ -9,6 +9,7 @@ import { worldCountries } from '@/lib/country/world-lists';
 import { bomasFor, countiesFor, locationLabel, payamsFor, states } from '@/lib/data/south-sudan-reference';
 import RegistrationField from '../RegistrationField';
 import type { RegistrationSectionProps } from '../registration-form';
+import NumberInput from '@/components/forms/NumberInput';
 
 /** The computed geocode, or undefined until both halves are present. */
 export function geocodeIdFor(bomaCode: string, householdNumber: string): string | undefined {
@@ -79,7 +80,7 @@ export default function ContactSection({ form, errors, update }: RegistrationSec
           </RegistrationField>
           <RegistrationField name="householdNumber" label={t('patientNew.householdNumber')}>
             {field => (
-              <input {...field} type="number" step="1" min={0} value={form.householdNumber}
+              <NumberInput {...field} step="1" min={0} value={form.householdNumber}
                 onChange={e => update('householdNumber', e.target.value)}
                 placeholder={t('patientNew.householdNumberPlaceholder')} />
             )}

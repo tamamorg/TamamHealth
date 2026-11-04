@@ -26,9 +26,19 @@ import { DEFAULT_CRITICAL_VALUES, isCritical, type CriticalValueRule } from './q
  * observation's label ("White blood cells (WBC)") in place of a test name —
  * the comparison is the same free-text fuzzy match either way.
  */
+/**
+ * Words that make a name a different measurement from the blood analyte it
+ * mentions: "Mean corpuscular hemoglobin concentration" is not hemoglobin
+ * (a normal MCHC of 33 g/dL read as a critical-high hemoglobin, so every full
+ * blood count went critical), nor is "Hemoglobin A1c", "Mean platelet volume",
+ * "Urine sodium" or "Creatinine clearance". Their limits are not these.
+ */
+const OTHER_MEASUREMENT = /\b(mean|corpuscular|mchc?|mcv|mpv|rdw|distribution|a1c|hba1c|glycated|glycosylated|electrophoresis|urine|urinary|csf|clearance|ratio|index)\b/;
+
 export function matchCriticalRule(testName: string): CriticalValueRule | undefined {
   const name = (testName || '').toLowerCase();
   if (!name) return undefined;
+  if (OTHER_MEASUREMENT.test(name)) return undefined;
   return DEFAULT_CRITICAL_VALUES.find(rule => {
     const analyte = rule.testName.split(' (')[0].toLowerCase();
     return name.includes(analyte) || analyte.includes(name);

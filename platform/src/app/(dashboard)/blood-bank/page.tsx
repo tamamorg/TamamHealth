@@ -30,6 +30,7 @@ import Select from '@/components/Select';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import NumberInput from '@/components/forms/NumberInput';
 
 const BLOOD_GROUPS: BloodBankDoc['bloodGroup'][] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -543,8 +544,7 @@ export default function BloodBankPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Volume (ml)</label>
-                    <input
-                      type="number" step="any"
+                    <NumberInput step="any"
                       min={1}
                       value={form.volume || ''}
                       onChange={e => setForm({ ...form, volume: parseInt(e.target.value) || 0 })}

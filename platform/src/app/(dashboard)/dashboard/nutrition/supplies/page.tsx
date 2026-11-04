@@ -20,6 +20,7 @@ import { useToast } from '@/components/Toast';
 import FormSlider from '@/components/overlay/FormSlider';
 import FormField from '@/components/overlay/FormField';
 import { AlertTriangle, CheckCircle2, Plus, TrendingDown } from '@/components/icons/lucide';
+import NumberInput from '@/components/forms/NumberInput';
 
 // Starter items persisted once as real docs when the store is empty in demo
 // mode (useNutritionSupplies → seedSuppliesIfEmpty). Production never sees it.
@@ -152,10 +153,10 @@ export default function NutritionSuppliesPage() {
               {control => <input {...control} value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} />}
             </FormField>
             <FormField id="nsup-level" label={t('nutrition.supplyFormCurrentLevel')}>
-              {control => <input {...control} type="number" min="0" step="1" value={form.currentLevel} onChange={e => setForm(f => ({ ...f, currentLevel: e.target.value }))} />}
+              {control => <NumberInput {...control} min="0" step="1" value={form.currentLevel} onChange={e => setForm(f => ({ ...f, currentLevel: e.target.value }))} />}
             </FormField>
             <FormField id="nsup-reorder" label={t('nutrition.supplyFormReorderLevel')}>
-              {control => <input {...control} type="number" min="0" step="1" value={form.reorderLevel} onChange={e => setForm(f => ({ ...f, reorderLevel: e.target.value }))} />}
+              {control => <NumberInput {...control} min="0" step="1" value={form.reorderLevel} onChange={e => setForm(f => ({ ...f, reorderLevel: e.target.value }))} />}
             </FormField>
           </div>
         </FormSlider>

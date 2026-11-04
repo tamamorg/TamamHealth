@@ -191,7 +191,7 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
 
               <FormField id="care-alert-resolve-reason" label="Reason" required className="mt-3">
                 {control => (
-                  <input
+                  <textarea rows={1}
                     {...control}
                     data-modal-initial-focus
                     className="fs-input"

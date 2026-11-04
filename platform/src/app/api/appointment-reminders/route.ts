@@ -28,23 +28,24 @@ export async function GET(request: NextRequest) {
     const view = url.searchParams.get('view') || 'upcoming';
     const facilityId = url.searchParams.get('facilityId') || undefined;
     const daysAhead = parseInt(url.searchParams.get('daysAhead') || '1', 10);
+    // Every view is the caller's organisation and facilities only.
+    const scope = buildScopeFromAuth(auth);
     switch (view) {
       case 'overdue': {
-        const overdue = await getOverdueAppointments(facilityId);
+        const overdue = await getOverdueAppointments(facilityId, scope);
         return NextResponse.json({ appointments: overdue, total: overdue.length });
       }
       case 'no-show-stats': {
         const start = url.searchParams.get('start') || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
         const end = url.searchParams.get('end') || new Date().toISOString().slice(0, 10);
-        const stats = await getNoShowStats({ start, end }, facilityId);
+        const stats = await getNoShowStats({ start, end }, facilityId, scope);
         return NextResponse.json(stats);
       }
       case 'missed-follow-ups': {
-        const missed = await getMissedFollowUps(facilityId);
+        const missed = await getMissedFollowUps(facilityId, scope);
         return NextResponse.json({ appointments: missed, total: missed.length });
       }
       default: {
-        const scope = buildScopeFromAuth(auth);
         const reminders = await getUpcomingReminders(daysAhead, facilityId, scope);
         return NextResponse.json({ appointments: reminders, total: reminders.length });
       }

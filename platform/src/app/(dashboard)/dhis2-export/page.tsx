@@ -344,7 +344,9 @@ export default function DHIS2ExportPage() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{t('dhis2.autoAggregated')}</h3>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>February 2026 · {hospitalName}</p>
+                  {/* These are running totals of what is on record, not one month: the
+                      export below is what uses the selected period. */}
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('dhis2.totalsToDate')} · {hospitalName}</p>
                 </div>
                 <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-md" style={{
                   background: 'var(--accent-light)',

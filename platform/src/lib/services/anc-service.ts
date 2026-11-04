@@ -52,39 +52,14 @@ export async function createANCVisit(data: Omit<ANCVisitDoc, '_id' | '_rev' | 't
     hospitalId: doc.facilityId,
   });
 
-  // Auto-trigger a clinical alert message if the mother is high-risk so the
-  // facility's clinical team is notified immediately. The message lands in
-  // the same Messages PouchDB so it shows up in the messages tab without
-  // any extra wiring.
+  // A high-risk visit reaches the care team through the bell, derived from
+  // this record (modules/communication/notifications/anc-alerts.ts). It used
+  // to be a message filed under the mother's own id, which reached nobody on
+  // the team and showed in her patient-portal inbox. The audit row stays.
   if (data.riskLevel === 'high') {
-    try {
-      const factors = (data.riskFactors || []).join(', ') || 'unspecified';
-      /* istanbul ignore next -- defensive: motherId/motherName always provided in practice */
-      const safeMotherIdVal = data.motherId || '';
-      const safeMotherNameVal = data.motherName || 'Unknown mother';
-      // Through createMessage, not a raw put: the subject and body name the
-      // mother and her risk factors, so they take the same field encryption,
-      // audit row and sync event as every other message.
-      const { createMessage } = await import('@/modules/communication/services/message-service');
-      await createMessage({
-        patientId: safeMotherIdVal,
-        patientName: safeMotherNameVal,
-        patientPhone: '',
-        fromDoctorId: 'system',
-        fromDoctorName: 'ANC High-Risk Alert',
-        fromHospitalName: data.facilityName || '',
-        subject: `HIGH-RISK PREGNANCY: ${data.motherName || 'patient'}`,
-        body: `${data.motherName || 'patient'} (ANC visit ${data.visitNumber}) flagged HIGH-RISK. Risk factors: ${factors}. Schedule prompt obstetric review.`,
-        channel: 'app',
-        sentAt: now,
-        orgId,
-      });
-      await logAuditSafe('ANC_HIGH_RISK_ALERT', undefined, undefined,
-        `Auto-alert: high-risk ANC visit ${data.visitNumber} for patient ${data.motherId || 'unknown'}; factors recorded on the visit`
-      );
-    } catch (err) {
-      console.warn('[ANC] failed to push high-risk alert message', err);
-    }
+    await logAuditSafe('ANC_HIGH_RISK_ALERT', undefined, undefined,
+      `High-risk ANC visit ${data.visitNumber} for patient ${data.motherId || 'unknown'}; factors recorded on the visit`
+    );
   }
 
   return doc;

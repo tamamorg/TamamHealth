@@ -120,24 +120,26 @@ export async function generateReminderMessages(appointments: AppointmentDoc[]): 
   return messages;
 }
 
-export async function getOverdueAppointments(facilityId?: string): Promise<AppointmentDoc[]> {
+/** `scope` is the caller's: without it every organisation's appointments come back. */
+export async function getOverdueAppointments(facilityId: string | undefined, scope: DataScope): Promise<AppointmentDoc[]> {
   const db = appointmentsDB();
   const all = await findByType<AppointmentDoc>(db, 'appointment');
 
   const today = jubaDate();
 
-  return all.filter(a =>
+  return filterByScope(all.filter(a =>
     a.appointmentDate < today &&
     a.status !== 'completed' &&
     a.status !== 'no_show' &&
     a.status !== 'cancelled' &&
     (!facilityId || a.facilityId === facilityId)
-  );
+  ), scope);
 }
 
 export async function getNoShowStats(
   dateRange: { start: string; end: string },
-  facilityId?: string
+  facilityId: string | undefined,
+  scope: DataScope,
 ): Promise<{
   totalAppointments: number;
   noShowCount: number;
@@ -149,11 +151,11 @@ export async function getNoShowStats(
   const db = appointmentsDB();
   const all = await findByType<AppointmentDoc>(db, 'appointment');
 
-  const filtered = all.filter(a =>
+  const filtered = filterByScope(all.filter(a =>
     a.appointmentDate >= dateRange.start &&
     a.appointmentDate <= dateRange.end &&
     (!facilityId || a.facilityId === facilityId)
-  );
+  ), scope);
 
   const noShows = filtered.filter(a => a.status === 'no_show');
   const completed = filtered.filter(a => a.status === 'completed');
@@ -182,18 +184,18 @@ export async function getNoShowStats(
   };
 }
 
-export async function getMissedFollowUps(facilityId?: string): Promise<AppointmentDoc[]> {
+export async function getMissedFollowUps(facilityId: string | undefined, scope: DataScope): Promise<AppointmentDoc[]> {
   const db = appointmentsDB();
   const all = await findByType<AppointmentDoc>(db, 'appointment');
 
   const today = jubaDate();
 
-  return all.filter(a =>
+  return filterByScope(all.filter(a =>
     a.appointmentType === 'follow_up' &&
     a.appointmentDate < today &&
     a.status === 'no_show' &&
     (!facilityId || a.facilityId === facilityId)
-  );
+  ), scope);
 }
 
 // ===== Helper Functions =====

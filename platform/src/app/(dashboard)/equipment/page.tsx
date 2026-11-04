@@ -15,6 +15,7 @@ import type { AssetDoc, AssetCategory, AssetStatus } from '@/lib/db-types-asset'
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import Select from '@/components/Select';
 import { useNow } from '@/lib/hooks/useNow';
+import NumberInput from '@/components/forms/NumberInput';
 
 const CATEGORIES: { id: AssetCategory; labelKey: string }[] = [
   { id: 'medical_equipment', labelKey: 'equipment.categoryMedicalEquipment' },
@@ -294,7 +295,7 @@ export default function AssetsPage() {
                 </div>
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelCost', { currency: form.costCurrency })}</label>
-                  <input type="number" step="any" min={0} value={form.cost || ''} onChange={e => setForm({ ...form, cost: parseFloat(e.target.value) || 0 })} />
+                  <NumberInput step="any" min={0} value={form.cost || ''} onChange={e => setForm({ ...form, cost: parseFloat(e.target.value) || 0 })} />
                 </div>
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelWarrantyExpires')}</label>
@@ -302,7 +303,7 @@ export default function AssetsPage() {
                 </div>
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelServiceInterval')}</label>
-                  <input type="number" step="1" min={0} value={form.serviceIntervalMonths || ''} onChange={e => setForm({ ...form, serviceIntervalMonths: parseInt(e.target.value) || 0 })} />
+                  <NumberInput step="1" min={0} value={form.serviceIntervalMonths || ''} onChange={e => setForm({ ...form, serviceIntervalMonths: parseInt(e.target.value) || 0 })} />
                 </div>
                 <div className="col-span-2">
                   <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelNotes')}</label>
@@ -338,7 +339,7 @@ export default function AssetsPage() {
                 </div>
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelServiceCost')}</label>
-                  <input type="number" step="any" min={0} value={serviceForm.cost || ''} onChange={e => setServiceForm({ ...serviceForm, cost: parseFloat(e.target.value) || 0 })} />
+                  <NumberInput step="any" min={0} value={serviceForm.cost || ''} onChange={e => setServiceForm({ ...serviceForm, cost: parseFloat(e.target.value) || 0 })} />
                 </div>
                 <div>
                   <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelServiceNotes')}</label>

@@ -35,6 +35,7 @@ import { buildClinicalPrintDocument } from '@/lib/print-document';
 import { formatPrintedAt, printDate } from '@/lib/print-identity';
 import { formatDobOmrs } from '@/lib/date-utils';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import NumberInput from '@/components/forms/NumberInput';
 
 
 const PAYMENT_METHODS: PaymentMethod[] = ['cash', 'mobile_money', 'bank_transfer', 'insurance', 'credit'];
@@ -508,9 +509,8 @@ export default function BillDetailPage() {
                     <td>{serviceStatus}</td>
                     <td className="bl-num bl-right">
                       {editingItemId === item.id ? (
-                        <input
-                          className="bl-qty-input"
-                          type="number" step="any"
+                        <NumberInput
+                          className="bl-qty-input" step="any"
                           min={1}
                           value={qtyDraft}
                           autoFocus
@@ -572,9 +572,8 @@ export default function BillDetailPage() {
                       </div>
                       <div className="bl-field">
                         <label htmlFor="bl-pay-amount">Amount tendered</label>
-                        <input
+                        <NumberInput
                           id="bl-pay-amount"
-                          type="number"
                           min={0}
                           step="0.01"
                           value={payAmount}
@@ -666,7 +665,7 @@ export default function BillDetailPage() {
           <div className="bl-root">
             <div className="bl-field">
               <label htmlFor="bl-disc-amount">Discount amount ({currency})</label>
-              <input id="bl-disc-amount" type="number" min={0} step="0.01" value={discountAmount} onChange={e => setDiscountAmount(e.target.value)} autoFocus />
+              <NumberInput id="bl-disc-amount" min={0} step="0.01" value={discountAmount} onChange={e => setDiscountAmount(e.target.value)} autoFocus />
             </div>
             <div className="bl-field">
               <label htmlFor="bl-disc-reason">Reason</label>
@@ -732,7 +731,7 @@ export default function BillDetailPage() {
               </div>
               <div className="bl-field">
                 <label htmlFor="bl-custom-price">Unit price ({currency})</label>
-                <input id="bl-custom-price" type="number" min={0} step="0.01" value={customPrice} onChange={e => setCustomPrice(e.target.value)} />
+                <NumberInput id="bl-custom-price" min={0} step="0.01" value={customPrice} onChange={e => setCustomPrice(e.target.value)} />
               </div>
               <div className="bl-field" style={{ justifyContent: 'flex-end' }}>
                 <button type="button" className="bl-btn bl-btn--outline" onClick={addCustomToPending} disabled={!customDesc.trim() || !customPrice}>
@@ -749,9 +748,8 @@ export default function BillDetailPage() {
                       <div className="bl-fee-name">{item.description}</div>
                       <div className="bl-fee-cat">{CATEGORY_LABELS[item.category]}</div>
                     </div>
-                    <input
-                      className="bl-qty-input"
-                      type="number" step="any"
+                    <NumberInput
+                      className="bl-qty-input" step="any"
                       min={1}
                       aria-label={`Quantity for ${item.description}`}
                       value={item.quantity}

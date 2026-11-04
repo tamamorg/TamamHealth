@@ -33,6 +33,7 @@ import { isAnyModalOpen } from '@/components/Modal';
 import './nurse-vitals-panel.css';
 import FormNotices from '@/components/overlay/FormNotices';
 import InlineBanner from '@/components/overlay/InlineBanner';
+import NumberInput from '@/components/forms/NumberInput';
 
 type NurseVitals = VitalsInput & { height?: string };
 type FieldKey = Exclude<keyof NurseVitals, 'notes'>;
@@ -192,8 +193,7 @@ export default function NurseVitalsModal({
     setVitals(current => ({ ...current, [key]: event.target.value }));
 
   const numberInput = (key: FieldKey, ariaLabel?: string) => (
-    <input
-      type="number"
+    <NumberInput
       inputMode="decimal"
       min="0"
       step="any"

@@ -465,8 +465,11 @@ export function O3TextField({ id, label, value, onChange, placeholder, wide, mul
 }) {
   return (
     <O3Question label={label} required={required} htmlFor={id} wide={wide ?? multiline} invalid={invalid && !value.trim()}>
-      {multiline
-        ? <textarea id={id} className="o3f-input" rows={3} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
+      {/* A wide free-text answer is a sentence ("fever 3 days, difficulty
+          breathing"): it starts one line tall, grows as it is typed and can be
+          dragged taller (TextareaAutoResize). Numbers stay inputs. */}
+      {multiline || (wide && !inputMode)
+        ? <textarea id={id} className="o3f-input" rows={multiline ? 3 : 1} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
         : <input id={id} type="text" inputMode={inputMode} className="o3f-input" value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />}
     </O3Question>
   );

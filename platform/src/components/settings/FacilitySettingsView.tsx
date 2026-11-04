@@ -49,6 +49,7 @@ import NetworkDefaultsView, { NETWORK_MODULES, type NetworkModuleKey } from '@/c
 import {
   SectionCard, Field, SaveBar, CheckRow, TagListEditor, toggleKey, orderByReference,
 } from '@/components/settings/settings-controls';
+import NumberInput from '@/components/forms/NumberInput';
 
 const DepartmentDirectoryEditor = dynamic(
   () => import('@/modules/departments/components/DepartmentDirectoryEditor'),
@@ -375,8 +376,8 @@ export function FacilitySettingsView({
                 <tbody>{draft.roomClasses.map((roomClass, index) => (
                   <tr key={roomClass.code} style={{ borderBottom: '1px solid var(--border-light)' }}>
                     <td className="px-3 py-2 text-sm font-semibold">{t(`facilitySettings.roomClass.${roomClass.code}`)}</td>
-                    <td className="px-3 py-2"><input className="fs-input" type="number" step="any" min={0} value={roomClass.nightlyTariff ?? ''} onChange={event => setDraft({ ...draft, roomClasses: draft.roomClasses.map((item, itemIndex) => itemIndex === index ? { ...item, nightlyTariff: event.target.value === '' ? undefined : Number(event.target.value) } : item) })} /></td>
-                    <td className="px-3 py-2"><input className="fs-input" type="number" step="any" min={0} value={roomClass.admissionDeposit ?? ''} onChange={event => setDraft({ ...draft, roomClasses: draft.roomClasses.map((item, itemIndex) => itemIndex === index ? { ...item, admissionDeposit: event.target.value === '' ? undefined : Number(event.target.value) } : item) })} /></td>
+                    <td className="px-3 py-2"><NumberInput className="fs-input" step="any" min={0} value={roomClass.nightlyTariff ?? ''} onChange={event => setDraft({ ...draft, roomClasses: draft.roomClasses.map((item, itemIndex) => itemIndex === index ? { ...item, nightlyTariff: event.target.value === '' ? undefined : Number(event.target.value) } : item) })} /></td>
+                    <td className="px-3 py-2"><NumberInput className="fs-input" step="any" min={0} value={roomClass.admissionDeposit ?? ''} onChange={event => setDraft({ ...draft, roomClasses: draft.roomClasses.map((item, itemIndex) => itemIndex === index ? { ...item, admissionDeposit: event.target.value === '' ? undefined : Number(event.target.value) } : item) })} /></td>
                     <td className="px-3 py-2"><input className="fs-input" value={roomClass.currency} onChange={event => setDraft({ ...draft, roomClasses: draft.roomClasses.map((item, itemIndex) => itemIndex === index ? { ...item, currency: event.target.value.toUpperCase() } : item) })} /></td>
                   </tr>
                 ))}</tbody>

@@ -14,6 +14,7 @@ import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { describeError } from '@/lib/user-facing-error';
 import type { ANCVisitDoc } from '@/lib/db-types';
+import NumberInput from '@/components/forms/NumberInput';
 
 export default function AncVisitEditor({ visit, onClose, onSaved }: {
   visit: ANCVisitDoc;
@@ -65,7 +66,7 @@ export default function AncVisitEditor({ visit, onClose, onSaved }: {
             </div>
             <div>
               <label>{t('ancChart.gaWeeks')}</label>
-              <input type="number" step="1" min={4} max={44} value={draft.gestationalAge} onChange={e => setDraft({ ...draft, gestationalAge: parseInt(e.target.value, 10) || 0 })} />
+              <NumberInput step="1" min={4} max={44} value={draft.gestationalAge} onChange={e => setDraft({ ...draft, gestationalAge: parseInt(e.target.value, 10) || 0 })} />
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -75,15 +76,15 @@ export default function AncVisitEditor({ visit, onClose, onSaved }: {
             </div>
             <div>
               <label>{t('ancChart.weight')}</label>
-              <input type="number" step="0.1" value={draft.weight || ''} onChange={e => setDraft({ ...draft, weight: parseFloat(e.target.value) })} />
+              <NumberInput step="0.1" value={draft.weight || ''} onChange={e => setDraft({ ...draft, weight: parseFloat(e.target.value) })} />
             </div>
             <div>
               <label>{t('ancChart.hb')}</label>
-              <input type="number" step="0.1" value={draft.hemoglobin || ''} onChange={e => setDraft({ ...draft, hemoglobin: parseFloat(e.target.value) })} />
+              <NumberInput step="0.1" value={draft.hemoglobin || ''} onChange={e => setDraft({ ...draft, hemoglobin: parseFloat(e.target.value) })} />
             </div>
             <div>
               <label>{t('ancChart.fhr')}</label>
-              <input type="number" step="1" value={draft.fetalHeartRate || ''} onChange={e => setDraft({ ...draft, fetalHeartRate: parseInt(e.target.value, 10) })} />
+              <NumberInput step="1" value={draft.fetalHeartRate || ''} onChange={e => setDraft({ ...draft, fetalHeartRate: parseInt(e.target.value, 10) })} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">

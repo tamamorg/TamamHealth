@@ -403,7 +403,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
             </div>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="retire-reason" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Reason (required)</label>
-              <input
+              <textarea rows={1}
                 id="retire-reason"
                 autoFocus
                 value={retireReason}

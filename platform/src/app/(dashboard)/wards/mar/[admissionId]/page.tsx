@@ -541,8 +541,7 @@ export default function MARPage() {
                     }}>
                       {t('mar.reason')} {modalStatus === 'refused' ? t('mar.reasonRefused') : modalStatus === 'held' ? t('mar.reasonHeld') : t('mar.reasonMissed')}
                     </label>
-                    <input
-                      type="text"
+                    <textarea rows={1}
                       value={modalReason}
                       onChange={(e) => setModalReason(e.target.value)}
                       className="w-full"

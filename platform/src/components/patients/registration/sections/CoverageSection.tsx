@@ -94,7 +94,7 @@ export default function CoverageSection({
           {form.payorExemptionReason === 'Other' && (
             <RegistrationField name="payorExemptionOther" label={t('patientNew.specifyReason')}>
               {field => (
-                <input {...field} type="text" value={form.payorExemptionOther}
+                <textarea rows={1} {...field} value={form.payorExemptionOther}
                   onChange={e => update('payorExemptionOther', e.target.value)}
                   placeholder={t('patientNew.specifyReason')} />
               )}

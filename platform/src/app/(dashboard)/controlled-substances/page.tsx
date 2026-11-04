@@ -18,6 +18,7 @@ import { formatDateTime } from '@/lib/format-utils';
 import Select from '@/components/Select';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import NumberInput from '@/components/forms/NumberInput';
 
 const SCHEDULES: ControlledSubstanceLogDoc['schedule'][] = ['I', 'II', 'III', 'IV', 'V'];
 const MOVEMENTS: ControlledSubstanceLogDoc['movement'][] = ['intake', 'dispense', 'waste', 'reconciliation', 'transfer'];
@@ -280,7 +281,7 @@ export default function ControlledSubstancesPage() {
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Quantity</label>
-                    <input type="number" min={0} step="any" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} placeholder="0" />
+                    <NumberInput min={0} step="any" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} placeholder="0" />
                   </div>
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Unit</label>
@@ -288,7 +289,7 @@ export default function ControlledSubstancesPage() {
                   </div>
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Before balance</label>
-                    <input type="number" min={0} step="any" value={form.beforeBalance} onChange={e => setForm({ ...form, beforeBalance: e.target.value })} placeholder="0" />
+                    <NumberInput min={0} step="any" value={form.beforeBalance} onChange={e => setForm({ ...form, beforeBalance: e.target.value })} placeholder="0" />
                   </div>
                 </div>
 

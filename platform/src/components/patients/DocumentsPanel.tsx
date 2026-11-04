@@ -393,7 +393,7 @@ export default function DocumentsPanel({
         )}
         <label className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
           Note (optional)
-          <input value={note} onChange={e => setNote(e.target.value)} placeholder={view === 'education' ? 'e.g. Went through it with the mother' : 'e.g. Contacted patient, all well'}
+          <textarea rows={1} value={note} onChange={e => setNote(e.target.value)} placeholder={view === 'education' ? 'e.g. Went through it with the mother' : 'e.g. Contacted patient, all well'}
             className="w-full p-2 rounded-md text-[12px] mt-0.5" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
         </label>
       </div>

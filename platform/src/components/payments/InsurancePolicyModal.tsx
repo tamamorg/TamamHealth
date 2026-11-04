@@ -9,6 +9,7 @@ import type { InsurancePolicyDoc, PayerType } from '@/lib/db-types-payments';
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
 import { expandHref } from '@/lib/navigation/expand-to-page';
+import NumberInput from '@/components/forms/NumberInput';
 
 interface InsurancePolicyModalProps {
   patientId: string;
@@ -185,8 +186,7 @@ export default function InsurancePolicyModal({
             <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>
               {t('billing.copayAmount') || 'Copay amount'}
             </label>
-            <input
-              type="number" step="any" min={0} value={form.copayAmount ?? ''}
+            <NumberInput step="any" min={0} value={form.copayAmount ?? ''}
               onChange={e => set('copayAmount', e.target.value === '' ? undefined : parseFloat(e.target.value))}
             />
           </div>
@@ -194,8 +194,7 @@ export default function InsurancePolicyModal({
             <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>
               {t('billing.coinsurancePct') || 'Coinsurance %'}
             </label>
-            <input
-              type="number" step="any" min={0} max={100} value={form.coinsurancePct ?? ''}
+            <NumberInput step="any" min={0} max={100} value={form.coinsurancePct ?? ''}
               onChange={e => set('coinsurancePct', e.target.value === '' ? undefined : parseFloat(e.target.value))}
             />
           </div>

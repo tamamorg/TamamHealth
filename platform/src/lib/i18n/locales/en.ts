@@ -9686,6 +9686,7 @@ const en: TranslationMap = {
   'reload.now': 'Reload now',
   'routeContext.transfers': 'Transfers',
   'routeContext.inquiries': 'Inquiries',
+  'dhis2.totalsToDate': 'Totals to date, not the selected period',
 };
 
 export default en;

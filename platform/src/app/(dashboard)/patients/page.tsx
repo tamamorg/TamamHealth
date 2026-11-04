@@ -29,6 +29,7 @@ import { hasUnsyncedWrite } from '@/lib/sync/offline-metadata';
 import { useNow } from '@/lib/hooks/useNow';
 import { formatLocationShared } from '@/lib/field-formats';
 import { useSharedScreenMask } from '@/lib/settings/useRoleSetting';
+import NumberInput from '@/components/forms/NumberInput';
 
 // Pagination cap — capped to keep DOM-node count manageable on low-end devices.
 // Each row produces ~20 DOM nodes; 100 rows ≈ 2k nodes which renders smoothly.
@@ -298,7 +299,7 @@ export default function PatientsPage() {
                     <label className="flex flex-col gap-1">
                       <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('patients.filterOlderThan')}</span>
                       <div className="relative">
-                        <input type="number" step="1" min={0} max={120} value={filters.olderThan} onChange={e => setF('olderThan', e.target.value)} placeholder="—" className="w-full text-sm py-2 ps-3 pe-12" style={fieldStyle} />
+                        <NumberInput step="1" min={0} max={120} value={filters.olderThan} onChange={e => setF('olderThan', e.target.value)} placeholder="—" className="w-full text-sm py-2 ps-3 pe-12" style={fieldStyle} />
                         <span className="absolute end-3 top-1/2 -translate-y-1/2 text-[11px]" style={{ color: 'var(--text-muted)' }}>{t('patients.filterYears')}</span>
                       </div>
                     </label>

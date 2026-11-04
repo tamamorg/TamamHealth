@@ -263,7 +263,7 @@ export default function AssignDoctorModal({
               onChange={e => setNote(e.target.value)}
               rows={2}
               placeholder="e.g. Febrile, ?malaria — needs review this morning"
-              className="w-full resize-none rounded-lg border px-3 py-2 text-sm"
+              className="w-full resize-y rounded-lg border px-3 py-2 text-sm"
               style={{ borderColor: 'var(--border-medium)', background: 'var(--bg-input, var(--bg-card-solid))', color: 'var(--text-primary)' }}
             />
           </div>

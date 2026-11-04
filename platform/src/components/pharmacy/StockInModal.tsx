@@ -6,6 +6,7 @@ import Select from '@/components/Select';
 import { medications } from '@/lib/data/formulary';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { UNITS } from './pharmacy-helpers';
+import NumberInput from '@/components/forms/NumberInput';
 
 export interface StockInForm {
   medicationName: string;
@@ -58,7 +59,7 @@ export default function StockInModal({ stockForm, setStockForm, onClose, onSave 
         </FormField>
         <div className="grid grid-cols-2 gap-3">
           <FormField label={t('pharmacy.quantity')} required>
-            {control => <input {...control} type="number" step="1" min={1} value={stockForm.stockLevel || ''} onChange={e => setStockForm({ ...stockForm, stockLevel: parseInt(e.target.value) || 0 })} />}
+            {control => <NumberInput {...control} step="1" min={1} value={stockForm.stockLevel || ''} onChange={e => setStockForm({ ...stockForm, stockLevel: parseInt(e.target.value) || 0 })} />}
           </FormField>
           <FormField label={t('pharmacy.unit')}>
             {control => (
@@ -70,7 +71,7 @@ export default function StockInModal({ stockForm, setStockForm, onClose, onSave 
         </div>
         <div className="grid grid-cols-2 gap-3">
           <FormField label={t('pharmacy.reorderLevel')}>
-            {control => <input {...control} type="number" step="1" min={0} value={stockForm.reorderLevel} onChange={e => setStockForm({ ...stockForm, reorderLevel: parseInt(e.target.value) || 0 })} />}
+            {control => <NumberInput {...control} step="1" min={0} value={stockForm.reorderLevel} onChange={e => setStockForm({ ...stockForm, reorderLevel: parseInt(e.target.value) || 0 })} />}
           </FormField>
           <FormField label={t('pharmacy.batchNumber')} optional>
             {control => <input {...control} type="text" value={stockForm.batchNumber} onChange={e => setStockForm({ ...stockForm, batchNumber: e.target.value })} />}

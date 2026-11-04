@@ -192,7 +192,7 @@ export default function DuplicateReviewPanel({ review, standalone = false }: {
                 </fieldset>
                 <FormField id="dup-mark-reason" label={t('dup.reasonLabel')} required className="mt-3">
                   {control => (
-                    <input
+                    <textarea rows={1}
                       {...control}
                       data-modal-initial-focus
                       className="fs-input"

@@ -17,6 +17,7 @@ import {
   Thermometer, Pill, FlaskConical, Droplets,
   ShieldCheck, Truck, FileText,
 } from '@/components/icons/lucide';
+import NumberInput from '@/components/forms/NumberInput';
 
 // Use the platform accent token so this dashboard matches the reference
 // Clinical Officer design instead of a one-off hardcoded hex.
@@ -216,8 +217,7 @@ export default function DataEntryDashboard() {
           {Icon && <Icon className="w-3 h-3" />}
           {label}
         </label>
-        <input
-          type="number" step="1" min={0}
+        <NumberInput step="1" min={0}
           value={census[field] as number}
           onChange={e => updateField(field, parseInt(e.target.value) || 0)}
           className="w-full px-3 py-2 rounded-md text-sm font-semibold"

@@ -22,6 +22,7 @@ import {
   getLabReferenceRange as getRefRange,
   criticalBoundsInEntryUnit,
 } from '@/lib/services/lab-critical-flag';
+import NumberInput from '@/components/forms/NumberInput';
 
 const ACCENT = 'var(--accent-primary)';
 
@@ -267,8 +268,7 @@ export default function LabBatchEntry({ onClose }: { onClose: () => void }) {
                                   ))}
                                 </Select>
                               ) : (
-                                <input
-                                  type="number"
+                                <NumberInput
                                   step="any"
                                   value={entry.resultValue}
                                   onChange={e => handleBatchEntryChange(entry.orderId, e.target.value)}

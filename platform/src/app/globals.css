@@ -36400,3 +36400,41 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
 /* A form's action buttons are square, like the chart's. Toggles and chips
    (aria-pressed, other classes) keep their own shape. */
 :is(.modal-portal-dialog, .sadb-regpage-form, .tm-form) :is(.btn-primary, .btn-secondary, .btn-outline, .btn-danger):not([aria-pressed]):not(:where(.o3f, .cn-editor, [data-form-look="off"]) *) { border-radius: 0 !important; }
+
+/* One focus mark for every form field: the chart form's 2px accent line,
+   drawn inside the field. The chart page's `outline: 3px … !important` and
+   the app-wide `box-shadow: 0 0 0 3px … !important` stacked on a focused
+   field into a thick double ring (2026-11-04, triage chief complaint). Search
+   boxes are left alone: their wrapper owns the focus state. */
+:is(.ehr-chart-page, .tamam-drawer, .modal-portal-dialog, .sadb-regpage-form, .tm-form, .tamam-reg, .o3f)
+  :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="search"]):not(:where([class*="search"]) *):focus {
+  outline: 2px solid var(--accent-primary) !important;
+  outline-offset: -2px !important;
+  box-shadow: none !important;
+}
+
+/* Number field with − / + beside it (components/forms/NumberInput.tsx).
+   The field keeps its own look; the buttons join it on the right, on the
+   form surface's grey, with the field's bottom rule. */
+.tm-num { display: flex; align-items: stretch; width: 100%; min-width: 0; }
+.tm-num > input { flex: 1 1 auto; min-width: 0; -moz-appearance: textfield; appearance: textfield; }
+.tm-num > input::-webkit-inner-spin-button,
+.tm-num > input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.tm-num > .tm-num-btn {
+  flex: 0 0 36px;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--form-rule, var(--border-medium));
+  border-radius: 0 !important;
+  background: var(--color-slate-100);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.tm-num > .tm-num-btn + .tm-num-btn { border-inline-start: 1px solid var(--border-light); }
+.tm-num > .tm-num-btn:hover:not(:disabled) { background: var(--accent-light); color: var(--accent-text, var(--accent-primary)); }
+.tm-num > .tm-num-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.tm-num > .tm-num-btn svg { width: 16px; height: 16px; color: inherit !important; stroke: currentColor !important; }

@@ -36,6 +36,7 @@ import { stopsClickPropagation } from '@/lib/a11y';
 import { PAYER_LABEL_KEYS } from './claims-filter';
 import { ClaimEvidence } from '@/modules/insurance/client';
 import { describeError } from '@/lib/user-facing-error';
+import NumberInput from '@/components/forms/NumberInput';
 
 // Claim status → bl-chip variant. Claim statuses are their own union (not
 // BillingStatus), so this maps onto the closest billing-module chip meaning:
@@ -523,9 +524,8 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
 
             <div className="bl-field">
               <label htmlFor="adj-allowed">{t('claims.labelAllowedAmount')}</label>
-              <input
-                id="adj-allowed"
-                type="number" step="any"
+              <NumberInput
+                id="adj-allowed" step="any"
                 value={adjForm.allowedAmount}
                 onChange={(e) => setAdjForm({ ...adjForm, allowedAmount: parseFloat(e.target.value) })}
               />
@@ -533,9 +533,8 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
 
             <div className="bl-field">
               <label htmlFor="adj-paid">{t('insuranceFlow.approvedAmount')}</label>
-              <input
-                id="adj-paid"
-                type="number" step="any"
+              <NumberInput
+                id="adj-paid" step="any"
                 value={adjForm.paidAmount}
                 onChange={(e) => setAdjForm({ ...adjForm, paidAmount: parseFloat(e.target.value) })}
               />
@@ -544,9 +543,8 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
             {(adjPreview === 'denied' || adjPreview === 'partial') && (
               <div className="bl-field">
                 <label htmlFor="adj-denial">{t('claims.labelDenialReason')}</label>
-                <input
+                <textarea rows={1}
                   id="adj-denial"
-                  type="text"
                   value={adjForm.denialReason || ''}
                   onChange={(e) => setAdjForm({ ...adjForm, denialReason: e.target.value })}
                   placeholder={t('claims.denialReasonPlaceholder')}
@@ -711,9 +709,8 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                       {offeredCurrencies().map(currency => <option key={currency} value={currency}>{currency}</option>)}
                     </Select>
                     <label htmlFor="claim-amount">Claim amount</label>
-                    <input
-                      id="claim-amount"
-                      type="number" step="any"
+                    <NumberInput
+                      id="claim-amount" step="any"
                       min="0"
                       value={newClaim.amount}
                       onChange={e => setNewClaim(f => ({ ...f, amount: e.target.value }))}

@@ -533,6 +533,14 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       out.push(...dispensedItems(rxs, currentUser, nowMsLocal, perSourceLimit));
     } catch { /* offline */ }
 
+    // High-risk pregnancies recorded in the last three days, for the
+    // clinicians and midwives who can see the mother (anc-alerts.ts).
+    if (relevant('alert')) try {
+      const { getAllANCVisits } = await import('@/lib/services/anc-service');
+      const { ancHighRiskItems } = await import('@/modules/communication/notifications/anc-alerts');
+      out.push(...ancHighRiskItems(await getAllANCVisits(scope), currentUser, nowMsLocal, perSourceLimit));
+    } catch { /* offline */ }
+
     // Prescriptions awaiting dispensing (pharmacy queue).
     if (relevant('prescription')) try {
       const { getAllPrescriptions } = await import('@/lib/services/prescription-service');

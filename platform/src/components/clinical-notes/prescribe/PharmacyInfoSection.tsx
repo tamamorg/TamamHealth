@@ -38,7 +38,7 @@ export default function PharmacyInfoSection({
 
       <label className="cn-rx-field cn-rx-field--wide">
         <span>Pharmacy Instructions</span>
-        <input
+        <textarea rows={1}
           className="cn-input"
           value={draft.pharmacyNote}
           onChange={e => onChange({ pharmacyNote: e.target.value })}

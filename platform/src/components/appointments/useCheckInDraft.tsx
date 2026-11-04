@@ -139,7 +139,7 @@ export function useCheckInDraft(
       </Select>
     ))}
     {billing.payment === 'non_paying' && billing.exemption === 'other' && field(t('startVisit.exemptionReason'), (
-      <input type="text" value={billing.exemptionReason || ''} onChange={e => setBilling(prev => ({ ...prev, exemptionReason: e.target.value }))} />
+      <textarea rows={1} value={billing.exemptionReason || ''} onChange={e => setBilling(prev => ({ ...prev, exemptionReason: e.target.value }))} />
     ))}
   </>) : null;
 

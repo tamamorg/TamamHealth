@@ -29,6 +29,7 @@ import { toIsoDate } from '@/lib/date-utils';
 import type { ImmunizationDoc, PatientDoc } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { describeError } from '@/lib/user-facing-error';
+import NumberInput from '@/components/forms/NumberInput';
 
 const SITES: ImmunizationDoc['site'][] = ['left arm', 'right arm', 'left thigh', 'right thigh', 'oral'];
 
@@ -286,9 +287,8 @@ export default function ImmunizationsSection({ patient, patientName, canRecord, 
               </div>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="imm-dose" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Dose number</label>
-                <input
-                  id="imm-dose"
-                  type="number" step="1"
+                <NumberInput
+                  id="imm-dose" step="1"
                   min={1}
                   value={doseNumber}
                   onChange={e => setDoseNumber(e.target.value)}
