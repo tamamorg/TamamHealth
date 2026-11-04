@@ -1,0 +1,612 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * MANAGEMENT FRAME: the management modules in the patient chart's look
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Every management screen (platform admin, organisation admin, facility
+ * management, ministry and county oversight, operations registers, reports and
+ * analytics) wears the chart's frame: one body face, sentence case, the
+ * chart's section titles, table heads, KPI band, section list and pills.
+ * `(dashboard)/layout.tsx` stamps `data-surface="management"` on <main> for
+ * those routes (lib/navigation/management-surface.ts); nothing here reaches
+ * the chart, the clinical queues or a popup (dialogs portal outside <main>).
+ *
+ * Values are the chart's own, measured on /patients/[id]
+ * (chart-frame.css, chart-tables.css, tamam-chart.css):
+ *   page title      20px / 600 ink
+ *   section title   16px / 600, 3px accent underline
+ *   card            white, 1px hairline, 3px accent top, 4% accent head
+ *   table head      13px / 600 ink on slate-100, 40px, 10px 16px
+ *   table cell      13px, 12px 16px, hairline rows
+ *   KPI band        hairline-joined cells, 12px / 600 label, 20px / 600 value
+ *   section list    40px rows, 14px, accent icons; current = info wash + 3px bar
+ *   pill            999px, sentence case
+ *
+ * Status follows the status-indicator rule (shape + colour + word, never
+ * colour alone): status pills carry a dot, flagged KPI cells carry a tinted
+ * cell, a 3px top rule and their written delta, like out-of-range vitals.
+ *
+ * Specificity: every rule starts `body main[data-surface="management"]`
+ * (0,1,2), which out-ranks the kits' single-class rules in globals.css
+ * without !important. !important appears only where the base rule has it.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Type: one body face, sentence case ───────────────────────────────────
+   The consoles set labels, heads, chips and tabs in condensed, tracked
+   capitals, and dates in a mono face. The chart has none of that. Pointing
+   the two face tokens at the platform face here flips every rule that uses
+   them at once; the blanket sentence case covers the literal `uppercase`
+   utilities and the kits' own text-transform rules. */
+body main[data-surface="management"] {
+  --font-condensed: var(--font-platform);
+  --font-platform-mono: var(--font-platform);
+  --font-mono: var(--font-platform);
+  background: var(--bg-app);
+}
+
+body main[data-surface="management"] *:not(input, textarea, select, kbd, code, pre) {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+/* Pages that capitalise a raw enum on purpose (`capitalize` on "emergency",
+   "watch") keep it: that is sentence case for a one-word value. */
+body main[data-surface="management"] .capitalize.capitalize { text-transform: capitalize !important; }
+
+/* Numbers line up in columns, as in the chart's vitals and tables. */
+body main[data-surface="management"] :is(td, .tabular-nums, [class*="-value"], [class*="-num"]) {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The smallest chart text is 12px (sub-lines, labels). Micro sizes were only
+   legible because they were capitals; in sentence case they step up. */
+body main[data-surface="management"] :is(.text-\[9px\], .text-\[10px\], .text-\[10\.5px\]) { font-size: 12px !important; }
+body main[data-surface="management"] :is(.text-\[7px\], .text-\[8px\]) { font-size: 11px !important; }
+body main[data-surface="management"] .text-\[11px\] { font-size: 12px !important; }
+
+/* ── Page title: the banner name ──────────────────────────────────────────
+   Greeting headers, module titles and list-header titles all read as the
+   chart banner's name line: 20px / 600 in ink, its eyebrow a 13px meta line. */
+body main[data-surface="management"] :is(
+  .ehr-care-greeting,
+  .ehr-page-title,
+  .ehr-branded-page-title,
+  .gov-page-head h1,
+  .gov-page-head h2,
+  .sadb-page-head h1,
+  .page-container > h1,
+  .page-container > div > h1
+) {
+  font-family: var(--font-platform) !important;
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+  color: var(--text-primary) !important;
+}
+
+body main[data-surface="management"] :is(.ehr-care-greeting-sub, .gov-page-head p) {
+  font-family: var(--font-platform) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: var(--text-secondary) !important;
+}
+
+/* The count in "Assets (8)" is the banner's meta grey, not a second title. */
+body main[data-surface="management"] .ehr-page-title .tabular-nums { font-weight: 400 !important; color: var(--text-muted) !important; }
+
+
+/* ── Cards: the summary card ──────────────────────────────────────────────
+   One card for every console family: white, hairline, the 3px accent top
+   and faintly tinted head of the chart's summary cards, no shadow, no lift. */
+body main[data-surface="management"] :is(
+  .sadb-card:not(.sadb-rail),
+  .gov-panel,
+  .card-elevated,
+  .dash-card,
+  .rpt-side-card,
+  .sa-card
+) {
+  background: var(--bg-card-solid) !important;
+  border: 1px solid var(--border-light) !important;
+  border-top: 3px solid var(--accent-primary) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+
+body main[data-surface="management"] :is(.card-elevated, .dash-card):hover {
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+body main[data-surface="management"] :is(.sadb-card-head, .gov-panel-head, .sa-card-head, .rpt-side-head) {
+  min-height: 44px;
+  padding: 8px 16px !important;
+  background: color-mix(in srgb, var(--accent-primary) 4%, var(--bg-card-solid)) !important;
+  border-bottom: 1px solid var(--border-light) !important;
+  border-radius: 0 !important;
+}
+
+/* Card titles: the summary card's 16px / 600 accent title. */
+body main[data-surface="management"] :is(
+  .sadb-card-title,
+  .gov-panel-head h3,
+  .gov-panel-head h2,
+  .sa-card-title,
+  .rpt-side-head,
+  .rpt-rail-head,
+  .epi-list-title
+) {
+  font-family: var(--font-platform) !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+  color: var(--accent-text) !important;
+}
+
+body main[data-surface="management"] :is(.sadb-card-meta, .gov-meta, .gov-panel-head .gov-meta) {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: var(--text-secondary) !important;
+}
+
+/* Head actions read like the chart's "Prescribe +", "Add +": a 14px accent
+   link, not a tracked capital. */
+body main[data-surface="management"] .sadb-head-link {
+  font-family: var(--font-platform);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--accent-text);
+}
+body main[data-surface="management"] .sadb-head-link:hover { color: var(--accent-hover, var(--accent-text)); text-decoration: underline; }
+
+/* ── Section titles inside a page (headings outside a card head) ─────────
+   The chart's ChartSection voice: 16px / 600 ink over a 3px accent rule. */
+body main[data-surface="management"] :is(.sadb-panel-head h2, .sadb-panel-head h3, .sadb-setting-group-title) {
+  font-family: var(--font-platform) !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  color: var(--text-primary) !important;
+}
+
+/* ── KPI band: the vitals row ─────────────────────────────────────────────
+   Tiles join into one hairline-ruled band: each a white cell (the 1px gaps
+   show the rule colour through), label over value, the value the loudest
+   thing in the band. */
+body main[data-surface="management"] :is(.sadb-kpi-row, .kpi-grid, .epi-stat-row, .rpt-kpis) {
+  gap: 1px !important;
+  background: var(--border-light) !important;
+  border: 1px solid var(--border-light) !important;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+body main[data-surface="management"] :is(.sadb-kpi, .kpi, .epi-stat-tile, .rpt-kpi) {
+  position: relative;
+  min-width: 0;
+  padding: 10px 14px 12px !important;
+  background: var(--bg-card-solid) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+body main[data-surface="management"] button.sadb-kpi:hover,
+body main[data-surface="management"] a.kpi:hover { background: var(--accent-light) !important; }
+body main[data-surface="management"] button.sadb-kpi:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+/* A tile that opens a filtered view says so: a chevron in its corner, so
+   which numbers lead somewhere is visible before the pointer finds them. */
+body main[data-surface="management"] button.sadb-kpi::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  inset-inline-end: 12px;
+  width: 6px;
+  height: 6px;
+  border-top: 1.5px solid var(--accent-text, var(--accent-primary));
+  border-inline-end: 1.5px solid var(--accent-text, var(--accent-primary));
+  transform: rotate(45deg);
+  opacity: 0.7;
+}
+body main[data-surface="management"] button.sadb-kpi:hover::after { opacity: 1; }
+
+body main[data-surface="management"] :is(.sadb-kpi-label, .kpi__label, .epi-stat-label, .rpt-kpi-label) {
+  margin: 0;
+  font-family: var(--font-platform) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--text-secondary) !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body main[data-surface="management"] :is(.sadb-kpi-value, .kpi__value, .epi-stat-value, .rpt-kpi-value) {
+  margin-top: 4px;
+  font-family: var(--font-platform) !important;
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+body main[data-surface="management"] :is(.sadb-kpi-delta, .rpt-kpi-note) {
+  margin-top: 2px;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: var(--text-secondary);
+}
+
+/* Indicators, the vitals way: a cell that needs attention is a pale cell with
+   a 3px rule along its top, and its delta says why in words. Good news is
+   only the delta's colour and an arrow. */
+body main[data-surface="management"] .sadb-kpi:has(.sadb-kpi-delta.is-warn) {
+  background: var(--color-warning-bg) !important;
+  box-shadow: inset 0 3px 0 var(--color-warning) !important;
+}
+body main[data-surface="management"] .sadb-kpi-delta.is-warn { color: var(--color-warning-text, var(--color-warning-700)) !important; font-weight: 600 !important; }
+body main[data-surface="management"] .sadb-kpi-delta.is-up { color: var(--color-success-text, var(--color-success-800)) !important; font-weight: 600 !important; }
+/* A warning is not a direction, so it gets the alert triangle (lucide
+   triangle-alert as a mask, painted in the text colour), not an arrow. */
+body main[data-surface="management"] .sadb-kpi-delta.is-warn::before {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-inline-end: 4px;
+  vertical-align: -1px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3'/%3E%3Cpath d='M12 9v4'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3'/%3E%3Cpath d='M12 9v4'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+body main[data-surface="management"] .sadb-kpi-delta.is-up::before { content: '↑ '; }
+
+/* ── Tables: the chart's table head and rows ───────────────────────────── */
+body main[data-surface="management"] table thead th,
+body main[data-surface="management"] .ehr-list-scroll .data-table thead th,
+body main[data-surface="management"] .sadb-tenant-grid--head,
+body main[data-surface="management"] .sadb-tenant-grid--head > *,
+body main[data-surface="management"] .appointment-card-head,
+body main[data-surface="management"] .appointment-card-head > * {
+  font-family: var(--font-platform) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--text-primary) !important;
+}
+
+body main[data-surface="management"] table thead th,
+body main[data-surface="management"] .ehr-list-scroll .data-table thead th {
+  /* The registers' head rule sets condensed tracked capitals with !important
+     at (0,3,2); this selector is the one that out-ranks it. */
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  height: 40px;
+  padding: 10px 16px !important;
+  background: var(--color-slate-100) !important;
+  border-bottom: 1px solid var(--border-light) !important;
+  vertical-align: middle !important;
+  white-space: nowrap;
+}
+
+body main[data-surface="management"] .sadb-tenant-grid--head {
+  min-height: 40px;
+  align-items: center;
+  padding-block: 10px !important;
+  background: var(--color-slate-100) !important;
+  border-bottom: 1px solid var(--border-light) !important;
+}
+
+/* The registers built on the shared list surface (Leave, Inquiries, Shifts,
+   Payroll) draw their column labels as a grid row, not a <thead>: the same
+   40px slate band. */
+body main[data-surface="management"] .appointment-card-surface .appointment-card-head,
+body main[data-surface="management"] .appointment-card-head {
+  min-height: 40px;
+  padding-block: 10px !important;
+  background: var(--color-slate-100) !important;
+  box-shadow: none !important;
+  border-bottom: 1px solid var(--border-light);
+}
+body main[data-surface="management"] .appointment-card-head .tm-sortable { color: var(--text-primary) !important; }
+
+body main[data-surface="management"] table tbody td {
+  padding-block: 12px !important;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border-light);
+}
+body main[data-surface="management"] table tbody td:first-child { padding-inline-start: 16px !important; }
+body main[data-surface="management"] table tbody td:last-child { padding-inline-end: 16px !important; }
+body main[data-surface="management"] table thead th:first-child { padding-inline-start: 16px !important; }
+
+body main[data-surface="management"] table tbody tr:hover td { background: var(--ehr-hover, var(--bg-app)); }
+
+body main[data-surface="management"] .sadb-tenant-row {
+  font-size: 13px;
+  border-bottom: 1px solid var(--border-light);
+}
+body main[data-surface="management"] button.sadb-tenant-row:hover { background: var(--ehr-hover, var(--bg-app)); }
+
+/* ── Status pills: the chart's badge, with a dot ─────────────────────────
+   Sentence-case pills like "Active" / "Prescribed" in the chart. Status
+   tones carry a 6px dot before the word, so the state reads by shape and
+   word as well as colour; categories (blue, neutral, plan tiers) do not. */
+body main[data-surface="management"] :is(.sadb-chip, .sa-pill, .gov-chip, .epi-chip, .org-status) {
+  /* inline-block, not flex: ::first-letter only applies to block-like boxes,
+     and it is what turns a raw "active" / "high confidence" into sentence
+     case without title-casing "Not configured". */
+  display: inline-block;
+  vertical-align: middle;
+  height: 22px;
+  line-height: 20px !important;
+  padding: 0 9px !important;
+  border-radius: 999px !important;
+  font-family: var(--font-platform) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  white-space: nowrap;
+}
+body main[data-surface="management"] :is(.sadb-chip, .sa-pill, .gov-chip, .epi-chip, .org-status)::first-letter { text-transform: uppercase; }
+
+/* The dot is painted, not a ::before box: generated content ahead of the
+   text would stop ::first-letter capitalising it. background-image only, so
+   each tone's own fill (a `background` shorthand) still shows beneath. */
+body main[data-surface="management"] :is(.sadb-chip--green, .sadb-chip--yellow, .sadb-chip--red):not(:has(.sadb-chip-dot)) {
+  padding-inline-start: 20px !important;
+  background-image: radial-gradient(circle at 11px 50%, currentColor 0 3px, transparent 3.5px);
+  background-repeat: no-repeat;
+}
+
+/* ── Section list: the chart's left rail ──────────────────────────────────
+   The two-pane consoles (Security, Configuration, Data, Branding, Approval
+   queue) get the chart's section list: a 240px white column, square, flush
+   40px rows, accent icons, the current section on the info wash with a 3px
+   accent bar along its edge. */
+body main[data-surface="management"] .sadb-shell {
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  body main[data-surface="management"] .sadb-shell { grid-template-columns: minmax(0, 1fr); }
+}
+
+body main[data-surface="management"] :is(.sadb-rail, .hr-set-nav, .vs-section-nav, .ehr-set-nav) {
+  padding: 8px 0 !important;
+  background: var(--bg-card-solid) !important;
+  border: 1px solid var(--border-light) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+body main[data-surface="management"] .sadb-rail-group { margin-bottom: 8px; }
+body main[data-surface="management"] .sadb-rail-title,
+body main[data-surface="management"] .rpt-rail-group-title {
+  margin: 0;
+  padding: 8px 16px 4px;
+  font-family: var(--font-platform) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--text-secondary) !important;
+}
+
+body main[data-surface="management"] :is(.sadb-rail-item, .ehr-set-nav-item, .ehr-set-nav button, .ehr-set-nav a) {
+  position: relative;
+  min-height: 40px;
+  gap: 16px;
+  padding: 8px 16px !important;
+  border-radius: 0 !important;
+  font-family: var(--font-platform) !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  color: var(--text-primary) !important;
+  background: transparent;
+}
+body main[data-surface="management"] :is(.sadb-rail-item, .ehr-set-nav-item, .ehr-set-nav button, .ehr-set-nav a) svg {
+  width: 16px !important;
+  height: 16px !important;
+  color: var(--accent-text, var(--accent-primary));
+}
+body main[data-surface="management"] :is(.sadb-rail-item, .ehr-set-nav-item, .ehr-set-nav button, .ehr-set-nav a):hover:not(.is-active, .active, [aria-current="page"], [aria-selected="true"]) {
+  background: var(--accent-light) !important;
+}
+body main[data-surface="management"] :is(.sadb-rail-item.is-active, .ehr-set-nav .is-active, .ehr-set-nav .active, .ehr-set-nav [aria-current="page"], .ehr-set-nav [aria-selected="true"]) {
+  background: var(--color-info-bg) !important;
+  color: var(--accent-text, var(--accent-primary)) !important;
+  font-weight: 600 !important;
+}
+body main[data-surface="management"] .ehr-set-nav :is(.active, .is-active, [aria-current="page"]) :is(em, span) { color: inherit !important; font-weight: inherit !important; }
+body main[data-surface="management"] :is(.sadb-rail-item.is-active, .ehr-set-nav .is-active, .ehr-set-nav .active, .ehr-set-nav [aria-current="page"], .ehr-set-nav [aria-selected="true"])::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 3px;
+  background: var(--accent-primary);
+}
+body main[data-surface="management"] :is(.sadb-rail-item:focus-visible, .ehr-set-nav button:focus-visible) { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+
+/* Counts on a section row: a quiet pill, the way the chart counts a tab. */
+body main[data-surface="management"] .sadb-rail-badge {
+  min-width: 22px;
+  height: 20px;
+  padding: 0 7px;
+  font-family: var(--font-platform) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  background: var(--color-slate-100) !important;
+  color: var(--text-secondary) !important;
+}
+body main[data-surface="management"] .sadb-rail-item.is-active .sadb-rail-badge {
+  background: var(--accent-primary) !important;
+  color: var(--color-white, #fff) !important;
+}
+
+/* ── Card-head tabs: the one segmented switch ─────────────────────────────
+   Same control as the chart's Upcoming / Today / Past switch (globals.css
+   "One segmented switch"): 36px, 14px sentence case, white options in a thin
+   accent frame, the chosen one on the info wash in accent text. */
+body main[data-surface="management"] .sadb-tabs {
+  display: inline-flex;
+  gap: 0;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 45%, transparent);
+  border-radius: 4px;
+  background: var(--bg-card-solid);
+  overflow: hidden;
+}
+body main[data-surface="management"] .sadb-tab {
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 0;
+  border-inline-start: 1px solid color-mix(in srgb, var(--accent-primary) 45%, transparent);
+  font-family: var(--font-platform);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+body main[data-surface="management"] .sadb-tab:first-child { border-inline-start: 0; }
+body main[data-surface="management"] .sadb-tab:hover { background: var(--bg-app); color: var(--text-primary); }
+body main[data-surface="management"] .sadb-tab.is-active {
+  background: var(--color-info-bg);
+  color: var(--accent-text, var(--accent-primary));
+  box-shadow: none;
+}
+body main[data-surface="management"] .sadb-tab-badge {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+/* ── Key/value rows and queue rows ───────────────────────────────────────
+   The summary card's list rhythm: 13px label in ink, the value right, a
+   hairline between rows. */
+body main[data-surface="management"] .sadb-kv { min-height: 44px; padding-inline: 16px; }
+body main[data-surface="management"] .sadb-kv > span:first-child { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+body main[data-surface="management"] .sadb-kv-value { font-size: 14px; font-weight: 600; }
+
+body main[data-surface="management"] .sadb-queue-row { padding: 12px 16px; }
+body main[data-surface="management"] .sadb-queue-title-text { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+body main[data-surface="management"] .sadb-queue-sub { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+body main[data-surface="management"] .sadb-queue-when { font-size: 12px; color: var(--text-secondary); }
+body main[data-surface="management"] button.sadb-queue-row:hover { background: var(--accent-light); }
+
+/* ── Search fields: the chart's section search ───────────────────────────── */
+body main[data-surface="management"] .sadb-search {
+  min-height: 36px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+body main[data-surface="management"] .sadb-search input { font-size: 14px; font-weight: 500; }
+
+/* ── Empty states ─────────────────────────────────────────────────────────
+   The chart's OmrsEmptyState voice: centred 14px secondary, never a
+   coloured bold line. */
+body main[data-surface="management"] :is(.sadb-empty, .sa-empty, .rpt-panel-empty) {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: var(--text-secondary) !important;
+}
+
+/* The ministry pages' view strips (map layers, Epidemic Intelligence's
+   Overview / Curves / … tabs, the surveillance chart type) join the same
+   switch. The frame is drawn on the buttons, joined edge to edge, so the
+   strip's own padding inside a card head is left alone. The curves tab's
+   disease filter is a multi-select, not a switch, and keeps its pills. */
+body main[data-surface="management"] .gov-map-layers:not(.epi-filter-panel .gov-map-layers) { gap: 0 !important; }
+body main[data-surface="management"] .gov-map-layers:not(.epi-filter-panel .gov-map-layers) button {
+  min-height: 34px;
+  margin: 0;
+  margin-inline-start: -1px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 45%, transparent);
+  border-radius: 0;
+  background: var(--bg-card-solid);
+  color: var(--text-secondary);
+  font-family: var(--font-platform);
+  font-size: 14px;
+  font-weight: 500;
+}
+body main[data-surface="management"] .gov-map-layers:not(.epi-filter-panel .gov-map-layers) button:first-child { margin-inline-start: 0; border-start-start-radius: 4px; border-end-start-radius: 4px; }
+body main[data-surface="management"] .gov-map-layers:not(.epi-filter-panel .gov-map-layers) button:last-child { border-start-end-radius: 4px; border-end-end-radius: 4px; }
+body main[data-surface="management"] .gov-map-layers:not(.epi-filter-panel .gov-map-layers) button:hover { background: var(--bg-app); color: var(--text-primary); }
+body main[data-surface="management"] .gov-map-layers:not(.epi-filter-panel .gov-map-layers) button.is-active {
+  position: relative;
+  z-index: 1;
+  background: var(--color-info-bg);
+  color: var(--accent-text, var(--accent-primary));
+}
+body main[data-surface="management"] .gov-map-layers button::first-letter { text-transform: uppercase; }
+body main[data-surface="management"] .gov-map-layers button { display: inline-block; }
+body main[data-surface="management"] .epi-filter-panel .gov-map-layers button { font-family: var(--font-platform); font-size: 13px; font-weight: 500; }
+
+/* Plan tiers take the pill's sentence case too ("enterprise" → "Enterprise"). */
+body main[data-surface="management"] .sadb-plan {
+  display: inline-block;
+  font-family: var(--font-platform) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+body main[data-surface="management"] .sadb-plan::first-letter { text-transform: uppercase; }
+
+/* ── Settings groups (Facility profile, Branding, Flags, Announcements) ──
+   Each group is a card; its head takes the card head's tint and 16px title. */
+body main[data-surface="management"] .sadb-group-head {
+  min-height: 44px;
+  padding: 8px 16px;
+  background: color-mix(in srgb, var(--accent-primary) 4%, var(--bg-card-solid));
+}
+body main[data-surface="management"] .sadb-group-title {
+  font-family: var(--font-platform);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--accent-text);
+}
+body main[data-surface="management"] .sadb-setting-label { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+body main[data-surface="management"] .sadb-setting-sub { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+
+/* ── Organisation header: the patient banner ──────────────────────────────
+   An organisation's page opens the way a patient's chart does: the name at
+   20px in ink on the faint brand wash, its type and onboarding date as the
+   meta line, and its numbers as label-over-value cells on hairlines. The
+   solid navy card read as a different product. */
+body main[data-surface="management"] .orgh {
+  padding: 12px 20px 16px;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent-primary) 7%, var(--bg-card-solid));
+  color: var(--text-primary);
+  box-shadow: none;
+}
+body main[data-surface="management"] .orgh-name h2 {
+  font-family: var(--font-platform);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+body main[data-surface="management"] .orgh-sub { font-size: 14px; font-weight: 500; color: var(--text-secondary); }
+/* The navy header painted its chips white-on-glass; on the wash they take
+   their own tones back (neutral first, then each tone over it). */
+body main[data-surface="management"] :is(.orgh-name, .orgh-stat) .sadb-chip { background-color: var(--bg-card-solid); border-color: var(--border-light); color: var(--text-secondary); }
+body main[data-surface="management"] :is(.orgh-name, .orgh-stat) .sadb-chip--blue { background-color: var(--tb-blue-50); border-color: var(--brand-400); color: var(--brand-800); }
+body main[data-surface="management"] .orgh-name .sadb-chip--green,
+body main[data-surface="management"] .orgh-stat .sadb-chip--green { background-color: color-mix(in srgb, var(--color-success) 10%, transparent); border-color: color-mix(in srgb, var(--color-success) 40%, transparent); color: var(--color-success-800); }
+body main[data-surface="management"] .orgh-name .sadb-chip--yellow { background-color: color-mix(in srgb, var(--color-warning) 10%, transparent); border-color: color-mix(in srgb, var(--color-warning) 42%, transparent); color: var(--color-warning-700); }
+body main[data-surface="management"] .orgh-name .sadb-chip--red { background-color: color-mix(in srgb, var(--color-danger) 8%, transparent); border-color: color-mix(in srgb, var(--color-danger) 42%, transparent); color: var(--color-danger-800); }
+body main[data-surface="management"] .orgh-stat .sadb-plan { background-color: var(--bg-card-solid); }
+
+body main[data-surface="management"] .orgh-stats {
+  border-top: 1px solid var(--border-light);
+}
+body main[data-surface="management"] .orgh-stat-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+body main[data-surface="management"] .orgh-stat-value { font-family: var(--font-platform); font-size: 20px; font-weight: 600; color: var(--text-primary); }
+body main[data-surface="management"] .orgh-stat-value .orgh-stat-cap { font-size: 12px; font-weight: 400; color: var(--text-secondary); }
+body main[data-surface="management"] .orgh-stat-note { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+body main[data-surface="management"] .orgh-stat-note--warn { color: var(--color-warning-text, var(--color-warning-700)); font-weight: 600; }
+
+/* Header actions: the chart header's buttons (secondary white with an
+   accent edge). The destructive one keeps its own solid red rule. */
+body main[data-surface="management"] .orgh-btn:not(.orgh-btn--danger) {
+  background: var(--bg-card-solid);
+  border-color: color-mix(in srgb, var(--accent-primary) 35%, var(--border-light));
+  color: var(--accent-text);
+}
+body main[data-surface="management"] .orgh-btn:not(.orgh-btn--danger):hover { background: var(--accent-light); }

@@ -2,7 +2,8 @@
 
 import { ForcePasswordChange } from '@/modules/identity/client';
 import { Suspense, useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { isManagementSurface } from '@/lib/navigation/management-surface';
 import { useAuth } from '@/lib/context';
 import { setAuditActor } from '@/lib/services/audit-service';
 import EhrTopRail from '@/components/ehr/EhrTopRail';
@@ -32,6 +33,8 @@ import PageDraftKeeper from '@/components/unsaved/PageDraftKeeper';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  // Management modules wear the patient chart's frame (app/management-frame.css).
+  const managementSurface = isManagementSurface(usePathname());
   const { isAuthenticated, currentUser, dbReady, logout, platformPolicy } = useAuth();
   // Audit rows written from this browser are filed under the signed-in user's
   // organisation and facility, or they never replicate to the server — see
@@ -197,7 +200,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Suspense fallback={null}>
                 <RouteContextBar />
               </Suspense>
-              <main id="main-content" className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
+              <main
+                id="main-content"
+                className="relative flex-1 flex flex-col min-w-0 overflow-hidden"
+                data-surface={managementSurface ? 'management' : undefined}
+              >
                 <RoleGuard>{children}</RoleGuard>
                 <GetStartedCard />
                 <PageDraftKeeper />

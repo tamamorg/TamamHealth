@@ -214,7 +214,7 @@ function OrganizationRegistry() {
                       <span className="sadb-tenant-name truncate">{org.name}</span>
                       <span className="sadb-tenant-sub truncate">{org.slug}</span>
                     </span>
-                    <span className="truncate">{org.orgType}</span>
+                    <span className="truncate">{org.orgType === 'public' ? t('orgAdmin.typePublic') : t('orgAdmin.typePrivate')}</span>
                     <span className="truncate">{counts.facilities}</span>
                     <span className="truncate">{may('person:view') ? counts.people : '—'}</span>
                     <span style={{ textAlign: 'end' }}>

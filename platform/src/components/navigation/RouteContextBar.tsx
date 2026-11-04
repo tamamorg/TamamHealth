@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { getDefaultDashboard } from '@/lib/role-routes';
 import { resolveRouteContext, routeContextBackHref } from '@/lib/navigation/route-context';
-import { useConsoleTrailValue } from './ConsoleTrail';
+import { useConsoleTrailInline, useConsoleTrailValue } from './ConsoleTrail';
 import BackLink from './BackLink';
 
 /**
@@ -30,7 +30,29 @@ export function useInlineRouteBack(): { href: string; labelKey: string } | null 
   };
 }
 
-export default function RouteContextBar() {
+/** One crumb, already in the reader's language. */
+export interface ResolvedCrumb { label: string; href?: string }
+
+/**
+ * Where Back goes and the crumbs to show, for the bar and for a page that
+ * draws them itself (FormPageHead). One resolution, so the two can never send
+ * Back to different places.
+ *
+ * A record page (organization → facility → person) publishes a trail that
+ * names the records themselves; it wins over the URL-derived context, which
+ * cannot know that `/admin/facilities/abc123` sits under Juba Teaching Group.
+ * Back follows the trail's own parent when there is one, and `?returnTo=`
+ * overrides both: it carries where the operator actually came from.
+ */
+export function useRouteBack(): {
+  /** The bar would be drawn here (a curated route, or a published trail). */
+  hasContext: boolean;
+  /** The page draws Back and its title itself, so the bar stays away. */
+  inline: boolean;
+  showBack: boolean;
+  backHref: string;
+  crumbs: ResolvedCrumb[];
+} {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { t } = useTranslation();
@@ -40,14 +62,40 @@ export default function RouteContextBar() {
   // roles that share such a prefix do not share a dashboard — so it has to be
   // resolved per role, not hard-coded in the route table.
   const homeHref = currentUser ? getDefaultDashboard(currentUser.role) : '/dashboard';
-  const context = resolveRouteContext(pathname, homeHref, searchParams.get('returnTo'));
-  /* A record page (organization → facility → person) publishes a trail that
-     names the records themselves. It wins over the URL-derived context, which
-     cannot know that `/admin/facilities/abc123` sits under Juba Teaching
-     Group — the level above is not in the URL. */
+  const returnTo = searchParams.get('returnTo');
+  const context = resolveRouteContext(pathname, homeHref, returnTo);
   const trail = useConsoleTrailValue();
-  // A page that carries Back in its own layout (the patient chart) gets no bar.
-  const shown = !!(trail?.length || (context && !context.inlineBack));
+  const trailInline = useConsoleTrailInline();
+
+  const trailParent = trail?.length ? [...trail].reverse().find(crumb => crumb.href)?.href : undefined;
+  const fallbackContext = context ?? {
+    crumbs: [],
+    fallbackHref: trailParent ?? homeHref,
+    showBack: true,
+  };
+  const backHref = routeContextBackHref(
+    trail?.length ? { ...fallbackContext, fallbackHref: trailParent ?? fallbackContext.fallbackHref } : fallbackContext,
+    returnTo,
+    pathname,
+  );
+
+  return {
+    hasContext: !!(trail?.length || context),
+    inline: trail?.length ? trailInline : !!context?.inlineBack,
+    showBack: trail?.length ? true : fallbackContext.showBack,
+    backHref,
+    crumbs: trail?.length
+      ? trail
+      : fallbackContext.crumbs.map(crumb => ({ label: t(crumb.labelKey), href: crumb.href })),
+  };
+}
+
+export default function RouteContextBar() {
+  const { t } = useTranslation();
+  const { hasContext, inline, showBack, backHref, crumbs } = useRouteBack();
+  // A page that carries Back in its own layout (the patient chart, every
+  // create form via FormPageHead) gets no bar: no strip above the page.
+  const shown = hasContext && !inline;
 
   /* Publish the bar's height as --app-route-bar-h. Whatever docks below the
      bar — the chart's workspace drawer, every <Modal variant="slider"> —
@@ -78,23 +126,6 @@ export default function RouteContextBar() {
 
   if (!shown) return null;
 
-  /* Back follows the trail's own parent when there is one: on a record page
-     that is the level above, which is a truer "back" than the route group's
-     root. `?returnTo=` still overrides both — it carries where the operator
-     actually came from. */
-  const trailParent = trail?.length ? [...trail].reverse().find(crumb => crumb.href)?.href : undefined;
-  const fallbackContext = context ?? {
-    crumbs: [],
-    fallbackHref: trailParent ?? homeHref,
-    showBack: true,
-  };
-  const backHref = routeContextBackHref(
-    trail?.length ? { ...fallbackContext, fallbackHref: trailParent ?? fallbackContext.fallbackHref } : fallbackContext,
-    searchParams.get('returnTo'),
-    pathname,
-  );
-  const showBack = trail?.length ? true : fallbackContext.showBack;
-
   return (
     <div className="route-context-bar" ref={barRef}>
       {showBack && (
@@ -111,27 +142,16 @@ export default function RouteContextBar() {
       )}
 
       <nav className="route-context-crumbs" aria-label={t('breadcrumb.label')}>
-        {trail?.length
-          ? trail.map((crumb, index) => (
-            <span className="route-context-crumb" key={`${crumb.label}-${index}`}>
-              {index > 0 && <ChevronRight className="route-context-chevron" aria-hidden="true" />}
-              {crumb.href ? (
-                <Link href={crumb.href}>{crumb.label}</Link>
-              ) : (
-                <span aria-current="page">{crumb.label}</span>
-              )}
-            </span>
-          ))
-          : fallbackContext.crumbs.map((crumb, index) => (
-            <span className="route-context-crumb" key={`${crumb.labelKey}-${index}`}>
-              {index > 0 && <ChevronRight className="route-context-chevron" aria-hidden="true" />}
-              {crumb.href ? (
-                <Link href={crumb.href}>{t(crumb.labelKey)}</Link>
-              ) : (
-                <span aria-current="page">{t(crumb.labelKey)}</span>
-              )}
-            </span>
-          ))}
+        {crumbs.map((crumb, index) => (
+          <span className="route-context-crumb" key={`${crumb.label}-${index}`}>
+            {index > 0 && <ChevronRight className="route-context-chevron" aria-hidden="true" />}
+            {crumb.href ? (
+              <Link href={crumb.href}>{crumb.label}</Link>
+            ) : (
+              <span aria-current="page">{crumb.label}</span>
+            )}
+          </span>
+        ))}
       </nav>
     </div>
   );

@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useConsoleTrail } from '@/components/navigation/ConsoleTrail';
+import FormPageHead from '@/components/navigation/FormPageHead';
 import { SadbPage } from '@/components/admin/sadb-ui';
 import { UserForm, USER_FORM_SECTIONS, type UserCredentialHandoff } from '@/components/admin/UserForm';
 import { CredentialHandoffModal } from '@/modules/identity/client';
@@ -61,7 +62,7 @@ export default function AdminUserCreatePage() {
   const backToRoster = () => router.push(returnTo);
 
   // Title and Back are in the bar at the top (RouteContextBar).
-  useConsoleTrail('admin-user-new', [{ label: t('breadcrumb.users'), href: returnTo }, { label: t('adminUsers.createUser') }]);
+  useConsoleTrail('admin-user-new', [{ label: t('breadcrumb.users'), href: returnTo }, { label: t('adminUsers.createUser') }], { inline: true });
 
   return (
     <SadbPage>
@@ -69,6 +70,7 @@ export default function AdminUserCreatePage() {
 
         <div className="sadb-regpage">
           <aside className="sadb-regpage-rail" aria-label={t('adminUsers.jumpToSection')}>
+            <FormPageHead />
             <p className="sadb-regpage-note">{t('adminUsers.createPageNote')}</p>
             <p className="sadb-regpage-jump">{t('adminUsers.jumpToSection')}</p>
             <nav className="sadb-regpage-nav">

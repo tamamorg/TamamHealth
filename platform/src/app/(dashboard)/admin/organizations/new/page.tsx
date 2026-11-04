@@ -16,6 +16,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useConsoleTrail } from '@/components/navigation/ConsoleTrail';
+import FormPageHead from '@/components/navigation/FormPageHead';
 import { SadbPage } from '@/components/admin/sadb-ui';
 import { OrganizationForm, ORG_FORM_SECTIONS } from '@/components/admin/OrganizationForm';
 import type { OrgAdminHandoff } from '@/components/admin/OrganizationForm';
@@ -34,7 +35,7 @@ export default function AdminOrganizationCreatePage() {
   const backToRegistry = () => router.push('/admin/organizations');
 
   // Title and Back are in the bar at the top (RouteContextBar).
-  useConsoleTrail('admin-org-new', [{ label: t('breadcrumb.organizations'), href: '/admin/organizations' }, { label: t('orgAdmin.createOrganization') }]);
+  useConsoleTrail('admin-org-new', [{ label: t('breadcrumb.organizations'), href: '/admin/organizations' }, { label: t('orgAdmin.createOrganization') }], { inline: true });
 
   return (
     <SadbPage>
@@ -45,6 +46,7 @@ export default function AdminOrganizationCreatePage() {
               the same ORG_FORM_SECTIONS list the form renders its anchors
               from, so the rail and the sections can never drift apart. */}
           <aside className="sadb-regpage-rail" aria-label={t('orgAdmin.jumpToSection')}>
+            <FormPageHead />
             <p className="sadb-regpage-note">{t('orgAdmin.createPageNote')}</p>
             <p className="sadb-regpage-jump">{t('orgAdmin.jumpToSection')}</p>
             <nav className="sadb-regpage-nav">
