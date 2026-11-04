@@ -12,8 +12,9 @@
  *
  * Everything the old shell did is still here, re-homed:
  *  • the clickable Facility Overview metrics — now KPI tiles (staffing and
- *    census) plus a Today's Operations card (the day-scoped figures), both
- *    keeping the ?preview= deep-linked FacilityMetricPreviewDialog;
+ *    census) plus a Today's Operations card (the day-scoped figures). A tile
+ *    opens the page that owns its figure directly (2026-11-04: the preview
+ *    popup that used to stand in between was removed, as on /admin);
  *  • the week's cash — as a ring with its total in the middle and the two
  *    amounts beside it (2026-08-24), which is the super-admin readiness
  *    card's anatomy and its layout classes. Seven columns of stacked bars
@@ -43,7 +44,7 @@
 
 import { defaultCurrency } from '@/lib/country/country-pack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
   Loader2,} from '@/components/icons/lucide';
@@ -55,10 +56,8 @@ import { useWards } from '@/lib/hooks/useWards';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useFacilityCensus } from '@/lib/hooks/useFacilityCensus';
 import { censusFor } from '@/lib/services/facility-census';
-import Modal from '@/components/Modal';
-import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import {
-  SadbPage, SadbCard, SadbKpiTile, SadbKvRow,
+  SadbPage, SadbCard, SadbKpiTile, SadbKvRow, trendBetween, type SadbTrendValue,
   SadbGridList, SadbGridRow, SadbHeadLink, SadbSearch, SadbChip,
 } from '@/components/admin/sadb-ui';
 import DashboardCreateActions from '@/components/dashboard/DashboardCreateActions';
@@ -165,38 +164,6 @@ export interface FacilityOverviewMetric {
   value: number | string;
   href: string;
   tone?: 'neutral' | 'warning' | 'danger' | 'success';
-}
-
-function FacilityMetricPreviewDialog({ metric, onClose, onOpen }: {
-  metric: FacilityOverviewMetric;
-  onClose: () => void;
-  onOpen: () => void;
-}) {
-  const titleId = 'facility-metric-preview-title';
-  return (
-    <Modal onClose={onClose} width={460} labelledBy={titleId}>
-      <DialogFrame>
-        {/* Expand and close, once each, in the head. This card used to offer
-            both again in a footer row, so two buttons at the bottom restated
-            two buttons at the top and the reader had to compare them. */}
-        <DialogHeader
-          titleId={titleId}
-          title={metric.label}
-          description="Facility overview"
-          onClose={onClose}
-          closeLabel="Close preview"
-          onExpand={onOpen}
-          expandLabel="Open full page"
-        />
-        <DialogBody>
-          <p className="sadb-kpi-value" style={{ fontSize: 30 }}>{metric.value}</p>
-          <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-            This is the current scope-visible total. Open the full page to review and manage the underlying records.
-          </p>
-        </DialogBody>
-      </DialogFrame>
-    </Modal>
-  );
 }
 
 /* Row shapes and their builders are shared with the queue's own page — see
@@ -307,9 +274,6 @@ const TIER_CLASS: Record<string, string> = {
 export default function FacilityManagementDashboard() {
   const { currentUser } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const previewOpenedHere = useRef(false);
   const scope = useDataScope();
 
   const { users, loading: usersLoading, error: usersError } = useUsers();
@@ -488,26 +452,26 @@ export default function FacilityManagementDashboard() {
     availableBeds,
   }), [today, users, usersUnavailable, patients, enquiries, leave, schedules, staffingGaps, availableProviderIds, staffListHref, availableBeds]);
 
-  const metricPreview = overview.metrics.find(metric => metric.key === searchParams.get('preview')) || null;
-
-  const openMetricPreview = useCallback((key: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('preview', key);
-    previewOpenedHere.current = true;
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [pathname, router, searchParams]);
-
-  const closeMetricPreview = useCallback(() => {
-    if (previewOpenedHere.current) {
-      previewOpenedHere.current = false;
-      router.back();
-      return;
+  /* Trends where the records carry a date to compare: patients registered
+     and inquiries received this week against the week before. Staff, beds
+     and the totals carry no history here, so they get no trend rather than
+     an invented one. */
+  const weekTrend = useCallback((items: Array<{ createdAt?: string }>) => {
+    const nowMs = Date.now();
+    let thisWeek = 0;
+    let lastWeek = 0;
+    for (const item of items) {
+      const at = item.createdAt ? new Date(item.createdAt).getTime() : NaN;
+      if (at >= nowMs - 7 * 86400000) thisWeek++;
+      else if (at >= nowMs - 14 * 86400000) lastWeek++;
     }
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('preview');
-    const query = params.toString();
-    router.replace(`${pathname}${query ? `?${query}` : ''}`, { scroll: false });
-  }, [pathname, router, searchParams]);
+    return { direction: trendBetween(thisWeek, lastWeek), label: `${thisWeek} this week vs ${lastWeek} last` };
+  }, []);
+  const tileTrends = useMemo<Record<string, SadbTrendValue | undefined>>(() => ({
+    patients: weekTrend(patients),
+    // More inquiries arriving is more work waiting: up is not good news here.
+    'inquiries-open': { ...weekTrend(enquiries), good: 'down' },
+  }), [weekTrend, patients, enquiries]);
 
   /* This week, Monday-first, on the CLINICAL calendar: both cards below read
      the same seven days, and a visit at 23:00 in Juba belongs to that day
@@ -619,7 +583,7 @@ export default function FacilityManagementDashboard() {
       actions={<DashboardCreateActions />}
     >
 
-      {/* ═══ KPI tiles — census & staffing totals, each opening its preview ═══ */}
+      {/* ═══ KPI tiles — census & staffing totals, each opening its full page ═══ */}
       <div className="sadb-kpi-row">
         {TILE_KEYS.map(key => {
           const m = metricByKey(key);
@@ -631,7 +595,9 @@ export default function FacilityManagementDashboard() {
               value={m.value}
               delta={m.tone === 'warning' || m.tone === 'danger' ? 'Needs attention' : undefined}
               deltaTone={m.tone === 'warning' || m.tone === 'danger' ? 'warn' : undefined}
-              onClick={() => openMetricPreview(m.key)}
+              trend={tileTrends[m.key]}
+              // Straight to the page that owns the figure: no preview stop.
+              onClick={() => router.push(m.href)}
             />
           );
         })}
@@ -766,16 +732,6 @@ export default function FacilityManagementDashboard() {
         </SadbCard>
       </div>
 
-      {metricPreview && (
-        <FacilityMetricPreviewDialog
-          metric={metricPreview}
-          onClose={closeMetricPreview}
-          onOpen={() => {
-            previewOpenedHere.current = false;
-            router.push(metricPreview.href);
-          }}
-        />
-      )}
 
     </SadbPage>
   );

@@ -18,7 +18,7 @@
  *   table head      13px / 600 ink on slate-100, 40px, 10px 16px
  *   table cell      13px, 12px 16px, hairline rows
  *   KPI band        hairline-joined cells, 12px / 600 label, 20px / 600 value
- *   section list    40px rows, 14px, accent icons; current = info wash + 3px bar
+ *   section list    40px rows, 14px, accent icons; current = solid accent row
  *   pill            999px, sentence case
  *
  * Status follows the status-indicator rule (shape + colour + word, never
@@ -95,8 +95,9 @@ body main[data-surface="management"] .ehr-page-title .tabular-nums { font-weight
 
 
 /* ── Cards: the summary card ──────────────────────────────────────────────
-   One card for every console family: white, hairline, the 3px accent top
-   and faintly tinted head of the chart's summary cards, no shadow, no lift. */
+   One card for every console family: white, a hairline all round and the
+   faintly tinted head of the chart's summary cards, no shadow, no lift. No
+   accent rule along the top (taken out 2026-11-04 at the user's request). */
 body main[data-surface="management"] :is(
   .sadb-card:not(.sadb-rail),
   .gov-panel,
@@ -107,7 +108,6 @@ body main[data-surface="management"] :is(
 ) {
   background: var(--bg-card-solid) !important;
   border: 1px solid var(--border-light) !important;
-  border-top: 3px solid var(--accent-primary) !important;
   border-radius: 4px !important;
   box-shadow: none !important;
 }
@@ -192,21 +192,6 @@ body main[data-surface="management"] :is(.sadb-kpi, .kpi, .epi-stat-tile, .rpt-k
 body main[data-surface="management"] button.sadb-kpi:hover,
 body main[data-surface="management"] a.kpi:hover { background: var(--accent-light) !important; }
 body main[data-surface="management"] button.sadb-kpi:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
-/* A tile that opens a filtered view says so: a chevron in its corner, so
-   which numbers lead somewhere is visible before the pointer finds them. */
-body main[data-surface="management"] button.sadb-kpi::after {
-  content: '';
-  position: absolute;
-  top: 12px;
-  inset-inline-end: 12px;
-  width: 6px;
-  height: 6px;
-  border-top: 1.5px solid var(--accent-text, var(--accent-primary));
-  border-inline-end: 1.5px solid var(--accent-text, var(--accent-primary));
-  transform: rotate(45deg);
-  opacity: 0.7;
-}
-body main[data-surface="management"] button.sadb-kpi:hover::after { opacity: 1; }
 
 body main[data-surface="management"] :is(.sadb-kpi-label, .kpi__label, .epi-stat-label, .rpt-kpi-label) {
   margin: 0;
@@ -258,7 +243,8 @@ body main[data-surface="management"] .sadb-kpi-delta.is-warn::before {
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3'/%3E%3Cpath d='M12 9v4'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E") center / contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3'/%3E%3Cpath d='M12 9v4'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E") center / contain no-repeat;
 }
-body main[data-surface="management"] .sadb-kpi-delta.is-up::before { content: '↑ '; }
+/* Direction is the trend's job (.sadb-trend below); `is-up` only means "fine"
+   on several pages, so it draws no arrow. */
 
 /* ── Tables: the chart's table head and rows ───────────────────────────── */
 body main[data-surface="management"] table thead th,
@@ -358,8 +344,8 @@ body main[data-surface="management"] :is(.sadb-chip--green, .sadb-chip--yellow, 
 /* ── Section list: the chart's left rail ──────────────────────────────────
    The two-pane consoles (Security, Configuration, Data, Branding, Approval
    queue) get the chart's section list: a 240px white column, square, flush
-   40px rows, accent icons, the current section on the info wash with a 3px
-   accent bar along its edge. */
+   40px rows, accent icons, the current section on a solid
+   accent fill (the chart's current-section row). */
 body main[data-surface="management"] .sadb-shell {
   grid-template-columns: 240px minmax(0, 1fr);
   gap: 16px;
@@ -407,19 +393,17 @@ body main[data-surface="management"] :is(.sadb-rail-item, .ehr-set-nav-item, .eh
 body main[data-surface="management"] :is(.sadb-rail-item, .ehr-set-nav-item, .ehr-set-nav button, .ehr-set-nav a):hover:not(.is-active, .active, [aria-current="page"], [aria-selected="true"]) {
   background: var(--accent-light) !important;
 }
+/* The current section is the chart's: a solid Tamam-blue row with white type
+   and icon (no wash, no edge bar). */
 body main[data-surface="management"] :is(.sadb-rail-item.is-active, .ehr-set-nav .is-active, .ehr-set-nav .active, .ehr-set-nav [aria-current="page"], .ehr-set-nav [aria-selected="true"]) {
-  background: var(--color-info-bg) !important;
-  color: var(--accent-text, var(--accent-primary)) !important;
+  background: var(--accent-primary) !important;
+  color: var(--color-white, #fff) !important;
   font-weight: 600 !important;
 }
 body main[data-surface="management"] .ehr-set-nav :is(.active, .is-active, [aria-current="page"]) :is(em, span) { color: inherit !important; font-weight: inherit !important; }
-body main[data-surface="management"] :is(.sadb-rail-item.is-active, .ehr-set-nav .is-active, .ehr-set-nav .active, .ehr-set-nav [aria-current="page"], .ehr-set-nav [aria-selected="true"])::before {
-  content: '';
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
-  width: 3px;
-  background: var(--accent-primary);
+body main[data-surface="management"] :is(.sadb-rail-item.is-active, .ehr-set-nav .is-active, .ehr-set-nav .active, .ehr-set-nav [aria-current="page"], .ehr-set-nav [aria-selected="true"]) svg {
+  color: var(--color-white, #fff) !important;
+  stroke: currentColor !important;
 }
 body main[data-surface="management"] :is(.sadb-rail-item:focus-visible, .ehr-set-nav button:focus-visible) { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
 
@@ -435,8 +419,8 @@ body main[data-surface="management"] .sadb-rail-badge {
   color: var(--text-secondary) !important;
 }
 body main[data-surface="management"] .sadb-rail-item.is-active .sadb-rail-badge {
-  background: var(--accent-primary) !important;
-  color: var(--color-white, #fff) !important;
+  background: var(--color-white, #fff) !important;
+  color: var(--accent-text, var(--accent-primary)) !important;
 }
 
 /* ── Card-head tabs: the one segmented switch ─────────────────────────────
@@ -610,3 +594,28 @@ body main[data-surface="management"] .orgh-btn:not(.orgh-btn--danger) {
   color: var(--accent-text);
 }
 body main[data-surface="management"] .orgh-btn:not(.orgh-btn--danger):hover { background: var(--accent-light); }
+
+/* ── Trend indicators ─────────────────────────────────────────────────────
+   Period-over-period movement under a KPI: an arrow icon for the direction,
+   green when that direction is good news and red when it is not (the page
+   says which, via SadbTrend's `good`), a grey dash for no change, and the
+   comparison in words beside it ("vs 12 last week"). */
+body main[data-surface="management"] .sadb-kpi-delta--trend { margin-top: 4px; }
+body main[data-surface="management"] .sadb-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+body main[data-surface="management"] .sadb-trend-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+body main[data-surface="management"] .sadb-trend--good .sadb-trend-icon { color: var(--color-success-text, var(--color-success-800)) !important; }
+body main[data-surface="management"] .sadb-trend--bad .sadb-trend-icon { color: var(--color-danger-text, var(--color-danger-800)) !important; }
+body main[data-surface="management"] .sadb-trend--flat .sadb-trend-icon { color: var(--text-muted) !important; }
+body main[data-surface="management"] .sadb-trend--good { color: var(--color-success-text, var(--color-success-800)); font-weight: 600; }
+body main[data-surface="management"] .sadb-trend--bad { color: var(--color-danger-text, var(--color-danger-800)); font-weight: 600; }

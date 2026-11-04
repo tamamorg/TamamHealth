@@ -33,9 +33,10 @@ import PageDraftKeeper from '@/components/unsaved/PageDraftKeeper';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  // Management modules wear the patient chart's frame (app/management-frame.css).
-  const managementSurface = isManagementSurface(usePathname());
+  const pathname = usePathname();
   const { isAuthenticated, currentUser, dbReady, logout, platformPolicy } = useAuth();
+  // Management modules wear the patient chart's frame (app/management-frame.css).
+  const managementSurface = isManagementSurface(pathname, currentUser?.role);
   // Audit rows written from this browser are filed under the signed-in user's
   // organisation and facility, or they never replicate to the server — see
   // `setAuditActor`. Cleared on sign-out so the next person on a shared

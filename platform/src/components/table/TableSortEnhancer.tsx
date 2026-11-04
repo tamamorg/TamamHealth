@@ -8,7 +8,8 @@
  * technology which column is sorted, and which way.
  *
  * One delegated enhancer instead of a change in each of ~75 tables: it marks
- * every titled header of a `<table>` (and of a `.appointment-card-head` list)
+ * every titled header of a `<table>` (and of a `.appointment-card-head` list,
+ * and of the admin console's `SadbGridList` registers, `.sadb-tenant-grid--head`)
  * as sortable, reorders the rendered rows by the text they show
  * (lib/table-sort.ts), and keeps the order when the list re-renders — a
  * MutationObserver re-applies the sort after React inserts or removes rows.
@@ -32,22 +33,40 @@ const original = new WeakMap<Element, number>();
 let seq = 0;
 let applying = false;
 
-const HEADER_SELECTOR = 'table:not([data-no-sort]) > thead > tr > th, .appointment-card-flow:not([data-no-sort]) > .appointment-card-head > *';
+const HEADER_SELECTOR = [
+  'table:not([data-no-sort]) > thead > tr > th',
+  '.appointment-card-flow:not([data-no-sort]) > .appointment-card-head > *',
+  // The admin console's grid registers (organizations, facilities, staff,
+  // pricing, the facility matrix): a head row, then sibling row elements.
+  ':not([data-no-sort]) > .sadb-tenant-grid--head > *',
+].join(', ');
+
+/** Card-grid lists: header class → the class every data row carries. */
+const CARD_LISTS: ReadonlyArray<{ head: string; row: string }> = [
+  { head: 'appointment-card-head', row: 'appointment-card-row' },
+  { head: 'sadb-tenant-grid--head', row: 'sadb-tenant-row' },
+];
+
+function cardListOf(el: Element): { head: string; row: string } | undefined {
+  const parent = el.parentElement;
+  return parent ? CARD_LISTS.find(list => parent.classList.contains(list.head)) : undefined;
+}
 
 function isCardHeader(el: Element): boolean {
-  return !!el.parentElement?.classList.contains('appointment-card-head');
+  return !!cardListOf(el);
 }
 
 /** The rows a header sorts, as groups: a data row plus the rows that belong
  *  to it (an expanded detail row, a workflow panel) until the next data row. */
 function groupsFor(header: Element): { container: Container; groups: Element[][]; columns: number } | null {
-  if (isCardHeader(header)) {
+  const list = cardListOf(header);
+  if (list) {
     const flow = header.parentElement?.parentElement;
     if (!flow) return null;
     const groups: Element[][] = [];
     for (const child of Array.from(flow.children)) {
       if (child === header.parentElement) continue;
-      if (child.classList.contains('appointment-card-row')) groups.push([child]);
+      if (child.classList.contains(list.row)) groups.push([child]);
       else if (groups.length) groups[groups.length - 1].push(child);
     }
     return { container: flow, groups, columns: header.parentElement!.children.length };

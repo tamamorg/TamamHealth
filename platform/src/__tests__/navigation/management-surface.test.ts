@@ -31,6 +31,14 @@ describe('isManagementSurface', () => {
     expect(isManagementSurface(route)).toBe(false);
   });
 
+  it("treats /dashboard as management only for a role whose home there is a management dashboard", () => {
+    expect(isManagementSurface('/dashboard', 'medical_superintendent')).toBe(true);
+    expect(isManagementSurface('/dashboard', 'doctor')).toBe(false);
+    expect(isManagementSurface('/dashboard', 'nurse')).toBe(false);
+    expect(isManagementSurface('/dashboard')).toBe(false);
+    expect(isManagementSurface('/dashboard/lab', 'medical_superintendent')).toBe(false);
+  });
+
   it('matches whole path segments only', () => {
     expect(isManagementSurface('/administration')).toBe(false);
     expect(isManagementSurface('/hrx')).toBe(false);
@@ -54,7 +62,7 @@ describe('management-frame.css', () => {
 
   it('is switched on by the dashboard layout', () => {
     const layout = fs.readFileSync(path.join(SRC, 'app/(dashboard)/layout.tsx'), 'utf8');
-    expect(layout).toContain('isManagementSurface(');
+    expect(layout).toContain('isManagementSurface(pathname, currentUser?.role)');
     expect(layout).toContain("data-surface={managementSurface ? 'management' : undefined}");
   });
 

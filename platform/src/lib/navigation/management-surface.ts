@@ -28,8 +28,17 @@ const MANAGEMENT_PREFIXES: readonly string[] = [
   '/dhis2-export', '/epidemic-intelligence', '/mch-analytics', '/surveillance',
 ];
 
-export function isManagementSurface(pathname: string | null | undefined): boolean {
+/**
+ * Roles whose home is the shared `/dashboard` URL but whose dashboard there is
+ * a management one (SuperintendentDashboard). Clinical roles share the URL
+ * with the clinical workspace, so `/dashboard` is a management surface only
+ * for these.
+ */
+const MANAGEMENT_DASHBOARD_ROLES: readonly string[] = ['medical_superintendent'];
+
+export function isManagementSurface(pathname: string | null | undefined, role?: string | null): boolean {
   if (!pathname) return false;
+  if (pathname === '/dashboard' && role && MANAGEMENT_DASHBOARD_ROLES.includes(role)) return true;
   return MANAGEMENT_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );

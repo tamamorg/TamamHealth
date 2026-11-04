@@ -38,7 +38,7 @@ import Modal from '@/components/Modal';
 import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import Select from '@/components/Select';
 import {
-  SadbPage, SadbCard, SadbShell, useSadbTab, SadbSearch, SadbKpiTile, SadbKvRow,
+  SadbPage, SadbCard, SadbShell, useSadbTab, SadbSearch, SadbKvRow,
   SadbQueueRow, SadbHeadLink,
 } from '@/components/admin/sadb-ui';
 import { titleCase, humanizeStatus } from '@/lib/format-utils';
@@ -235,25 +235,6 @@ export default function FacilityWorkQueuePage() {
     [activeStaff, schedules, search],
   );
 
-  /* Headline figures, all read off the same records the rows below come from:
-     what is open, what nobody owns, what is waiting on a decision, and who is
-     actually on hand to work it. */
-  const kpis = useMemo(() => {
-    const summary = summariseEnquiries(enquiries);
-    const unassigned = enquiries.filter(m => !enquiryAssignee(m)).length;
-    const pending = leave.filter(l => l.status === 'pending');
-    const days = pending.reduce((sum, l) => sum + (l.days || 0), 0);
-    return {
-      open: summary.open,
-      total: enquiries.length,
-      unassigned,
-      pending: pending.length,
-      days,
-      available: usersUnavailable ? '—' : activeStaff.length,
-      accounts: usersUnavailable ? '—' : users.length,
-    };
-  }, [enquiries, leave, activeStaff, users, usersUnavailable]);
-
   const failedLabels = Array.from(loadErrors).map(k => t(SOURCE_LABEL_KEYS[k]));
   if (usersUnavailable) failedLabels.push(t('facilityQueue.srcStaffAccounts'));
   const hasErrors = failedLabels.length > 0;
@@ -389,40 +370,8 @@ export default function FacilityWorkQueuePage() {
         </div>
       )}
 
-      {/* ═══ What is waiting — each tile opens the queue it counts ═══ */}
-      <div className="sadb-kpi-row">
-        <SadbKpiTile
-          label={t('facilityQueue.kpiOpen')}
-          value={kpis.open}
-          delta={t('facilityQueue.kpiOpenNote', { count: kpis.total })}
-          deltaTone={kpis.open > 0 ? 'warn' : 'up'}
-          onClick={() => setQueue('inquiries')}
-        />
-        <SadbKpiTile
-          label={t('facilityQueue.kpiUnassigned')}
-          value={kpis.unassigned}
-          delta={t(kpis.unassigned > 0 ? 'facilityQueue.kpiUnassignedNote' : 'facilityQueue.kpiUnassignedNone')}
-          deltaTone={kpis.unassigned > 0 ? 'warn' : 'up'}
-          onClick={() => setQueue('inquiries')}
-        />
-        <SadbKpiTile
-          label={t('facilityQueue.kpiPending')}
-          value={kpis.pending}
-          delta={kpis.pending > 0
-            ? t(kpis.days === 1 ? 'facilityQueue.kpiPendingNote' : 'facilityQueue.kpiPendingNotePlural', { count: kpis.days })
-            : t('facilityQueue.kpiPendingNone')}
-          deltaTone={kpis.pending > 0 ? 'warn' : 'up'}
-          onClick={() => setQueue('leave')}
-        />
-        <SadbKpiTile
-          label={t('facilityQueue.kpiAvailable')}
-          value={kpis.available}
-          delta={t('facilityQueue.kpiAvailableNote', { count: kpis.accounts })}
-          deltaTone={usersUnavailable ? 'warn' : 'up'}
-          onClick={() => setQueue('staff')}
-        />
-      </div>
-
+      {/* No KPI row (removed 2026-11-04): the section list beside the queue
+          already counts each queue, so the tiles said the same numbers twice. */}
       {/* ═══ The queues: rail on the left, one panel owning the height ═══ */}
       <div className="fmq-shell">
         <SadbShell
