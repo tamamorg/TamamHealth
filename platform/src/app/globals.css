@@ -36549,3 +36549,50 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
 [dir="rtl"] .ehr-list-filters-body select,
 [dir="rtl"] .tm-filter-select .tm-filter-select__control { background-position: left 12px center !important; }
 
+
+/* ══════════════ LIST TOOLBAR ROW — one control height ═════════════════════
+   Search field, filter selects and action buttons on one toolbar row share
+   the platform field height (--control-height, 40px) and sit on one centre
+   line. The search inputs used to carry the global input height (~42px)
+   inside a 38px label, so the field overflowed its own box while the select
+   beside it stayed 38px. Background is set with background-color only, so
+   the global select chevron survives. */
+.sadb-search-row,
+.ehr-list-header-toolbar,
+.bl-toolbar { align-items: center; }
+
+.sadb-search-row > .sadb-search,
+.sadb-search-row > select,
+.sadb-search-row > button,
+.sadb-search-row > .btn,
+.ehr-queue-search,
+.ehr-daybar > select,
+.ehr-daybar .ehr-day-tabs,
+.bl-toolbar .bl-search,
+.bl-toolbar .bl-toolbar-select {
+  height: var(--control-height, 40px) !important;
+  min-height: var(--control-height, 40px) !important;
+  box-sizing: border-box;
+}
+.sadb-search input,
+.ehr-queue-search input,
+.bl-toolbar .bl-search input {
+  height: 100% !important;
+  min-height: 0 !important;
+  padding-block: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.ehr-daybar .ehr-day-tabs button:not(.ehr-mobile-day-check) { height: 100%; }
+.sadb-search-row > .btn-primary:has(> svg.lucide-plus),
+.ehr-list-header-actions > .btn-primary { min-height: var(--control-height, 40px); }
+/* The global `label` rule gives every label a 6px bottom margin; on a flex row
+   that margin counts toward the centre line and left the controls beside the
+   search 3px low. */
+.sadb-search,
+.sadb-search-row > label { margin: 0 !important; }
+.ehr-list-header-actions > select,
+.ehr-list-header-toolbar select {
+  height: var(--control-height, 40px);
+  min-height: var(--control-height, 40px);
+}

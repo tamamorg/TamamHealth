@@ -255,7 +255,7 @@ export function EhrListHeaderButton({
       title={ariaLabel}
       style={{
         position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        width: 38, height: 38, padding: 0, borderRadius: 999,
+        width: 'var(--control-height, 40px)', height: 'var(--control-height, 40px)', padding: 0, borderRadius: 999,
         cursor: 'pointer', flexShrink: 0, ...tone,
       }}
     >
@@ -510,7 +510,7 @@ export function EhrSearchFilter({
         placeholder={placeholder}
         aria-label={ariaLabel || placeholder}
         style={{
-          width: '100%', height: 38, borderRadius: 999,
+          width: '100%', height: 'var(--control-height, 40px)', borderRadius: 999,
           // Leading room for the magnifier; trailing room for the disclosure,
           // so typed text never runs under either.
           padding: hasFilters ? '9px 44px 9px 38px' : '9px 18px 9px 38px',
@@ -527,7 +527,7 @@ export function EhrSearchFilter({
           aria-label={activeCount > 0 ? `${label}, ${activeCount} applied` : label}
           title={activeCount > 0 ? `${label} (${activeCount} applied)` : label}
           style={{
-            position: 'absolute', top: 4, insetInlineEnd: 4,
+            position: 'absolute', top: 5, insetInlineEnd: 5,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2,
             height: 30, minWidth: 30, padding: activeCount > 0 ? '0 8px' : 0,
             borderRadius: 999, border: 'none', cursor: 'pointer',
@@ -586,7 +586,7 @@ export function EhrListFilters({
         title={activeCount > 0 ? `${label} (${activeCount} applied)` : label}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
-          height: 38, padding: '0 14px', borderRadius: 999, cursor: 'pointer', flexShrink: 0,
+          height: 'var(--control-height, 40px)', padding: '0 14px', borderRadius: 999, cursor: 'pointer', flexShrink: 0,
           fontSize: 13, fontWeight: 600,
           border: activeCount > 0 ? '1px solid var(--accent-primary)' : '1px solid var(--border-light)',
           background: activeCount > 0 ? 'rgba(33,145,208,0.08)' : 'var(--bg-card-solid)',
