@@ -68,13 +68,14 @@ export default function StateDashboardPage() {
   // computes them, src/lib/services/mch-analytics-service.ts) purely for the
   // row's detail panel — the ANC cascade rate is the one figure the queue
   // row itself has no column for.
-  type CountyRow = { county: string; birthCount: number; deathCount: number; ancTotal: number; anc1: number; anc4: number; anc8: number; facilityIds: Set<string>; lastReportAt?: string };
+  type CountyRow = { state: string; county: string; birthCount: number; deathCount: number; ancTotal: number; anc1: number; anc4: number; anc8: number; facilityIds: Set<string>; lastReportAt?: string };
   const counties: CountyRow[] = [];
   const byCounty = mch?.ancCascade?.byCounty ?? {};
   for (const [key, val] of Object.entries(byCounty)) {
     const [s, c] = key.split('::');
     if (!inScope(s)) continue;
     counties.push({
+      state: s ?? '',
       county: c,
       // Births/deaths are not in the ANC rollup; the raw-stream pass below fills them.
       birthCount: 0,
@@ -86,10 +87,13 @@ export default function StateDashboardPage() {
       facilityIds: new Set(),
     });
   }
-  const touchCounty = (countyName: string): CountyRow => {
-    let row = counties.find(c => c.county === countyName);
+  /* A county is identified by its state AND its name: across the whole
+     country several states have a county of the same name (and every state
+     has an "Unknown"), so the name alone merged them and duplicated row keys. */
+  const touchCounty = (stateOf: string, countyName: string): CountyRow => {
+    let row = counties.find(c => c.county === countyName && c.state === stateOf);
     if (!row) {
-      row = { county: countyName, birthCount: 0, deathCount: 0, ancTotal: 0, anc1: 0, anc4: 0, anc8: 0, facilityIds: new Set() };
+      row = { state: stateOf, county: countyName, birthCount: 0, deathCount: 0, ancTotal: 0, anc1: 0, anc4: 0, anc8: 0, facilityIds: new Set() };
       counties.push(row);
     }
     return row;
@@ -97,19 +101,19 @@ export default function StateDashboardPage() {
   // Fallback: derive county births/deaths from raw streams when the rollup is empty for them.
   for (const b of births) {
     if (!inScope(b.state) || !b.county) continue;
-    const row = touchCounty(b.county);
+    const row = touchCounty(b.state ?? '', b.county);
     row.birthCount += 1;
     if (b.facilityId) row.facilityIds.add(b.facilityId);
     if (b.createdAt && (!row.lastReportAt || b.createdAt > row.lastReportAt)) row.lastReportAt = b.createdAt;
   }
   for (const d of deaths) {
     if (!inScope(d.state) || !d.county) continue;
-    const row = touchCounty(d.county);
+    const row = touchCounty(d.state ?? '', d.county);
     row.deathCount += 1;
     if (d.facilityId) row.facilityIds.add(d.facilityId);
     if (d.createdAt && (!row.lastReportAt || d.createdAt > row.lastReportAt)) row.lastReportAt = d.createdAt;
   }
-  counties.sort((a, b) => a.county.localeCompare(b.county));
+  counties.sort((a, b) => a.county.localeCompare(b.county) || a.state.localeCompare(b.state));
 
   const query = search.trim().toLowerCase();
   const visibleCounties = query
@@ -213,9 +217,12 @@ export default function StateDashboardPage() {
             // rather than guessing.
             const reportingCurrent = c.lastReportAt ? c.lastReportAt.slice(0, 7) === thisMonth : undefined;
             return {
-              id: c.county,
-              title: c.county,
-              // Nothing under the name: the month's figures are their own column.
+              id: `${c.state}::${c.county}`,
+              // Across the country a county needs its state to be told apart;
+              // scoped to one state its name is enough. Not a person's name,
+              // so the board keeps it whole.
+              title: stateName || !c.state ? c.county : `${c.county} · ${c.state}`,
+              titleIsName: false,
               subtitle: '',
               careTeam: facilityCount > 0 ? `${facilityCount} facilit${facilityCount === 1 ? 'y' : 'ies'}` : undefined,
               careTeamLabel: 'Reporting facilities',

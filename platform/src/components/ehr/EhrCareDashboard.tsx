@@ -73,6 +73,12 @@ export type EhrCareDashboardMetric = {
 };
 
 export type EhrCareDashboardRow = {
+  /**
+   * The title is a person's name (default): it is shortened to first and last
+   * word, the platform's two-name rule. A row that is not a person (a county
+   * on the county overview) sets false and keeps its title whole.
+   */
+  titleIsName?: boolean;
   id: string;
   title: string;
   subtitle: string;
@@ -1060,15 +1066,15 @@ export default function EhrCareDashboard({
                                 <button
                                   type="button"
                                   className={row.patientId ? 'print-visible ehr-row-name-link' : 'print-visible'}
-                                  title={row.patientId ? `Open ${row.title}'s chart` : undefined}
+                                  title={row.patientId ? `Open ${row.title}'s chart` : row.titleIsName === false ? row.title : undefined}
                                   onClick={(event) => {
                                     event.stopPropagation();
                                     if (row.patientId) router.push(`/patients/${row.patientId}`);
                                     else activate();
                                   }}
                                 >
-                                  {/* Two words on the row — first and last. */}
-                                  {shortenPersonName(row.title)}
+                                  {/* Two words on the row — first and last — for a person. */}
+                                  {row.titleIsName === false ? row.title : shortenPersonName(row.title)}
                                 </button>
                               </span>
                               <p>{row.subtitle}</p>
