@@ -13,9 +13,12 @@
  * fill on a dark ground would lose the contrast its tokens were tuned for).
  * The Settings screens (ehr-set-*, settings-tab-strip) and the account dialog
  * (acct-*) are owned by their own restyle and are deliberately not touched.
- * The visit popup's Current visit / Previous visit tabs keep their underline
- * (globals.css `.ehr-visit-pop-tabs`): the user asked for them back on
- * 2026-11-04.
+ * Underline tab strips keep their underline and no fill: the visit popup's
+ * Current visit / Previous visit (`.ehr-visit-pop-tabs`, globals.css), the
+ * prescribing monograph (`.cn-rx-tabs`) and the worklist headers
+ * (`[data-tab-style="underline"]`, EhrListHeader). The user asked for them
+ * back on 2026-11-04; the `[role="tab"]` catch-all below excludes them, or it
+ * paints the chosen tab solid blue over its underline.
  *
  * Why !important: globals.css has many later duplicate rules (some already
  * !important) for the same classes, and svg.lucide:not([style*="color"]) /
@@ -80,7 +83,7 @@
   .tsel-row.is-selected,
   .tm-menu__item[aria-current="page"],
   .tm-menu__item[aria-checked="true"],
-  [role="tab"][aria-selected="true"]:not(.ehr-set-nav *, .settings-tab-strip *, .acct-modal *),
+  [role="tab"][aria-selected="true"]:not(.ehr-set-nav *, .settings-tab-strip *, .acct-modal *, .ehr-visit-pop-tabs *, .cn-rx-tabs *, [data-tab-style="underline"] *),
   [role="option"][aria-selected="true"]:not(.ehr-set-nav *, .acct-modal *)
 ) {
   background: var(--accent-primary) !important;
@@ -161,7 +164,7 @@
   .ehr-mobile-tabbar button.active,
   .mobile-shell-tabbar button.active,
   .mobile-chart-tabs button.active,
-  [role="tab"][aria-selected="true"]:not(.ehr-set-nav *, .settings-tab-strip *, .acct-modal *)
+  [role="tab"][aria-selected="true"]:not(.ehr-set-nav *, .settings-tab-strip *, .acct-modal *, .ehr-visit-pop-tabs *, .cn-rx-tabs *, [data-tab-style="underline"] *)
 ) :is(svg, svg.lucide, svg *) {
   color: var(--color-white, #fff) !important;
   stroke: currentColor !important;
