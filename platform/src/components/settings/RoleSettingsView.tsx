@@ -167,7 +167,8 @@ type NavItem = {
   /** Group heading inside an expanded row — not clickable. */
   heading?: string;
 };
-type NavGroup = { title: string; items: NavItem[] };
+/** `title` is omitted for the first group: the user's own rows head the list unlabelled. */
+type NavGroup = { title?: string; items: NavItem[] };
 
 export default function RoleSettingsView() {
   const router = useRouter();
@@ -363,7 +364,7 @@ export default function RoleSettingsView() {
     };
     const personal: NavItem[] = ['account', 'notifications', 'security']
       .map(bySection).filter((item): item is NavItem => !!item);
-    const groups: NavGroup[] = [{ title: 'My settings', items: personal }];
+    const groups: NavGroup[] = [{ items: personal }];
 
     const roleItems = spec.sections
       .filter(section => !PERSONAL_IDS.has(section.id) && !(isAdminSpec && ADMIN_REPLACED_IDS.has(section.id)))
@@ -1104,9 +1105,9 @@ export default function RoleSettingsView() {
         {/* ── Left rail: grouped nav only — identity lives in My account ── */}
         <aside className="ehr-set-rail">
           <nav className="ehr-set-nav" aria-label="Settings sections">
-            {navGroups.map(group => (
-              <div key={group.title} className="ehr-set-nav-group">
-                <span className="ehr-set-nav-group-title">{group.title}</span>
+            {navGroups.map((group, groupIndex) => (
+              <div key={group.title ?? `group-${groupIndex}`} className="ehr-set-nav-group">
+                {group.title && <span className="ehr-set-nav-group-title">{group.title}</span>}
                 {group.items.map(item => {
                   const Icon = item.icon;
                   // A row with children expands DOWN into the rail. It opens

@@ -48,8 +48,11 @@ body .ehr-set-shell .ehr-set-rail {
   border-inline-end: 1px solid var(--border-light);
   background: var(--bg-card-solid);
 }
+/* The first rows carry no group heading (the user's own account, notifications
+   and security), so the list starts 16px down — the content column's top
+   padding — and its first row lines up with the top of the open panel. */
 body .ehr-set-shell .ehr-set-nav {
-  padding: 0 0 16px;
+  padding: 16px 0;
   border: 0;
   border-radius: 0;
   box-shadow: none;
