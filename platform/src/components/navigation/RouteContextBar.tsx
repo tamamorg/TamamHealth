@@ -10,6 +10,7 @@ import { getDefaultDashboard } from '@/lib/role-routes';
 import { resolveRouteContext, routeContextBackHref } from '@/lib/navigation/route-context';
 import { useConsoleTrailInline, useConsoleTrailValue } from './ConsoleTrail';
 import BackLink from './BackLink';
+import { useModuleHubTabs } from './ModuleHubTabs';
 
 /**
  * Back for a page that draws it inside its own layout (`inlineBack`): where it
@@ -94,8 +95,11 @@ export default function RouteContextBar() {
   const { t } = useTranslation();
   const { hasContext, inline, showBack, backHref, crumbs } = useRouteBack();
   // A page that carries Back in its own layout (the patient chart, every
-  // create form via FormPageHead) gets no bar: no strip above the page.
-  const shown = hasContext && !inline;
+  // create form via FormPageHead) gets no bar: no strip above the page. Nor
+  // does a management hub's page: its tabs (ModuleHubTabs) say where you are,
+  // and there is no level above a hub page to go back to.
+  const hubTabs = useModuleHubTabs();
+  const shown = hasContext && !inline && !hubTabs;
 
   /* Publish the bar's height as --app-route-bar-h. Whatever docks below the
      bar — the chart's workspace drawer, every <Modal variant="slider"> —

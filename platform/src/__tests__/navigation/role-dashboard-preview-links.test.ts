@@ -23,10 +23,6 @@ describe('role dashboard preview links', () => {
   it.each([
     ['app/(dashboard)/admin/security/page.tsx', 'log=', 'app/(dashboard)/admin/audit/page.tsx', "get('log')"],
     ['components/dashboards/SuperintendentDashboard.tsx', 'alert=', 'app/(dashboard)/surveillance/page.tsx', "get('alert')"],
-    // The queue left the Facility Management dashboard for its own page on
-    // 2026-08-24; the deep links moved with it.
-    ['app/(dashboard)/facility-management/queue/page.tsx', 'inquiry=', 'app/(dashboard)/inquiries/page.tsx', "get('inquiry')"],
-    ['app/(dashboard)/facility-management/queue/page.tsx', 'request=', 'app/(dashboard)/hr/leave/page.tsx', "get('request')"],
     // The county drill-down's old consumer was the national facility list at
     // /hospitals, deleted with that route. It lands on the console root as a
     // facility search now, and `q` is matched against county there.
@@ -36,10 +32,12 @@ describe('role dashboard preview links', () => {
     expect(source(consumer)).toContain(consumedParam);
   });
 
-  it('focuses staff accounts in the shared people workspace', () => {
+  it('the Work Queue is gone — its route only redirects to the inquiries it repeated', () => {
+    // 2026-11-04: it repeated /inquiries, /hr/leave and the staff list in
+    // full, and its KPI row repeated its own section list's counts.
     const queue = source('app/(dashboard)/facility-management/queue/page.tsx');
-    expect(queue).toContain("withFocus(staffListHref, 'user'");
-    expect(source('modules/tenancy/components/ManagementWorkspace.tsx')).toContain("params.get('user')");
+    expect(queue).toContain("redirect('/inquiries')");
+    expect(source('components/dashboards/FacilityManagementDashboard.tsx')).not.toContain('/facility-management/queue');
   });
 
   it('admin dashboard navigates directly — no popup stops', () => {

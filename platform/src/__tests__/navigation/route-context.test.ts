@@ -72,7 +72,6 @@ describe('route context navigation', () => {
 
   it.each([
     ['/admin/announcements', '/admin'],
-    ['/facility-management/queue', '/facility-management'],
     ['/payments/claims', '/payments'],
     ['/wards/mar', '/wards'],
   ])('gives the second-level page %s a Back to %s', (pathname, parent) => {

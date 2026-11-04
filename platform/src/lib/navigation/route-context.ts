@@ -111,7 +111,6 @@ const EXACT_ROUTES: Record<string, RouteContext> = {
   '/wards/handoff': context('/dashboard', 'breadcrumb.dashboard', 'routeContext.handoff', true),
   // Second-level pages whose parent is a page of its own: they get the bar
   // and its Back, which follows ?returnTo= first, the parent otherwise.
-  '/facility-management/queue': context('/facility-management', 'routeContext.facilityManagement', 'routeContext.approvalQueue', true),
   '/payments/claims': context('/payments', 'routeContext.payments', 'routeContext.claims', true),
   '/wards/mar': context('/wards', 'routeContext.wards', 'routeContext.medicationAdministration', true),
   '/dashboard/nutrition/supplies': context('/dashboard/nutrition', 'breadcrumb.dashboard', 'nutrition.supplies', true),

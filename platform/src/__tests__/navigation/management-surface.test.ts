@@ -39,6 +39,16 @@ describe('isManagementSurface', () => {
     expect(isManagementSurface('/dashboard/lab', 'medical_superintendent')).toBe(false);
   });
 
+  it('treats every page as management for the ministry and county roles, except Settings and Messages', () => {
+    for (const role of ['government', 'county_health_director']) {
+      expect(isManagementSurface('/births', role)).toBe(true);
+      expect(isManagementSurface('/immunizations', role)).toBe(true);
+      expect(isManagementSurface('/settings', role)).toBe(false);
+      expect(isManagementSurface('/messages', role)).toBe(false);
+    }
+    expect(isManagementSurface('/births', 'nurse')).toBe(false);
+  });
+
   it('matches whole path segments only', () => {
     expect(isManagementSurface('/administration')).toBe(false);
     expect(isManagementSurface('/hrx')).toBe(false);

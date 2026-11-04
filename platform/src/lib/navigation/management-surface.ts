@@ -36,8 +36,16 @@ const MANAGEMENT_PREFIXES: readonly string[] = [
  */
 const MANAGEMENT_DASHBOARD_ROLES: readonly string[] = ['medical_superintendent'];
 
+/**
+ * Roles with no clinical pages at all: every screen they open is a
+ * management one, including the registers (births, deaths, immunization,
+ * ANC) that clinical staff also use in their own frame.
+ */
+const ALL_MANAGEMENT_ROLES: readonly string[] = ['government', 'county_health_director'];
+
 export function isManagementSurface(pathname: string | null | undefined, role?: string | null): boolean {
   if (!pathname) return false;
+  if (role && ALL_MANAGEMENT_ROLES.includes(role) && pathname !== '/settings' && !pathname.startsWith('/settings/') && pathname !== '/messages' && !pathname.startsWith('/messages/')) return true;
   if (pathname === '/dashboard' && role && MANAGEMENT_DASHBOARD_ROLES.includes(role)) return true;
   return MANAGEMENT_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),

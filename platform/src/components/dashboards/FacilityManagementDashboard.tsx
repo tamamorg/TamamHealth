@@ -28,9 +28,10 @@
  * day's schedule).
  *
  * The three queue tabs (Inquiries / Pending Leave / Active Staff) left this
- * page on 2026-08-24 for /facility-management/queue — a work queue is a
- * surface you WORK, and as the dashboard's last card it spent a screen of
- * whitespace saying "No recent inquiries". The dashboard keeps the counts
+ * page on 2026-08-24 for a Work Queue page of their own, and that page was
+ * deleted on 2026-11-04: it repeated /inquiries and /hr/leave in full. As
+ * the dashboard's last card it had spent a screen of whitespace saying "No
+ * recent inquiries". The dashboard keeps the counts
  * (KPI tiles and Today's Operations); the rows, the search and the triage
  * dialogs live on the queue's own page. `buildFacilityOverview` still returns
  * the rows — it is the tested combiner both surfaces are defined against.
@@ -669,8 +670,8 @@ export default function FacilityManagementDashboard() {
       </div>
 
       {/* ═══ The org's registered facilities ═══
-           The work queue used to sit beside this list; it moved to
-           /facility-management/queue on 2026-08-24, so the matrix takes the
+           The work queue used to sit beside this list; it moved out on
+           2026-08-24 (and was deleted 2026-11-04), so the matrix takes the
            whole row rather than keeping half of it warm for a card that is no
            longer here. It stays inside `sadb-lower-row` for that row's height
            cap: the list grows with the data, and uncapped it runs the page
@@ -685,7 +686,6 @@ export default function FacilityManagementDashboard() {
           className="is-wide"
           title="Facilities"
           meta={`${hospitals.length}`}
-          action={<SadbHeadLink onClick={() => router.push('/facility-management/queue')}>Work queue</SadbHeadLink>}
         >
           <div className="sadb-search-row sadb-search-row--table-aligned">
             <SadbSearch

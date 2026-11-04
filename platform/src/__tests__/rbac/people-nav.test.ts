@@ -14,6 +14,7 @@ import { buildAddMenuEntries, canCreateUsers, usersHrefForRole } from '@/lib/peo
 import { ROLE_PERMISSIONS } from '@/lib/permissions';
 import { ROLE_ROUTE_TABLE, isPathAllowed } from '@/lib/role-routes';
 import { isHrefAllowed, uniqueAllowedNavItems, groupNavItemsBySection } from '@/components/ehr/ehr-navigation';
+import { navReaches } from '@/lib/navigation/module-hubs';
 import type { UserRole } from '@/lib/db-types';
 
 const ALL_ROLES = Object.keys(ROLE_ROUTE_TABLE) as UserRole[];
@@ -40,11 +41,16 @@ const peopleItems = (role: UserRole) =>
 const HR_ROLES: UserRole[] = ['org_admin', 'medical_superintendent', 'hospital_manager'];
 
 describe('PEOPLE & HR nav section', () => {
-  test.each(HR_ROLES)('%s gets the workforce destinations', role => {
-    const hrefs = peopleItems(role).map(i => i.href);
-    expect(hrefs).toEqual(expect.arrayContaining([
-      '/hr/leave', '/hr/schedule', '/hr/payroll', '/inquiries',
-    ]));
+  // 2026-11-04 navigation redesign: the workforce area is ONE nav row (the
+  // Workforce hub, tabs Shift schedule · Leave requests · Payroll) and patient
+  // inquiries are a tab of the Patients hub (lib/navigation/module-hubs.ts).
+  test.each(HR_ROLES)('%s reaches the workforce destinations from its nav', role => {
+    const navHrefs = ROLE_PERMISSIONS[role].navItems.map(i => i.href);
+    for (const href of ['/hr/leave', '/hr/schedule', '/hr/payroll', '/inquiries']) {
+      expect(navReaches(navHrefs, allowedFor(role), href)).toBe(true);
+    }
+    // …through one Workforce row, not a row per page.
+    expect(navHrefs.filter(h => h.startsWith('/hr/'))).toEqual(['/hr/schedule']);
   });
 
   test('the platform operator gets none of the workforce destinations', () => {
@@ -102,14 +108,11 @@ describe('PEOPLE & HR nav section', () => {
     }
   });
 
-  test('the section survives the runtime nav filter as ONE contiguous group', () => {
-    // Grouping is run-based, not keyed: items sharing a section but separated
-    // by another section render as two groups with duplicate headings.
+  test('the workforce row survives the runtime nav filter', () => {
     for (const role of HR_ROLES) {
       const visible = uniqueAllowedNavItems(ROLE_PERMISSIONS[role].navItems, allowedFor(role));
-      const groups = groupNavItemsBySection(visible).filter(g => g.section === 'PEOPLE & HR');
-      expect(groups).toHaveLength(1);
-      expect(groups[0].items.length).toBeGreaterThanOrEqual(4);
+      expect(visible.map(i => i.href)).toContain('/hr/schedule');
+      expect(visible.find(i => i.href === '/hr/schedule')?.label).toBe('Workforce');
     }
   });
 

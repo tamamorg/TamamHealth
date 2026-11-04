@@ -1,3 +1,4 @@
+import { hubContainingPath } from '@/lib/navigation/module-hubs';
 import type { NavItem } from '@/lib/permissions';
 import type { UserRole } from '@/lib/db-types';
 
@@ -81,9 +82,15 @@ export function isHrefAllowed(href: string, allowedRoutes: readonly string[]) {
 export function activeNavItem(items: NavItem[], pathname: string | null): NavItem | null {
   if (!pathname) return null;
   const path = pathname.split('?')[0];
-  return items
+  const direct = items
     .filter(item => !!item.href && (path === item.href || path.startsWith(item.href + '/')))
-    .sort((a, b) => b.href.length - a.href.length)[0] || null;
+    .sort((a, b) => b.href.length - a.href.length)[0];
+  if (direct) return direct;
+  /* A management nav row stands for a whole hub (module-hubs.ts): on any of
+     the hub's pages, the row that opens the hub is the current one. */
+  const hub = hubContainingPath(path);
+  if (!hub) return null;
+  return items.find(item => hub.members.some(m => m.href === item.href)) || null;
 }
 
 export function uniqueAllowedNavItems(items: NavItem[], allowedRoutes: readonly string[]) {
@@ -295,6 +302,8 @@ export const CANONICAL_NAV_HREFS = Object.keys(NAV_LABEL_KEYS);
  * `nav.payments` at somebody.
  */
 export function navItemLabel(item: NavItem, translate: (key: string) => string): string {
+  // A hub row names a task area, not the page it happens to open first.
+  if (item.hub) return item.label;
   const key = item.href ? NAV_LABEL_KEYS[item.href] : undefined;
   if (key) {
     const translated = translate(key);
