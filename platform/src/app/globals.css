@@ -986,8 +986,7 @@
    needs real elevation to stand out over any page. */
 .tour-spotlight {
   box-shadow:
-    0 0 0 3px var(--accent-primary),
-    0 0 0 6px rgba(33, 145, 208, 0.30),
+    0 0 0 3px var(--color-white, #fff),
     0 0 0 9999px rgba(0, 29, 63, 0.50) !important;
 }
 

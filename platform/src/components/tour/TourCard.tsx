@@ -132,7 +132,7 @@ export default function TourCard({
           // Strong accent ring so the card reads clearly against any page.
           // The drop shadow lives in .tour-card (globals.css) — the flat
           // baseline strips box-shadow with !important, so inline won't win.
-          border: '2px solid var(--accent-primary)',
+          border: '1px solid var(--border-medium)',
           padding: '16px 18px',
           maxHeight: 'calc(100vh - 24px)',
           overflowY: 'auto',
@@ -147,7 +147,7 @@ export default function TourCard({
               width: 12,
               height: 12,
               background: 'var(--bg-card)',
-              border: '2px solid var(--accent-primary)',
+              border: '1px solid var(--border-medium)',
               transform: 'rotate(45deg)',
               ...(tail === 'top' ? { top: -7, left: '50%', marginInlineStart: -6, borderInlineEnd: 'none', borderBottom: 'none' } : {}),
               ...(tail === 'bottom' ? { bottom: -7, left: '50%', marginInlineStart: -6, borderInlineStart: 'none', borderTop: 'none' } : {}),
