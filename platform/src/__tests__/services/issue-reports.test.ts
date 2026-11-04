@@ -122,6 +122,41 @@ describe('triage', () => {
   });
 });
 
+describe('the five steps and the activity trail', () => {
+  test('each step, assignment, re-triage, reply and staff note is recorded once, notes sealed', async () => {
+    const created = await report();
+    const before = await rawTestDB('tamamhealth_messages').get(created._id) as unknown as Record<string, unknown>;
+    await updateIssueReport(created._id, { status: 'acknowledged', assignedTo: { id: admin.id, name: admin.name } }, admin, orgA);
+    await updateIssueReport(created._id, { severity: 'critical', category: 'sync' }, admin, orgA);
+    await updateIssueReport(created._id, { status: 'in_progress', note: 'Looks like the lab replication job.' }, admin, orgA);
+    await updateIssueReport(created._id, { reply: 'Fixed in the lab sync; refresh the chart.', status: 'resolved' }, admin, orgA);
+    // Re-sending the same step changes nothing.
+    const last = await updateIssueReport(created._id, { status: 'resolved' }, admin, orgA);
+
+    expect(last?.issueStatus).toBe('resolved');
+    expect(last?.issueSeverity).toBe('critical');
+    expect(last?.issueCategory).toBe('sync');
+    expect(last?.issueResolutionNote).toBe('Fixed in the lab sync; refresh the chart.');
+    expect(last?.issueHistory?.map(h => [h.kind, h.status || h.assignee || h.note])).toEqual([
+      ['status', 'acknowledged'],
+      ['assign', admin.name],
+      ['triage', 'severity:critical'],
+      ['triage', 'category:sync'],
+      ['status', 'in_progress'],
+      ['note', 'Looks like the lab replication job.'],
+      ['status', 'resolved'],
+      ['reply', 'Fixed in the lab sync; refresh the chart.'],
+    ]);
+
+    const after = await rawTestDB('tamamhealth_messages').get(created._id) as unknown as { issueHistory: Array<{ note?: string }> } & Record<string, unknown>;
+    const notes = after.issueHistory.map(h => h.note).filter(Boolean);
+    expect(notes.every(n => isOrgEncrypted(n))).toBe(true);
+    expect(JSON.stringify(after)).not.toMatch(/replication job/);
+    expect(messageIntegrityViolation(after, before, admin.id)).toBeNull();
+    expect(summariseIssues(await getIssueReports(orgA)).open).toBe(0);
+  });
+});
+
 describe('the patient inquiry queue', () => {
   const inbound = (over: Record<string, unknown> = {}) => createMessage({
     recipientType: 'staff', direction: 'patient_to_staff', patientId: 'pat-1', patientName: 'Achol Deng',
