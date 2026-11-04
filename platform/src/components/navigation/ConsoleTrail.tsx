@@ -28,9 +28,16 @@ export interface ConsoleCrumb {
   href?: string;
 }
 
+interface ConsoleTrailEntry {
+  crumbs: ConsoleCrumb[];
+  /** The page draws Back and its title itself (FormPageHead), so the bar is not drawn. */
+  inline: boolean;
+}
+
 interface ConsoleTrailValue {
   trail: ConsoleCrumb[] | null;
-  publish: (id: string, crumbs: ConsoleCrumb[] | null) => void;
+  inline: boolean;
+  publish: (id: string, crumbs: ConsoleCrumb[] | null, inline?: boolean) => void;
 }
 
 const ConsoleTrailContext = createContext<ConsoleTrailValue | null>(null);
@@ -40,9 +47,9 @@ export function ConsoleTrailProvider({ children }: { children: ReactNode }) {
      mounting in the same commit has already set — React runs the new page's
      effect before the old page's cleanup in some transitions, and a bare
      `setTrail(null)` on unmount blanked the bar on every drill-down. */
-  const [entries, setEntries] = useState<Record<string, ConsoleCrumb[]>>({});
+  const [entries, setEntries] = useState<Record<string, ConsoleTrailEntry>>({});
 
-  const publish = useCallback((id: string, crumbs: ConsoleCrumb[] | null) => {
+  const publish = useCallback((id: string, crumbs: ConsoleCrumb[] | null, inline = false) => {
     setEntries(current => {
       if (!crumbs) {
         if (!(id in current)) return current;
@@ -50,14 +57,16 @@ export function ConsoleTrailProvider({ children }: { children: ReactNode }) {
         delete next[id];
         return next;
       }
-      return { ...current, [id]: crumbs };
+      return { ...current, [id]: { crumbs, inline } };
     });
   }, []);
 
   const value = useMemo<ConsoleTrailValue>(() => {
     const published = Object.values(entries);
+    const last = published.length ? published[published.length - 1] : null;
     return {
-      trail: published.length ? published[published.length - 1] : null,
+      trail: last?.crumbs ?? null,
+      inline: last?.inline ?? false,
       publish,
     };
   }, [entries, publish]);
@@ -77,17 +86,28 @@ export function useConsoleTrailValue(): ConsoleCrumb[] | null {
  * Pass `null` while the record is still loading — the bar then falls back to
  * the URL-derived context rather than flashing a half-built trail.
  */
-export function useConsoleTrail(id: string, crumbs: ConsoleCrumb[] | null): void {
+/** True when the page publishing the trail draws it itself (no bar). */
+export function useConsoleTrailInline(): boolean {
+  return useContext(ConsoleTrailContext)?.inline ?? false;
+}
+
+/**
+ * `inline`: the page renders Back and its title inside its own layout
+ * (FormPageHead at the top of a form's rail), so RouteContextBar is not drawn
+ * and the page reaches the top rail with no strip above it.
+ */
+export function useConsoleTrail(id: string, crumbs: ConsoleCrumb[] | null, options?: { inline?: boolean }): void {
   const context = useContext(ConsoleTrailContext);
   const publish = context?.publish;
   /* Serialised so a caller building the array inline does not republish on
      every render — the common shape here is `[{label: org.name, href: …}]`,
      a fresh array each time with identical contents. */
   const encoded = crumbs ? JSON.stringify(crumbs) : null;
+  const inline = options?.inline ?? false;
 
   useEffect(() => {
     if (!publish) return;
-    publish(id, encoded ? JSON.parse(encoded) as ConsoleCrumb[] : null);
+    publish(id, encoded ? JSON.parse(encoded) as ConsoleCrumb[] : null, inline);
     return () => publish(id, null);
-  }, [publish, id, encoded]);
+  }, [publish, id, encoded, inline]);
 }

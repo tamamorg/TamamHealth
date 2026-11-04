@@ -28,6 +28,7 @@ import { routeLabelKeyFor } from '@/lib/navigation/route-context';
 import { useInlineRouteBack } from '@/components/navigation/RouteContextBar';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import './chart-frame.css';
+import './chart-buttons.css';
 import './chart-tables.css';
 
 

@@ -50,6 +50,7 @@ import {
   scrollParentOf, sectionRequirementProgress,
 } from './registration-progress';
 import { useGoBack } from '@/lib/navigation/nav-history';
+import FormPageHead from '@/components/navigation/FormPageHead';
 
 interface PatientRegistrationFormProps {
   embedded?: boolean;
@@ -630,11 +631,11 @@ export function PatientRegistrationForm({
   return (
     <>
       <main className={`page-container page-enter patient-registration-page${embedded ? ' patient-registration-page--embedded' : ''}`}>
-        {/* Back and the page title are in the bar at the top (RouteContextBar). */}
+        {/* Back and the page title head the left rail (FormPageHead); no strip above the form. */}
         <div className="tamam-reg">
           {/* Left rail: the form's table of contents and its two actions. */}
           <aside className="tamam-reg-rail" aria-label={t('patientNew.registrationProgressAriaLabel')}>
-            {embedded && <h1 className="tamam-reg-title">{t('patientNew.topBarTitle')}</h1>}
+            {embedded ? <h1 className="tamam-reg-title">{t('patientNew.topBarTitle')}</h1> : <FormPageHead />}
             {/* Said once, here, instead of under every section heading. */}
             <p className="tamam-reg-railnote field-required">{t('patientNew.requiredFieldsNote')}</p>
             <p className="tamam-reg-jump">{t('patientNew.jumpTo')}</p>
