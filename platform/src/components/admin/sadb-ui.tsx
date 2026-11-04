@@ -22,7 +22,7 @@ import { useAuth } from '@/lib/context';
 import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHeader';
 import Modal from '@/components/Modal';
 import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
-import { AlertTriangle, ChevronDown, ChevronRight, ChevronUp, Pencil, Search } from '@/components/icons/lucide';
+import { AlertTriangle, ChevronDown, ChevronRight, ChevronUp, Minus, Pencil, Search, TrendingDown, TrendingUp } from '@/components/icons/lucide';
 import type { SaSeverity } from '@/components/admin/sa-ui';
 import { FilterDisclosure } from '@/components/ehr/EhrListHeader';
 import type { UserRole } from '@/lib/db-types';
@@ -309,14 +309,51 @@ export function SadbQueueRow({ chip, chipTone, title, sub, when, onClick }: {
 
 /* ── KPI tiles ─────────────────────────────────────────────────────── */
 
-export function SadbKpiTile({ label, value, delta, deltaTone, onClick }: {
-  label: string; value: ReactNode; delta?: ReactNode; deltaTone?: 'up' | 'warn'; onClick?: () => void;
+export type TrendDirection = 'up' | 'down' | 'flat';
+
+/** Which way a figure moved between two periods. */
+export function trendBetween(current: number, previous: number): TrendDirection {
+  if (current > previous) return 'up';
+  if (current < previous) return 'down';
+  return 'flat';
+}
+
+export interface SadbTrendValue {
+  direction: TrendDirection;
+  /** What it moved against, in words ("vs 12 last week"), so the icon is never the only signal. */
+  label: string;
+  /** Which way is good news (default up). More open risks going up is bad. */
+  good?: 'up' | 'down';
+}
+
+/**
+ * A trend indicator: icon + colour + words. The icon says the direction; the
+ * colour says whether that direction is good news (green) or not (red), by
+ * `good`; no change is a grey dash.
+ */
+export function SadbTrend({ direction, label, good = 'up' }: SadbTrendValue) {
+  const Icon = direction === 'up' ? TrendingUp : direction === 'down' ? TrendingDown : Minus;
+  const tone = direction === 'flat' ? 'flat' : direction === good ? 'good' : 'bad';
+  return (
+    <span className={`sadb-trend sadb-trend--${direction} sadb-trend--${tone}`}>
+      <Icon className="sadb-trend-icon" aria-hidden="true" />
+      <span>{label}</span>
+    </span>
+  );
+}
+
+export function SadbKpiTile({ label, value, delta, deltaTone, trend, onClick }: {
+  label: string; value: ReactNode; delta?: ReactNode; deltaTone?: 'up' | 'warn';
+  /** Period-over-period movement, drawn as a trend icon with its comparison. */
+  trend?: SadbTrendValue;
+  onClick?: () => void;
 }) {
   const body = (
     <>
       <p className="sadb-kpi-label">{label}</p>
       <p className="sadb-kpi-value">{value}</p>
       {delta && <p className={`sadb-kpi-delta ${deltaTone === 'up' ? 'is-up' : deltaTone === 'warn' ? 'is-warn' : ''}`.trim()}>{delta}</p>}
+      {trend && <p className="sadb-kpi-delta sadb-kpi-delta--trend"><SadbTrend {...trend} /></p>}
     </>
   );
   return onClick

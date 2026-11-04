@@ -1,0 +1,64 @@
+/* FormPageHead: Back and the title at the head of a form's rail.
+ * Back speaks the chart's button voice (14px / 400, Tamam blue, the same as
+ * "Actions" and "Customize View"); the title is the chart banner's name line
+ * (20px / 600 ink). `body …` so the registration and admin rails' own type
+ * rules (tamam-reg, sadb-regpage) do not restyle it. */
+
+body .form-page-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+body .form-page-head__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  margin-inline-start: -8px;
+  padding: 0 8px;
+  border-radius: 0;
+  font-family: var(--font-platform);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--accent-text, var(--accent-primary));
+  text-decoration: none;
+}
+body .form-page-head__back:hover {
+  background: color-mix(in srgb, var(--color-slate-400, #8d8d8d) 12%, transparent);
+  color: var(--accent-hover, var(--accent-text));
+}
+body .form-page-head__back:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+body .form-page-head__back svg {
+  width: 16px;
+  height: 16px;
+  color: currentColor !important;
+  stroke: currentColor !important;
+}
+
+body .form-page-head__crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+body .form-page-head__crumb { display: inline-flex; align-items: center; gap: 4px; }
+body .form-page-head__crumb svg { width: 12px; height: 12px; color: var(--text-muted) !important; }
+body .form-page-head__crumb a { color: var(--accent-text); text-decoration: none; }
+body .form-page-head__crumb a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+body .form-page-head__title {
+  margin: 0;
+  font-family: var(--font-platform);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-primary);
+}

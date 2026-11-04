@@ -17,6 +17,7 @@
 
 import type { ReactNode } from 'react';
 import { useConsoleTrail } from '@/components/navigation/ConsoleTrail';
+import FormPageHead from '@/components/navigation/FormPageHead';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { routeLabelKeyFor } from '@/lib/navigation/route-context';
 
@@ -30,7 +31,7 @@ export default function CreateRecordPage({
   title: string;
   /** One line of orientation under the title. */
   note?: string;
-  /** No longer drawn: Back and the title are in the bar at the top. */
+  /** No longer drawn: Back and the title head the rail (FormPageHead). */
   backLabel?: string;
   /** Already validated as an internal path by `useReturnTo`/`safeReturnTo`. */
   returnTo: string;
@@ -52,7 +53,7 @@ export default function CreateRecordPage({
   useConsoleTrail('create-record-page', [
     ...(parentKey ? [{ label: t(parentKey), href: returnTo }] : []),
     { label: title },
-  ]);
+  ], { inline: true });
 
   return (
     <main className="page-container page-enter sadb-scope">
@@ -60,16 +61,16 @@ export default function CreateRecordPage({
         <div className="sadb-regpage-shell">
           {layout === 'full' ? (
             <>
-              {note && (
-                <div className="sadb-regpage-rail" style={{ position: 'static' }}>
-                  <p className="sadb-regpage-note">{note}</p>
-                </div>
-              )}
+              <div className="sadb-regpage-rail" style={{ position: 'static' }}>
+                <FormPageHead />
+                {note && <p className="sadb-regpage-note">{note}</p>}
+              </div>
               <div className="sadb-card sadb-regpage-form">{children}</div>
             </>
           ) : (
             <div className="sadb-regpage">
               <aside className="sadb-regpage-rail" aria-label={title}>
+                <FormPageHead />
                 {note && <p className="sadb-regpage-note">{note}</p>}
               </aside>
 

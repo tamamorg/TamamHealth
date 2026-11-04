@@ -2,7 +2,8 @@
 
 import { ForcePasswordChange } from '@/modules/identity/client';
 import { Suspense, useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { isManagementSurface } from '@/lib/navigation/management-surface';
 import { useAuth } from '@/lib/context';
 import { setAuditActor } from '@/lib/services/audit-service';
 import EhrTopRail from '@/components/ehr/EhrTopRail';
@@ -24,6 +25,7 @@ import MobileAppShell from '@/components/mobile/MobileAppShell';
 import UsageTracker from '@/components/UsageTracker';
 import { ConfirmProvider } from '@/components/ConfirmDialog';
 import RouteContextBar from '@/components/navigation/RouteContextBar';
+import ModuleHubTabs from '@/components/navigation/ModuleHubTabs';
 import { ConsoleTrailProvider } from '@/components/navigation/ConsoleTrail';
 import { MessagingDock, MessagingDockProvider, PatientTextOutbox } from '@/modules/communication/client';
 import NavHistoryTracker from '@/components/navigation/NavHistoryTracker';
@@ -34,7 +36,10 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
   const router = useRouter();
+  const pathname = usePathname();
   const { isAuthenticated, currentUser, dbReady, logout, platformPolicy } = useAuth();
+  // Management modules wear the patient chart's frame (app/management-frame.css).
+  const managementSurface = isManagementSurface(pathname, currentUser?.role);
   // Audit rows written from this browser are filed under the signed-in user's
   // organisation and facility, or they never replicate to the server — see
   // `setAuditActor`. Cleared on sign-out so the next person on a shared
@@ -199,7 +204,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Suspense fallback={null}>
                 <RouteContextBar />
               </Suspense>
-              <main id="main-content" className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
+              <main
+                id="main-content"
+                className="relative flex-1 flex flex-col min-w-0 overflow-hidden"
+                data-surface={managementSurface ? 'management' : undefined}
+              >
+                {/* A management hub's pages as tabs (module-hubs.ts); null elsewhere. */}
+                <ModuleHubTabs />
                 <RoleGuard>{children}</RoleGuard>
                 <GetStartedCard />
                 <PageDraftKeeper />

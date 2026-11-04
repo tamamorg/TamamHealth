@@ -370,7 +370,7 @@ export default function RiskCenterPage() {
                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openResolveDialog([r]); } }}
                 >
                   <td><strong>{r.signal}</strong></td>
-                  <td><SadbChip tone={SEVERITY_CHIP[r.severity]}>{r.severity.toUpperCase()}</SadbChip></td>
+                  <td><SadbChip tone={SEVERITY_CHIP[r.severity]}>{r.severity}</SadbChip></td>
                   <td>{r.source}</td>
                   <td>{r.detail}</td>
                   <td>{formatWhen(r.when)}</td>
@@ -409,7 +409,7 @@ export default function RiskCenterPage() {
                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setReopening(d); } }}
                 >
                   <td><strong>{d.signal}</strong></td>
-                  <td><SadbChip tone={SEVERITY_CHIP[d.severity]}>{d.severity.toUpperCase()}</SadbChip></td>
+                  <td><SadbChip tone={SEVERITY_CHIP[d.severity]}>{d.severity}</SadbChip></td>
                   <td>{d.source}</td>
                   <td>{d.note || <span style={{ color: 'var(--text-muted)' }}>{t('ui.acknowledgedNoNote')}</span>}</td>
                   <td>{formatWhen(d.resolvedAt)}</td>
@@ -486,7 +486,7 @@ export default function RiskCenterPage() {
                 <div style={{ border: '1px solid var(--border-light)', borderRadius: 8, marginBottom: 14 }}>
                   <div className="sadb-kv">
                     <span>{t('epidemic.colSeverity')}</span>
-                    <SadbChip tone={SEVERITY_CHIP[single.severity]}>{single.severity.toUpperCase()}</SadbChip>
+                    <SadbChip tone={SEVERITY_CHIP[single.severity]}>{single.severity}</SadbChip>
                   </div>
                   <div className="sadb-kv"><span>{t('ui.source')}</span><span className="sadb-kv-value">{single.source}</span></div>
                   <div className="sadb-kv"><span>{t('billing.activityColumn.status')}</span><span className="sadb-kv-value">{humanizeStatus(single.status)}</span></div>
@@ -570,7 +570,7 @@ export default function RiskCenterPage() {
             <div style={{ border: '1px solid var(--border-light)', borderRadius: 8, marginBottom: 14 }}>
               <div className="sadb-kv">
                 <span>{t('epidemic.colSeverity')}</span>
-                <SadbChip tone={SEVERITY_CHIP[reopening.severity]}>{reopening.severity.toUpperCase()}</SadbChip>
+                <SadbChip tone={SEVERITY_CHIP[reopening.severity]}>{reopening.severity}</SadbChip>
               </div>
               <div className="sadb-kv"><span>{t('ui.source')}</span><span className="sadb-kv-value">{reopening.source}</span></div>
               <div className="sadb-kv"><span>{t('conflicts.actionResolved')}</span><span className="sadb-kv-value">{formatWhen(reopening.resolvedAt)}</span></div>

@@ -105,11 +105,12 @@ const GROUPS: RouteGroup[] = [
 const EXACT_ROUTES: Record<string, RouteContext> = {
   // The page title lives in the bar, with Back, instead of a toolbar and an
   // h1 of the page's own (user, 2026-11-04).
-  '/patients/new': context('/patients', 'breadcrumb.patients', 'patientNew.topBarTitle', true),
+  // Registration draws Back and its title at the head of its own rail
+  // (FormPageHead), so no bar takes a strip above the form.
+  '/patients/new': { ...context('/patients', 'breadcrumb.patients', 'patientNew.topBarTitle', true), inlineBack: true },
   '/wards/handoff': context('/dashboard', 'breadcrumb.dashboard', 'routeContext.handoff', true),
   // Second-level pages whose parent is a page of its own: they get the bar
   // and its Back, which follows ?returnTo= first, the parent otherwise.
-  '/facility-management/queue': context('/facility-management', 'routeContext.facilityManagement', 'routeContext.approvalQueue', true),
   '/payments/claims': context('/payments', 'routeContext.payments', 'routeContext.claims', true),
   '/wards/mar': context('/wards', 'routeContext.wards', 'routeContext.medicationAdministration', true),
   '/dashboard/nutrition/supplies': context('/dashboard/nutrition', 'breadcrumb.dashboard', 'nutrition.supplies', true),

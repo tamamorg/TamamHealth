@@ -36,7 +36,8 @@ import { formatWhen } from '@/components/admin/sa-ui';
 import { buildRiskRows, readinessFromRisks } from '@/components/admin/risk-signals';
 import { getRiskResolutions, indexResolutions, isRiskResolved } from '@/lib/services/risk-resolution-service';
 import {
-  SadbChip, SadbGridList, SadbGridRow, SadbPlanChip, statusChip, effectiveOrgStatus,
+  SadbChip, SadbGridList, SadbGridRow, SadbPlanChip, SadbTrend, statusChip, effectiveOrgStatus, trendBetween,
+  type SadbTrendValue,
 } from '@/components/admin/sadb-ui';
 import { ORG_GRID_TEMPLATE } from '@/components/admin/TenantTree';
 import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
@@ -107,7 +108,7 @@ export default function AdminDashboardPage() {
   const { config } = usePlatformConfig();
 
   const [users, setUsers] = useState<UserDoc[]>([]);
-  const [patientAgg, setPatientAgg] = useState({ total: 0, newThisWeek: 0, byOrg: new Map<string, number>() });
+  const [patientAgg, setPatientAgg] = useState({ total: 0, newThisWeek: 0, newLastWeek: 0, byOrg: new Map<string, number>() });
   const [encounters, setEncounters] = useState<EncounterDoc[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogDoc[]>([]);
   const [syncStats, setSyncStats] = useState({ total: 0, pending: 0, synced: 0, failed: 0, oldestPending: undefined as string | undefined });
@@ -149,12 +150,16 @@ export default function AdminDashboardPage() {
         setUsers(allUsers);
         const byOrg = new Map<string, number>();
         const weekAgo = Date.now() - 7 * 86400000;
+        const twoWeeksAgo = Date.now() - 14 * 86400000;
         let newThisWeek = 0;
+        let newLastWeek = 0;
         for (const p of allPatients) {
           if (p.orgId) byOrg.set(p.orgId, (byOrg.get(p.orgId) || 0) + 1);
-          if (p.createdAt && new Date(p.createdAt).getTime() >= weekAgo) newThisWeek++;
+          const at = p.createdAt ? new Date(p.createdAt).getTime() : NaN;
+          if (at >= weekAgo) newThisWeek++;
+          else if (at >= twoWeeksAgo) newLastWeek++;
         }
-        setPatientAgg({ total: allPatients.length, newThisWeek, byOrg });
+        setPatientAgg({ total: allPatients.length, newThisWeek, newLastWeek, byOrg });
         setEncounters(allEncounters);
         setAuditLogs(logs);
         setSyncStats({ total: sync.total, pending: sync.pending, synced: sync.synced, failed: sync.failed, oldestPending: sync.oldestPending });
@@ -199,6 +204,11 @@ export default function AdminDashboardPage() {
   const encountersToday = useMemo(
     () => encounters.filter(e => dayKey(e.createdAt || e.startedAt || '') === todayKey).length,
     [encounters, todayKey],
+  );
+  const yesterdayKey = dayKey(new Date(Date.now() - 86400000).toISOString());
+  const encountersYesterday = useMemo(
+    () => encounters.filter(e => dayKey(e.createdAt || e.startedAt || '') === yesterdayKey).length,
+    [encounters, yesterdayKey],
   );
 
   /* Busiest hour of today, for the Encounters KPI delta line. */
@@ -256,6 +266,14 @@ export default function AdminDashboardPage() {
   const quarterStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1).getTime();
   const newOrgsQuarter = organizations.filter(o => o.createdAt && new Date(o.createdAt).getTime() >= quarterStart).length;
   const newFacilitiesQuarter = hospitals.filter(h => h.createdAt && new Date(h.createdAt).getTime() >= quarterStart).length;
+  // The quarter before, for the trend: onboarding this quarter vs last.
+  const prevQuarterStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3 - 3, 1).getTime();
+  const inPrevQuarter = (iso?: string) => {
+    const at = iso ? new Date(iso).getTime() : NaN;
+    return at >= prevQuarterStart && at < quarterStart;
+  };
+  const prevOrgsQuarter = organizations.filter(o => inPrevQuarter(o.createdAt)).length;
+  const prevFacilitiesQuarter = hospitals.filter(h => inPrevQuarter(h.createdAt)).length;
   // No "N offline" delta any more: it counted HospitalDoc.syncStatus, a field
   // frozen at record creation, so every app-created facility read offline
   // forever. Real liveness is derived from sync events (see
@@ -302,13 +320,16 @@ export default function AdminDashboardPage() {
     ? 'danger'
     : openRisks.length ? 'warn' : 'ok';
 
-  const kpis: Array<{ key: string; label: string; value: string; delta: string; deltaClass?: string; href?: string }> = [
+  /* Trends compare like with like: this quarter's onboarding against last
+     quarter's, this week's registrations against last week's, today's
+     encounters against yesterday's. The words say what was compared. */
+  const kpis: Array<{ key: string; label: string; value: string; delta: string; deltaClass?: string; href?: string; trend?: SadbTrendValue }> = [
     {
       key: 'organizations',
       label: 'Organizations',
       value: String(organizations.length),
       delta: newOrgsQuarter > 0 ? `+${newOrgsQuarter} this quarter` : `${activeOrgs.length} active · ${trialOrgs.length} trial`,
-      deltaClass: newOrgsQuarter > 0 ? 'is-up' : undefined,
+      trend: { direction: trendBetween(newOrgsQuarter, prevOrgsQuarter), label: `vs ${prevOrgsQuarter} last quarter` },
       href: '/admin/organizations',
     },
     {
@@ -316,7 +337,7 @@ export default function AdminDashboardPage() {
       label: 'Facilities',
       value: String(hospitals.length),
       delta: newFacilitiesQuarter > 0 ? `+${newFacilitiesQuarter} this quarter` : `across ${organizations.length} organizations`,
-      deltaClass: newFacilitiesQuarter > 0 ? 'is-up' : undefined,
+      trend: { direction: trendBetween(newFacilitiesQuarter, prevFacilitiesQuarter), label: `vs ${prevFacilitiesQuarter} last quarter` },
       href: '/admin/organizations',
     },
     {
@@ -331,7 +352,7 @@ export default function AdminDashboardPage() {
       label: 'Patients',
       value: loading ? '…' : patientAgg.total.toLocaleString(),
       delta: patientAgg.newThisWeek > 0 ? `+${patientAgg.newThisWeek} this week` : 'Tenant-scoped registry',
-      deltaClass: patientAgg.newThisWeek > 0 ? 'is-up' : undefined,
+      trend: loading ? undefined : { direction: trendBetween(patientAgg.newThisWeek, patientAgg.newLastWeek), label: `vs ${patientAgg.newLastWeek} last week` },
       // No platform-level patient registry to open — the registry is tenant-scoped.
     },
     {
@@ -339,6 +360,7 @@ export default function AdminDashboardPage() {
       label: 'Encounters today',
       value: loading ? '…' : encountersToday.toLocaleString(),
       delta: encounterPeak ? `peak ${String(encounterPeak.hour).padStart(2, '0')}:00 · ${encounterPeak.perHour}/h` : 'None recorded yet',
+      trend: loading ? undefined : { direction: trendBetween(encountersToday, encountersYesterday), label: `vs ${encountersYesterday} yesterday` },
       href: '/admin/analytics',
     },
   ];
@@ -375,6 +397,7 @@ export default function AdminDashboardPage() {
                 <p className="sadb-kpi-label">{k.label}</p>
                 <p className="sadb-kpi-value">{k.value}</p>
                 <p className={`sadb-kpi-delta ${k.deltaClass ?? ''}`}>{k.delta}</p>
+                {k.trend && <p className="sadb-kpi-delta sadb-kpi-delta--trend"><SadbTrend {...k.trend} /></p>}
               </>
             );
             // Straight to the page that owns the figure — no preview stop.
