@@ -36296,7 +36296,11 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
    14px/500 in body ink, sentence case; titles 16px/600 in the platform font;
    the accent as a 2px focus outline. Registration used the same shape in
    light blue with 12px grey labels; popups shouted UPPERCASE labels over
-   rounded boxes. This layer brings both to the chart's.
+   rounded boxes. This layer brings both to the chart's, and the full-page
+   create forms (`.sadb-regpage-form`, the popups' Expand pages) and every
+   page-level <form> with them. The chart itself is the model and is left
+   alone, as is registration, which has its own block below. A form that is
+   not a <form> element opts in with `.tm-form`.
 
    Not touched: the chart's own forms (already the model), the note editor,
    the searchable-select popup, and anything under [data-form-look="off"].
@@ -36327,7 +36331,7 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
 }
 
 /* Labels. `display` deliberately left alone (platform-form-css-traps). */
-.modal-portal-dialog :is(label, legend, .sv-label):not(:where(.o3f, .o3f-multi, .cn-editor, [data-form-look="off"]) *) {
+:is(.modal-portal-dialog, .sadb-regpage-form, .tm-form, #main-content form:not([role="search"]):not(:where(.tamam-root, .tamam-reg) *)) :is(label, legend, .sv-label):not(:where(.o3f, .o3f-multi, .cn-editor, [data-form-look="off"]) *) {
   text-transform: none !important;
   letter-spacing: normal !important;
   font-family: var(--font-platform);
@@ -36337,7 +36341,7 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
 }
 
 /* Fields. */
-.modal-portal-dialog :is(input:not([type]), input[type="text"], input[type="email"], input[type="tel"], input[type="number"], input[type="date"], input[type="time"], input[type="datetime-local"], input[type="password"], input[type="url"], select, textarea):not(:where(.o3f, .o3f-multi, .cn-editor, .tsel-menu, .nv-root, [data-form-look="off"]) *) {
+:is(.modal-portal-dialog, .sadb-regpage-form, .tm-form, #main-content form:not([role="search"]):not(:where(.tamam-root, .tamam-reg) *)) :is(input:not([type]), input[type="text"], input[type="email"], input[type="tel"], input[type="number"], input[type="date"], input[type="time"], input[type="datetime-local"], input[type="password"], input[type="url"], select, textarea):not(:where(.o3f, .o3f-multi, .cn-editor, .tsel-menu, .nv-root, [data-form-look="off"]) *) {
   min-height: 40px;
   padding-inline: 12px;
   border: 0 !important;
@@ -36350,8 +36354,8 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
   font-family: var(--font-platform);
   font-size: 14px;
 }
-.modal-portal-dialog textarea:not(:where(.o3f, .o3f-multi, .cn-editor, [data-form-look="off"]) *) { padding-block: 10px; }
-.modal-portal-dialog :is(input, select, textarea):focus-visible:not(:where(.o3f, .o3f-multi, .cn-editor, [data-form-look="off"]) *) {
+:is(.modal-portal-dialog, .sadb-regpage-form, .tm-form, #main-content form:not([role="search"]):not(:where(.tamam-root, .tamam-reg) *)) textarea:not(:where(.o3f, .o3f-multi, .cn-editor, [data-form-look="off"]) *) { padding-block: 10px; }
+:is(.modal-portal-dialog, .sadb-regpage-form, .tm-form, #main-content form:not([role="search"]):not(:where(.tamam-root, .tamam-reg) *)) :is(input, select, textarea):focus-visible:not(:where(.o3f, .o3f-multi, .cn-editor, [data-form-look="off"]) *) {
   outline: 2px solid var(--accent-primary) !important;
   outline-offset: -2px;
 }
@@ -36394,4 +36398,4 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
   outline-offset: -2px;
 }
 /* Buttons inside a form popup are square, like the chart's controls. */
-.modal-portal-dialog .btn:not(:where(.o3f, .cn-editor, [data-form-look="off"]) *) { border-radius: 0 !important; }
+:is(.modal-portal-dialog, .sadb-regpage-form, .tm-form, #main-content form:not([role="search"]):not(:where(.tamam-root, .tamam-reg) *)) .btn:not(:where(.o3f, .cn-editor, [data-form-look="off"]) *) { border-radius: 0 !important; }

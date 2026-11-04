@@ -22,7 +22,7 @@ import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import {
-  ArrowLeft, Shield, KeyRound, Mail, UserX, UserCheck, Trash2, Building2,
+  Shield, KeyRound, Mail, UserX, UserCheck, Trash2, Building2,
 } from '@/components/icons/lucide';
 import {
   SadbPage, SadbCard, SadbKvRow, SadbConfirmModal, SadbGridList, SadbGridRow, SadbChip,
@@ -208,11 +208,6 @@ export default function AdminUserDetailPage() {
   if (!user) {
     return (
       <SadbPage roles={['super_admin', 'org_admin']}>
-        <div className="patient-registration-toolbar">
-          <button type="button" onClick={backToRoster} className="patient-registration-back">
-            <ArrowLeft className="w-4 h-4" /> {t('adminUsers.backToUsers')}
-          </button>
-        </div>
         <p className="sadb-empty">{t('adminUsers.userNotFound')}</p>
       </SadbPage>
     );
@@ -223,11 +218,6 @@ export default function AdminUserDetailPage() {
 
   return (
     <SadbPage roles={['super_admin', 'org_admin']}>
-      <div className="patient-registration-toolbar">
-        <button type="button" onClick={backToRoster} className="patient-registration-back">
-          <ArrowLeft className="w-4 h-4" /> {t('adminUsers.backToUsers')}
-        </button>
-      </div>
 
       {/* Identity on the left, the actions on the right — one line, the same
           header shape /admin/organizations/[id] uses. */}
