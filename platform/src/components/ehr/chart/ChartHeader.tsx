@@ -21,6 +21,9 @@ import { formatMoney } from '@/lib/format-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import { dismissBackdrop } from '@/lib/a11y';
 import { orderBannerAllergies, type BannerAllergy } from './allergy-order';
+import BackLink from '@/components/navigation/BackLink';
+import { useInlineRouteBack } from '@/components/navigation/RouteContextBar';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 import './chart-frame.css';
 import './chart-tables.css';
 
@@ -148,6 +151,11 @@ export default function ChartHeader({
   // up to 11 buttons in two rows, several of them duplicating the right-rail
   // workspace panels under different names.
   const [menuOpen, setMenuOpen] = useState(false);
+  const { t } = useTranslation();
+  // Back for the chart: the page has no breadcrumb bar, so the way out is
+  // closing the patient, as in a clinical workspace (Epic's patient tab, the
+  // O3 workspace). Same destination the bar's Back had.
+  const closeTo = useInlineRouteBack();
 
   // Only surface the actions this role actually uses — e.g. a registration
   // clerk never writes clinical notes or prescriptions, so those buttons are
@@ -305,6 +313,16 @@ export default function ChartHeader({
             </>
           )}
         </div>
+        {closeTo && (
+          <BackLink
+            className="tamam-header-close"
+            fallbackHref={closeTo.href}
+            ariaLabel={t('chart.closeTo', { place: t(closeTo.labelKey) })}
+          >
+            <DuotoneIcon name="close" size={16} aria-hidden />
+            <span className="tamam-header-close-tip" aria-hidden>{t('chart.closeTo', { place: t(closeTo.labelKey) })}</span>
+          </BackLink>
+        )}
       </div>
 
         <button

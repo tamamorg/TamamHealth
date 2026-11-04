@@ -196,6 +196,24 @@
   white-space: nowrap;
 }
 
+/* With no Back bar above it (Back is the ✕ on the patient header), the
+   chart's scrolling page starts under the top rail itself. On desktop the rail is taller (--app-top-rail-height) than the
+   space the app frame reserves for it (--ehr-top-rail-height); the bar used to
+   tuck under that difference, so the chart now steps down by it instead, or
+   its header and sticky band would sit partly behind the rail. Equal on
+   tablets, so the step is 0 there. */
+/* The section list stays pinned while the chart scrolls: it fits the space
+   under the top rail and scrolls inside itself when it is longer. */
+.tamam-left-rail {
+  max-height: calc(100svh - var(--app-top-rail-height, 72px));
+}
+
+@media (min-width: 1280px) {
+  .page-container.ehr-chart-page {
+    margin-top: max(0px, calc(var(--app-top-rail-height, 72px) - var(--ehr-top-rail-height, 60px)));
+  }
+}
+
 /* ══════════════════ MAIN COLUMN ══════════════════ */
 
 .tamam-main-col {
@@ -688,6 +706,42 @@
   cursor: pointer;
   white-space: nowrap;
 }
+
+/* Close the patient: the chart's Back. A quiet square beside Actions, with
+   where it returns to on hover and in its accessible name. */
+.tamam-header-close {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--ehr-border, var(--border-light));
+  background: var(--ehr-panel, #fff);
+  color: var(--ehr-text-body, #3C5574);
+  text-decoration: none;
+}
+.tamam-header-close:hover { background: var(--ehr-hover, #FAFBFC); color: var(--accent-primary); }
+.tamam-header-close:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.tamam-header-close-tip {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--tm-ink, #1b2a3a);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.tamam-header-close:hover .tamam-header-close-tip,
+.tamam-header-close:focus-visible .tamam-header-close-tip { opacity: 1; }
 
 .tamam-header-actions-btn:hover {
   background: var(--ehr-hover, #FAFBFC);

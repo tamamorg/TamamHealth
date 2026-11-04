@@ -11,6 +11,25 @@ import { resolveRouteContext, routeContextBackHref } from '@/lib/navigation/rout
 import { useConsoleTrailValue } from './ConsoleTrail';
 import BackLink from './BackLink';
 
+/**
+ * Back for a page that draws it inside its own layout (`inlineBack`): where it
+ * goes when there is no in-app page behind this one, and the label of that
+ * place. Same resolution as the bar, so the chart's Back behaves as the bar's.
+ */
+export function useInlineRouteBack(): { href: string; labelKey: string } | null {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { currentUser } = useAuth();
+  const homeHref = currentUser ? getDefaultDashboard(currentUser.role) : '/dashboard';
+  const returnTo = searchParams.get('returnTo');
+  const context = resolveRouteContext(pathname, homeHref, returnTo);
+  if (!context?.inlineBack) return null;
+  return {
+    href: routeContextBackHref(context, returnTo, pathname),
+    labelKey: context.crumbs[0]?.labelKey ?? 'routeContext.back',
+  };
+}
+
 export default function RouteContextBar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -27,7 +46,8 @@ export default function RouteContextBar() {
      cannot know that `/admin/facilities/abc123` sits under Juba Teaching
      Group — the level above is not in the URL. */
   const trail = useConsoleTrailValue();
-  const shown = !!(trail?.length || context);
+  // A page that carries Back in its own layout (the patient chart) gets no bar.
+  const shown = !!(trail?.length || (context && !context.inlineBack));
 
   /* Publish the bar's height as --app-route-bar-h. Whatever docks below the
      bar — the chart's workspace drawer, every <Modal variant="slider"> —

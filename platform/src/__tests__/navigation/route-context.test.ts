@@ -31,12 +31,25 @@ describe('route context navigation', () => {
     expect(result).toEqual({
       fallbackHref: '/patients',
       showBack: true,
+      // The chart draws its own way back (the ✕ on the patient header), so
+      // no bar is drawn above it.
+      inlineBack: true,
       crumbs: [
         { href: '/patients', labelKey: 'breadcrumb.patients' },
         { labelKey: 'routeContext.patientRecord' },
       ],
     });
     expect(JSON.stringify(result)).not.toContain(patientId);
+  });
+
+  it('marks a chart opened from a worklist as drawing its own Back, pointed at that worklist', () => {
+    const context = resolveRouteContext('/patients/patient-1', '/dashboard', '/dashboard')!;
+    expect(context.inlineBack).toBe(true);
+    expect(context.crumbs[0]).toEqual({ href: '/dashboard', labelKey: 'breadcrumb.dashboard' });
+  });
+
+  it('keeps the bar on other record pages', () => {
+    expect(resolveRouteContext('/notes/note-1')?.inlineBack).toBeUndefined();
   });
 
   it('uses a validated returnTo before the parent fallback', () => {

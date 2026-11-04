@@ -8282,6 +8282,7 @@ const apd: TranslationMap = {
   'management.searchPlaceholder': 'فتّش في الصفحة دي…',
   'management.status': 'الحالة',
   'management.viewsLabel': 'صفحات الإدارة',
+  'chart.closeTo': 'اقفل الملف، أرجع لـ {{place}}',
   'chart.actions': 'الإجراءات',
   'chart.correct': 'صحّح',
   'chart.correctAgain': 'صحّح تاني',

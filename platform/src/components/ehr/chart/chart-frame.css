@@ -16,6 +16,9 @@ body .tamam-root {
   background: var(--bg-app, #f4f4f4);
   border-color: var(--border-light);
   border-radius: 0;
+  /* Nothing sits between the chart and the top rail any more: no Back bar,
+     and no rule of its own either. */
+  border-top-width: 0;
 }
 
 body .tamam-root .tamam-main-col { background: var(--bg-app, #f4f4f4); }
@@ -40,7 +43,9 @@ body .tamam-root .tamam-rail-col {
   border-inline-end-width: 1px;
 }
 
-body .tamam-root .tamam-left-rail { padding: 8px 0 24px; }
+/* The first section row starts on the patient photo's line: both sit 10px
+   under the top rail (the banner's top padding below matches). */
+body .tamam-root .tamam-left-rail { padding: 10px 0 24px; }
 
 body .tamam-root .tamam-rail-card,
 body .tamam-root .tamam-rail-card:first-child {
@@ -97,7 +102,7 @@ body .tamam-root .tamam-left-rail .tamam-rail-item.is-active svg {
 
 /* ── Patient banner ────────────────────────────────────────────────────── */
 body .tamam-root .tamam-header {
-  padding: 16px 24px;
+  padding: 10px 24px 16px;
   gap: 16px;
   align-items: flex-start;
 }
