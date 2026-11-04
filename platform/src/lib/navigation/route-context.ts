@@ -10,6 +10,12 @@ export type RouteContext = {
   fallbackHref: string;
   /** Detail/workflow pages already render their own context-aware Back control. */
   showBack: boolean;
+  /**
+   * The page carries Back inside its own layout, so the bar is not drawn at
+   * all and the page reaches the top rail. The patient chart puts Back at the
+   * head of its section list instead of spending a full-width strip on it.
+   */
+  inlineBack?: boolean;
 };
 
 type RouteGroup = {
@@ -122,9 +128,10 @@ type DynamicRoute = {
 };
 
 const DYNAMIC_ROUTES: DynamicRoute[] = [
-  // The chart draws no Back of its own, so the bar's Back is the way out —
-  // to the worklist it was opened from (?returnTo=), or the patient list.
-  dynamic(segments => segments.length === 2 && segments[0] === 'patients', '/patients', 'breadcrumb.patients', 'routeContext.patientRecord', true),
+  // The chart draws Back at the head of its own section list (inlineBack), so
+  // no bar takes a strip above it. Back still goes to the worklist it was
+  // opened from (?returnTo=), or the patient list.
+  inlineBack(dynamic(segments => segments.length === 2 && segments[0] === 'patients', '/patients', 'breadcrumb.patients', 'routeContext.patientRecord', true)),
   dynamic(segments => segments.length === 2 && segments[0] === 'notes', '/notes', 'routeContext.notes', 'routeContext.noteDetails'),
   dynamic(segments => segments.length === 2 && segments[0] === 'billing', '/billing', 'routeContext.billing', 'routeContext.billDetails'),
   dynamic(segments => segments.length === 2 && segments[0] === 'rooming', '/dashboard', 'breadcrumb.dashboard', 'routeContext.rooming'),
@@ -161,7 +168,7 @@ export function resolveRouteContext(
     // crumb, so the one back affordance returns to where the clinician was.
     if (segments[0] === 'patients') {
       const origin = chartOriginCrumb(returnTo, normalizedPath);
-      if (origin) return context(origin.href, origin.labelKey, 'routeContext.patientRecord', true);
+      if (origin) return { ...context(origin.href, origin.labelKey, 'routeContext.patientRecord', true), inlineBack: true };
     }
     return dynamicRoute.context;
   }
@@ -242,6 +249,10 @@ function dynamic(
   showBack = false,
 ): DynamicRoute {
   return { matches, context: context(parentHref, parentLabelKey, currentLabelKey, showBack) };
+}
+
+function inlineBack(route: DynamicRoute): DynamicRoute {
+  return { ...route, context: { ...route.context, inlineBack: true } };
 }
 
 function normalizePath(pathname: string): string {

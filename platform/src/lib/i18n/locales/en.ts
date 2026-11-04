@@ -8298,6 +8298,7 @@ const en: TranslationMap = {
   'management.searchPlaceholder': 'Search this view…',
   'management.status': 'Status',
   'management.viewsLabel': 'Management views',
+  'chart.closeTo': 'Close chart, back to {{place}}',
   'chart.actions': 'Actions',
   'chart.correct': 'Correct',
   'chart.correctAgain': 'Correct again',
