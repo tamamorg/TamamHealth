@@ -14,6 +14,7 @@ import { useId, useMemo, useState } from 'react';
 import Modal from '@/components/Modal';
 import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import InlineBanner from '@/components/overlay/InlineBanner';
+import NoticeToast from '@/components/overlay/NoticeToast';
 import FormField from '@/components/overlay/FormField';
 import Select from '@/components/Select';
 import { Printer, MessageSquare } from '@/components/icons/lucide';
@@ -121,7 +122,7 @@ export default function VisitSummaryDialog({
               )}
 
               {summary?.hasUnsignedNote && (
-                <InlineBanner tone="warning" compact>{t('visitSummary.unsignedNote')}</InlineBanner>
+                <NoticeToast tone="warning">{t('visitSummary.unsignedNote')}</NoticeToast>
               )}
 
               {summary && (

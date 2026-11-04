@@ -13,7 +13,6 @@
 
 import { CheckCircle2, AlertTriangle, ShieldAlert } from '@/components/icons/lucide';
 import { ObfQuestion, ObfSection, ObfSelectField, ObfTextField, ObfValue } from '@/components/ehr/chart/panels/order-basket/ObfFields';
-import FormNotices from '@/components/overlay/FormNotices';
 import InlineBanner from '@/components/overlay/InlineBanner';
 import RxSafetyNotice, { useUnreviewedConflicts } from '@/components/pharmacy/RxSafetyNotice';
 import { useToast } from '@/components/Toast';
@@ -242,7 +241,6 @@ export default function PharmacyWorkflowPanel({
             {sections.map(section => <ObfSection key={section.id} title={section.label}>{section.body}</ObfSection>)}
           </div>
         </div>
-        <FormNotices />
         <div className="obk-footer">
           <button type="button" className="obk-footer-btn obk-footer-btn--secondary" disabled={ctrl.busy} onClick={onClose}>
             {t(save ? 'action.cancel' : 'action.close')}

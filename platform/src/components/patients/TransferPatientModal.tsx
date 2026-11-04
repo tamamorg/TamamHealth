@@ -20,9 +20,9 @@ import type {
 } from '@/lib/db-types';
 import { patientFullName } from '@/lib/patient-utils';
 import { ObfQuestion, ObfSection, ObfSelectField, ObfTextField } from '@/components/ehr/chart/panels/order-basket/ObfFields';
-import FormNotices, { FormError } from '@/components/overlay/FormNotices';
+import { FormError } from '@/components/overlay/FormNotices';
 import FormSlider from '@/components/overlay/FormSlider';
-import InlineBanner from '@/components/overlay/InlineBanner';
+import NoticeToast from '@/components/overlay/NoticeToast';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
@@ -281,7 +281,7 @@ export default function TransferPatientModal({
             <p className="obf-hint">{scope === 'external' ? t('transfers.pickFacility') : t('transfers.pickProvider')}</p>
           )}
           {scope === 'external' && selectedFacility && destinationOrgId && destinationOrgId !== myOrgId && (
-            <InlineBanner tone="warning">{t('transfers.differentOrg')}</InlineBanner>
+            <NoticeToast tone="warning">{t('transfers.differentOrg')}</NoticeToast>
           )}
         </>
       ),
@@ -389,12 +389,11 @@ export default function TransferPatientModal({
       <div className="obf-form">
         <div className="obf-form-body">
           <div className="obf-pad">
-            {!permission.allowed && <InlineBanner tone="danger">{permission.reason}</InlineBanner>}
+            {!permission.allowed && <NoticeToast tone="danger">{permission.reason}</NoticeToast>}
             {error && <FormError message={error} />}
             {sections.map(section => <ObfSection key={section.id} title={section.label}>{section.body}</ObfSection>)}
           </div>
         </div>
-        <FormNotices />
         <div className="obk-footer">
           <button type="button" className="obk-footer-btn obk-footer-btn--secondary" disabled={busy} onClick={onClose}>
             {t('action.cancel')}

@@ -11,7 +11,6 @@ import { ArrowLeft } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import type { LabOrderPriority } from '@/components/lab/order/lab-order-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import FormNotices from '@/components/overlay/FormNotices';
 import type { TestOrderDraft } from './basket-types';
 
 const INSTRUCTIONS_MAX = 500;
@@ -59,7 +58,6 @@ export default function TestOrderForm({ initial, onSave, onDiscard, onBack, onEd
           </label>
         </div>
       </div>
-      <FormNotices />
       <div className="obk-footer">
         <button type="button" className="obk-footer-btn obk-footer-btn--secondary" onClick={onDiscard}>{t('basket.discard')}</button>
         <button type="button" className="obk-footer-btn obk-footer-btn--primary" onClick={() => onSave(order)}>{t('basket.saveOrder')}</button>

@@ -11614,6 +11614,7 @@ const en: TranslationMap = {
   'ui.recordedAllergies': 'Recorded allergies:',
   'ui.dateAndTimeIssued': 'Date and time issued',
   'ui.indication': 'Indication',
+  'chart.close': 'Close chart',
 };
 
 export default en;

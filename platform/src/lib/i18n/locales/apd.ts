@@ -11603,6 +11603,7 @@ const apd: TranslationMap = {
   'ui.recordedAllergies': 'الحساسية المسجّلة:',
   'ui.dateAndTimeIssued': 'تاريخ ووقت الإصدار',
   'ui.indication': 'دواعي الاستعمال',
+  'chart.close': 'اقفل الملف',
 };
 
 export default apd;

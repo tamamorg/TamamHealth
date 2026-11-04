@@ -35898,10 +35898,11 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
    edge in the tone.
 
    - Toast (`.ehr-toast`): the high-contrast dark panel, stacked bottom-left,
-     newest at the bottom. For outcomes that are not about an open form.
-   - Inline (`.tm-banner`): the low-contrast tinted panel inside a surface. A
-     form's own errors land in its `.tm-form-notices` slot just above the
-     action bar (FormNotices), so the failure sits where the eye already is.
+     newest at the bottom. Every outcome, error and form status message shows
+     here (2026-11-03: errors are no longer routed into the open form).
+   - Inline (`.tm-banner`): the low-contrast tinted panel, kept only for what
+     must stay on the surface: prescribing safety lists, stock, the sign
+     checklist, empty states and the duplicate-record banner.
 
    Tones come from the status pairs: the toast takes the bright rung that
    reads on its dark panel, the inline panel the text rung on its tint, and
@@ -36106,17 +36107,6 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 .tm-banner__dismiss:hover { background: color-mix(in srgb, var(--ntf-inline-ink) 8%, transparent); }
 .tm-banner__dismiss:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
 .tm-banner__dismiss svg { width: 20px; height: 20px; color: currentColor; stroke: currentColor; }
-
-/* A form's own errors, above its action bar. */
-.tm-form-notices {
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 0 24px 16px;
-}
-.tm-form-notices[hidden] { display: none; }
-@media (max-width: 639px) { .tm-form-notices { padding-inline: 16px; } }
 
 /* ── Nutrition supplies page (/dashboard/nutrition/supplies) — `nsup-`.
    Stock keeping moved off the old nutrition station's centre panel when that

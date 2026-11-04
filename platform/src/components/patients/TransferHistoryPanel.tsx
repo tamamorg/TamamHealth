@@ -11,7 +11,6 @@
  */
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import FormNotices from '@/components/overlay/FormNotices';
 import FormSlider from '@/components/overlay/FormSlider';
 import { ObfSelectField, ObfTextField, ObfValue } from '@/components/ehr/chart/panels/order-basket/ObfFields';
 import '@/components/lab/order/lab-order.css';
@@ -95,7 +94,6 @@ function TransferForm({ children, footer }: { children: ReactNode; footer: React
     <div className="station-form-slider obk-root lwf">
       <div className="obf-form">
         <div className="obf-form-body"><div className="obf-pad">{children}</div></div>
-        <FormNotices />
         <div className="obk-footer">{footer}</div>
       </div>
     </div>

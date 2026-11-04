@@ -23,7 +23,6 @@ import type { Diagnosis, MedicalRecordDoc } from '@/lib/db-types';
 import { formatDate, formatDateTime, humanizeStatus } from '@/lib/format-utils';
 import { COMMON_ICD11_CODES } from '@/lib/icd11-codes';
 import { canEditRecordDraft } from '@/lib/clinical-notes/draft-access';
-import InlineBanner from '@/components/overlay/InlineBanner';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { describeError } from '@/lib/user-facing-error';
 import './record-sign-panel.css';
@@ -431,11 +430,6 @@ export default function RecordSignPanel({ record, intent = 'view', onClose, onCh
 
   return (
     <div className="rsp">
-      {draftLocked && (
-        <InlineBanner compact title={t('chart.locked')}>
-          {mayEdit ? t('noteViewer.lockedHint') : null}
-        </InlineBanner>
-      )}
       <div className="rsp-scroll">
         <O3Layout pages={[{ id: 'record', label: t('recordSign.title'), sections }]} />
       </div>

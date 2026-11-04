@@ -54,6 +54,33 @@ export interface PatientTimelineProps {
    * scrolled to and highlighted on arrival.
    */
   focusId?: string;
+  /**
+   * Remembers where a row's Open left from (the visits that were open and the
+   * row itself), so coming Back lands on that row instead of a collapsed list.
+   * Usually the patient's id; without it nothing is remembered.
+   */
+  returnKey?: string;
+}
+
+/** What the timeline looked like when a row's Open navigated away. */
+interface TimelineReturn { open: string[]; /** DOM id of the row. */ row: string }
+
+const returnStorageKey = (key: string) => `tm-timeline-return:${key}`;
+
+/** Read only: a state initializer runs twice in development, so the note is
+ *  forgotten by the arrival effect, not here. */
+function readTimelineReturn(key: string | undefined): TimelineReturn | null {
+  if (!key) return null;
+  try {
+    const raw = window.sessionStorage.getItem(returnStorageKey(key));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<TimelineReturn>;
+    return Array.isArray(parsed.open) && typeof parsed.row === 'string'
+      ? { open: parsed.open.filter((id): id is string => typeof id === 'string'), row: parsed.row }
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 export type TimelineCategory = 'triage' | 'consultation' | 'note' | 'lab' | 'prescription' | 'immunization' | 'referral' | 'anc' | 'appointment';
@@ -377,8 +404,16 @@ export default function PatientTimeline(props: PatientTimelineProps) {
   const allGroups = groupTimelineEvents(events);
   const [filter, setFilter] = useState<'all' | TimelineEvent['category']>('all');
   const [search, setSearch] = useState('');
+  const { returnKey } = props;
+  // Coming back from a row's Open: the visits that were open, and the row.
+  // A deep link to one of this timeline's own documents wins. A focus id that
+  // names no row here (the chart keeps the Lab tab's ?focus= across tabs) is
+  // not one, and Back from that result still lands where it was opened.
+  const deepLinked = !!props.focusId && events.some(e => e.docId === props.focusId);
+  const [arrival] = useState(() => (deepLinked ? null : readTimelineReturn(returnKey)));
+  const [returnedRowId, setReturnedRowId] = useState<string | undefined>(arrival?.row);
   // Visit groups opened to their item-level rows.
-  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set());
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(arrival?.open));
   const toggleGroup = (id: string) => setOpenGroups(prev => {
     const next = new Set(prev);
     if (!next.delete(id)) next.add(id);
@@ -410,6 +445,46 @@ export default function PatientTimeline(props: PatientTimelineProps) {
     return () => cancelAnimationFrame(raf);
   }, [focusedRowId, focusedGroupId]);
 
+  // Back from a record: the row it was opened from, in view and marked for a
+  // moment so the eye finds it.
+  useEffect(() => {
+    if (!arrival) return;
+    // One-shot: a later, unrelated visit to this tab starts collapsed.
+    try { if (returnKey) window.sessionStorage.removeItem(returnStorageKey(returnKey)); } catch { /* already gone */ }
+    const raf = requestAnimationFrame(() => {
+      document.getElementById(arrival.row)?.scrollIntoView({ block: 'center' });
+    });
+    const clear = window.setTimeout(() => setReturnedRowId(undefined), 2400);
+    return () => { cancelAnimationFrame(raf); window.clearTimeout(clear); };
+  }, [arrival, returnKey]);
+
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  /**
+   * A row's Actions may navigate away (Open → the Lab tab); note where from.
+   * An action that stays here (View opens the sidebar) leaves the timeline
+   * mounted, and the note is dropped so it cannot surface on a later visit.
+   */
+  const rememberReturn = (rowDomId: string) => {
+    if (!returnKey) return;
+    const key = returnStorageKey(returnKey);
+    try {
+      const memo: TimelineReturn = { open: [...openGroups], row: rowDomId };
+      window.sessionStorage.setItem(key, JSON.stringify(memo));
+    } catch {
+      // Private mode or a full store: Back still works, it just lands collapsed.
+      return;
+    }
+    window.setTimeout(() => {
+      if (!mountedRef.current) return;
+      try { window.sessionStorage.removeItem(key); } catch { /* nothing to drop */ }
+    }, 3000);
+  };
+
   const searchQuery = search.trim().toLowerCase();
   const matches = (event: TimelineEvent) =>
     (filter === 'all' || event.category === filter)
@@ -431,7 +506,7 @@ export default function PatientTimeline(props: PatientTimelineProps) {
     { id: 'anc', label: 'ANC' },
   ];
 
-  const renderEvent = (e: TimelineEvent, nested: boolean) => {
+  const renderEvent = (e: TimelineEvent, nested: boolean, lastInGroup = false) => {
     const cfg = CATEGORY_CONFIG[e.category];
     const dateLabel = formatEventDate(e.date);
     // An event counts as "alarming" when its badge text reads as a
@@ -448,11 +523,11 @@ export default function PatientTimeline(props: PatientTimelineProps) {
       <tr
         key={e.id}
         id={`timeline-row-${e.id}`}
-        className={`tamam-activity-tr${badgeIsAlarm ? ' is-alarm' : ''}${opens ? ' has-detail' : ''}${nested ? ' is-nested' : ''}`}
+        className={`tamam-activity-tr${badgeIsAlarm ? ' is-alarm' : ''}${opens ? ' has-detail' : ''}${nested ? ' is-nested' : ''}${nested && lastInGroup ? ' is-nested-last' : ''}${`timeline-row-${e.id}` === returnedRowId ? ' is-returned' : ''}`}
         style={isFocused ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : undefined}
         {...(opens ? clickable(() => onOpenEvent?.(e), { label: t('timeline.openEvent', { title: e.title }) }) : {})}
       >
-        <td className="tamam-activity-date" style={nested ? { paddingLeft: 28 } : undefined}><time dateTime={e.date}>{dateLabel}</time></td>
+        <td className="tamam-activity-date"><time dateTime={e.date}>{dateLabel}</time></td>
         <td>
           <span className="tamam-activity-type">
             {t(cfg.labelKey)}
@@ -469,7 +544,7 @@ export default function PatientTimeline(props: PatientTimelineProps) {
               ? <em className="tamam-activity-badge clinical-status-pill" style={{ background: e.badge.bg, color: e.badge.color, borderColor: `${e.badge.color}30` }}>{e.badge.label}</em>
               : <span className="tamam-activity-dash">—</span>}
         </td>
-        {hasActions && <td {...stopsClickPropagation}>{renderEventActions?.(e)}</td>}
+        {hasActions && <td {...stopsClickPropagation} onClickCapture={() => rememberReturn(`timeline-row-${e.id}`)}>{renderEventActions?.(e)}</td>}
       </tr>
     );
   };
@@ -536,7 +611,7 @@ export default function PatientTimeline(props: PatientTimelineProps) {
               <Fragment key={group.id}>
                 <tr
                   id={`timeline-group-${group.id}`}
-                  className={`tamam-activity-tr tamam-activity-group has-detail${isOpen ? ' is-open' : ''}`}
+                  className={`tamam-activity-tr tamam-activity-group has-detail${isOpen ? ' is-open' : ''}${`timeline-group-${group.id}` === returnedRowId ? ' is-returned' : ''}`}
                   {...clickable(() => toggleGroup(group.id), { label: `${isOpen ? 'Hide' : 'Show'} items for ${summary.title}` })}
                   aria-expanded={isOpen}
                 >
@@ -557,9 +632,9 @@ export default function PatientTimeline(props: PatientTimelineProps) {
                       ? <em className="tamam-activity-badge clinical-status-pill" style={{ background: summary.badge.bg, color: summary.badge.color, borderColor: `${summary.badge.color}30` }}>{summary.badge.label}</em>
                       : <span className="tamam-activity-dash">—</span>}
                   </td>
-                  {hasActions && <td {...stopsClickPropagation}>{renderEventActions?.(groupLeadEvent(group))}</td>}
+                  {hasActions && <td {...stopsClickPropagation} onClickCapture={() => rememberReturn(`timeline-group-${group.id}`)}>{renderEventActions?.(groupLeadEvent(group))}</td>}
                 </tr>
-                {isOpen && items.map(e => renderEvent(e, true))}
+                {isOpen && items.map((e, index) => renderEvent(e, true, index === items.length - 1))}
               </Fragment>
             );
           })}

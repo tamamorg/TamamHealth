@@ -14,7 +14,7 @@
 
 import { useState } from 'react';
 import O3Form, { CHECK_SEPARATOR, UNSPECIFIED, o3MissingRequired, o3WithComputed, type O3Page } from '@/components/forms/O3Form';
-import InlineBanner from '@/components/overlay/InlineBanner';
+import NoticeToast from '@/components/overlay/NoticeToast';
 import { useToast } from '@/components/Toast';
 import { buildLabObservations, summarizeLabObservations, type LabResultProfile } from '@/components/lab/workflow/lab-result-catalog';
 import { LAB_RESULT_PROFILES, STRUCTURED_FORMS, type StructuredFormId } from '@/lib/forms/o3-form-definitions';
@@ -162,7 +162,7 @@ export default function StructuredFormPanel({ formId, patient, currentUser, enco
       saving={saving}
       disabled={!currentUser?._id}
       invalid={invalid}
-      notice={notice ? <div className="o3f-notice"><InlineBanner tone="danger">{notice}</InlineBanner></div> : undefined}
+      notice={notice ? <NoticeToast tone="danger">{notice}</NoticeToast> : undefined}
     />
   );
 }

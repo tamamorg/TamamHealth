@@ -16,7 +16,6 @@ import type { LabResultDoc } from '@/lib/db-types';
 import { fallbackAccessionNumber } from './lab-workflow-types';
 import { useLabWorkflow } from './useLabWorkflow';
 import { CollectStep, FiledRecord, OrderContext, OrderStep, ReceiveStep, ReportStep, ResultStep } from './steps/LabSteps';
-import FormNotices from '@/components/overlay/FormNotices';
 import '@/components/forms/o3-form.css';
 import '@/components/ehr/chart/panels/order-basket/order-basket.css';
 import '../order/lab-order.css';
@@ -129,7 +128,6 @@ export default function LabWorkflowPanel({
             </fieldset>
           </div>
         </div>
-        <FormNotices />
         <div className="obk-footer">
           <button type="button" className="obk-footer-btn obk-footer-btn--secondary" disabled={ctrl.busy} onClick={amending ? () => { setAmending(false); ctrl.setAmendReason(''); } : onClose}>
             {t(action ? 'action.cancel' : 'action.close')}

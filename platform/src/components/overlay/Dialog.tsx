@@ -38,7 +38,6 @@ import { useId, useState, type ReactNode } from 'react';
 import { ArrowRight, ChevronDown, Maximize2, X } from '@/components/icons/lucide';
 import Tooltip from './Tooltip';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import FormNotices from './FormNotices';
 import { useMarkDraftDismissed } from '@/components/unsaved/draft-dismiss-context';
 
 export type DialogTone = 'plain' | 'brand' | 'danger' | 'warning';
@@ -185,9 +184,6 @@ export function DialogFooter({ children, start, note, className = '' }: {
 }) {
   return (
     <>
-    {/* A failed save shows here, above the actions, rather than in the
-        corner — see FormNotices. */}
-    <FormNotices />
     <footer className={`tm-dialog__foot${className ? ` ${className}` : ''}`}>
       {(start || note) && (
         <div className="tm-dialog__foot-start">

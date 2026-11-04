@@ -1145,11 +1145,6 @@ export default function ClinicalNoteEditor({
   );
   const lockBanners = (
     <>
-          {draftLocked && (
-            <InlineBanner compact title={t('chart.locked')}>
-              {mayEditDraft ? t('noteViewer.lockedHint') : null}
-            </InlineBanner>
-          )}
           {awaitingCosign && (
             <div className="cn-locked-banner">
               <Check size={15} />

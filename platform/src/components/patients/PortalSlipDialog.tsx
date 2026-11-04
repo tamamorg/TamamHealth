@@ -18,7 +18,7 @@
 import { useId, useMemo, useState } from 'react';
 import Modal from '@/components/Modal';
 import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
-import InlineBanner from '@/components/overlay/InlineBanner';
+import NoticeToast from '@/components/overlay/NoticeToast';
 import { Check, Copy, Printer, Smartphone } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { PORTAL_ACTIVATE_PATH } from '@/modules/identity/client';
@@ -104,7 +104,7 @@ export default function PortalSlipDialog({ slip, onClose }: { slip: PortalSlip; 
                 {labels.steps.map(step => <li key={step}>{step}</li>)}
               </ol>
             </div>
-            {offline && <InlineBanner tone="warning" compact>{t('pslip.offlineNote')}</InlineBanner>}
+            {offline && <NoticeToast tone="warning">{t('pslip.offlineNote')}</NoticeToast>}
           </div>
         </DialogBody>
         <DialogFooter note={t('pslip.footNote')}>
