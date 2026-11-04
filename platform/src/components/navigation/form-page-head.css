@@ -23,12 +23,12 @@ body .form-page-head__back {
   font-family: var(--font-platform);
   font-size: 14px;
   font-weight: 400;
-  color: var(--accent-text, var(--accent-primary));
+  color: var(--accent-link, var(--accent-text));
   text-decoration: none;
 }
 body .form-page-head__back:hover {
   background: color-mix(in srgb, var(--color-slate-400, #8d8d8d) 12%, transparent);
-  color: var(--accent-hover, var(--accent-text));
+  color: var(--accent-hover, var(--accent-link));
 }
 body .form-page-head__back:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
 body .form-page-head__back svg {

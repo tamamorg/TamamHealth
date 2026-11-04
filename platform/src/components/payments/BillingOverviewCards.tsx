@@ -23,7 +23,9 @@ import {
 } from 'recharts';
 import ChartCard, { tooltipStyle, axisTick, type ChartPeriod } from '@/components/ChartCard';
 import { CashFlowDonut } from '@/components/dashboards/_FacilityCharts';
-import { AlertTriangle, Banknote, Clock, Receipt, Shield, Users, Wallet } from '@/components/icons/lucide';
+import { Wallet } from '@/components/icons/lucide';
+import { SadbKpiTile, trendBetween } from '@/components/admin/sadb-ui';
+import './billing-kpis.css';
 import { addDays } from '@/components/ehr/EhrMiniCalendar';
 import { toIsoDate } from '@/lib/date-utils';
 import { getMethodConfig } from '@/lib/payment-method-config';
@@ -34,16 +36,10 @@ import type { BillingDoc } from '@/lib/db-types-billing';
 /* Same hues as the facility/org dashboards so a user moving between them
    reads the identical colour for the identical meaning. */
 const CASH_RECEIVED = '#0fa06a';
-function OverviewSummaryTitle() {
-  const { t } = useTranslation();
-  return <h3>{t('billing.overviewSummary')}</h3>;
-}
 const CASH_PENDING = 'var(--color-warning)';
 const CASH_PENDING_TEXT = 'var(--color-warning)'; // legible amber for text on a light card
 const CHART_BLUE = 'var(--chart-1)';
 const CHART_TEAL = 'var(--chart-4)';
-const RED = 'var(--color-danger)';
-const PURPLE = 'var(--chart-3)';
 
 /** Bills that no longer represent money owed — excluded from "pending". */
 const CLOSED_BILL_STATUSES = new Set(['waived', 'cancelled']);
@@ -56,30 +52,6 @@ function compactAmount(v: number): string {
   if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
   if (abs >= 1_000) return `${Math.round(v / 1_000)}k`;
   return String(Math.round(v));
-}
-
-function StatRow({ icon, label, value, sub, tone, last }: {
-  icon: React.ReactNode;
-  label: React.ReactNode;
-  value: React.ReactNode;
-  /** Small caption under the label — e.g. today's split by payment method. */
-  sub?: React.ReactNode;
-  tone?: string;
-  last?: boolean;
-}) {
-  return (
-    <div
-      className="flex items-center gap-3 py-2"
-      style={last ? undefined : { borderBottom: '1px solid var(--border-light)' }}
-    >
-      <div className="icon-box-sm">{icon}</div>
-      <span className="flex-1 min-w-0">
-        <span className="text-[13px] block truncate" style={{ color: 'var(--text-secondary)' }}>{label}</span>
-        {sub && <span className="text-[10.5px] block truncate" style={{ color: 'var(--text-muted)' }}>{sub}</span>}
-      </span>
-      <span className="text-base font-bold tabular-nums whitespace-nowrap" style={{ color: tone || 'var(--text-primary)' }}>{value}</span>
-    </div>
-  );
 }
 
 export interface BillingOverviewCardsProps {
@@ -127,6 +99,33 @@ export default function BillingOverviewCards({
     };
   }, [bills, claims]);
 
+  /* Today's and yesterday's posted takings, by the local calendar day, for
+     the trend on Collected today. */
+  const dayTotals = useMemo(() => {
+    const today = toIsoDate(new Date());
+    const yesterday = toIsoDate(addDays(new Date(), -1));
+    let a = 0; let y = 0;
+    for (const p of payments) {
+      if (p.status !== 'posted' || !p.processedAt) continue;
+      const day = toIsoDate(new Date(p.processedAt));
+      if (day === today) a += p.amount;
+      else if (day === yesterday) y += p.amount;
+    }
+    return { today: a, yesterday: y };
+  }, [payments]);
+
+  /* Invoices raised this week against the week before. */
+  const invoiceWeeks = useMemo(() => {
+    const now = Date.now();
+    let thisWeek = 0; let lastWeek = 0;
+    for (const b of bills) {
+      const at = b.createdAt ? new Date(b.createdAt).getTime() : NaN;
+      if (at >= now - 7 * 86400000) thisWeek++;
+      else if (at >= now - 14 * 86400000) lastWeek++;
+    }
+    return { thisWeek, lastWeek };
+  }, [bills]);
+
   // "Cash SSP 24,000 · m-GURUSH SSP 20,000" — the per-method figures the old
   // stat strip carried, kept as the caption on the day's total.
   const methodSplit = useMemo(() => {
@@ -171,7 +170,46 @@ export default function BillingOverviewCards({
   }, [payments, claims]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 bl-overview-cards" data-tour="billing-overview">
+    <>
+    {/* ── The figures, as the management KPI band (2026-11-04): label, value,
+          what it is made of, and which way it moved where the records carry a
+          date. They were a six-row "Billing summary" list in the middle card;
+          the cash-flow ring and the collections trend keep the row below. ── */}
+    <div className="sadb-kpi-row bl-kpis" data-tour="billing-overview-kpis">
+      <SadbKpiTile
+        label={t('billing.kpiCollectedToday')}
+        value={formatMoney(collectedToday)}
+        delta={methodSplit ?? t('billing.kpiNoPaymentsToday')}
+        trend={{ direction: trendBetween(dayTotals.today, dayTotals.yesterday), label: t('billing.kpiVsYesterday', { amount: formatMoney(dayTotals.yesterday) }) }}
+      />
+      <SadbKpiTile
+        label={t('billing.kpiInvoices')}
+        value={counts.invoices.toLocaleString()}
+        delta={t('billing.kpiInvoicesDetail', { paid: counts.paid, pending: counts.pending })}
+        trend={{ direction: trendBetween(invoiceWeeks.thisWeek, invoiceWeeks.lastWeek), label: t('billing.kpiThisWeekVsLast', { thisWeek: invoiceWeeks.thisWeek, lastWeek: invoiceWeeks.lastWeek }) }}
+      />
+      <SadbKpiTile
+        label={t('billing.kpiOutstandingPatients')}
+        value={outstandingPatients.toLocaleString()}
+        delta={t('billing.kpiOwed', { amount: formatMoney(cash.pending) })}
+        deltaTone={outstandingPatients > 0 ? 'warn' : undefined}
+      />
+      {showClaims && (
+        <SadbKpiTile
+          label={t('billing.kpiOpenClaims')}
+          value={counts.openClaims.toLocaleString()}
+          delta={t('billing.kpiOpenClaimsDetail')}
+        />
+      )}
+      <SadbKpiTile
+        label={t('billing.kpiUnbilled')}
+        value={unbilledEncounters.toLocaleString()}
+        delta={t('billing.kpiUnbilledDetail')}
+        deltaTone={unbilledEncounters > 0 ? 'warn' : undefined}
+      />
+    </div>
+
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 bl-overview-cards" data-tour="billing-overview">
 
       {/* ── 1. Cash Flow — the ring carries the weight, the amounts caption it ── */}
       <div className="dash-card overflow-hidden">
@@ -202,49 +240,6 @@ export default function BillingOverviewCards({
               <p className="text-[13px] font-bold truncate leading-tight mt-0.5" style={{ color: CASH_PENDING_TEXT }}>{formatMoney(cash.pending)}</p>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* ── 2. The stat list — the counts (and the shift's takings) that used
-              to be flat strips above the cards ── */}
-      <div className="dash-card overflow-hidden">
-        <div className="bl-overview-heading"><Receipt size={16} /><OverviewSummaryTitle /></div>
-        <div className="px-4 py-3 flex flex-col">
-          <StatRow
-            icon={<Banknote className="w-4 h-4" style={{ color: CASH_RECEIVED }} />}
-            label={<>{t('billing.kpiCollected')} <b>{t('hospitals.statToday')}</b></>}
-            sub={methodSplit}
-            value={formatMoney(collectedToday)}
-            tone={collectedToday > 0 ? CASH_RECEIVED : undefined}
-          />
-          <StatRow
-            icon={<Receipt className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />}
-            label={<>{t('dashboard.total')} <b>{t('payments.invoices')}</b></>}
-            value={counts.invoices}
-          />
-          <StatRow
-            icon={<Clock className="w-4 h-4" style={{ color: CASH_PENDING_TEXT }} />}
-            label={<>{t('postConsult.status.pending')} <b>{t('patientPortal.bills')}</b></>}
-            value={counts.pending}
-          />
-          <StatRow
-            icon={<Users className="w-4 h-4" style={{ color: RED }} />}
-            label={<>{t('billing.kpiOutstanding')} <b>{t('admin.dbPatients')}</b></>}
-            value={outstandingPatients}
-          />
-          {showClaims && (
-            <StatRow
-              icon={<Shield className="w-4 h-4" style={{ color: PURPLE }} />}
-              label={<>{t('dashboard.open')} <b>{t('payments.colClaims')}</b></>}
-              value={counts.openClaims}
-            />
-          )}
-          <StatRow
-            icon={<AlertTriangle className="w-4 h-4" style={{ color: unbilledEncounters > 0 ? RED : 'var(--text-muted)' }} />}
-            label={<>{t('ui.unbilled')} <b>{t('analytics.legendEncounters')}</b> · 30d</>}
-            value={unbilledEncounters}
-            last
-          />
         </div>
       </div>
 
@@ -315,5 +310,6 @@ export default function BillingOverviewCards({
         }}
       </ChartCard>
     </div>
+    </>
   );
 }

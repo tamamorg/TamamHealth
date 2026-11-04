@@ -24,6 +24,11 @@ export interface ModuleHubMember {
   href: string;
   /** The tab's name. */
   label: string;
+  /**
+   * The page switches between the hub's pages itself (Reports' "Area" field
+   * in Choose a report), so the tab strip is not drawn above it.
+   */
+  ownPicker?: true;
 }
 
 export interface ModuleHub {
@@ -130,7 +135,7 @@ export const MODULE_HUBS: readonly ModuleHub[] = [
     id: 'reports',
     label: 'Reports',
     members: [
-      { href: '/reports', label: 'Reports' },
+      { href: '/reports', label: 'Reports', ownPicker: true },
       { href: '/facility-overview', label: 'Facility statistics' },
       { href: '/data-quality', label: 'Data quality' },
       { href: '/vital-statistics', label: 'Vital statistics' },

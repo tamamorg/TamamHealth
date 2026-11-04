@@ -143,6 +143,8 @@ export default function EhrListHeader({
       {hasTabs && (
         <div
           role="tablist"
+          // Underline tabs: accent-pass.css leaves the chosen one unfilled.
+          data-tab-style="underline"
           aria-label={tabsAriaLabel}
           className={hasSecondRow ? 'mb-3' : ''}
           style={{ display: 'flex', alignItems: 'center', gap: 18, borderBottom: '1px solid var(--border-light)' }}

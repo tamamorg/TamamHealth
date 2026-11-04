@@ -179,7 +179,7 @@ export default function StateDashboardPage() {
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <EhrCareDashboard
           title={t('state.title')}
-          greetingName={currentUser?.name}
+          compactHeader
           dateLabel={dateLabel}
           tabs={[
             { key: 'all', label: t('state.countiesIn', { state: stateName || '—' }), count: counties.length },

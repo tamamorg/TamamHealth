@@ -22,6 +22,8 @@ export function useModuleHubTabs() {
   const { currentUser } = useAuth();
   const hub = hubForPath(pathname);
   const members = hub ? visibleMembers(hub, currentUser?.role) : [];
+  // A page that carries its own picker for the hub's pages draws no strip.
+  if (hub?.members.some(m => m.href === pathname && m.ownPicker)) return null;
   return members.length > 1 && hub ? { hub, members, pathname } : null;
 }
 

@@ -242,11 +242,31 @@ export default function AdminAnalyticsPage() {
       {/* One vitals row — platform totals and the 30-day usage window that used
           to sit in a second "Usage" row further down the page. */}
       <div className="sadb-kpi-row">
-        <SadbKpiTile label={t('analytics.totalOrganizations')} value={organizations.length.toLocaleString()} />
-        <SadbKpiTile label={t('analytics.totalUsers')} value={totalUsersAll.toLocaleString()} />
-        <SadbKpiTile label={t('patients.kpiTotalPatients')} value={totalPatientsAll.toLocaleString()} />
-        <SadbKpiTile label={t('analytics.sessions30d')} value={usage ? usage.sessionCount.toLocaleString() : '—'} />
-        <SadbKpiTile label={t('analytics.events30d')} value={usage ? usage.eventCount.toLocaleString() : '—'} />
+        <SadbKpiTile
+          label={t('analytics.totalOrganizations')}
+          value={organizations.length.toLocaleString()}
+          delta={t('analytics.kpiActiveOrgs', { count: organizations.filter(o => o.subscriptionStatus === 'active').length })}
+        />
+        <SadbKpiTile
+          label={t('analytics.totalUsers')}
+          value={totalUsersAll.toLocaleString()}
+          delta={t('analytics.kpiPerOrg', { count: organizations.length ? Math.round(totalUsersAll / organizations.length) : 0 })}
+        />
+        <SadbKpiTile
+          label={t('patients.kpiTotalPatients')}
+          value={totalPatientsAll.toLocaleString()}
+          delta={t('analytics.kpiPerOrg', { count: organizations.length ? Math.round(totalPatientsAll / organizations.length) : 0 })}
+        />
+        <SadbKpiTile
+          label={t('analytics.sessions30d')}
+          value={usage ? usage.sessionCount.toLocaleString() : '—'}
+          delta={usage ? t('analytics.kpiActiveNow', { dau: usage.dau, wau: usage.wau }) : t('analytics.kpiLast30')}
+        />
+        <SadbKpiTile
+          label={t('analytics.events30d')}
+          value={usage ? usage.eventCount.toLocaleString() : '—'}
+          delta={usage ? t('analytics.kpiPerDay', { count: Math.round(usage.eventCount / 30) }) : t('analytics.kpiLast30')}
+        />
       </div>
 
       {/* Platform activity — real encounters vs failed privileged actions.
