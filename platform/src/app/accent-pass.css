@@ -80,7 +80,7 @@
   .tsel-row.is-selected,
   .tm-menu__item[aria-current="page"],
   .tm-menu__item[aria-checked="true"],
-  [role="tab"][aria-selected="true"]:not(.ehr-set-nav *, .settings-tab-strip *, .acct-modal *),
+  [role="tab"][aria-selected="true"]:not(.ehr-set-nav *, .settings-tab-strip *, .acct-modal *, .ehr-visit-pop-tabs *),
   [role="option"][aria-selected="true"]:not(.ehr-set-nav *, .acct-modal *)
 ) {
   background: var(--accent-primary) !important;
@@ -161,7 +161,7 @@
   .ehr-mobile-tabbar button.active,
   .mobile-shell-tabbar button.active,
   .mobile-chart-tabs button.active,
-  [role="tab"][aria-selected="true"]:not(.ehr-set-nav *, .settings-tab-strip *, .acct-modal *)
+  [role="tab"][aria-selected="true"]:not(.ehr-set-nav *, .settings-tab-strip *, .acct-modal *, .ehr-visit-pop-tabs *)
 ) :is(svg, svg.lucide, svg *) {
   color: var(--color-white, #fff) !important;
   stroke: currentColor !important;

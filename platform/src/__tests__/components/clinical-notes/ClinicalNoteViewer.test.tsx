@@ -64,10 +64,11 @@ describe('ClinicalNoteViewer', () => {
     m.unmount();
   });
 
-  it('shows a draft locked, with no Edit for someone who may not write notes', async () => {
+  it('shows a draft read-only, with no Locked banner and no Edit for someone who may not write notes', async () => {
     getById.mockResolvedValue({ ...base, status: 'draft' });
     const m = await mountAndFlush(<ClinicalNoteViewer noteId="n1" kind="clinical" onClose={jest.fn()} />);
-    expect(m.container.querySelector('.tm-banner')).not.toBeNull();
+    // The "Locked — Choose Edit" banner was removed at the user's request (2026-11-04).
+    expect(m.container.textContent).not.toContain('Choose Edit to change this note.');
     expect(btn(m.container, 'Edit')).toBeUndefined();
     expect(m.container.querySelector('textarea, input')).toBeNull();
     m.unmount();

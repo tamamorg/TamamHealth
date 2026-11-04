@@ -338,11 +338,6 @@ export default function ClinicalNoteViewer({
 
   return shell(
     <div className={`tamam-note-viewer modal-no-headband${inSlider ? ' tamam-note-viewer--slider' : ''}`}>
-      {vm.kind === 'clinical' && vm.status === 'draft' && (
-        <InlineBanner compact className="no-print" title={t('chart.locked')}>
-          {canEdit ? t('noteViewer.lockedHint') : null}
-        </InlineBanner>
-      )}
       {missing.length > 0 && (
         <InlineBanner compact className="no-print" title={t('noteEditor.missingTitle')}>
           {missing.map(id => sectionLabel(t, id)).join(', ')}
