@@ -9700,6 +9700,7 @@ const en: TranslationMap = {
   'routeContext.transfers': 'Transfers',
   'routeContext.inquiries': 'Inquiries',
   'dhis2.totalsToDate': 'Totals to date, not the selected period',
+  'chart.close': 'Close chart',
 };
 
 export default en;

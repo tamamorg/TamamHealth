@@ -21,7 +21,10 @@ import { formatMoney } from '@/lib/format-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import { dismissBackdrop } from '@/lib/a11y';
 import { orderBannerAllergies, type BannerAllergy } from './allergy-order';
-import BackLink from '@/components/navigation/BackLink';
+import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { originBefore } from '@/lib/navigation/nav-history';
+import { routeLabelKeyFor } from '@/lib/navigation/route-context';
 import { useInlineRouteBack } from '@/components/navigation/RouteContextBar';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import './chart-frame.css';
@@ -156,6 +159,20 @@ export default function ChartHeader({
   // closing the patient, as in a clinical workspace (Epic's patient tab, the
   // O3 workspace). Same destination the bar's Back had.
   const closeTo = useInlineRouteBack();
+  // ✕ always leaves the chart for the page the user opened it from, whatever
+  // is open on top (a slider, the drawer, another tab of the chart): one
+  // history Back only closed the top layer or stepped back a tab. A worklist
+  // that named its own ?returnTo= wins; then the last page that is not this
+  // chart; then the list. The chart renders only on the client, after the
+  // patient loads, so reading the history here does not differ from a server
+  // render.
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const origin = closeTo && !searchParams.get('returnTo') ? originBefore(pathname) : null;
+  const closeHref = origin ?? closeTo?.href ?? '/patients';
+  const closeLabelKey = origin ? routeLabelKeyFor(origin) : closeTo?.labelKey;
+  const closeLabel = closeLabelKey ? t('chart.closeTo', { place: t(closeLabelKey) }) : t('chart.close');
 
   // Only surface the actions this role actually uses — e.g. a registration
   // clerk never writes clinical notes or prescriptions, so those buttons are
@@ -314,14 +331,20 @@ export default function ChartHeader({
           )}
         </div>
         {closeTo && (
-          <BackLink
+          <Link
+            href={closeHref}
             className="tamam-header-close"
-            fallbackHref={closeTo.href}
-            ariaLabel={t('chart.closeTo', { place: t(closeTo.labelKey) })}
+            aria-label={closeLabel}
+            onClick={event => {
+              // New tab / window: follow the link itself.
+              if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+              event.preventDefault();
+              router.push(closeHref);
+            }}
           >
             <DuotoneIcon name="close" size={16} aria-hidden />
-            <span className="tamam-header-close-tip" aria-hidden>{t('chart.closeTo', { place: t(closeTo.labelKey) })}</span>
-          </BackLink>
+            <span className="tamam-header-close-tip" aria-hidden>{closeLabel}</span>
+          </Link>
         )}
       </div>
 
