@@ -30,7 +30,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Hospital } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
-import PopupHeader from '@/components/PopupHeader';
+import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
+import './tenancy-slider.css';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -388,18 +389,22 @@ export default function OrganizationDetail({ orgId, hostedAt }: {
 
       {showOrgEditor && (
         <Modal variant="slider" onClose={() => setShowOrgEditor(false)} width={920} labelledBy="organization-editor">
-          <div className="sadb-modal mgmt-form-modal">
-            <PopupHeader
+          <DialogFrame>
+            <DialogHeader
               titleId="organization-editor"
               title={t('management.editOrganization')}
               onClose={() => setShowOrgEditor(false)}
             />
-            <OrganizationForm
-              editing={org}
-              onCancel={() => setShowOrgEditor(false)}
-              onSaved={() => { setShowOrgEditor(false); void orgStore.reload(); }}
-            />
-          </div>
+            <DialogBody>
+              <div className="sadb-modal mgmt-form-modal">
+                <OrganizationForm
+                  editing={org}
+                  onCancel={() => setShowOrgEditor(false)}
+                  onSaved={() => { setShowOrgEditor(false); void orgStore.reload(); }}
+                />
+              </div>
+            </DialogBody>
+          </DialogFrame>
         </Modal>
       )}
 

@@ -122,7 +122,7 @@ describe('safety rules reach the new medicines', () => {
     ['Rifampicin + isoniazid', 'Tenofovir-Lamivudine-Dolutegravir (TLD)', 'serious'],
     ['Allopurinol', 'Azathioprine', 'serious'],
     ['Metformin', 'Iohexol (contrast medium)', 'serious'],
-    ['Carbamazepine', 'Clozapine', 'contraindicated'],
+    ['Carbamazepine', 'Clozapine', 'serious'],
   ])('%s with %s is %s', (a, b, severity) => {
     expect(checkInteractions([a, b]).highestSeverity).toBe(severity);
   });
@@ -150,5 +150,78 @@ describe('safety rules reach the new medicines', () => {
   it('tells the prescriber about a dated medicine', () => {
     expect(findFormularyDrug('Ranitidine')?.note).toMatch(/NDMA/);
     expect(findFormularyDrug('Chloroquine')?.note).toMatch(/falciparum/);
+  });
+});
+
+describe('US prescribing labels are the source of the safety rules', () => {
+  const { readFileSync } = jest.requireActual('node:fs') as typeof import('node:fs');
+  const { join } = jest.requireActual('node:path') as typeof import('node:path');
+  const source = readFileSync(join(process.cwd(), 'src/lib/services/drug-interaction-service.ts'), 'utf8');
+  const rules = [...source.matchAll(/drug1: '([^']+)',\s*drug2: '([^']+)',\s*severity: '[a-z]+',\s*(?:source: '([a-z-]+)',)?/g)]
+    .map(m => ({ pair: `${m[1]} + ${m[2]}`, source: m[3] }));
+
+  it('names a source on every interaction rule', () => {
+    expect(rules.length).toBeGreaterThan(150);
+    expect(rules.filter(rule => !rule.source)).toEqual([]);
+  });
+
+  it('keeps the rules no US label states to a known short list', () => {
+    expect(rules.filter(rule => rule.source === 'other').map(rule => rule.pair).sort())
+      .toEqual(['magnesium sulfate + gentamicin', 'metformin + enalapril']);
+  });
+
+  it('names a source on every dose ceiling, and only amoxicillin comes from elsewhere', () => {
+    const { DOSE_LIMITS } = jest.requireActual('@/lib/pharmacy/dose-check') as typeof import('@/lib/pharmacy/dose-check');
+    const entries = Object.entries(DOSE_LIMITS);
+    expect(entries.every(([, limit]) => limit.source === 'us-label' || limit.source === 'other')).toBe(true);
+    expect(entries.filter(([, limit]) => limit.source === 'other').map(([key]) => key)).toEqual(['amoxicillin']);
+  });
+
+  it('takes the US label ceiling where it differs from the BNF', () => {
+    expect(checkDoseAdvisory({ medication: 'Lisinopril', dose: '60 mg', frequency: 'OD' })?.limitMg).toBe(40);
+    expect(checkDoseAdvisory({ medication: 'Ibuprofen', dose: '800 mg', frequency: 'QDS' })).toBeNull();
+  });
+
+  it('grades a pair the label lists under Contraindications as contraindicated', () => {
+    expect(checkInteractions(['Fluoxetine', 'Linezolid']).highestSeverity).toBe('contraindicated');
+    expect(checkInteractions(['Ritonavir', 'Ergometrine']).highestSeverity).toBe('contraindicated');
+    expect(checkInteractions(['Praziquantel', 'Rifampicin']).highestSeverity).toBe('contraindicated');
+  });
+
+  it('grades a pair the label says to avoid as serious', () => {
+    expect(checkInteractions(['Clopidogrel', 'Omeprazole']).highestSeverity).toBe('serious');
+    expect(checkInteractions(['Warfarin', 'Metronidazole']).highestSeverity).toBe('serious');
+  });
+
+  it('leaves eye, ear and skin preparations out of systemic interactions', () => {
+    expect(checkInteractions(['Ciprofloxacin eye drops', 'Amiodarone']).hasInteractions).toBe(false);
+    expect(checkInteractions(['Ciprofloxacin', 'Amiodarone']).highestSeverity).toBe('serious');
+  });
+
+  it('carries the label cross-allergy between quinine and mefloquine', () => {
+    expect(checkAllergies(['Mefloquine'], ['Quinine']).length).toBeGreaterThan(0);
+  });
+});
+
+describe('medicines the US label standard does not cover', () => {
+  it('knows which formulary medicines have no US label on file', () => {
+    const { hasUsLabel } = jest.requireActual('@/lib/data/formulary') as typeof import('@/lib/data/formulary');
+    expect(hasUsLabel('Sodium stibogluconate')).toBe(false);
+    expect(hasUsLabel('Antivenom, snake polyvalent (SAIMR)')).toBe(false);
+    expect(hasUsLabel('Amoxicillin 500mg')).toBe(true);
+    expect(hasUsLabel('Tenofovir-Lamivudine-Dolutegravir (TLD)')).toBe(true);
+    expect(hasUsLabel('Naproxen')).toBe(false);
+    expect(FORMULARY.filter(drug => !hasUsLabel(drug.name)).length).toBe(66);
+  });
+
+  it('files a flag as a drug-safety issue with no patient in it', () => {
+    const { ISSUE_CATEGORIES } = jest.requireActual('@/modules/communication/issue-rules') as typeof import('@/modules/communication/issue-rules');
+    expect(ISSUE_CATEGORIES).toContain('drug_safety');
+  });
+
+  it('says so on the interaction warnings no US label states', () => {
+    const hit = checkInteractions(['Metformin', 'Enalapril']).interactions[0];
+    expect(hit.source).toBe('other');
+    expect(hit.description).toMatch(/No US label states this/);
   });
 });

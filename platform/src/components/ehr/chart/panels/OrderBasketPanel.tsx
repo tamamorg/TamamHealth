@@ -13,6 +13,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState, type MutableRefObject } from 'react';
+import { useDrawerBack } from '../drawer-back';
 import { formatRxSig } from '@/lib/format-utils';
 import { AlertTriangle, ChevronDown, FlaskConical, Pencil, Pill, Plus, Trash2 } from '@/components/icons/lucide';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
@@ -22,7 +23,7 @@ import { useFacilityName } from '@/lib/hooks/useFacilityName';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useToast } from '@/components/Toast';
-import { FORMULARY, offFormularyDrug } from '@/lib/data/formulary';
+import { FORMULARY, hasUsLabel, offFormularyDrug } from '@/lib/data/formulary';
 import { catalogFor, searchCatalog, toOrderedTest } from '@/components/lab/order/lab-order-catalog';
 import { stockPositionFor } from '@/lib/pharmacy-stock-position';
 import type { PatientDoc, PharmacyInventoryDoc } from '@/lib/db-types';
@@ -142,6 +143,8 @@ export default function OrderBasketPanel({
   }, [formEditedRef]);
   useEffect(() => () => markEdited(false), [markEdited]);
   const toBasket = () => { markEdited(false); setQuery(''); setView({ name: 'basket' }); };
+  // The drawer's → goes back to the basket from a search or an order form.
+  useDrawerBack(view.name !== 'basket', toBasket);
   const stamp = <T extends DrugOrderDraft | TestOrderDraft>(order: T): T => (
     order.context || !context ? order : { ...order, context }
   );
@@ -225,7 +228,7 @@ export default function OrderBasketPanel({
           items={[...drugMatches.map(d => ({
             key: d.name,
             title: d.name,
-            detail: [d.form, d.note].filter(Boolean).join(' · '),
+            detail: [d.form, hasUsLabel(d.name) ? '' : t('rxLabel.tag'), d.note].filter(Boolean).join(' · '),
             inBasket: drugOrders.some(o => o.drug.name === d.name),
           })), ...(typedOffList ? [{
             key: typedOffList,

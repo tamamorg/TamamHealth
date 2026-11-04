@@ -1,0 +1,4 @@
+/* OrganizationForm inside the 560px slider: the three brand-colour pickers sit
+   one per row (a hex value needs more than a third of the panel). The
+   form's own `sm:grid-cols-3` keys off the viewport, which is wide here. */
+.mgmt-form-modal .sm\:grid-cols-3 { grid-template-columns: minmax(0, 1fr); }

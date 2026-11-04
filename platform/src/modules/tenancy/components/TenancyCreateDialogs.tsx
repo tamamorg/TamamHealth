@@ -24,7 +24,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Modal from '@/components/Modal';
-import PopupHeader from '@/components/PopupHeader';
+import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
+import './tenancy-slider.css';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -82,8 +83,8 @@ export default function TenancyCreateDialogs({ kind, onDone }: {
   if (step === 'organization') {
     return (
       <Modal variant="slider" onClose={onDone} width={920} labelledBy="tenancy-create-organization">
-        <div className="sadb-modal mgmt-form-modal">
-          <PopupHeader
+        <DialogFrame>
+          <DialogHeader
             titleId="tenancy-create-organization"
             title={t('management.addOrganization')}
             onClose={onDone}
@@ -92,14 +93,18 @@ export default function TenancyCreateDialogs({ kind, onDone }: {
               router.push('/admin/organizations/new');
             }}
           />
-          <OrganizationForm
-            onCancel={onDone}
-            onSaved={({ handoff: created }) => {
-              if (created) setHandoff({ credentials: created, from: 'organization' });
-              else onDone();
-            }}
-          />
-        </div>
+          <DialogBody>
+            <div className="sadb-modal mgmt-form-modal">
+              <OrganizationForm
+                onCancel={onDone}
+                onSaved={({ handoff: created }) => {
+                  if (created) setHandoff({ credentials: created, from: 'organization' });
+                  else onDone();
+                }}
+              />
+            </div>
+          </DialogBody>
+        </DialogFrame>
       </Modal>
     );
   }

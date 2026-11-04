@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { useToast } from '@/components/Toast';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import EhrCareDashboard, { type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import { formatDateTitle } from '@/components/ehr/EhrMiniCalendar';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
@@ -20,7 +20,6 @@ import {
 
 // Use the platform accent token so this dashboard matches the reference
 // Clinical Officer design instead of a one-off hardcoded hex.
-const ACCENT = 'var(--accent-primary)';
 
 interface CensusData {
   date: string;
@@ -492,31 +491,31 @@ export default function DataEntryDashboard() {
       >
         {/* ═══ CENSUS FORM MODAL ═══ */}
         {showForm && (
-          <Modal variant="slider" onClose={() => setShowForm(false)} width={672} labelledBy="daily-census-title">
-            <div className="w-full max-w-2xl rounded-lg" style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', boxShadow: 'var(--card-shadow-xl)' }}>
-
-              {/* Form header */}
-              <div data-tour="census-form-header" className="sticky top-0 z-10 flex items-center justify-between p-4 rounded-t-lg modal-headband" style={{ borderBottom: '1px solid var(--border-medium)' }}>
-                <div className="flex items-center gap-2">
-                  <ClipboardCheck className="w-5 h-5" style={{ color: ACCENT }} />
-                  <div>
-                    <h3 id="daily-census-title" className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{t('dataEntry.dailyFacilityCensus')}</h3>
-                    <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{myHospital?.name || t('dataEntry.unknownFacility')}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input type="date" value={census.date} onChange={e => updateField('date', e.target.value)}
-                    className="px-2 py-1 rounded text-xs" style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)' }} />
-                  <button onClick={() => setShowForm(false)} className="w-7 h-7 rounded flex items-center justify-center"
-                    style={{ background: 'var(--overlay-medium)', color: 'var(--text-muted)', border: 'none', cursor: 'pointer' }}>×</button>
-                </div>
+          <FormSlider
+            title={t('dataEntry.dailyFacilityCensus')}
+            subtitle={myHospital?.name || t('dataEntry.unknownFacility')}
+            width={672}
+            onClose={() => setShowForm(false)}
+            busy={saving}
+            footer={<>
+              <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary">{t('action.cancel')}</button>
+              <button type="button" onClick={handleSave} disabled={saving} className="btn btn-primary">
+                <Save className="w-3.5 h-3.5" /> {saving ? t('nurse.savingDots') : t('dataEntry.saveCensusReport')}
+              </button>
+            </>}
+          >
+            <div>
+              <div data-tour="census-form-header" className="flex items-center justify-end mb-4">
+                <input type="date" value={census.date} onChange={e => updateField('date', e.target.value)}
+                  aria-label={t('dataEntry.dailyFacilityCensus')}
+                  className="px-2 py-1 rounded text-xs" style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)' }} />
               </div>
 
-              <div className="p-4 space-y-5">
+              <div className="space-y-5">
 
                 {/* 1. Patient Census */}
                 {sectionHeader(Users, t('dataEntry.patientCensus'), 'var(--accent-primary)')}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   {numField(t('dataEntry.inpatientsTotal'), 'inpatientsTotal', Users)}
                   {numField(t('patient.male'), 'inpatientsMale')}
                   {numField(t('patient.female'), 'inpatientsFemale')}
@@ -533,7 +532,7 @@ export default function DataEntryDashboard() {
 
                 {/* 2. Bed Occupancy */}
                 {sectionHeader(BedDouble, t('dashboard.bedOccupancy'), 'var(--accent-primary)')}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   {numField(t('dataEntry.totalBeds'), 'totalBeds', BedDouble)}
                   {numField(t('dataEntry.occupied'), 'occupiedBeds')}
                   {numField(t('dataEntry.icuBeds'), 'icuBeds')}
@@ -546,7 +545,7 @@ export default function DataEntryDashboard() {
 
                 {/* 3. Staff Present */}
                 {sectionHeader(Stethoscope, t('dataEntry.staffPresentToday'), 'var(--color-success)')}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   {numField(t('dashboard.doctors'), 'doctorsPresent', Stethoscope)}
                   {numField(t('dataEntry.nurses'), 'nursesPresent', Users)}
                   {numField(t('dataEntry.clinicalOfficers'), 'clinicalOfficers')}
@@ -557,7 +556,7 @@ export default function DataEntryDashboard() {
 
                 {/* 4. Equipment */}
                 {sectionHeader(Thermometer, t('dataEntry.functionalEquipment'), 'var(--color-warning)')}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   {numField(t('dataEntry.thermometers'), 'functionalThermometers', Thermometer)}
                   {numField(t('dataEntry.bpMonitors'), 'functionalBPMonitors')}
                   {numField(t('dataEntry.stethoscopes'), 'functionalStethoscopes', Stethoscope)}
@@ -575,7 +574,7 @@ export default function DataEntryDashboard() {
 
                 {/* 5. Pharmacy & Lab */}
                 {sectionHeader(Pill, t('dataEntry.pharmacyLaboratory'), 'var(--chart-2)')}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   {numField(t('dataEntry.tracerMedicinesInStock'), 'tracerMedicinesInStock', Pill)}
                   {numField(t('dataEntry.tracerMedicinesTotal'), 'tracerMedicinesTotal')}
                   {numField(t('dataEntry.labTestsDone'), 'labTestsPerformed', FlaskConical)}
@@ -597,21 +596,8 @@ export default function DataEntryDashboard() {
                 {textField(t('dataEntry.achievements'), 'achievements', t('dataEntry.achievementsPlaceholder'))}
                 {textField(t('dataEntry.urgentNeeds'), 'urgentNeeds', t('dataEntry.urgentNeedsPlaceholder'))}
               </div>
-
-              {/* Save button */}
-              <div className="sticky bottom-0 p-4 rounded-b-lg flex gap-3" style={{ background: 'var(--bg-card-solid)', borderTop: '1px solid var(--border-medium)' }}>
-                <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-md text-xs font-semibold"
-                  style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-medium)', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                  {t('action.cancel')}
-                </button>
-                <button onClick={handleSave} disabled={saving}
-                  className="flex-1 py-2.5 rounded-md text-xs font-semibold inline-flex items-center justify-center gap-2"
-                  style={{ background: ACCENT, color: '#fff', border: 'none', cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
-                  <Save className="w-3.5 h-3.5" /> {saving ? t('nurse.savingDots') : t('dataEntry.saveCensusReport')}
-                </button>
-              </div>
             </div>
-          </Modal>
+          </FormSlider>
         )}
       </EhrCareDashboard>
     </main>

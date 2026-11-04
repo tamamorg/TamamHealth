@@ -23,6 +23,7 @@ import { clickable } from '@/lib/a11y';
 import type { LabResultDoc } from '@/lib/db-types';
 import { useColumnSort } from '@/components/table/useColumnSort';
 import RowActionsMenu from '@/components/RowActionsMenu';
+import { hasLabReport } from '@/components/reports/clinical-reports';
 
 const PAGE_SIZE = 8;
 
@@ -59,9 +60,11 @@ interface ResultsSectionProps {
   focusId?: string;
   /** Open one order in the bench workflow panel. */
   onSelect?: (labId: string) => void;
+  /** Opens a finished result as its report sheet (LabWorkspace). */
+  onViewReport?: (labId: string) => void;
 }
 
-export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId, onSelect }: ResultsSectionProps) {
+export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId, onSelect, onViewReport }: ResultsSectionProps) {
   const { results } = useLabResults(patientId);
   const { t } = useTranslation();
   const [page, setPage] = useState(1);
@@ -175,6 +178,7 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
                   <RowActionsMenu
                     ariaLabel={t('chart.resultRowActions', { name: l.testName })}
                     actions={[
+                      ...(onViewReport && hasLabReport(l) ? [{ key: 'report', label: t('chart.viewReport'), onClick: () => onViewReport(l._id) }] : []),
                       ...(onSelect ? [{ key: 'open', label: t('chart.resultOpenWorkflow'), onClick: () => onSelect(l._id) }] : []),
                     ]}
                   />

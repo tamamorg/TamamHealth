@@ -12,20 +12,14 @@
  *   - a per-kilogram daily maximum times the patient's last recorded weight
  *     (only when a recent weight is known).
  *
- * Sources (a clinician must confirm these against the facility's formulary
- * and national guideline before relying on them):
- *   - paracetamol: BNF / BNFC. Adult max 4 g in 24 h. Child 15 mg/kg per dose,
- *     at most 4 doses in 24 h = 60 mg/kg/day. WHO EML for Children agrees on
- *     10 to 15 mg/kg per dose.
- *   - ibuprofen:   BNF / BNFC. Adult max 2.4 g daily. Child 20 to 30 mg/kg
- *     daily in 3 to 4 divided doses (ceiling used: 30 mg/kg/day).
- *   - amoxicillin: BNF / BNFC. Adult oral 3 g daily (1 g three times a day).
- *     Child high-dose oral courses up to 30 mg/kg three times a day
- *     (ceiling used: 90 mg/kg/day).
- *   - the rest:    adult maximum from the US prescribing label (DailyMed /
- *     openFDA), read 2026-11-01. Valproate and azathioprine are labelled per
- *     kilogram only. Medicines whose labelled ceiling is too high to catch
- *     anything (haloperidol, chlorpromazine) are left out.
+ * Sources (a clinician must confirm these against the national guideline
+ * before relying on them): the US prescribing label (openFDA / DailyMed, read
+ * 2026-11-03) for every drug marked `us-label`: the adult daily maximum the
+ * label states, and its per-kilogram ceiling where it gives one. Amoxicillin's
+ * label states no daily maximum, so its ceiling is the BNF figure. Left out on
+ * purpose: drugs whose labelled ceiling is too high to catch anything
+ * (haloperidol, chlorpromazine), and fluconazole, whose 400 mg label ceiling
+ * sits below the 1200 mg WHO cryptococcal meningitis induction dose.
  */
 import { dosesPerDay } from './course-quantity';
 
@@ -36,32 +30,54 @@ export interface DoseLimit {
   adultMaxMgPerDay?: number;
   /** Maximum per day per kg of body weight, in mg/kg. */
   maxMgPerKgPerDay?: number;
+  /** `us-label`: the US prescribing label states it. `other`: the label is
+   *  silent, so it comes from the BNF / WHO. */
+  source: 'us-label' | 'other';
 }
 
 export const DOSE_LIMITS: Readonly<Record<string, DoseLimit>> = {
-  paracetamol: { match: ['paracetamol', 'acetaminophen'], adultMaxMgPerDay: 4000, maxMgPerKgPerDay: 60 },
-  ibuprofen: { match: ['ibuprofen'], adultMaxMgPerDay: 2400, maxMgPerKgPerDay: 30 },
-  amoxicillin: { match: ['amoxicillin', 'amoxycillin'], adultMaxMgPerDay: 3000, maxMgPerKgPerDay: 90 },
-  tramadol: { match: ['tramadol'], adultMaxMgPerDay: 400 },
-  amlodipine: { match: ['amlodipine'], adultMaxMgPerDay: 10 },
-  enalapril: { match: ['enalapril'], adultMaxMgPerDay: 40 },
-  lisinopril: { match: ['lisinopril'], adultMaxMgPerDay: 80 },
-  captopril: { match: ['captopril'], adultMaxMgPerDay: 450 },
-  losartan: { match: ['losartan'], adultMaxMgPerDay: 100 },
-  atenolol: { match: ['atenolol'], adultMaxMgPerDay: 100 },
-  metformin: { match: ['metformin'], adultMaxMgPerDay: 2550 },
-  glibenclamide: { match: ['glibenclamide', 'glyburide'], adultMaxMgPerDay: 20 },
-  levetiracetam: { match: ['levetiracetam'], adultMaxMgPerDay: 3000 },
-  carbamazepine: { match: ['carbamazepine'], adultMaxMgPerDay: 1600 },
-  valproate: { match: ['valproate', 'valproic'], maxMgPerKgPerDay: 60 },
-  fluoxetine: { match: ['fluoxetine'], adultMaxMgPerDay: 80 },
-  sertraline: { match: ['sertraline'], adultMaxMgPerDay: 200 },
-  clozapine: { match: ['clozapine'], adultMaxMgPerDay: 900 },
-  risperidone: { match: ['risperidone'], adultMaxMgPerDay: 16 },
-  olanzapine: { match: ['olanzapine'], adultMaxMgPerDay: 20 },
-  allopurinol: { match: ['allopurinol'], adultMaxMgPerDay: 800 },
-  colchicine: { match: ['colchicine'], adultMaxMgPerDay: 1.8 },
-  azathioprine: { match: ['azathioprine'], maxMgPerKgPerDay: 2.5 },
+  paracetamol: { match: ['paracetamol', 'acetaminophen'], adultMaxMgPerDay: 4000, maxMgPerKgPerDay: 75, source: 'us-label' },
+  ibuprofen: { match: ['ibuprofen'], adultMaxMgPerDay: 3200, maxMgPerKgPerDay: 40, source: 'us-label' },
+  amoxicillin: { match: ['amoxicillin', 'amoxycillin'], adultMaxMgPerDay: 3000, maxMgPerKgPerDay: 90, source: 'other' },
+  erythromycin: { match: ['erythromycin'], adultMaxMgPerDay: 4000, source: 'us-label' },
+  isoniazid: { match: ['isoniazid'], adultMaxMgPerDay: 300, source: 'us-label' },
+  pyrazinamide: { match: ['pyrazinamide'], adultMaxMgPerDay: 3000, source: 'us-label' },
+  loperamide: { match: ['loperamide'], adultMaxMgPerDay: 16, source: 'us-label' },
+  tramadol: { match: ['tramadol'], adultMaxMgPerDay: 400, source: 'us-label' },
+  amlodipine: { match: ['amlodipine'], adultMaxMgPerDay: 10, source: 'us-label' },
+  furosemide: { match: ['furosemide', 'frusemide'], adultMaxMgPerDay: 600, source: 'us-label' },
+  enalapril: { match: ['enalapril'], adultMaxMgPerDay: 40, source: 'us-label' },
+  lisinopril: { match: ['lisinopril'], adultMaxMgPerDay: 40, source: 'us-label' },
+  captopril: { match: ['captopril'], adultMaxMgPerDay: 450, source: 'us-label' },
+  losartan: { match: ['losartan'], adultMaxMgPerDay: 100, source: 'us-label' },
+  atenolol: { match: ['atenolol'], adultMaxMgPerDay: 100, source: 'us-label' },
+  carvedilol: { match: ['carvedilol'], adultMaxMgPerDay: 100, source: 'us-label' },
+  labetalol: { match: ['labetalol'], adultMaxMgPerDay: 2400, source: 'us-label' },
+  methyldopa: { match: ['methyldopa'], adultMaxMgPerDay: 3000, maxMgPerKgPerDay: 65, source: 'us-label' },
+  atorvastatin: { match: ['atorvastatin'], adultMaxMgPerDay: 80, source: 'us-label' },
+  metformin: { match: ['metformin'], adultMaxMgPerDay: 2550, source: 'us-label' },
+  glibenclamide: { match: ['glibenclamide', 'glyburide'], adultMaxMgPerDay: 20, source: 'us-label' },
+  glimepiride: { match: ['glimepiride'], adultMaxMgPerDay: 8, source: 'us-label' },
+  aminophylline: { match: ['aminophylline'], adultMaxMgPerDay: 900, source: 'us-label' },
+  levetiracetam: { match: ['levetiracetam'], adultMaxMgPerDay: 3000, source: 'us-label' },
+  carbamazepine: { match: ['carbamazepine'], adultMaxMgPerDay: 1600, source: 'us-label' },
+  valproate: { match: ['valproate', 'valproic'], maxMgPerKgPerDay: 60, source: 'us-label' },
+  fluoxetine: { match: ['fluoxetine'], adultMaxMgPerDay: 80, source: 'us-label' },
+  sertraline: { match: ['sertraline'], adultMaxMgPerDay: 200, source: 'us-label' },
+  clomipramine: { match: ['clomipramine'], adultMaxMgPerDay: 250, source: 'us-label' },
+  clozapine: { match: ['clozapine'], adultMaxMgPerDay: 900, source: 'us-label' },
+  risperidone: { match: ['risperidone'], adultMaxMgPerDay: 16, source: 'us-label' },
+  olanzapine: { match: ['olanzapine'], adultMaxMgPerDay: 20, source: 'us-label' },
+  itraconazole: { match: ['itraconazole'], adultMaxMgPerDay: 400, source: 'us-label' },
+  abacavir: { match: ['abacavir'], adultMaxMgPerDay: 600, source: 'us-label' },
+  ritonavir: { match: ['ritonavir'], adultMaxMgPerDay: 1200, source: 'us-label' },
+  allopurinol: { match: ['allopurinol'], adultMaxMgPerDay: 800, source: 'us-label' },
+  colchicine: { match: ['colchicine'], adultMaxMgPerDay: 1.8, source: 'us-label' },
+  azathioprine: { match: ['azathioprine'], maxMgPerKgPerDay: 2.5, source: 'us-label' },
+  thalidomide: { match: ['thalidomide'], adultMaxMgPerDay: 400, source: 'us-label' },
+  imatinib: { match: ['imatinib'], adultMaxMgPerDay: 800, source: 'us-label' },
+  bupivacaine: { match: ['bupivacaine'], adultMaxMgPerDay: 400, source: 'us-label' },
+  deferoxamine: { match: ['deferoxamine', 'desferrioxamine'], adultMaxMgPerDay: 6000, source: 'us-label' },
 };
 
 /** A weight older than this is not trusted for a per-kg limit (children grow). */

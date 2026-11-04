@@ -30,6 +30,7 @@ import { COMMON_ICD11_CODES } from '@/lib/icd11-codes';
 import type { PatientDoc, ProblemDoc } from '@/lib/db-types';
 import type { NoteDiagnosis } from '@/lib/clinical-notes/types';
 import '../clinical-notes.css';
+import '../slider-fit.css';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { describeError } from '@/lib/user-facing-error';
@@ -211,6 +212,17 @@ export default function IncludeProblemsModal({
       title="Include Problems"
       width={1060}
       onClose={onClose}
+      flush
+      footer={<>
+        <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+        <button type="button" className="btn btn-secondary" onClick={handleMarkError} disabled={busy || checked.size === 0}>Mark as Error</button>
+        <button type="button" className="btn btn-secondary" onClick={handleDeactivate} disabled={busy || checked.size === 0}>
+          {tab === 'active' ? 'Deactivate' : 'Reactivate'}
+        </button>
+        <button type="button" className="btn btn-primary" onClick={handleInclude} disabled={busy || checked.size === 0}>
+          Include
+        </button>
+      </>}
     >
       <div className="space-y-4">
         <div className="cn-meds-body cn-meds-body--single">
@@ -376,16 +388,6 @@ export default function IncludeProblemsModal({
               </div>
             )}
 
-            <div className="cn-meds-footer">
-              <button type="button" className="cn-btn" onClick={onClose}>Cancel</button>
-              <button type="button" className="cn-btn" onClick={handleMarkError} disabled={busy || checked.size === 0}>Mark as Error</button>
-              <button type="button" className="cn-btn" onClick={handleDeactivate} disabled={busy || checked.size === 0}>
-                {tab === 'active' ? 'Deactivate' : 'Reactivate'}
-              </button>
-              <button type="button" className="cn-btn cn-btn-primary" onClick={handleInclude} disabled={busy || checked.size === 0}>
-                Include
-              </button>
-            </div>
           </div>
         </div>
       </div>

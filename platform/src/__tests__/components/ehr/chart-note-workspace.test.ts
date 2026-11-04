@@ -10,9 +10,11 @@ describe('patient chart note workspace', () => {
     expect(chartShell).toContain('showContextSidebar={false}');
   });
 
-  it('takes the one chart slider size; ✕ closes completely, Back only when something is underneath', () => {
+  it('takes the one chart slider size; × closes completely, → (Hide) only when there is somewhere to go back to', () => {
     expect(chartShell).toContain('void closeAllWorkspaces(); }}><X />');
-    expect(chartShell).toContain('className="tamam-drawer-back"');
+    expect(chartShell).toMatch(/\(innerBack \|\| stack\.length > 1\) && \(\s*<Tooltip content=\{t\('overlay\.hide'\)\}>/);
+    // No Back on the left any more.
+    expect(chartShell).not.toContain('tamam-drawer-back');
     expect(chartShell).not.toContain('tamam-drawer-leave');
     // Docked beside the chart (it narrows the chart rather than covering it).
     expect(chartCss).toMatch(/\.tamam-drawer\s*{[\s\S]*?width:\s*min\(var\(--chart-slider-w\), 100vw\)/);

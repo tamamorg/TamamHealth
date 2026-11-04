@@ -7,7 +7,7 @@
    untouched. */
 @media print {
   [data-print-active] {
-    font-family: "IBM Plex Sans", Arial, Helvetica, sans-serif !important;
+    font-family: Arial, Helvetica, sans-serif !important;
     color: black !important;
     font-size: 9.5pt;
     line-height: 1.45;
@@ -109,6 +109,49 @@
   [data-print-active] .ehr-handoff-section-head :is(h2, h3) { margin: 0 !important; padding: 0 !important; border: 0 !important; }
   [data-print-active] .ehr-handoff-badge { display: none !important; }
 
+  /* Lab/imaging report facts (.obf-row of .obf-field): the field grid. */
+  [data-print-active] .obf-row { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 2.5mm 6mm !important; padding: 1mm 1mm 0 !important; margin-top: 5mm; }
+  [data-print-active] .obf-field { display: block !important; padding: 0 !important; }
+  [data-print-active] .obf-label { display: block !important; color: color-mix(in srgb, black 68%, white) !important; font-size: 7.5pt !important; font-weight: 400 !important; margin: 0 0 0.3mm !important; }
+  [data-print-active] .obf-value { font-size: 9.5pt !important; font-weight: 700 !important; }
+
+  /* One face on the sheet: condensed and mono screen faces (table heads,
+     numbers) do not belong on paper. The barcode keeps its own. */
+  [data-print-active] :is(th, td, label, span, b, strong, small, p, li, div):not(.print-doc-top, .print-doc-top *, .labord-barcode, .labord-barcode *) {
+    font-family: inherit !important;
+  }
+  /* Screen icon tiles leave a gap once their glyph is hidden. */
+  [data-print-active] :is(.icon-box-sm, .icon-box-lg, .icon-box) { display: none !important; }
+
+  /* Screen padding does not indent paper: a card's side padding would push
+     its text in from the sheet's heading and rules. */
+  [data-print-active] :is(div, section, article, main):is([class^="px-"], [class*=" px-"], [class^="p-"], [class*=" p-"]):not(.print-doc-top, .print-doc-top *) {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* Shift handoff: the counts are facts, so they read as the field grid
+     (small grey label over a bold value), not large dashboard tiles. */
+  [data-print-active] .ehr-handoff-body { padding: 0 !important; }
+  [data-print-active] .ehr-handoff-stats { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 2.5mm 6mm !important; margin: 0 0 5mm !important; padding: 1mm 1mm 0 !important; }
+  [data-print-active] div.ehr-handoff-stat { display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 0.3mm !important; padding: 0 !important; }
+  [data-print-active] .ehr-handoff-stat > span { order: 0; color: color-mix(in srgb, black 68%, white) !important; font-size: 7.5pt !important; font-weight: 400 !important; letter-spacing: 0 !important; text-transform: none !important; }
+  [data-print-active] .ehr-handoff-stat > b { order: 1; color: black !important; font-size: 9.5pt !important; font-weight: 700 !important; }
+  [data-print-active] .ehr-handoff-section { margin: 0 0 5mm !important; padding: 0 !important; }
+  [data-print-active] .ehr-handoff-section-body { padding: 0 !important; min-height: 0 !important; }
+  [data-print-active] .ehr-handoff-section-body textarea { min-height: 0 !important; height: auto !important; }
+  [data-print-active] .ehr-handoff-empty { padding: 1mm 0 !important; text-align: start !important; min-height: 0 !important; }
+  [data-print-active] div.ehr-handoff-section-head { padding: 0 0 1.2mm !important; border-bottom: 0.75pt solid color-mix(in srgb, black 22%, white) !important; }
+  [data-print-active] .ehr-handoff-section-head h3 { font-size: 11pt !important; }
+
+  /* Executive briefing: each section is a title on a hairline over its list. */
+  #executive-briefing-print .dash-card { margin: 0 0 5mm !important; }
+  #executive-briefing-print .dash-card > div { padding-left: 0 !important; padding-right: 0 !important; }
+  #executive-briefing-print .dash-card > div:first-child:not(:last-child) { padding-top: 0 !important; padding-bottom: 1.2mm !important; margin-bottom: 2mm; }
+  #executive-briefing-print div.dash-card > div:first-child:not(:last-child) { border-bottom: 0.75pt solid color-mix(in srgb, black 22%, white) !important; }
+  #executive-briefing-print .dash-card > div:first-child:not(:last-child) > span { font-size: 11pt !important; font-weight: 700 !important; color: black !important; }
+  #executive-briefing-print li { color: black !important; font-size: 9.5pt !important; }
+
   /* What the sheet's heading replaces on each screen. */
   #mar-print-record .mar-screen-head { display: none !important; }
   [data-print-active] :is(.tamam-nv-head, .ehr-handoff-head, .labord-req-facility) { display: none !important; }
@@ -142,6 +185,7 @@
     border-bottom: 0.5pt solid color-mix(in srgb, black 12%, white) !important;
     color: black !important;
     vertical-align: top;
+    overflow-wrap: break-word;
   }
 
   [data-print-active] tr { break-inside: avoid; }

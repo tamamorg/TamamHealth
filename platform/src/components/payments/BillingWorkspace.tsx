@@ -1052,8 +1052,8 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
       {recordPlanFor && (
         <FormSlider
           title={t('plans.recordPayment')}
-          subtitle={recordPlanFor.patientName}
           width={440}
+          subtitle={recordPlanFor.patientName}
           onClose={() => setRecordPlanFor(null)}
           footer={<>
               <button type="button" onClick={() => setRecordPlanFor(null)} className="btn btn-secondary">{t('action.cancel')}</button>
@@ -1147,8 +1147,8 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
   return (
     <FormSlider
       title={shortenPersonName(line.patientName)}
-      subtitle={line.hospitalNumber}
       width={620}
+      subtitle={line.hospitalNumber}
       flush
       onClose={onClose}
       footer={<>

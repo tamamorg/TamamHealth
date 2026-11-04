@@ -57,7 +57,7 @@ export const CLINICAL_PRINT_CSS = `
   :root { --ink:#001D3F; --muted:#3C5574; --line:#CFD6DD; --hair:#E2E6EB; --wash:#F1F3F5; --danger:#9E1B14; }
   * { box-sizing:border-box; }
   html { background:#fff; }
-  body { margin:0 auto; color:var(--ink); background:#fff; font:9.5pt/1.45 "IBM Plex Sans", Arial, Helvetica, sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body { margin:0 auto; color:var(--ink); background:#fff; font:9.5pt/1.45 Arial, Helvetica, sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   .doc-head { display:flex; justify-content:space-between; align-items:center; gap:10mm; padding-bottom:4mm; border-bottom:.75pt solid var(--line); break-inside:avoid; }
   .doc-brand { display:flex; align-items:center; gap:5mm; }
   .doc-logo { width:13mm; height:13mm; object-fit:contain; }
@@ -80,17 +80,18 @@ export const CLINICAL_PRINT_CSS = `
   thead { display:table-header-group; }
   tfoot { display:table-footer-group; }
   th { padding:1.8mm 2mm; text-align:left; font-size:7.5pt; font-weight:700; color:var(--muted); background:var(--wash); border-bottom:.75pt solid var(--line); letter-spacing:0; text-transform:none; }
-  td { padding:1.8mm 2mm; vertical-align:top; border-bottom:.5pt solid var(--hair); overflow-wrap:anywhere; }
+  td { padding:1.8mm 2mm; vertical-align:top; border-bottom:.5pt solid var(--hair); overflow-wrap:break-word; }
   tr { break-inside:avoid; }
   tr.group td { background:var(--wash); font-weight:700; }
   td.indent { padding-left:6mm; }
   .num { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
   .center { text-align:center; }
   .muted { color:var(--muted); }
-  .empty { padding:2mm 2mm; color:var(--muted); background:#fff; border:.5pt dashed var(--line); }
+  .empty { padding:2mm 2mm; color:var(--muted); background:none; border:0; border-bottom:.5pt solid var(--hair); }
   .status { font-weight:700; }
-  .status-alert { color:var(--danger); }
-  .notice { margin:0 0 4mm; padding:2.5mm 3.5mm; border:.75pt solid var(--line); border-left:2.5pt solid var(--ink); break-inside:avoid; }
+  .status-alert { color:var(--ink); }
+  .notice { margin:0 0 4mm; padding:0; border:0; break-inside:avoid; }
+  .notice.status-alert { font-weight:700; }
   .totals { width:min(78mm,100%); margin:4mm 0 0 auto; break-inside:avoid; }
   .total-row { display:flex; justify-content:space-between; gap:8mm; padding:1.2mm 0; border-bottom:.5pt solid var(--hair); }
   .total-row strong:last-child,.total-row span:last-child { text-align:right; font-variant-numeric:tabular-nums; }

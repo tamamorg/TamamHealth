@@ -28,13 +28,14 @@ describe('no-allergy markers', () => {
 
 describe('interaction names', () => {
   it.each(['Co-trimoxazole', 'Septrin', 'Bactrim', 'Sulfamethoxazole-Trimethoprim', 'Trimethoprim/Sulfamethoxazole'])(
-    'stops methotrexate with %s',
-    name => expect(checkNewPrescription(name, ['Methotrexate']).highestSeverity).toBe('contraindicated'),
+    // The US labels say avoid, not contraindicated, for both of these pairs.
+    'warns about methotrexate with %s',
+    name => expect(checkNewPrescription(name, ['Methotrexate']).highestSeverity).toBe('serious'),
   );
 
   it.each(['Coartem', 'Artemether Lumefantrine', 'Artemether/Lumefantrine', 'Artemether-Lumefantrine (Coartem)'])(
-    'stops quinine with %s',
-    name => expect(checkNewPrescription('Quinine', [name]).highestSeverity).toBe('contraindicated'),
+    'warns about quinine with %s',
+    name => expect(checkNewPrescription('Quinine', [name]).highestSeverity).toBe('serious'),
   );
 
   it('reads the British spelling and the combined penicillin', () => {
@@ -109,27 +110,27 @@ describe('methotrexate frequency', () => {
 });
 
 describe('unreviewedInteractionConflicts', () => {
-  const warning = { drug1: 'warfarin', drug2: 'metronidazole', severity: 'contraindicated' as const, description: '', clinicalAdvice: '' };
+  const warning = { drug1: 'rifampicin', drug2: 'lopinavir', severity: 'contraindicated' as const, description: '', clinicalAdvice: '' };
   const safety = { assessedAt: '', allergyWarnings: [], interactionWarnings: [warning], duplicateWarnings: [] };
   const acknowledgement = { reviewedBy: 'Dr. A', reviewedAt: '', reason: 'No alternative available today' };
-  const metronidazole = { medication: 'Metronidazole' };
+  const rifampicin = { medication: 'Rifampicin' };
 
   it('stops a pair nobody answered', () => {
-    expect(unreviewedInteractionConflicts(metronidazole, ['Warfarin'])).toEqual(['warfarin + metronidazole']);
+    expect(unreviewedInteractionConflicts(rifampicin, ['Lopinavir + ritonavir'])).toEqual(['rifampicin + lopinavir']);
   });
 
   it('accepts the prescriber answering it on this order or on the other half', () => {
-    expect(unreviewedInteractionConflicts({ ...metronidazole, medicationSafety: { ...safety, acknowledgement } }, ['Warfarin'])).toEqual([]);
-    expect(unreviewedInteractionConflicts(metronidazole, ['Warfarin'], [{ medicationSafety: { ...safety, acknowledgement } }])).toEqual([]);
+    expect(unreviewedInteractionConflicts({ ...rifampicin, medicationSafety: { ...safety, acknowledgement } }, ['Lopinavir + ritonavir'])).toEqual([]);
+    expect(unreviewedInteractionConflicts(rifampicin, ['Lopinavir + ritonavir'], [{ medicationSafety: { ...safety, acknowledgement } }])).toEqual([]);
   });
 
   it('does not count a warning nobody justified', () => {
-    expect(unreviewedInteractionConflicts(metronidazole, ['Warfarin'], [{ medicationSafety: safety }])).toHaveLength(1);
+    expect(unreviewedInteractionConflicts(rifampicin, ['Lopinavir + ritonavir'], [{ medicationSafety: safety }])).toHaveLength(1);
   });
 
   it('accepts an earlier fill answering it', () => {
-    const review = { allergies: [], interactions: ['warfarin + metronidazole'], reviewedBy: 'P', reviewedAt: '', reason: 'Confirmed by phone' };
-    expect(unreviewedInteractionConflicts({ ...metronidazole, dispenseAllergyReview: review }, ['Warfarin'])).toEqual([]);
+    const review = { allergies: [], interactions: ['rifampicin + lopinavir'], reviewedBy: 'P', reviewedAt: '', reason: 'Confirmed by phone' };
+    expect(unreviewedInteractionConflicts({ ...rifampicin, dispenseAllergyReview: review }, ['Lopinavir + ritonavir'])).toEqual([]);
   });
 
   it('ignores anything below contraindicated', () => {

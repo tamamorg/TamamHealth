@@ -35,7 +35,8 @@
  */
 
 import { useId, useState, type ReactNode } from 'react';
-import { ArrowLeft, ChevronDown, Maximize2, X } from '@/components/icons/lucide';
+import { ArrowRight, ChevronDown, Maximize2, X } from '@/components/icons/lucide';
+import Tooltip from './Tooltip';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import FormNotices from './FormNotices';
 import { useMarkDraftDismissed } from '@/components/unsaved/draft-dismiss-context';
@@ -82,7 +83,6 @@ export function DialogHeader({
   onBack,
   closeLabel,
   expandLabel,
-  backLabel,
   actions,
   className = '',
 }: {
@@ -98,11 +98,10 @@ export function DialogHeader({
   onClose: () => void;
   /** Promote to the full page (see PopupHeader for when to omit). */
   onExpand?: () => void;
-  /** A step back inside a multi-step dialog. */
+  /** A step back inside a multi-step dialog: → (Hide) on the right, beside ×. */
   onBack?: () => void;
   closeLabel?: string;
   expandLabel?: string;
-  backLabel?: string;
   /** Extra controls placed before expand/close. */
   actions?: ReactNode;
   className?: string;
@@ -113,11 +112,6 @@ export function DialogHeader({
   const iconTone = tone === 'danger' ? ' tm-dialog__icon--danger' : tone === 'warning' ? ' tm-dialog__icon--warning' : '';
   return (
     <header className={`tm-dialog__head tm-dialog__head--${tone} modal-no-headband${className ? ` ${className}` : ''}`}>
-      {onBack && (
-        <button type="button" className="tm-dialog__ctl" onClick={onBack} aria-label={backLabel || t('overlay.back')}>
-          <ArrowLeft aria-hidden="true" />
-        </button>
-      )}
       {icon && <span className={`tm-dialog__icon${iconTone}`} aria-hidden="true">{icon}</span>}
       <div className="tm-dialog__copy">
         <h2 id={titleId} className="tm-dialog__title">{title}</h2>
@@ -136,15 +130,25 @@ export function DialogHeader({
             <Maximize2 aria-hidden="true" />
           </button>
         )}
-        <button
-          type="button"
-          className="tm-dialog__ctl"
-          onClick={() => { markDraftDismissed(); onClose(); }}
-          aria-label={closeLabel || t('overlay.close')}
-          data-action="popup-close"
-        >
-          <X aria-hidden="true" />
-        </button>
+        {/* A step back sits on the right as → (Hide), beside ×, never on the left. */}
+        {onBack && (
+          <Tooltip content={t('overlay.hide')}>
+            <button type="button" className="tm-dialog__ctl" onClick={onBack} aria-label={t('overlay.hide')} data-action="popup-hide">
+              <ArrowRight aria-hidden="true" />
+            </button>
+          </Tooltip>
+        )}
+        <Tooltip content={closeLabel || t('overlay.close')}>
+          <button
+            type="button"
+            className="tm-dialog__ctl"
+            onClick={() => { markDraftDismissed(); onClose(); }}
+            aria-label={closeLabel || t('overlay.close')}
+            data-action="popup-close"
+          >
+            <X aria-hidden="true" />
+          </button>
+        </Tooltip>
       </div>
     </header>
   );

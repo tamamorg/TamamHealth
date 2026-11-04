@@ -12,7 +12,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import EhrListHeader, { LIST_STAT_COLORS, type EhrListHeaderTab } from '@/components/ehr/EhrListHeader';
 import RowStatusSelect, { type RowStatusOption } from '@/components/ehr/RowStatusSelect';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import Select from '@/components/Select';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
@@ -242,10 +242,18 @@ export default function IssueReportsQueue({
       </div>
 
       {responding && (
-        <Modal variant="slider" className="tamam-dialog" onClose={() => !saving && setResponding(null)} width={520} labelledBy="issue-response-title">
-          <div className="modal-panel p-6 space-y-4">
-            <h2 id="issue-response-title" className="text-[16px] font-semibold" style={{ color: 'var(--text-primary)' }}>{t('issues.responseTitle')}</h2>
-            <p className="text-[13px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{responding.subject}</p>
+        <FormSlider
+          title={t('issues.responseTitle')}
+          subtitle={responding.subject}
+          width={520}
+          onClose={() => setResponding(null)}
+          busy={saving}
+          footer={<>
+            <button type="button" className="btn btn-secondary" disabled={saving} onClick={() => setResponding(null)}>{t('issues.cancel')}</button>
+            <button type="button" className="btn btn-primary" disabled={saving} onClick={() => void saveResponse()}>{t('issues.saveResponse')}</button>
+          </>}
+        >
+          <div className="space-y-4">
             <textarea
               rows={5}
               value={noteDraft}
@@ -255,12 +263,8 @@ export default function IssueReportsQueue({
               className="w-full"
             />
             <p className="text-[12px]" style={{ color: 'var(--text-muted)' }}>{t('issues.responseHint')}</p>
-            <div className="flex justify-end gap-2">
-              <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={() => setResponding(null)}>{t('issues.cancel')}</button>
-              <button type="button" className="btn btn-primary btn-sm" disabled={saving} onClick={() => void saveResponse()}>{t('issues.saveResponse')}</button>
-            </div>
           </div>
-        </Modal>
+        </FormSlider>
       )}
     </main>
   );

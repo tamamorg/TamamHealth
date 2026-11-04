@@ -26,7 +26,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Building2 } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
-import PopupHeader from '@/components/PopupHeader';
+import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
+import './tenancy-slider.css';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
@@ -229,19 +230,23 @@ function OrganizationRegistry() {
 
       {showOrgEditor && (
         <Modal variant="slider" onClose={() => setShowOrgEditor(false)} width={920} labelledBy="management-org-editor">
-          <div className="sadb-modal mgmt-form-modal">
-            <PopupHeader
+          <DialogFrame>
+            <DialogHeader
               titleId="management-org-editor"
               title={t('management.addOrganization')}
               onClose={() => setShowOrgEditor(false)}
               onExpand={() => { setShowOrgEditor(false); router.push('/admin/organizations/new'); }}
             />
-            <OrganizationForm
-              editing={null}
-              onCancel={() => setShowOrgEditor(false)}
-              onSaved={() => { setShowOrgEditor(false); void orgStore.reload(); }}
-            />
-          </div>
+            <DialogBody>
+              <div className="sadb-modal mgmt-form-modal">
+                <OrganizationForm
+                  editing={null}
+                  onCancel={() => setShowOrgEditor(false)}
+                  onSaved={() => { setShowOrgEditor(false); void orgStore.reload(); }}
+                />
+              </div>
+            </DialogBody>
+          </DialogFrame>
         </Modal>
       )}
 

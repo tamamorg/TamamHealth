@@ -15,7 +15,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Save, Check, Copy, Send, ClipboardList, DollarSign, Plus, Minus, ArrowLeft, ChevronDown, ChevronRight } from '@/components/icons/lucide';
+import { Save, Check, Copy, Send, ClipboardList, DollarSign, Plus, Minus, ArrowLeft, ChevronDown, ChevronLeft, ChevronRight } from '@/components/icons/lucide';
+
+const NOTE_NAV_KEY = 'tm.noteNavCollapsed';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import FormSlider from '@/components/overlay/FormSlider';
@@ -181,6 +183,15 @@ export default function ClinicalNoteEditor({
   // Workspace layout: which group the section list marks as current, and
   // which groups the clinician has folded away.
   const [workspaceGroup, setWorkspaceGroup] = useState<string>('visit-details');
+  // The workspace's section list can be folded away for more room to write;
+  // the choice is kept for the next note. Read lazily: the editor only renders
+  // in the browser, once the note has loaded.
+  const [navCollapsed, setNavCollapsed] = useState(() => typeof window !== 'undefined' && window.localStorage.getItem(NOTE_NAV_KEY) === '1');
+  const toggleNav = () => setNavCollapsed(prev => {
+    const next = !prev;
+    try { window.localStorage.setItem(NOTE_NAV_KEY, next ? '1' : '0'); } catch { /* private mode: the toggle still works */ }
+    return next;
+  });
   const [foldedGroups, setFoldedGroups] = useState<Set<string>>(() => new Set());
   const workspaceScrollRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
@@ -1266,7 +1277,7 @@ export default function ClinicalNoteEditor({
 
       {/* Sign confirmation */}
       {showSignConfirm && (
-        <Modal labelledBy="clinicalnoteeditor-tsx-dlg-1185" onClose={() => setShowSignConfirm(false)} width={480}>
+        <Modal variant="slider" labelledBy="clinicalnoteeditor-tsx-dlg-1185" onClose={() => setShowSignConfirm(false)} width={560}>
           <DialogFrame>
             <DialogHeader titleId="clinicalnoteeditor-tsx-dlg-1185" title={t('noteEditor.signTitle')} description={t('noteEditor.signBody')} onClose={() => setShowSignConfirm(false)} />
             <DialogBody className="space-y-4">
@@ -1543,9 +1554,19 @@ export default function ClinicalNoteEditor({
             <ArrowLeft size={16} aria-hidden /> {t('noteEditor.backToForms')}
           </button>
         )}
-        <div className="omf-body">
+        <div className={navCollapsed ? 'omf-body is-nav-collapsed' : 'omf-body'}>
           <nav className="omf-nav" aria-label={t('noteEditor.sections')}>
-            {groups.map(g => (
+            <button
+              type="button"
+              className="omf-nav-toggle"
+              aria-expanded={!navCollapsed}
+              title={navCollapsed ? t('noteEditor.showSections') : t('noteEditor.hideSections')}
+              aria-label={navCollapsed ? t('noteEditor.showSections') : t('noteEditor.hideSections')}
+              onClick={toggleNav}
+            >
+              {navCollapsed ? <ChevronRight size={16} aria-hidden /> : <><ChevronLeft size={16} aria-hidden /> {t('noteEditor.hideSections')}</>}
+            </button>
+            {!navCollapsed && groups.map(g => (
               <button
                 key={g.id}
                 type="button"
@@ -1556,12 +1577,12 @@ export default function ClinicalNoteEditor({
                 {g.label}
               </button>
             ))}
-            {!locked && optionalAvailable.length > 0 && (
+            {!navCollapsed && !locked && optionalAvailable.length > 0 && (
               <button type="button" className="omf-nav-add" onClick={() => setShowAddOptional(true)}>
                 <Plus size={14} aria-hidden /> {t('noteEditor.addSection')}
               </button>
             )}
-            <div className="omf-nav-more">
+            <div className="omf-nav-more" hidden={navCollapsed}>
               {!locked && copySource && (
                 <button type="button" onClick={handleCopyForward} disabled={saving}><Copy size={13} aria-hidden /> {t('noteEditor.copyForward')}</button>
               )}
@@ -1569,34 +1590,6 @@ export default function ClinicalNoteEditor({
               <button type="button" onClick={() => { if (confirmNavigation()) openChartTab('careChecklist'); }}><ClipboardList size={13} aria-hidden /> {t('noteEditor.carePlan')}</button>
               <button type="button" onClick={() => navigateAway(`/billing?patientId=${note.patientId}`)}><DollarSign size={13} aria-hidden /> {t('noteEditor.captureCharge')}</button>
               {!locked && <button type="button" onClick={handleClear}>{t('noteEditor.clearNote')}</button>}
-            </div>
-            <div className="omf-nav-actions">
-              {!locked && (
-                <button type="button" className="omf-btn omf-btn--primary" onClick={() => void handleSaveDraft()} disabled={saving}>
-                  {saving ? t('noteEditor.saving') : t('noteEditor.save')}
-                </button>
-              )}
-              {!locked && (
-                <button type="button" className="omf-btn omf-btn--primary" onClick={openSignConfirm} disabled={saving} title={t('noteEditor.signHint')}>
-                  <Check size={14} aria-hidden /> {t('noteEditor.sign')}
-                </button>
-              )}
-              {draftLocked && mayEditDraft && (
-                <button type="button" className="omf-btn omf-btn--primary" onClick={() => { setDraftLocked(false); onDraftUnlocked?.(); }}>
-                  {t('noteViewer.edit')}
-                </button>
-              )}
-              {canCosign && (
-                <button type="button" className="omf-btn omf-btn--primary" onClick={handleCosign} disabled={cosigning}>
-                  <Check size={14} aria-hidden /> {cosigning ? t('noteEditor.cosigning') : t('noteEditor.cosign')}
-                </button>
-              )}
-              <button type="button" className="omf-btn omf-btn--outline" onClick={() => void handleSaveAndClose()}>
-                {locked ? t('noteEditor.close') : t('noteEditor.cancel')}
-              </button>
-              <span className="omf-saved">
-                {savedAt && !saving ? t('noteEditor.lastSaved', { time: new Date(savedAt).toLocaleTimeString() }) : ''}
-              </span>
             </div>
           </nav>
           <div className="omf-scroll" ref={workspaceScrollRef} onScroll={onWorkspaceScroll}>
@@ -1630,6 +1623,38 @@ export default function ClinicalNoteEditor({
               renderSectionCard(sec),
             ))}
             <div className="omf-tail">{noteTail}</div>
+          </div>
+        </div>
+        {/* The form's actions run along the foot of the workspace, as on every
+            other panel: Cancel on the left, the primary actions after it. */}
+        <div className="omf-actionbar">
+          <span className="omf-saved" aria-live="polite">
+            {saving ? t('noteEditor.saving') : savedAt ? t('noteEditor.lastSaved', { time: new Date(savedAt).toLocaleTimeString() }) : ''}
+          </span>
+          <div className="omf-bar">
+            <button type="button" className="omf-bar-btn omf-bar-btn--secondary" onClick={() => void handleSaveAndClose()}>
+              {locked ? t('noteEditor.close') : t('noteEditor.cancel')}
+            </button>
+            {!locked && (
+              <button type="button" className="omf-bar-btn omf-bar-btn--primary" onClick={() => void handleSaveDraft()} disabled={saving}>
+                {saving ? t('noteEditor.saving') : t('noteEditor.save')}
+              </button>
+            )}
+            {!locked && (
+              <button type="button" className="omf-bar-btn omf-bar-btn--primary" onClick={openSignConfirm} disabled={saving} title={t('noteEditor.signHint')}>
+                <Check size={14} aria-hidden /> {t('noteEditor.sign')}
+              </button>
+            )}
+            {draftLocked && mayEditDraft && (
+              <button type="button" className="omf-bar-btn omf-bar-btn--primary" onClick={() => { setDraftLocked(false); onDraftUnlocked?.(); }}>
+                {t('noteViewer.edit')}
+              </button>
+            )}
+            {canCosign && (
+              <button type="button" className="omf-bar-btn omf-bar-btn--primary" onClick={handleCosign} disabled={cosigning}>
+                <Check size={14} aria-hidden /> {cosigning ? t('noteEditor.cosigning') : t('noteEditor.cosign')}
+              </button>
+            )}
           </div>
         </div>
         {noteModals}

@@ -8,7 +8,6 @@ import { useSuperbill, SuperbillPicker, SuperbillDraft } from '@/components/pati
 import '@/components/billing/billing.css';
 import InsurancePolicyModal from '@/components/payments/InsurancePolicyModal';
 import { PolicyEligibility } from '@/modules/insurance/client';
-import Modal from '@/components/Modal';
 import FormSlider from '@/components/overlay/FormSlider';
 import { getMethodConfig } from '@/lib/payment-method-config';
 import { apiFetch } from '@/lib/api-fetch';
@@ -684,20 +683,25 @@ export default function BillingTab({
       </section>
       </div>
 
-      {showFinancialReview && <Modal onClose={() => setShowFinancialReview(false)} width={820}>
+      {showFinancialReview && <FormSlider
+        title={t('financialReview.title')}
+        width={820}
+        onClose={() => setShowFinancialReview(false)}
+        flush
+        footer={<button type="button" className="btn btn-secondary" onClick={() => setShowFinancialReview(false)}>{t('billing.activityClose')}</button>}
+      >
         <div className="bl-billing-review">
           <VisitFinancialReview patientId={patient._id} encounterId={superbillEncounterId} />
-          <div className="bl-activity-pagination"><button type="button" onClick={() => setShowFinancialReview(false)}>{t('billing.activityClose')}</button></div>
         </div>
-      </Modal>}
+      </FormSlider>}
 
       {/* ─── Payment Panel Modal ─── */}
       {/* The account's actions open in the side slider, like every other
           chart form, so the chart stays in view beside them. */}
       {showBillingActions && <FormSlider
         title={t('billing.actionsTitle')}
-        className="tamam-dialog"
         width={480}
+        className="tamam-dialog"
         onClose={() => setShowBillingActions(false)}
         footer={<button type="button" className="btn btn-secondary" onClick={() => setShowBillingActions(false)}>{t('billing.activityClose')}</button>}
       >
@@ -840,8 +844,8 @@ export default function BillingTab({
       {showAdjustment && (
         <FormSlider
           title={t('billing.adjustmentWriteOff')}
-          subtitle={lineInHand ? accountLineTitle(lineInHand, t) : undefined}
           width={460}
+          subtitle={lineInHand ? accountLineTitle(lineInHand, t) : undefined}
           onClose={() => { setShowAdjustment(false); setLineInHand(null); }}
           footer={<>
               <button type="button" className="btn btn-secondary" onClick={() => { setShowAdjustment(false); setLineInHand(null); }}>{t('common.cancel')}</button>
@@ -894,11 +898,23 @@ export default function BillingTab({
           Key added to en.ts; the whole modal restyled to the bl- language
           while fixing it. */}
       {showPaymentLink && (
-        <Modal variant="slider" onClose={() => setShowPaymentLink(false)} width={440} labelledBy="bl-link-title">
-          <div className="bl-root bl-modal-body">
-            <div className="bl-modal-head">
-              <h3 className="bl-modal-title" id="bl-link-title">{t('billing.sendPaymentLink')}</h3>
-            </div>
+        <FormSlider
+          title={t('billing.sendPaymentLink')}
+          width={440}
+          onClose={() => setShowPaymentLink(false)}
+          busy={creatingLink}
+          footer={!createdLink ? (
+            <>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowPaymentLink(false)}>{t('common.cancel')}</button>
+              <button type="button" className="btn btn-primary" onClick={handleCreatePaymentLink} disabled={creatingLink}>
+                {creatingLink ? t('common.processing') : t('billing.generateLink')}
+              </button>
+            </>
+          ) : (
+            <button type="button" className="btn btn-primary" onClick={() => setShowPaymentLink(false)}>{t('common.done')}</button>
+          )}
+        >
+          <div className="bl-root bl-modal-body" style={{ padding: 0 }}>
 
             {!createdLink ? (
               <>
@@ -919,12 +935,6 @@ export default function BillingTab({
                   />
                 </div>
                 {linkError && <p className="bl-danger" style={{ fontSize: 12, margin: 0 }}>{linkError}</p>}
-                <div className="bl-modal-actions">
-                  <button type="button" className="bl-btn bl-btn--ghost" onClick={() => setShowPaymentLink(false)}>{t('common.cancel')}</button>
-                  <button type="button" className="bl-btn bl-btn--primary" onClick={handleCreatePaymentLink} disabled={creatingLink}>
-                    {creatingLink ? t('common.processing') : t('billing.generateLink')}
-                  </button>
-                </div>
               </>
             ) : (
               <>
@@ -948,13 +958,10 @@ export default function BillingTab({
                     {linkCopied ? t('billing.copied') : t('billing.copy')}
                   </button>
                 </div>
-                <div className="bl-modal-actions">
-                  <button type="button" className="bl-btn bl-btn--primary" onClick={() => setShowPaymentLink(false)}>{t('common.done')}</button>
-                </div>
               </>
             )}
           </div>
-        </Modal>
+        </FormSlider>
       )}
     </div>
   );

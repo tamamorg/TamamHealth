@@ -204,6 +204,14 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       // while the referral sits in the terminal-ish `seen` state.
       const ACK_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
       const nowMs = Date.now();
+      const { getPatientById } = await import('@/lib/services/patient-service');
+      const opens = new Map<string, Promise<boolean>>();
+      const chartOpens = (patientId: string) => {
+        if (!opens.has(patientId)) {
+          opens.set(patientId, getPatientById(patientId, scope).then(found => !!found).catch(() => false));
+        }
+        return opens.get(patientId)!;
+      };
       for (const x of refs) {
         const isIncoming = !!myHospitalId && x.toHospitalId === myHospitalId;
         const isOutgoing = !!myHospitalId && x.fromHospitalId === myHospitalId;
@@ -212,13 +220,30 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         if ((isIncoming || !myHospitalId) && (x.status === 'sent' || x.status === 'received')) {
           out.push({ id: `ref-${x._id}`, type: 'referral', severity: 'warning', title: nameFirst(x.patientName, 'Referral'), subtitle: `${x.fromHospital} → ${x.toHospital}`, time: x.referralDate || x.createdAt, href: '/referrals' });
         }
-        // Outgoing referral the receiving facility just accepted — close the
-        // loop by telling the sender their patient was received on the other end.
+        // Progress on an outgoing referral opens that referral in the patient's
+        // Care coordination, where the status and its time are shown. These
+        // used to be care alerts on the chart as well; now this is the notice.
+        // Accepting can move the patient to the receiving facility, after which
+        // the sender cannot open the chart: they get the referral list instead.
+        const onChart = isOutgoing && x.status !== 'sent' && !(await chartOpens(x.patientId))
+          ? `/referrals?tab=outgoing&patient=${encodeURIComponent(x.patientName || '')}`
+          : `/patients/${encodeURIComponent(x.patientId)}?tab=referrals&focus=${encodeURIComponent(x._id)}`;
+        const stepAt = (status: string) =>
+          [...(x.statusHistory ?? [])].reverse().find(step => step.status === status)?.at || x.updatedAt || x.referralDate || x.createdAt;
+        // Received on the other end: the sender knows the patient arrived.
+        if (isOutgoing && x.status === 'received') {
+          const receivedAt = stepAt('received');
+          const receivedMs = Date.parse(receivedAt || '');
+          if (Number.isNaN(receivedMs) || nowMs - receivedMs <= ACK_WINDOW_MS) {
+            out.push({ id: `ref-rcv-${x._id}`, type: 'referral', severity: 'info', title: nameFirst(x.patientName, 'Referral received'), subtitle: `${x.toHospital} received the referral`, time: receivedAt, href: onChart });
+          }
+        }
+        // Accepted: close the loop on the patient being taken on.
         if (isOutgoing && x.status === 'seen') {
-          const acceptedAt = x.updatedAt || x.referralDate || x.createdAt;
+          const acceptedAt = stepAt('seen');
           const acceptedMs = Date.parse(acceptedAt || '');
           if (Number.isNaN(acceptedMs) || nowMs - acceptedMs <= ACK_WINDOW_MS) {
-            out.push({ id: `ref-ack-${x._id}`, type: 'referral', severity: 'info', title: nameFirst(x.patientName, 'Referral accepted'), subtitle: `${x.toHospital} accepted the referral`, time: acceptedAt, href: '/referrals' });
+            out.push({ id: `ref-ack-${x._id}`, type: 'referral', severity: 'info', title: nameFirst(x.patientName, 'Referral accepted'), subtitle: `${x.toHospital} accepted the referral`, time: acceptedAt, href: onChart });
           }
         }
         // Outgoing referral the receiving facility closed out with a structured
@@ -228,7 +253,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
           const closedMs = Date.parse(closedAt || '');
           if (Number.isNaN(closedMs) || nowMs - closedMs <= ACK_WINDOW_MS) {
             const disposition = x.outcome.disposition.replace(/_/g, ' ');
-            out.push({ id: `ref-out-${x._id}`, type: 'referral', severity: 'info', title: nameFirst(x.patientName, 'Referral outcome'), subtitle: `${x.toHospital}: ${disposition}`, time: closedAt, href: '/referrals' });
+            out.push({ id: `ref-out-${x._id}`, type: 'referral', severity: 'info', title: nameFirst(x.patientName, 'Referral outcome'), subtitle: `${x.toHospital}: ${disposition}`, time: closedAt, href: onChart });
           }
         }
       }

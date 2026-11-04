@@ -15,8 +15,10 @@ import { useEffect, useMemo, useState } from 'react';
 import MedicationsSection from '@/components/ehr/chart/sections/MedicationsSection';
 import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import { isMedicationCurrent } from '@/lib/services/prescription-service';
+import FormSlider from '@/components/overlay/FormSlider';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { ArrowLeft } from '@/components/icons/lucide';
+import { DispensingReportSheet, ReportView } from '@/components/reports/clinical-reports';
+import { formatRxSig } from '@/lib/format-utils';
 import PharmacyWorkflowPanel from './PharmacyWorkflowPanel';
 
 export default function PharmacyWorkspace({
@@ -31,6 +33,7 @@ export default function PharmacyWorkspace({
   reconciliation,
   reconciledAt,
   currentUser,
+  hospitalNumber,
 }: {
   patientId: string;
   patientName: string;
@@ -45,6 +48,8 @@ export default function PharmacyWorkspace({
   reconciliation?: string;
   reconciledAt?: string;
   currentUser?: React.ComponentProps<typeof MedicationsSection>['currentUser'];
+  /** The patient's number, for the dispensing record's Patient Information. */
+  hospitalNumber?: string;
 }) {
   const { t } = useTranslation();
   const { prescriptions } = usePrescriptions(patientId);
@@ -54,6 +59,9 @@ export default function PharmacyWorkspace({
   useEffect(() => { if (focusId) setSelectedId(focusId); }, [focusId]);
 
   const selected = selectedId ? (prescriptions || []).find(rx => rx._id === selectedId) : undefined;
+  // A dispensed prescription read as its dispensing record ("View report").
+  const [reportId, setReportId] = useState<string | undefined>();
+  const report = reportId ? (prescriptions || []).find(rx => rx._id === reportId) : undefined;
 
   /**
    * The patient's other active medicines — what the safety review checks the
@@ -68,40 +76,58 @@ export default function PharmacyWorkspace({
     [prescriptions, patientId, selectedId],
   );
 
-  if (!selected) {
-    return (
-      <MedicationsSection
-        patientId={patientId}
-        patientName={patientName}
-        canPrescribe={canPrescribe}
-        canRecordMedications={canRecordMedications}
-        onAdd={onAdd}
-        focusId={focusId}
-        noKnownMedications={noKnownMedications}
-        reconciliation={reconciliation}
-        reconciledAt={reconciledAt}
-        currentUser={currentUser}
-        onSelect={setSelectedId}
-      />
-    );
-  }
+  const close = () => setSelectedId(undefined);
 
+  // The list stays in place; the picked script opens beside it as a slider,
+  // the way every other chart workspace opens.
   return (
-    <div>
-      <button
-        type="button"
-        className="labord-btn labord-btn--ghost"
-        style={{ marginBottom: 10 }}
-        onClick={() => setSelectedId(undefined)}
-      >
-        <ArrowLeft className="w-4 h-4" aria-hidden /> {t('rxFlow.backToMedications')}
-      </button>
-      <PharmacyWorkflowPanel
-        rx={selected}
-        canWork={canWork}
-        activeMedications={activeMedications}
-        onClose={() => setSelectedId(undefined)}
-      />
-    </div>
+    <>
+      {report ? (
+        <ReportView
+          backLabel={t('rxFlow.backToMedications')}
+          onBack={() => setReportId(undefined)}
+          openLabel={t('chart.medicationOpenWorkflow')}
+          onOpen={() => setSelectedId(report._id)}
+          documentLabel={t('report.dispensingRecord')}
+          date={report.dispensedAt || report.createdAt}
+        >
+          <DispensingReportSheet rx={report} hospitalNumber={hospitalNumber} />
+        </ReportView>
+      ) : (
+        <MedicationsSection
+          patientId={patientId}
+          patientName={patientName}
+          canPrescribe={canPrescribe}
+          canRecordMedications={canRecordMedications}
+          onAdd={onAdd}
+          focusId={focusId}
+          noKnownMedications={noKnownMedications}
+          reconciliation={reconciliation}
+          reconciledAt={reconciledAt}
+          currentUser={currentUser}
+          onSelect={setSelectedId}
+          onViewReport={setReportId}
+        />
+      )}
+      {selected && (
+        <FormSlider
+          title={selected.medication}
+          subtitle={formatRxSig(selected) || undefined}
+          className="tamam-dialog"
+          width={560}
+          flush
+          onClose={close}
+        >
+          {/* Fills the slider and pins its own footer, as DispenseSlider does. */}
+          <PharmacyWorkflowPanel
+            key={selected._id}
+            rx={selected}
+            canWork={canWork}
+            activeMedications={activeMedications}
+            onClose={close}
+          />
+        </FormSlider>
+      )}
+    </>
   );
 }

@@ -290,8 +290,8 @@ export default function ClinicalNoteViewer({
       <FormSlider
         title={opts.title ?? t('notesList.colNote')}
         subtitle={opts.subtitle}
-        className="tamam-dialog"
         width={720}
+        className="tamam-dialog"
         // The note's paper carries its own margins; a body gutter around it
         // boxed the document inside the slider.
         flush

@@ -44,7 +44,7 @@ async function openPrompt() {
   await tick(); await tick();
   const row = document.body.querySelector<HTMLElement>('[role="option"]')!;
   act(() => row.click());
-  const discontinue = Array.from(document.body.querySelectorAll<HTMLButtonElement>('.cn-meds-footer button'))
+  const discontinue = Array.from(document.body.querySelectorAll<HTMLButtonElement>('.tm-dialog__foot button'))
     .find(b => b.textContent === 'Discontinue')!;
   act(() => discontinue.click());
   await tick();

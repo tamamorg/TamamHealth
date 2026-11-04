@@ -11,7 +11,8 @@
 
 import { useMemo } from 'react';
 import { Star } from '@/components/icons/lucide';
-import { FORMULARY, OFF_FORMULARY_CATEGORY, offFormularyDrug, type FormularyDrug } from '@/lib/data/formulary';
+import { FORMULARY, hasUsLabel, offFormularyDrug, type FormularyDrug } from '@/lib/data/formulary';
+import UnlabelledDrugNotice from './UnlabelledDrugNotice';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useRoleFlag } from '@/lib/settings/useRoleSetting';
 import type { PharmacyInventoryDoc, ProblemDoc } from '@/lib/db-types';
@@ -116,7 +117,7 @@ export default function DrugInfoSection({
               {t('prescribe.offListUse', { name: query.trim() })}
             </button>
           )}
-          {draft.drug?.category === OFF_FORMULARY_CATEGORY && <span className="cn-rx-qtynote">{t('prescribe.offListNotice')}</span>}
+          {draft.drug && <UnlabelledDrugNotice medication={draft.drug.name} />}
           {draft.drug?.note && <span className="cn-rx-qtynote">{draft.drug.note}</span>}
           {results.length > 0 && (
             <div className="cn-inc-results cn-rx-results">
@@ -125,6 +126,7 @@ export default function DrugInfoSection({
                   <span>{d.name}</span>
                   <span className="cn-meds-row-meta">
                     {d.category}{d.form ? ` · ${d.form}` : ''}{d.note ? ` · ${d.note}` : ''}
+                    {!hasUsLabel(d.name) && <span className="cn-rx-labeltag">{t('rxLabel.tag')}</span>}
                     {state && RESULT_STOCK_TAG[state] && (
                       <span className="cn-rx-stocktag" data-stock={state}>{RESULT_STOCK_TAG[state]}</span>
                     )}

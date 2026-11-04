@@ -385,7 +385,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
       )}
 
       {retiring && (
-        <Modal className="tamam-dialog" onClose={() => !busy && setRetiring(null)} width={440} labelledBy="retire-allergy-title">
+        <Modal variant="slider" className="tamam-dialog" onClose={() => !busy && setRetiring(null)} width={560} labelledBy="retire-allergy-title">
           <DialogFrame busy={busy}>
             <DialogHeader titleId="retire-allergy-title" title="Retire allergy" onClose={() => !busy && setRetiring(null)} />
             <DialogBody className="space-y-4">

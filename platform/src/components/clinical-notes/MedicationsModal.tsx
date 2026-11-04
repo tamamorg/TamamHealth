@@ -23,7 +23,7 @@
 
 import { doseWarningText, hasSafetyStop, safetyStopPrompt } from '@/lib/pharmacy/rx-safety';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check, Info, Plus, X } from '@/components/icons/lucide';
+import { Check, Info, Plus } from '@/components/icons/lucide';
 import PrescribeModal from './prescribe/PrescribeModal';
 import Modal from '@/components/Modal';
 import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
@@ -36,6 +36,7 @@ import { pharmacyStage, pharmacyStageLabel } from '@/lib/pharmacy-workflow';
 import type { PrescriptionStatus } from '@/lib/clinical-flow/order-lifecycles';
 import type { PatientDoc, PrescriptionDoc } from '@/lib/db-types';
 import './clinical-notes.css';
+import './slider-fit.css';
 import Select from '@/components/Select';
 import { FORMULARY, findFormularyDrug } from '@/lib/data/formulary';
 import { stopsClickPropagation } from '@/lib/a11y';
@@ -341,14 +342,9 @@ export default function MedicationsModal({
 
   return (
     <Modal variant="slider" onClose={onClose} width={1120} labelledBy="cn-meds-title">
-      <div className="cn-meds">
-        <div className="cn-meds-header modal-no-headband">
-          <h2 className="cn-meds-title" id="cn-meds-title">Medications</h2>
-          <button type="button" className="cn-meds-close" onClick={onClose} aria-label="Close medications">
-            <X size={18} />
-          </button>
-        </div>
-
+      <DialogFrame busy={busy}>
+        <DialogHeader titleId="cn-meds-title" title="Medications" onClose={onClose} closeLabel="Close medications" />
+        <DialogBody flush className="cn-meds-shell">
         <div className="cn-meds-body">
           {/* ── Working med list ── */}
           <div className="cn-meds-left">
@@ -470,13 +466,6 @@ export default function MedicationsModal({
               ))}
             </div>
 
-            <div className="cn-meds-footer">
-              <button type="button" className="cn-btn" onClick={handleRenew} disabled={busy || !selected}>Renew</button>
-              <button type="button" className="cn-btn" onClick={handleDiscontinue} disabled={busy || !selected || selected.status === 'discontinued'}>Discontinue</button>
-              <button type="button" className="cn-btn" onClick={handleMarkError} disabled={busy || !selected}>Mark as Error</button>
-              <button type="button" className="cn-btn" onClick={handleCancelRx} disabled={busy || !selected || selected.status === 'discontinued'}>Cancel Rx</button>
-              <button type="button" className="cn-btn" onClick={onClose}>Close</button>
-            </div>
           </div>
 
           {/* ── Network history behind the consent gate ── */}
@@ -532,12 +521,20 @@ export default function MedicationsModal({
             )}
           </div>
         </div>
-      </div>
+        </DialogBody>
+        <DialogFooter>
+              <button type="button" className="btn btn-secondary" onClick={handleRenew} disabled={busy || !selected}>Renew</button>
+              <button type="button" className="btn btn-secondary" onClick={handleDiscontinue} disabled={busy || !selected || selected.status === 'discontinued'}>Discontinue</button>
+              <button type="button" className="btn btn-secondary" onClick={handleMarkError} disabled={busy || !selected}>Mark as Error</button>
+              <button type="button" className="btn btn-secondary" onClick={handleCancelRx} disabled={busy || !selected || selected.status === 'discontinued'}>Cancel Rx</button>
+              <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
+        </DialogFooter>
+      </DialogFrame>
 
       {/* Consent question as its own dialog on top of the medications one.
           Yes/No answer directly — no radio-then-save two-step. */}
       {consentPromptOpen && (
-        <Modal onClose={() => setConsentPromptOpen(false)} size="sm" labelledBy="cn-consent-title">
+        <Modal variant="slider" onClose={() => setConsentPromptOpen(false)} size="md" labelledBy="cn-consent-title">
           {/* Clicks still bubble through the portal to the medications dialog
               underneath; keep them here. */}
           <div style={{ display: 'contents' }} {...stopsClickPropagation}>

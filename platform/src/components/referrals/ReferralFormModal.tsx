@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Modal from '@/components/Modal';
-import PopupHeader from '@/components/PopupHeader';
+import FormSlider from '@/components/overlay/FormSlider';
 import { AlertTriangle, Package } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useReferrals } from '@/lib/hooks/useReferrals';
@@ -128,9 +127,8 @@ export default function ReferralFormModal({ onClose, onSent, presentation = 'mod
       }).slice(0, 8)
     : [];
 
-  const body = (
-    <>
-      <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+  const fields = (
+      <div className="grid grid-cols-2 gap-x-4 gap-y-4">
         {/* Patient */}
         <div>
           <label>{t('referrals.patient')}</label>
@@ -267,8 +265,10 @@ export default function ReferralFormModal({ onClose, onSent, presentation = 'mod
           />
         </div>
       </div>
+  );
 
-      <div className="flex justify-end gap-3 mt-5 pt-4 border-t" style={{ borderColor: 'var(--border-light)' }}>
+  const actions = (
+    <>
         <button onClick={onClose} className="btn btn-secondary">
           {t('action.cancel')}
         </button>
@@ -284,6 +284,14 @@ export default function ReferralFormModal({ onClose, onSent, presentation = 'mod
           <Package className="w-4 h-4" />
           {submitting ? t('referrals.packagingSending') : t('referrals.sendWithPackage')}
         </button>
+    </>
+  );
+
+  const body = (
+    <>
+      {fields}
+      <div className="flex justify-end gap-3 mt-5 pt-4 border-t" style={{ borderColor: 'var(--border-light)' }}>
+        {actions}
       </div>
     </>
   );
@@ -291,18 +299,15 @@ export default function ReferralFormModal({ onClose, onSent, presentation = 'mod
   if (presentation === 'page') return body;
 
   return (
-    <Modal variant="slider" onClose={onClose} width={760} labelledBy="referral-form-title">
-      <div className="modal-panel modal-panel--lg">
-        <PopupHeader
-          surface="panel"
-          titleId="referral-form-title"
-          title={t('referrals.createNew')}
-          subtitle={t('referrals.autoPackages')}
-          onExpand={() => { onClose(); router.push(expandHref('/referrals/new')); }}
-          onClose={onClose}
-        />
-        {body}
-      </div>
-    </Modal>
+    <FormSlider
+      title={t('referrals.createNew')}
+      width={760}
+      subtitle={t('referrals.autoPackages')}
+      onClose={onClose}
+      onExpand={() => { onClose(); router.push(expandHref('/referrals/new')); }}
+      footer={actions}
+    >
+      {fields}
+    </FormSlider>
   );
 }

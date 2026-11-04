@@ -4,7 +4,7 @@
  */
 import { act } from 'react';
 import { mount, setValue } from '../clinical-notes/test-utils';
-import { ConfirmProvider, useConfirm } from '@/components/ConfirmDialog';
+import { ConfirmLayoutProvider, ConfirmProvider, useConfirm } from '@/components/ConfirmDialog';
 import { ToastProvider, useToast } from '@/components/Toast';
 
 jest.mock('@/lib/i18n/useTranslation', () => ({
@@ -41,6 +41,21 @@ describe('ConfirmDialog on the kit', () => {
     await act(async () => { await Promise.resolve(); });
     expect(onResult).toHaveBeenCalledWith(true);
     unmount();
+  });
+
+  it('opens as a right-hand slider where the page asks for one, centred elsewhere', () => {
+    const { container, unmount } = mount(
+      <ConfirmProvider><ConfirmLayoutProvider layout="slider"><Asker onResult={jest.fn()} /></ConfirmLayoutProvider></ConfirmProvider>,
+    );
+    act(() => container.querySelector('button')!.click());
+    expect(document.body.querySelector('[role="dialog"]')!.classList.contains('tm-slider')).toBe(true);
+    unmount();
+    document.body.innerHTML = '';
+
+    const plain = mount(<ConfirmProvider><Asker onResult={jest.fn()} /></ConfirmProvider>);
+    act(() => plain.container.querySelector('button')!.click());
+    expect(document.body.querySelector('[role="dialog"]')!.classList.contains('tm-slider')).toBe(false);
+    plain.unmount();
   });
 
   it('keeps the action disabled until the record name is typed', async () => {
