@@ -365,10 +365,20 @@ export default function TamamChartShell({
     resetKey: activePanel?.id,
     scope: () => (activePanel ? `${pageDraftScope()}|drawer|${activePanel.id}` : null),
   });
-  const togglePanel = async (id: string) => {
-    markDrawerDismissed();
-    if (openPanel === id) { void closeDrawer(); return; }
+  // Leaving by the user's hand (×, →, Escape, a rail button) keeps the
+  // panel's typed text for when it is reopened — marked only once the leave is
+  // certain: "Keep editing" on the discard question must leave the draft
+  // unmarked, or a later save-and-close would keep the stale text. A panel that
+  // saves and closes itself calls closeDrawer directly and clears it.
+  const dismiss = async (leave: () => Promise<void>) => {
     if (!await leaveOrderForm()) return;
+    markDrawerDismissed();
+    await leave();
+  };
+  const togglePanel = async (id: string) => {
+    if (openPanel === id) { void dismiss(closeDrawer); return; }
+    if (!await leaveOrderForm()) return;
+    markDrawerDismissed();
     notifyIfNoteClosing(id);
     pushRail({ id });
   };
@@ -379,12 +389,14 @@ export default function TamamChartShell({
   const [innerBack, setInnerBack] = useState<(() => void) | null>(null);
   const registerInnerBack = useCallback((back: (() => void) | null) => setInnerBack(() => back), []);
   const hideTop = async () => {
+    // A step back inside the panel: still the same panel, so its draft is not
+    // dismissed.
     if (innerBack) {
       if (!await leaveOrderForm()) return;
       innerBack();
       return;
     }
-    await closeDrawer();
+    await dismiss(closeDrawer);
   };
   const closeDrawer = async () => {
     if (!await leaveOrderForm()) return;
@@ -425,8 +437,8 @@ export default function TamamChartShell({
   // The latest closeDrawer, read when Escape fires: the stack's top can change
   // (one page workspace replacing another) without re-binding the listener,
   // and a stale closure would close the workspace that is no longer on top.
-  const closeDrawerRef = useRef(closeDrawer);
-  useEffect(() => { closeDrawerRef.current = closeDrawer; });
+  const dismissDrawerRef = useRef(() => dismiss(closeDrawer));
+  useEffect(() => { dismissDrawerRef.current = () => dismiss(closeDrawer); });
   useEffect(() => {
     if (!openPanel && !hasWorkspace) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -434,8 +446,7 @@ export default function TamamChartShell({
       // A popup open over the workspace (prescribe, lab order, a confirm)
       // takes Escape itself; closing it must not also close the panel.
       if (isAnyModalOpen() || document.querySelector('.modal-portal-backdrop:not(.is-buried) [role="dialog"][aria-modal="true"]')) return;
-      markDrawerDismissed();
-      closeDrawerRef.current();
+      void dismissDrawerRef.current();
     };
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const firstItem = drawerRef.current?.querySelector<HTMLElement>(
@@ -619,7 +630,7 @@ export default function TamamChartShell({
       {stack.map((entry, index) => (
         <WorkspaceBackLayer
           key={`${index}-${entry.kind === 'rail' ? `${entry.id}-${entry.noteId ?? ''}` : 'page'}`}
-          onBack={() => closeDrawerRef.current()}
+          onBack={() => void dismissDrawerRef.current()}
         />
       ))}
       {/* ══ Left vertical nav rail ══
@@ -704,11 +715,11 @@ export default function TamamChartShell({
                 </Tooltip>
                 {(innerBack || stack.length > 1) && (
                   <Tooltip content={t('overlay.hide')}>
-                    <button type="button" aria-label={t('overlay.hide')} onClick={() => { markDrawerDismissed(); void hideTop(); }}><ArrowRight /></button>
+                    <button type="button" aria-label={t('overlay.hide')} onClick={() => void hideTop()}><ArrowRight /></button>
                   </Tooltip>
                 )}
                 <Tooltip content={t('overlay.close')}>
-                  <button type="button" aria-label={t('overlay.close')} onClick={() => { markDrawerDismissed(); void closeAllWorkspaces(); }}><X /></button>
+                  <button type="button" aria-label={t('overlay.close')} onClick={() => void dismiss(closeAllWorkspaces)}><X /></button>
                 </Tooltip>
               </div>
             </div>
