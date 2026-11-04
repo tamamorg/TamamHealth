@@ -9,7 +9,7 @@
  * five reporting pages).
  *
  * Now the nav lists one row per task area (a hub), and the hub's pages are
- * tabs along the top of each of them (ModuleHubTabs): a small, task-shaped
+ * a dropdown in the top route bar of each of them (ModuleHubTabs): a small, task-shaped
  * top level in the side menu, tabs only for closely related views. Every
  * page is still one click from any page in its hub.
  *

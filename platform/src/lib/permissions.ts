@@ -92,8 +92,8 @@ export interface RoleConfig {
 
 /* ── Management navigation: one row per task (module hubs) ──────────────────
    The five management roles' nav is built from lib/navigation/module-hubs.ts:
-   one row per task area, its pages as tabs at the top of each of them
-   (ModuleHubTabs), instead of a row per page. A row opens the hub's first
+   one row per task area, its pages as a dropdown in the top bar of each
+   of them (ModuleHubTabs), instead of a row per page. A row opens the hub's first
    page the role may open; a hub the role can open just one page of is named
    after that page. 2026-11-04: these roles carried 16–28 rows, with the same
    records behind several of them. */
@@ -130,7 +130,7 @@ function hubNav(role: UserRole, lead: NavItem[], hubIds: string[]): NavItem[] {
 
 /* The nav is derived from the role's own table entry, never from
    isPathAllowed (super_admin's total access would offer every hub). */
-function isHrefAllowedForRole(role: UserRole, href: string): boolean {
+export function isHrefAllowedForRole(role: UserRole, href: string): boolean {
   return ROLE_ROUTE_TABLE[role].allowed.some(route => href === route || href.startsWith(`${route}/`));
 }
 
