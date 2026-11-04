@@ -8876,9 +8876,6 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   align-self: flex-start;
 }
 
-.ehr-chart-details .card-elevated:first-child {
-  border-top: 4px solid var(--ehr-blue) !important;
-}
 
 .ehr-chart-details .space-y-3 {
   display: flex;
@@ -13358,7 +13355,7 @@ span:has(> svg:only-child) {
   gap: 8px;
   flex-shrink: 0;
   padding: 12px 16px;
-  border-top: 1px solid var(--color-brand-500);
+  border-top: 1px solid var(--border-light);
   background: var(--color-info-bg);
 }
 
@@ -30269,7 +30266,7 @@ table.patient-data-table.patient-data-table {
 .pp-ic--amber { border-color: var(--color-warning-border); color: var(--color-warning-text); }
 .pp-ic--rose { border-color: var(--color-danger-border); color: var(--color-danger-text); }
 .pp-ic--iris { border-color: color-mix(in srgb, var(--accent-purple) 45%, transparent); color: var(--accent-purple); }
-.pp-tile { border-top: 3px solid var(--accent-primary); }
+.pp-tile { border-top: 3px solid var(--border-medium); } /* neutral unless the reading carries a status */
 .pp-tile--ok { background: var(--bg-card-solid); border-top-color: var(--color-success); }
 /* Not assessed (weight, height): no range claim, so no success colour either. */
 .pp-tile--neutral { background: var(--bg-card-solid); border-top-color: var(--border-medium); }
