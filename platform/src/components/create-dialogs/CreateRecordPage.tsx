@@ -16,13 +16,13 @@
  */
 
 import type { ReactNode } from 'react';
-import { ArrowLeft } from '@/components/icons/lucide';
-import { useGoBack } from '@/lib/navigation/nav-history';
+import { useConsoleTrail } from '@/components/navigation/ConsoleTrail';
+import { useTranslation } from '@/lib/i18n/useTranslation';
+import { routeLabelKeyFor } from '@/lib/navigation/route-context';
 
 export default function CreateRecordPage({
   title,
   note,
-  backLabel,
   returnTo,
   layout = 'rail',
   children,
@@ -30,7 +30,8 @@ export default function CreateRecordPage({
   title: string;
   /** One line of orientation under the title. */
   note?: string;
-  backLabel: string;
+  /** No longer drawn: Back and the title are in the bar at the top. */
+  backLabel?: string;
   /** Already validated as an internal path by `useReturnTo`/`safeReturnTo`. */
   returnTo: string;
   /**
@@ -43,31 +44,32 @@ export default function CreateRecordPage({
   layout?: 'rail' | 'full';
   children: ReactNode;
 }) {
-  // Back is the screen the form was opened from; `returnTo` when there is none.
-  const goBack = useGoBack(returnTo);
+  const { t } = useTranslation();
+  // The title and Back live in the bar at the top (RouteContextBar), not in a
+  // toolbar and heading of the page's own: Back goes to the screen the form
+  // was opened from, `returnTo` when there is none.
+  const parentKey = routeLabelKeyFor(returnTo);
+  useConsoleTrail('create-record-page', [
+    ...(parentKey ? [{ label: t(parentKey), href: returnTo }] : []),
+    { label: title },
+  ]);
 
   return (
     <main className="page-container page-enter sadb-scope">
       <div className="sadb-page">
         <div className="sadb-regpage-shell">
-          <div className="patient-registration-toolbar">
-            <button type="button" onClick={goBack} className="patient-registration-back">
-              <ArrowLeft className="w-4 h-4" /> {backLabel}
-            </button>
-          </div>
-
           {layout === 'full' ? (
             <>
-              <div className="sadb-regpage-rail" style={{ position: 'static' }}>
-                <h1 className="sadb-regpage-title">{title}</h1>
-                {note && <p className="sadb-regpage-note">{note}</p>}
-              </div>
+              {note && (
+                <div className="sadb-regpage-rail" style={{ position: 'static' }}>
+                  <p className="sadb-regpage-note">{note}</p>
+                </div>
+              )}
               <div className="sadb-card sadb-regpage-form">{children}</div>
             </>
           ) : (
             <div className="sadb-regpage">
-              <aside className="sadb-regpage-rail">
-                <h1 className="sadb-regpage-title">{title}</h1>
+              <aside className="sadb-regpage-rail" aria-label={title}>
                 {note && <p className="sadb-regpage-note">{note}</p>}
               </aside>
 

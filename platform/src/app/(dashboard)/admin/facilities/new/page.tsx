@@ -10,12 +10,12 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft } from '@/components/icons/lucide';
 import { SadbPage } from '@/components/admin/sadb-ui';
 import FacilityFormModal from '@/components/admin/FacilityFormModal';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useConsoleTrail } from '@/components/navigation/ConsoleTrail';
 import { returnToFromSearch } from '@/lib/navigation/return-to';
 
 export default function AdminFacilityCreatePage() {
@@ -35,18 +35,15 @@ export default function AdminFacilityCreatePage() {
 
   const goBack = () => router.push(returnTo);
 
+  // Title and Back are in the bar at the top (RouteContextBar).
+  useConsoleTrail('admin-facility-new', [{ label: t('orgAdmin.facilities'), href: returnTo }, { label: t('orgHospitals.modalTitle') }]);
+
   return (
     <SadbPage>
       <div className="sadb-regpage-shell">
-        <div className="patient-registration-toolbar">
-          <button type="button" onClick={goBack} className="patient-registration-back">
-            <ArrowLeft className="w-4 h-4" /> {t('orgAdmin.backToFacilities')}
-          </button>
-        </div>
 
         <div className="sadb-regpage">
           <aside className="sadb-regpage-rail">
-            <h1 className="sadb-regpage-title">{t('orgHospitals.modalTitle')}</h1>
             <p className="sadb-regpage-note">{t('orgHospitals.modalSubtitle')}</p>
           </aside>
 

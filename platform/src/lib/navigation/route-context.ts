@@ -103,14 +103,17 @@ const GROUPS: RouteGroup[] = [
 ];
 
 const EXACT_ROUTES: Record<string, RouteContext> = {
-  '/patients/new': context('/patients', 'breadcrumb.patients', 'routeContext.newPatient'),
+  // The page title lives in the bar, with Back, instead of a toolbar and an
+  // h1 of the page's own (user, 2026-11-04).
+  '/patients/new': context('/patients', 'breadcrumb.patients', 'patientNew.topBarTitle', true),
+  '/wards/handoff': context('/dashboard', 'breadcrumb.dashboard', 'routeContext.handoff', true),
   // Second-level pages whose parent is a page of its own: they get the bar
   // and its Back, which follows ?returnTo= first, the parent otherwise.
   '/facility-management/queue': context('/facility-management', 'routeContext.facilityManagement', 'routeContext.approvalQueue', true),
   '/payments/claims': context('/payments', 'routeContext.payments', 'routeContext.claims', true),
   '/wards/mar': context('/wards', 'routeContext.wards', 'routeContext.medicationAdministration', true),
   '/dashboard/nutrition/supplies': context('/dashboard/nutrition', 'breadcrumb.dashboard', 'nutrition.supplies', true),
-  '/settings/manage': context('/settings', 'breadcrumb.settings', 'routeContext.manageSettings'),
+  '/settings/manage': context('/settings', 'breadcrumb.settings', 'routeContext.manageSettings', true),
 };
 
 /**
@@ -132,11 +135,11 @@ const DYNAMIC_ROUTES: DynamicRoute[] = [
   // no bar takes a strip above it. Back still goes to the worklist it was
   // opened from (?returnTo=), or the patient list.
   inlineBack(dynamic(segments => segments.length === 2 && segments[0] === 'patients', '/patients', 'breadcrumb.patients', 'routeContext.patientRecord', true)),
-  dynamic(segments => segments.length === 2 && segments[0] === 'notes', '/notes', 'routeContext.notes', 'routeContext.noteDetails'),
-  dynamic(segments => segments.length === 2 && segments[0] === 'billing', '/billing', 'routeContext.billing', 'routeContext.billDetails'),
-  dynamic(segments => segments.length === 2 && segments[0] === 'rooming', '/dashboard', 'breadcrumb.dashboard', 'routeContext.rooming'),
-  dynamic(segments => segments.length === 2 && segments[0] === 'triage', '/dashboard', 'breadcrumb.dashboard', 'routeContext.triage'),
-  dynamic(segments => segments.length === 3 && segments[0] === 'wards' && segments[1] === 'mar', '/wards', 'routeContext.wards', 'routeContext.medicationAdministration'),
+  dynamic(segments => segments.length === 2 && segments[0] === 'notes', '/notes', 'routeContext.notes', 'routeContext.noteDetails', true),
+  dynamic(segments => segments.length === 2 && segments[0] === 'billing', '/billing', 'routeContext.billing', 'routeContext.billDetails', true),
+  dynamic(segments => segments.length === 2 && segments[0] === 'rooming', '/dashboard', 'breadcrumb.dashboard', 'routeContext.rooming', true),
+  dynamic(segments => segments.length === 2 && segments[0] === 'triage', '/dashboard', 'breadcrumb.dashboard', 'routeContext.triage', true),
+  dynamic(segments => segments.length === 3 && segments[0] === 'wards' && segments[1] === 'mar', '/wards', 'routeContext.wards', 'routeContext.medicationAdministration', true),
 ];
 
 /**
@@ -217,6 +220,31 @@ export function chartOriginCrumb(
   if (!first || first === 'patients') return null;
   return { href, labelKey: ORIGIN_LABELS[first] ?? 'chart.crumb.worklist' };
 }
+
+/**
+ * The name of the screen at `path`, for a crumb that leads back to it: the
+ * worklists a chart can be opened from, then the route groups' roots. Null
+ * when the path names no screen this table knows.
+ */
+export function routeLabelKeyFor(path: string): string | null {
+  const normalized = normalizePath(path.split(/[?#]/, 1)[0]);
+  const first = normalized.split('/').filter(Boolean)[0];
+  if (!first) return null;
+  if (first === 'patients') return 'breadcrumb.patients';
+  const group = GROUPS.find(g => normalized === g.root || normalized.startsWith(`${g.root}/`));
+  if (group && !group.rootIsPrefixOnly) {
+    const child = normalized.slice(group.root.length + 1);
+    return group.children[child] ?? group.rootLabelKey;
+  }
+  return ORIGIN_LABELS[first] ?? EXTRA_ROOT_LABELS[first] ?? null;
+}
+
+/** Screens a create page can return to that no chart is opened from. */
+const EXTRA_ROOT_LABELS: Record<string, string> = {
+  hr: 'routeContext.humanResources',
+  transfers: 'routeContext.transfers',
+  inquiries: 'routeContext.inquiries',
+};
 
 /** Resolve a validated returnTo, falling back to the route's real parent. */
 export function routeContextBackHref(

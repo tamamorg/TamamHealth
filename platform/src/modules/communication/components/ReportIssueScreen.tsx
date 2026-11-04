@@ -28,8 +28,9 @@ import {
 import { ISSUE_STATUS_TOKENS } from './issue-status-tokens';
 import { FormError } from '@/components/overlay/FormNotices';
 
-const labelClass = 'field-required text-xs font-semibold uppercase tracking-wider mb-1 block';
-const labelStyle = { color: 'var(--text-muted)' } as const;
+// The one form look (globals.css "ONE FORM LOOK") styles these labels and fields.
+const labelClass = 'field-required mb-1 block';
+const labelStyle = undefined;
 
 export default function ReportIssueScreen() {
   const { t } = useTranslation();
@@ -109,7 +110,7 @@ export default function ReportIssueScreen() {
     <main className="page-container page-enter">
       <div className="dash-card overflow-hidden mb-4">
         <EhrListHeader title={t('issues.reportTitle')} />
-        <div className="p-5 space-y-4" style={{ maxWidth: 760 }}>
+        <div className="tm-form p-5 space-y-4" style={{ maxWidth: 760 }}>
           <p className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>{t('issues.reportIntro')}</p>
 
           <div>

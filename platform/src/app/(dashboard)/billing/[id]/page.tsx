@@ -11,7 +11,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { returnToFromSearch } from '@/lib/navigation/return-to';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useToast } from '@/components/Toast';
@@ -36,7 +35,6 @@ import { buildClinicalPrintDocument } from '@/lib/print-document';
 import { formatPrintedAt, printDate } from '@/lib/print-identity';
 import { formatDobOmrs } from '@/lib/date-utils';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { useGoBack } from '@/lib/navigation/nav-history';
 
 
 const PAYMENT_METHODS: PaymentMethod[] = ['cash', 'mobile_money', 'bank_transfer', 'insurance', 'credit'];
@@ -47,8 +45,6 @@ export default function BillDetailPage() {
   const params = useParams<{ id: string }>();
   const billId = params?.id;
   const router = useRouter();
-  // Back is the screen the user came from; ?returnTo= or the bill list when there is none.
-  const goBack = useGoBack(typeof window !== 'undefined' ? returnToFromSearch(window.location.search, '/billing') : '/billing');
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const { showToast } = useToast();
@@ -415,11 +411,6 @@ export default function BillDetailPage() {
               <span className="bl-id-tag">Facility ID: <strong>{bill.hospitalNumber || patient?.hospitalNumber || patient?.geocodeId || '—'}</strong></span>
               <span className="bl-id-tag">{bill.facilityName}</span>
             </div>
-          </div>
-          <div className="bl-banner-actions no-print">
-            <button type="button" className="bl-btn bl-btn--link" onClick={goBack}>
-              <ChevronLeft size={15} /> Back
-            </button>
           </div>
         </div>
 

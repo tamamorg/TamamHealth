@@ -19,7 +19,7 @@ import { useState, useMemo } from 'react';
 import { formatRxSig } from '@/lib/format-utils';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  ArrowLeft, Pill, CheckCircle2, AlertTriangle, ShieldAlert, Printer, BedDouble,
+  Pill, CheckCircle2, AlertTriangle, ShieldAlert, Printer, BedDouble,
   Plus,
 } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
@@ -38,7 +38,6 @@ import { isScheduledDoseAllowed, scheduleForFrequency, scheduledForIso } from '@
 import FormSlider from '@/components/overlay/FormSlider';
 import { printElementById } from '@/lib/safe-html';
 import { describeError } from '@/lib/user-facing-error';
-import { useGoBack } from '@/lib/navigation/nav-history';
 import { expandHref } from '@/lib/navigation/expand-to-page';
 
 function todayISO(): string {
@@ -136,7 +135,6 @@ export default function MARPage() {
   const admissionId = params?.admissionId as string;
   const router = useRouter();
   // Back is the screen the user came from; ?returnTo= or the wards when there is none.
-  const goBack = useGoBack(typeof window !== 'undefined' ? returnToFromSearch(window.location.search, '/wards') : '/wards');
   const { currentUser } = useAuth();
   const { activeAdmissions } = useWards();
   const { patients } = usePatients();
@@ -252,13 +250,6 @@ export default function MARPage() {
       {/* Page header card */}
         <div className="mar-screen-head card-elevated p-5 flex items-start justify-between flex-wrap gap-4 mb-4">
           <div className="flex items-start gap-3 min-w-0">
-            <button
-              onClick={goBack}
-              aria-label={t('action.back')}
-              className="mt-0.5 p-1.5 rounded hover:bg-gray-100 shrink-0"
-            >
-              <ArrowLeft className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
-            </button>
             <div className="icon-box-lg">
               <Pill className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
             </div>

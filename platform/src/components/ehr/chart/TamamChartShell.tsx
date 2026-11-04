@@ -721,6 +721,9 @@ export default function TamamChartShell({
 
       {/* ══ Right action icon rail ══ */}
       <aside className="tamam-right-rail no-print" aria-label="Chart workspace panels">
+        {/* The column runs the chart's full height; the buttons stay put in
+            view while the chart scrolls beside them. */}
+        <div className="tamam-right-rail-stack">
         {[...railPanels, ...railRoleFormPanels(currentUser?.role)].map(panel => (
           <button
             key={panel.id}
@@ -733,6 +736,7 @@ export default function TamamChartShell({
             <panel.icon className="w-4 h-4" />
           </button>
         ))}
+        </div>
       </aside>
 
     </div>
