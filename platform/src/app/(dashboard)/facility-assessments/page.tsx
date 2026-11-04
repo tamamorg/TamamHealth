@@ -175,6 +175,10 @@ export default function FacilityAssessmentsPage() {
   const facilitiesAssessedCount = new Set(rows.map(a => a.facilityId)).size;
   const avgOverallScore = rows.length ? Math.round(rows.reduce((sum, a) => sum + a.overallScore, 0) / rows.length) : null;
   const dhis2AdoptionPct = rows.length ? Math.round((rows.filter(a => a.hasDHIS2Reporting).length / rows.length) * 100) : null;
+  const dhis2Facilities = new Set(rows.filter(a => a.hasDHIS2Reporting).map(a => a.facilityId)).size;
+  const scoreRange = rows.length
+    ? { low: Math.min(...rows.map(a => a.overallScore)), high: Math.max(...rows.map(a => a.overallScore)) }
+    : null;
 
   const expandedRecord = expandedAssessment ? rows.find(x => x._id === expandedAssessment) ?? null : null;
 
@@ -193,11 +197,29 @@ export default function FacilityAssessmentsPage() {
       />
 
       {/* ═══ Headline readiness figures ═══ */}
+      {/* Every tile says what its figure is made of (management KPI rule). */}
       <div className="sadb-kpi-row">
-        <SadbKpiTile label={t('facilityAssessments.kpiFacilitiesAssessed')} value={facilitiesAssessedCount} />
-        <SadbKpiTile label={t('facilityAssessments.kpiAvgOverallScore')} value={avgOverallScore !== null ? `${avgOverallScore}%` : '—'} />
-        <SadbKpiTile label={t('facilityAssessments.kpiAvgReportingCompleteness')} value={summary ? `${summary.avgReportingCompleteness}%` : '—'} />
-        <SadbKpiTile label={t('facilityAssessments.kpiDHIS2Adoption')} value={dhis2AdoptionPct !== null ? `${dhis2AdoptionPct}%` : '—'} />
+        <SadbKpiTile
+          label={t('facilityAssessments.kpiFacilitiesAssessed')}
+          value={facilitiesAssessedCount}
+          delta={t('facilityAssessments.kpiAssessmentsRecorded', { count: rows.length })}
+        />
+        <SadbKpiTile
+          label={t('facilityAssessments.kpiAvgOverallScore')}
+          value={avgOverallScore !== null ? `${avgOverallScore}%` : '—'}
+          delta={scoreRange ? t('facilityAssessments.kpiScoreRange', scoreRange) : t('facilityAssessments.kpiNotYetAssessed')}
+        />
+        <SadbKpiTile
+          label={t('facilityAssessments.kpiAvgReportingCompleteness')}
+          value={summary ? `${summary.avgReportingCompleteness}%` : '—'}
+          delta={t('facilityAssessments.kpiCompletenessTarget')}
+          deltaTone={summary && summary.avgReportingCompleteness < 80 ? 'warn' : undefined}
+        />
+        <SadbKpiTile
+          label={t('facilityAssessments.kpiDHIS2Adoption')}
+          value={dhis2AdoptionPct !== null ? `${dhis2AdoptionPct}%` : '—'}
+          delta={t('facilityAssessments.kpiDhis2Detail', { count: dhis2Facilities, total: facilitiesAssessedCount })}
+        />
       </div>
 
       {/* National averages by domain — onboarding tour anchor kept exactly

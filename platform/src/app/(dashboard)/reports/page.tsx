@@ -4,17 +4,17 @@ import { defaultCurrency } from '@/lib/country/country-pack';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import {
-  ChevronUp, FileText, Download,
+  Download,
   Loader2, BarChart3, PieChart, Layers, List, Activity,
   AlertTriangle, type LucideIcon
 } from '@/components/icons/lucide';
 import { buildReportChart, type ReportChart as ReportChartData } from '@/lib/reports/report-chart-data';
-import { supportsPartToWhole, type ReportChartKind, type RankedPoint } from './_ReportCharts';
+import { supportsPartToWhole, type ReportChartKind } from './_ReportCharts';
 import { DISEASE_COLOR } from '@/lib/chart-colors';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import ReportControlPanel, { type ReportView } from './_ReportControlPanel';
 import {
-  allReports, categoryKey, periodKey, reportNameKey, reports,
+  allReports, periodKey, reportNameKey, reports,
   EMPTY_REPORT_FILTER, type ReportFilter,
 } from './_ReportCatalogue';
 import EmptyState from '@/components/EmptyState';
@@ -108,12 +108,6 @@ export default function ReportsPage() {
   const dataLoading = patientsLoading || hospitalsLoading || referralsLoading || alertsLoading || labLoading
     || inventoryLoading || paymentsLoading || ledgerLoading || billsLoading;
 
-  // Whether the selected report's table is shown under the graph. One flag,
-  // not a per-card open/closed map: there is one report on screen now.
-  /* Open by default. The rows are computed for every report up front
-     (`reportPreviews`), so hiding them behind a click bought nothing and the
-     control that did it claimed to "generate" data that already existed. */
-  const [tableOpen, setTableOpen] = useState(false);
   // Which form the graph takes. Standing columns by default; held across
   // report changes on purpose: a reader who chose a treemap wants treemaps,
   // not a reset on every step.
@@ -655,33 +649,6 @@ export default function ReportsPage() {
   /** The one hue this report's marks draw in — its section's slot. */
   const sectionAccent = SECTION_ACCENT[activeReport?.category ?? ''] ?? 'var(--chart-2)';
 
-  /** The chart's marks as figures, for the column beside the plot.
-   *
-   *  Same points, same order, same hues — but with room for the names an
-   *  axis has to truncate, and with each value written out rather than
-   *  measured off a bar. The share is dropped for rate measures, where a
-   *  percentage of a percentage means nothing. */
-  const breakdown = useMemo(() => {
-    if (!activeChart || !chartInsights || activeChart.points.length === 0) return null;
-    const points = activeChart.points as RankedPoint[];
-    const max = Math.max(...points.map(pt => Math.abs(pt.value)));
-    return points.map(pt => ({
-      label: pt.label,
-      value: pt.value,
-      // Grey for the folded tail, the entity's own hue when every category
-      // has one (diseases), the section accent otherwise — the same rule the
-      // ranked forms draw by. In donut/treemap the plot switches to the
-      // categorical scale for slice identity; this column stays one hue,
-      // which reads as one measure rather than as a second, contradictory
-      // identity for the same names.
-      color: pt.label === 'Other' ? 'var(--text-muted)' : (pt.color ?? sectionAccent),
-      width: max > 0 ? Math.max(2, Math.round((Math.abs(pt.value) / max) * 100)) : 0,
-      share: !chartInsights.isRate && chartInsights.total > 0
-        ? Math.round((pt.value / chartInsights.total) * 100)
-        : null,
-    }));
-  }, [activeChart, chartInsights, sectionAccent]);
-
   /* Donut and treemap encode a share of a total, so they are offered only when
    * the values actually add up. Falling back rather than disabling silently:
    * stepping from a count report to a rate report while a donut is on screen
@@ -759,6 +726,23 @@ export default function ReportsPage() {
           assembled. The report it names is on the plot card instead, so the
           visual still says what it is without a bar to say it. */}
 
+      {/* ── Choose a report: one row of fields across the page ────────────
+         (2026-11-04 redesign). Area, topic, frequency, report and chart
+         type, then Show report. It replaced a sixteen-row list in a rail
+         and the Reports hub's tab strip. */}
+      <ReportControlPanel
+        filter={reportFilter}
+        onFilterChange={setReportFilter}
+        applied={{ report: chartReport, kind: chartKind }}
+        onApply={(view: ReportView) => {
+          setChartReport(view.report);
+          setChartKind(view.kind);
+        }}
+        kinds={CHART_KINDS}
+        partToWholeOkFor={partToWholeOkFor}
+        total={chartableReports.length}
+      />
+
       {/* Headline figures for the selected report — a reporting page should
           lead with its numbers, not make the reader measure bars for them.
           The tiles hold their places while the data loads so the workspace
@@ -810,35 +794,9 @@ export default function ReportsPage() {
           </p>
         </article>
 
-        <article className="rpt-kpi">
-          <p className="rpt-kpi-label">{t('reports.kpiRows')}</p>
-          <p className="rpt-kpi-value">
-            {dataLoading ? '—' : (reportPreviews.get(chartReport)?.rowCount ?? 0).toLocaleString()}
-          </p>
-          <p className="rpt-kpi-note">
-            {activeReport ? t(categoryKey[activeReport.category] ?? activeReport.category) : '—'}
-          </p>
-        </article>
       </div>
 
       <div className="rpt-workspace">
-        {/* ── Catalogue rail ──────────────────────────────────────────────
-             Not the card catalogue this page used to open with — that drew
-             the same chart sixteen times before you had chosen anything.
-             This is a picker: the five sections as headings, each report as
-             one line with its cadence and how many rows it will generate. */}
-        <ReportControlPanel
-          filter={reportFilter}
-          onFilterChange={setReportFilter}
-          applied={{ report: chartReport, kind: chartKind }}
-          onApply={(view: ReportView) => {
-            setChartReport(view.report);
-            setChartKind(view.kind);
-          }}
-          kinds={CHART_KINDS}
-          partToWholeOkFor={partToWholeOkFor}
-          total={chartableReports.length}
-        />
 
         {/* ── The plot, and the table it summarises ─────────────────────── */}
         <section className="rpt-main">
@@ -852,34 +810,23 @@ export default function ReportsPage() {
                     already states in full, and sat between the report's name
                     and the caption describing it — three labels for one plot. */}
                 <b>{t(reportNameKey[chartReport] ?? chartReport)}</b>
+                {/* One line says what the plot is OF: the measure, what it is
+                    grouped by, how often it is reported and over what window.
+                    It replaced the "About this report" card, which repeated
+                    the topic and frequency you had just chosen. */}
                 {activeChart && (
                   <i>
                     {t('reports.chartCaption', {
                       measure: activeChart.valueLabel,
                       category: activeChart.categoryLabel,
                     })}
+                    {activeReport ? ` · ${t(periodKey[activeReport.period] ?? activeReport.period)}` : ''}
+                    {` · ${t('reports.periodAllRecords')}`}
                     {activeChart.truncated ? ` ${t('reports.chartTopOnly')}` : ''}
                   </i>
                 )}
               </div>
 
-              {/* Generate sits on the chart, because the table it opens is the
-                  same report one level down — the rows behind the shape above.
-                  It is a disclosure, not a computation: every report's rows are
-                  already reduced in `reportPreviews`, which is why this is
-                  instant and why the label promises less than it sounds. */}
-              <button
-                type="button"
-                className={`rpt-nav-generate ${tableOpen ? 'is-on' : ''}`.trim()}
-                aria-expanded={tableOpen}
-                disabled={dataLoading}
-                onClick={() => setTableOpen(open => !open)}
-                data-action="report-generate"
-              >
-                {tableOpen
-                  ? <><ChevronUp /> {t('action.close')}</>
-                  : <><FileText /> {t('reports.generate')}</>}
-              </button>
             </div>
             <div className="rpt-stats-body">
               {dataLoading ? (
@@ -901,10 +848,15 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          {tableOpen && !dataLoading && (
+          {/* The report's rows, always under the chart: full names the axis
+              has to truncate, and the export that hands them over. This is
+              what the ranked-breakdown column and the Generate button each
+              half-did. */}
+          {!dataLoading && (
             <div className="rpt-table-wrap">
               <div className="rpt-table-cap">
-                <span>{t(reportNameKey[chartReport] ?? chartReport)}</span>
+                {/* "Data", not the report's name again: the chart above names it. */}
+                <span>{t('reports.tableTitle')}</span>
                 <b>{t('reports.rowsAvailable', { count: reportPreviews.get(chartReport)?.rowCount ?? 0 })}</b>
                 {/* Export belongs to the table, not to the view being built:
                     it hands over these rows, so it appears when they do. */}
@@ -927,68 +879,6 @@ export default function ReportsPage() {
           )}
         </section>
 
-        {/* ── The marks, as figures ───────────────────────────────────────
-             An axis has no room for "Western Bahr el Ghazal", so the plot
-             truncates it; this column has the room. Same order, same hues,
-             full names — the shape on the left, the record on the right. */}
-        <aside className="rpt-side">
-          <div className="rpt-side-card">
-            <div className="rpt-side-head">
-              <span>{t('reports.breakdownTitle')}</span>
-              <b>{activeChart?.categoryLabel}</b>
-            </div>
-            <div className="rpt-side-scroll">
-              {breakdown ? breakdown.map(row => (
-                <div key={row.label} className="rpt-break">
-                  <span className="rpt-break-top">
-                    <span className="rpt-break-name" title={row.label}>{row.label}</span>
-                    <b className="rpt-break-value">{row.value.toLocaleString()}</b>
-                  </span>
-                  <span className="rpt-break-track">
-                    <span className="rpt-break-fill" style={{ width: `${row.width}%`, background: row.color }} />
-                  </span>
-                  {row.share !== null && (
-                    <span className="rpt-break-share">{t('reports.shareOfTotal', { share: row.share })}</span>
-                  )}
-                </div>
-              )) : (
-                <p className="rpt-panel-empty">
-                  {dataLoading ? t('reports.loadingReportData') : t('reports.noDataForReport')}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* What the figures above are OF — the facts a reader needs before
-              quoting a number out of this page. */}
-          <div className="rpt-side-card rpt-facts">
-            <div className="rpt-side-head">
-              <span>{t('reports.aboutTitle')}</span>
-            </div>
-            <dl className="rpt-facts-list">
-              <div>
-                <dt>{t('reports.aboutSection')}</dt>
-                <dd>{activeReport ? t(categoryKey[activeReport.category] ?? activeReport.category) : '—'}</dd>
-              </div>
-              <div>
-                <dt>{t('reports.aboutCadence')}</dt>
-                <dd>{activeReport ? t(periodKey[activeReport.period] ?? activeReport.period) : '—'}</dd>
-              </div>
-              <div>
-                <dt>{t('reports.aboutMeasure')}</dt>
-                <dd>{activeChart?.valueLabel ?? '—'}</dd>
-              </div>
-              <div>
-                <dt>{t('reports.aboutGroupedBy')}</dt>
-                <dd>{activeChart?.categoryLabel ?? '—'}</dd>
-              </div>
-              <div>
-                <dt>{t('reports.aboutWindow')}</dt>
-                <dd>{t('reports.periodAllRecords')}</dd>
-              </div>
-            </dl>
-          </div>
-        </aside>
       </div>
     </main>
   );

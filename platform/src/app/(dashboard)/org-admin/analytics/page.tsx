@@ -124,10 +124,14 @@ export default function OrgAdminAnalyticsPage() {
 
       {/* ═══ 30-day usage vitals ═══ */}
       <div className="sadb-kpi-row" data-tour="org-analytics-stats">
-        <SadbKpiTile label={t('analytics.dau')} value={loading || !usage ? '—' : usage.dau.toLocaleString()} />
-        <SadbKpiTile label={t('analytics.wau')} value={loading || !usage ? '—' : usage.wau.toLocaleString()} />
-        <SadbKpiTile label={t('analytics.sessions')} value={loading || !usage ? '—' : usage.sessionCount.toLocaleString()} />
-        <SadbKpiTile label={t('analytics.events')} value={loading || !usage ? '—' : usage.eventCount.toLocaleString()} />
+        <SadbKpiTile label={t('analytics.dau')} value={loading || !usage ? '—' : usage.dau.toLocaleString()} delta={t('analytics.kpiSignedInToday')} />
+        <SadbKpiTile label={t('analytics.wau')} value={loading || !usage ? '—' : usage.wau.toLocaleString()} delta={t('analytics.kpiSignedInWeek')} />
+        <SadbKpiTile label={t('analytics.sessions')} value={loading || !usage ? '—' : usage.sessionCount.toLocaleString()} delta={t('analytics.kpiLast30')} />
+        <SadbKpiTile
+          label={t('analytics.events')}
+          value={loading || !usage ? '—' : usage.eventCount.toLocaleString()}
+          delta={usage ? t('analytics.kpiPerDay', { count: Math.round(usage.eventCount / 30) }) : t('analytics.kpiLast30')}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">

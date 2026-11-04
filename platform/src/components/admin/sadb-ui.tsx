@@ -19,7 +19,6 @@
 import { useCallback, useEffect, useState, type ComponentType, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
-import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHeader';
 import Modal from '@/components/Modal';
 import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { AlertTriangle, ChevronDown, ChevronRight, ChevronUp, Minus, Pencil, Search, TrendingDown, TrendingUp } from '@/components/icons/lucide';
@@ -94,20 +93,8 @@ export function statusChip(status: string): ChipTone {
  *  Edge proxy check). Defaults to super_admin so the 17 existing /admin/*
  *  call sites are unchanged; org-admin console pages pass
  *  `roles={['org_admin', 'super_admin']}`. */
-export function SadbPage({ greeting, actions, roles = ['super_admin'], children }: {
+export function SadbPage({ actions, roles = ['super_admin'], children }: {
   actions?: ReactNode; roles?: UserRole[]; children: ReactNode;
-  /**
-   * Opt in to the "Welcome, {name} / ROLE · MODULE" header, passing the module
-   * half of the eyebrow.
-   *
-   * OPT-IN, not the default (2026-08-24): the greeting used to print on every
-   * SadbPage, and repeated across seventeen console screens it only pushed the
-   * content it introduced below the fold. A DASHBOARD is the exception — it is
-   * the screen a role lands on, so it is the one place the greeting and the
-   * role label are doing work rather than repeating the rail. Console screens
-   * pass nothing and keep the head for `actions` alone.
-   */
-  greeting?: string;
 }) {
   const { currentUser } = useAuth();
   const router = useRouter();
@@ -121,13 +108,13 @@ export function SadbPage({ greeting, actions, roles = ['super_admin'], children 
 
   return (
     <main className="page-container page-enter sadb-scope">
-      {greeting
-        ? <DashboardGreetingHeader module={greeting} actions={actions} />
-        : actions && (
-          <div className="sadb-page-head">
-            <div className="sadb-page-actions">{actions}</div>
-          </div>
-        )}
+      {/* No "Welcome, {name}" greeting (removed 2026-11-04, user): management
+          pages open on their content. The head holds page actions alone. */}
+      {actions && (
+        <div className="sadb-page-head">
+          <div className="sadb-page-actions">{actions}</div>
+        </div>
+      )}
       <div className="sadb-page">{children}</div>
     </main>
   );

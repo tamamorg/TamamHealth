@@ -24,6 +24,10 @@ import './module-hub-menu.css';
 export function hubTabsFor(pathname: string | null, role: UserRole | null | undefined) {
   const hub = hubForPath(pathname);
   if (!hub || !role || !getRoleConfig(role).navItems.some(item => item.hub === hub.id)) return null;
+  // A page that carries its own picker for the hub's pages (Reports' Area
+  // field) draws no dropdown.
+  const path = pathname && pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+  if (hub.members.some(m => m.href === path && m.ownPicker)) return null;
   const members = hub.members.filter(m => isHrefAllowedForRole(role, m.href));
   return members.length > 1 && pathname ? { hub, members, pathname } : null;
 }

@@ -1,0 +1,66 @@
+/* Billing & Payments KPI band (BillingOverviewCards). The same tile language
+ * as the management KPI band (app/management-frame.css): hairline-joined
+ * white cells, 16px / 600 label, 20px / 600 value, a 12px detail line and the
+ * trend under it. Written for every role, not only inside the management
+ * frame, because cashiers and billers read this page too; inside the frame
+ * the management rules say the same thing. */
+
+.bl-kpis.sadb-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1px;
+  margin-bottom: 12px;
+  background: var(--border-light);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.bl-kpis .sadb-kpi {
+  position: relative;
+  min-width: 0;
+  padding: 10px 14px 12px;
+  background: var(--bg-card-solid);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.bl-kpis .sadb-kpi-label {
+  margin: 0;
+  font-family: var(--font-platform);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-primary);
+}
+.bl-kpis .sadb-kpi-value {
+  margin: 4px 0 0;
+  font-family: var(--font-platform);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.bl-kpis .sadb-kpi-delta {
+  margin: 2px 0 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bl-kpis .sadb-kpi:has(.sadb-kpi-delta.is-warn) {
+  background: var(--color-warning-bg);
+  box-shadow: inset 0 3px 0 var(--color-warning);
+}
+.bl-kpis .sadb-kpi-delta.is-warn { color: var(--color-warning-text, var(--color-warning-700)); font-weight: 600; }
+.bl-kpis .sadb-trend { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+.bl-kpis .sadb-trend-icon { width: 16px; height: 16px; flex: none; }
+.bl-kpis .sadb-trend--good { color: var(--color-success-text, var(--color-success-800)); font-weight: 600; }
+.bl-kpis .sadb-trend--bad { color: var(--color-danger-text, var(--color-danger-800)); font-weight: 600; }
+.bl-kpis .sadb-trend--good .sadb-trend-icon { color: var(--color-success-text, var(--color-success-800)) !important; }
+.bl-kpis .sadb-trend--bad .sadb-trend-icon { color: var(--color-danger-text, var(--color-danger-800)) !important; }
+.bl-kpis .sadb-trend--flat .sadb-trend-icon { color: var(--text-muted) !important; }

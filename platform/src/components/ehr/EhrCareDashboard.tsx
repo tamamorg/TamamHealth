@@ -239,6 +239,7 @@ function compareDashboardRows(a: EhrCareDashboardRow, b: EhrCareDashboardRow): n
  */
 export default function EhrCareDashboard({
   title,
+  compactHeader = false,
   greetingName,
   greetingSubtitle,
   dateLabel,
@@ -287,6 +288,13 @@ export default function EhrCareDashboard({
   greetingName?: string;
   /** Small-caps role line under the greeting ("Front Desk · Reception"). */
   greetingSubtitle?: string;
+  /**
+   * Management boards (the county overview): no "Welcome" greeting and no
+   * row of nav shortcuts in the header (they repeated the nav), only the
+   * board's own actions. 2026-11-04, user: management pages open on their
+   * content.
+   */
+  compactHeader?: boolean;
   dateLabel: string;
   tabs: EhrCareDashboardTab[];
   activeTab: string;
@@ -729,7 +737,7 @@ export default function EhrCareDashboard({
         </div>
 
         <div className="ehr-schedule-primary-controls ehr-clinical-dashboard-header-main">
-          <div className="ehr-greeting-row">
+          {!compactHeader && <div className="ehr-greeting-row">
             <div className="ehr-care-header-copy">
               <p className="ehr-care-greeting">{headerTitle}</p>
               {/* The small-caps role line under the greeting. Every station
@@ -744,7 +752,7 @@ export default function EhrCareDashboard({
                 <p className="ehr-care-greeting-sub">{headerEyebrow}</p>
               )}
             </div>
-          </div>
+          </div>}
         </div>
 
         <div className="ehr-schedule-actions" data-tour="station-actions">
@@ -754,7 +762,7 @@ export default function EhrCareDashboard({
               header and was exiled to the left rail. Rendered first so it sits
               alongside Print rather than after it. */}
           {headerExtra}
-          {quickNavItems.map(item => {
+          {!compactHeader && quickNavItems.map(item => {
             const ItemIcon = item.icon;
             return (
               <button key={item.href} type="button" aria-label={item.label} onClick={() => router.push(item.href)}>
