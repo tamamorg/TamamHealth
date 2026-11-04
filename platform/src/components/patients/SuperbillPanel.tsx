@@ -149,6 +149,7 @@ export function useSuperbill({
  * schedule — the control stays put instead of the row reflowing.
  */
 export function SuperbillPicker({ sb }: { sb: Superbill }) {
+  const { t } = useTranslation();
   const noFees = sb.fees.length === 0;
   return (
     <Select
@@ -156,7 +157,7 @@ export function SuperbillPicker({ sb }: { sb: Superbill }) {
       value={sb.picker}
       disabled={noFees}
       onChange={(e) => sb.addLine(e.target.value)}
-      aria-label="Add a service to the superbill"
+      aria-label={t('ui.addAServiceToThe')}
       title={noFees ? 'No fee schedule configured for this facility' : 'Superbill / fee ticket — add a service'}
     >
       <option value="">{noFees ? 'No fee schedule' : 'Add a service…'}</option>
@@ -173,6 +174,7 @@ export function SuperbillPicker({ sb }: { sb: Superbill }) {
  * post has just reported back), so the Charges card stays quiet by default.
  */
 export function SuperbillDraft({ sb }: { sb: Superbill }) {
+  const { t } = useTranslation();
   const { lines, totals, money, setLines } = sb;
   if (lines.length === 0 && !sb.posted && !sb.error) return null;
 
@@ -181,15 +183,15 @@ export function SuperbillDraft({ sb }: { sb: Superbill }) {
       {lines.length > 0 && (
         <>
           <div className="bl-draft-head">
-            <span className="bl-draft-title">Superbill / fee ticket</span>
-            <span className="bl-draft-note">Review charges before checkout</span>
+            <span className="bl-draft-title">{t('ui.superbillFeeTicket')}</span>
+            <span className="bl-draft-note">{t('ui.reviewChargesBeforeCheckout')}</span>
           </div>
           <table className="bl-table bl-draft-table">
             <thead>
               <tr>
-                <th>Service</th>
-                <th className="bl-center">Qty</th>
-                <th className="bl-right">Amount</th>
+                <th>{t('billing.service')}</th>
+                <th className="bl-center">{t('ui.qty')}</th>
+                <th className="bl-right">{t('billing.activityColumn.amount')}</th>
                 <th className="bl-center">ABN</th>
                 <th />
               </tr>
@@ -213,12 +215,12 @@ export function SuperbillDraft({ sb }: { sb: Superbill }) {
                       type="checkbox"
                       checked={l.nonCovered}
                       onChange={(e) => setLines((ls) => ls.map((x, j) => j === i ? { ...x, nonCovered: e.target.checked } : x))}
-                      title="Non-covered — patient advised (ABN)"
+                      title={t('ui.nonCoveredPatientAdvisedAbn')}
                       aria-label={`Mark ${l.fee.serviceName} non-covered (ABN)`}
                     />
                   </td>
                   <td className="bl-right">
-                    <button type="button" className="bl-draft-remove" onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))} title="Remove" aria-label={`Remove ${l.fee.serviceName}`}>
+                    <button type="button" className="bl-draft-remove" onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))} title={t('action.remove')} aria-label={`Remove ${l.fee.serviceName}`}>
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </td>
@@ -231,18 +233,18 @@ export function SuperbillDraft({ sb }: { sb: Superbill }) {
             <dl className="bl-draft-totals">
               {totals.nonCovered > 0 && (
                 <>
-                  <div><dt>Covered</dt><dd>{money(totals.covered)}</dd></div>
-                  <div className="bl-draft-abn"><dt>Non-covered (ABN)</dt><dd>{money(totals.nonCovered)}</dd></div>
+                  <div><dt>{t('ui.covered')}</dt><dd>{money(totals.covered)}</dd></div>
+                  <div className="bl-draft-abn"><dt>{t('ui.nonCoveredAbn')}</dt><dd>{money(totals.nonCovered)}</dd></div>
                 </>
               )}
-              <div className="bl-draft-total"><dt>Total</dt><dd>{money(totals.total)}</dd></div>
+              <div className="bl-draft-total"><dt>{t('dashboard.total')}</dt><dd>{money(totals.total)}</dd></div>
             </dl>
             <button type="button" className="bl-btn bl-btn--primary" disabled={sb.busy} onClick={sb.post}>
-              <Plus size={15} /> Post charges
+              <Plus size={15} /> {t('ui.postCharges')}
             </button>
           </div>
           {totals.nonCovered > 0 && (
-            <p className="bl-draft-hint">Posting records an ABN acknowledgement on the chart for each non-covered service.</p>
+            <p className="bl-draft-hint">{t('ui.postingRecordsAnAbnAcknowledgement')}</p>
           )}
         </>
       )}

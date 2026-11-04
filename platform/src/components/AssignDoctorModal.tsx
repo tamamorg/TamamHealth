@@ -219,9 +219,9 @@ export default function AssignDoctorModal({
           {/* Doctor list */}
           <div className="max-h-64 overflow-y-auto rounded-lg border assign-doctor-provider-list" style={{ borderColor: 'var(--border-light)' }}>
             {loading ? (
-              <p className="p-4 text-sm text-center" style={{ color: 'var(--text-muted)' }}>Loading {providerLabel}s…</p>
+              <p className="p-4 text-sm text-center" style={{ color: 'var(--text-muted)' }}>{t('ui.loading')} {providerLabel}s…</p>
             ) : doctors.length === 0 ? (
-              <p className="p-4 text-sm text-center" style={{ color: 'var(--text-muted)' }}>No {providerLabel}s available to assign.</p>
+              <p className="p-4 text-sm text-center" style={{ color: 'var(--text-muted)' }}>{t('action.no')} {providerLabel}{t('ui.sAvailableToAssign')}</p>
             ) : (
               <ul className="divide-y" style={{ borderColor: 'var(--border-light)' }}>
                 {doctors.map(d => {
@@ -256,13 +256,13 @@ export default function AssignDoctorModal({
           {/* Handoff note */}
           <div>
             <label className="mb-1 block text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
-              Handoff note <span style={{ color: 'var(--text-muted)' }}>(optional)</span>
+              {t('triageForm.handoffNote')} <span style={{ color: 'var(--text-muted)' }}>{t('ui.optional')}</span>
             </label>
             <textarea
               value={note}
               onChange={e => setNote(e.target.value)}
               rows={2}
-              placeholder="e.g. Febrile, ?malaria — needs review this morning"
+              placeholder={t('ui.eGFebrileMalariaNeeds')}
               className="w-full resize-y rounded-lg border px-3 py-2 text-sm"
               style={{ borderColor: 'var(--border-medium)', background: 'var(--bg-input, var(--bg-card-solid))', color: 'var(--text-primary)' }}
             />
@@ -270,7 +270,7 @@ export default function AssignDoctorModal({
         </DialogBody>
         <DialogFooter>
           <button type="button" onClick={onClose} className="btn btn-secondary">
-            Cancel
+            {t('action.cancel')}
           </button>
           <button
             type="button"

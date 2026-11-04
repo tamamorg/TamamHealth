@@ -6,8 +6,10 @@ import EmptyState from '@/components/EmptyState';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { patientFullName, patientInitials, patientGenderAge, avatarTint } from '@/lib/patient-utils';
 import { useMobileShellState } from '@/lib/mobile-shell/use-mobile-shell-state';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export default function MobilePatientsView() {
+  const { t } = useTranslation();
   const { patients, loading } = usePatients();
   const shell = useMobileShellState();
   const [query, setQuery] = useState('');
@@ -32,7 +34,7 @@ export default function MobilePatientsView() {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Name, ID, or phone"
+          placeholder={t('ui.nameIdOrPhone')}
         />
       </div>
       <div className="mobile-patients-list">
@@ -41,7 +43,7 @@ export default function MobilePatientsView() {
             <Loader2 className="w-5 h-5 animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
-          <EmptyState title="No patients found" message="Try a different name, ID, or phone number." />
+          <EmptyState title={t('boma.noPatientsFound')} message="Try a different name, ID, or phone number." />
         ) : (
           filtered.map((p) => (
             <button key={p._id} type="button" className="mobile-patient-row" onClick={() => shell.openChart(p._id)}>

@@ -17,7 +17,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import InlineBanner from '@/components/overlay/InlineBanner';
+import NoticeToast from '@/components/overlay/NoticeToast';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useDepartments } from '@/lib/hooks/useDepartments';
@@ -35,7 +35,6 @@ import {
 import type { AppointmentDoc, AppointmentType, EncounterDoc, PatientDoc } from '@/lib/db-types';
 import type { AttendanceType, CheckInAcuity } from '@/lib/services/check-in-service';
 import './start-visit-panel.css';
-import FormNotices from '@/components/overlay/FormNotices';
 import Select from '@/components/Select';
 
 type VisitTiming = 'new' | 'ongoing' | 'past';
@@ -84,7 +83,6 @@ export default function StartVisitPanel({ patient, patientName, currentUser, app
 
   const [activeVisit, setActiveVisit] = useState<EncounterDoc | null | undefined>(undefined);
   const [timing, setTiming] = useState<VisitTiming>('new');
-  const [bannerOpen, setBannerOpen] = useState(true);
   const [appointments, setAppointments] = useState<AppointmentDoc[]>([]);
   const [chosenAppointmentId, setChosenAppointmentId] = useState<string>(appointmentId ?? WALK_IN);
   const [typeChoice, setTypeChoice] = useState<AppointmentType | null>(null);
@@ -299,13 +297,13 @@ export default function StartVisitPanel({ patient, patientName, currentUser, app
         </fieldset>
 
         {keptRecord && (
-          <InlineBanner tone="warning" compact>{t('dup.visitPanelWarning', { name: keptRecord.name })}</InlineBanner>
+          <NoticeToast tone="warning">{t('dup.visitPanelWarning', { name: keptRecord.name })}</NoticeToast>
         )}
 
-        {activeVisit && bannerOpen && (
-          <InlineBanner tone="info" title={t('startVisit.activeTitle')} onDismiss={() => setBannerOpen(false)}>
+        {activeVisit && (
+          <NoticeToast tone="info" title={t('startVisit.activeTitle')}>
             {t('startVisit.activeBody')}
-          </InlineBanner>
+          </NoticeToast>
         )}
 
         {timing === 'ongoing' && (
@@ -538,7 +536,6 @@ export default function StartVisitPanel({ patient, patientName, currentUser, app
         )}
       </div>
 
-      <FormNotices />
       <div className="sv-footer">
         <button type="button" className="sv-footer-btn sv-footer-btn--discard" onClick={onClose} disabled={saving}>
           {t('startVisit.discard')}

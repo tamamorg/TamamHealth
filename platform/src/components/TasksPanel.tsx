@@ -19,6 +19,7 @@ import { usePatients } from '@/lib/hooks/usePatients';
 import { patientFullName, shortenPersonName } from '@/lib/patient-utils';
 import type { ClinicianTaskDoc } from '@/lib/db-types';
 import Select from '@/components/Select';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 type TaskPriority = 'low' | 'medium' | 'high';
 
@@ -59,6 +60,7 @@ const fieldStyle: React.CSSProperties = {
 };
 
 export default function TasksPanel({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   const { open, completed, loading, add, complete, reopen, reschedule, update, remove } = useTasks();
   const { patients } = usePatients();
   const titleRef = useRef<HTMLInputElement>(null);
@@ -141,12 +143,12 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
           <div className="flex items-center gap-2">
             <ClipboardList className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} aria-hidden />
-            <h2 id="tasks-panel-title" className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>My Tasks</h2>
+            <h2 id="tasks-panel-title" className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{t('ui.myTasks')}</h2>
             {open.length > 0 && (
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--accent-light)', color: 'var(--accent-text)' }}>{open.length}</span>
             )}
           </div>
-          <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
+          <button onClick={onClose} aria-label={t('billing.activityClose')} className="p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
         </div>
 
         {/* Single cohesive create row: title · date · priority · add */}
@@ -158,8 +160,8 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
               value={title}
               onChange={e => setTitle(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') submit(); }}
-              placeholder="Add a task — e.g. phone John"
-              aria-label="Task title"
+              placeholder={t('ui.addATaskEG')}
+              aria-label={t('ui.taskTitle')}
               className="text-sm"
               style={{ ...fieldStyle, flex: '1 1 160px', width: 'auto', minWidth: 0 }}
             />
@@ -167,21 +169,21 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
               type="date"
               value={due}
               onChange={e => setDue(e.target.value)}
-              title="Reminder date (optional)"
-              aria-label="Reminder date"
+              title={t('ui.reminderDateOptional')}
+              aria-label={t('ui.reminderDate')}
               className="text-[12px]"
               style={{ ...fieldStyle, padding: '6px 10px', width: 140, flex: '0 0 auto' }}
             />
             <Select
               value={priority}
               onChange={e => setPriority(e.target.value as TaskPriority)}
-              aria-label="Priority"
+              aria-label={t('appointments.labelPriority')}
               className="text-[12px]"
               style={{ ...fieldStyle, padding: '6px 8px', width: 110, flex: '0 0 auto' }}
             >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
+              <option value="low">{t('anc.riskLevelLow')}</option>
+              <option value="medium">{t('syncConflicts.riskFilter_medium')}</option>
+              <option value="high">{t('anc.riskLevelHigh')}</option>
             </Select>
             {/* Labelled, not icon-only. A bare blue square is not a verb: it
                 gave no clue that it was what committed the task, and the
@@ -218,7 +220,7 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
                   className="text-[11px] font-semibold px-1.5 py-0.5 rounded"
                   style={{ color: 'var(--text-muted)', background: 'var(--overlay-subtle)' }}
                 >
-                  Clear
+                  {t('action.clear')}
                 </button>
               </div>
             ) : showPatientSearch ? (
@@ -235,8 +237,8 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
                       value={patientQuery}
                       autoFocus
                       onChange={e => setPatientQuery(e.target.value)}
-                      placeholder="Link a patient (optional)"
-                      aria-label="Link a patient"
+                      placeholder={t('ui.linkAPatientOptional')}
+                      aria-label={t('ui.linkAPatient')}
                       className="text-[12px]"
                       style={{ ...fieldStyle, paddingInlineStart: 30, width: '100%' }}
                     />
@@ -247,7 +249,7 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
                     className="text-[11px] font-semibold"
                     style={{ color: 'var(--text-muted)' }}
                   >
-                    Cancel
+                    {t('action.cancel')}
                   </button>
                 </div>
                 {patientMatches.length > 0 && (
@@ -279,7 +281,7 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
                 className="inline-flex items-center gap-1 text-[11px] font-semibold"
                 style={{ color: 'var(--accent-text)' }}
               >
-                <User className="w-3.5 h-3.5" /> Link patient
+                <User className="w-3.5 h-3.5" /> {t('ui.linkPatient')}
               </button>
             )}
           </div>
@@ -287,12 +289,12 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
 
         <div style={{ overflowY: 'auto', minHeight: 160 }}>
           {loading ? (
-            <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</div>
+            <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('admin.loading')}</div>
           ) : open.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-6 py-12 text-center" style={{ color: 'var(--text-muted)' }}>
               <ClipboardList className="w-9 h-9 mb-3" style={{ opacity: 0.35 }} aria-hidden />
-              <p className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>No open tasks</p>
-              <p className="text-[12px] mt-1" style={{ maxWidth: 260 }}>Add one above — e.g. a callback, follow-up, or chart review.</p>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('ui.noOpenTasks')}</p>
+              <p className="text-[12px] mt-1" style={{ maxWidth: 260 }}>{t('ui.addOneAboveEG')}</p>
             </div>
           ) : (
             <div>
@@ -323,7 +325,7 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
                             if (e.key === 'Enter') commitEdit(task);
                             if (e.key === 'Escape') setEditingId(null);
                           }}
-                          aria-label="Edit task title"
+                          aria-label={t('ui.editTaskTitle')}
                           className="text-[13px] font-semibold"
                           style={{ ...fieldStyle, padding: '4px 8px', width: '100%' }}
                         />
@@ -336,7 +338,7 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
                           <button
                             onClick={() => startEdit(task)}
                             aria-label={`Edit "${task.title}"`}
-                            title="Edit"
+                            title={t('action.edit')}
                             className="p-0.5 rounded flex-shrink-0"
                             style={{ color: 'var(--text-muted)' }}
                           >
@@ -344,7 +346,7 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
                           </button>
                         </div>
                       )}
-                      {task.patientName && <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>re: {shortenPersonName(task.patientName)}</div>}
+                      {task.patientName && <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{t('ui.re')} {shortenPersonName(task.patientName)}</div>}
                       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                         {(!d || d.overdue || d.timed || d.text === 'Today') && (
                           <span className="inline-flex items-center gap-1 text-[11px]" style={{ color: d?.overdue ? 'var(--color-danger-text)' : 'var(--text-muted)' }}>
@@ -356,7 +358,7 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
                           type="date"
                           value={(task.dueDate || '').slice(0, 10)}
                           onChange={e => reschedule(task._id, e.target.value)}
-                          title="Reschedule"
+                          title={t('ui.reschedule')}
                           aria-label={`Reminder date for "${task.title}"`}
                           className="text-[11px]"
                           style={{ ...fieldStyle, padding: '3px 6px', width: 132, flex: '0 0 auto' }}
@@ -385,11 +387,11 @@ export default function TasksPanel({ onClose }: { onClose: () => void }) {
           {completed.length > 0 && (
             <div>
               <button onClick={() => setShowDone(s => !s)} aria-expanded={showDone} className="w-full text-start px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)', background: 'var(--overlay-subtle)' }}>
-                {showDone ? '▾' : '▸'} Completed ({completed.length})
+                {showDone ? '▾' : '▸'} {t('ui.completed')}{completed.length})
               </button>
               {showDone && completed.map(task => (
                 <div key={task._id} className="flex items-center gap-3 px-5 py-2.5 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                  <button onClick={() => reopen(task._id)} aria-label={`Reopen "${task.title}"`} title="Reopen" className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--accent-light)', color: 'var(--accent-primary)' }}>
+                  <button onClick={() => reopen(task._id)} aria-label={`Reopen "${task.title}"`} title={t('action.reopen')} className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--accent-light)', color: 'var(--accent-primary)' }}>
                     <Check className="w-3 h-3" />
                   </button>
                   <span className="flex-1 text-[13px] line-through" style={{ color: 'var(--text-muted)' }}>{task.title}</span>

@@ -196,8 +196,8 @@ export default function ConflictsPage() {
     return (
       <main className="page-container page-enter sadb-scope">
         <div className="sadb-page">
-          <SadbCard title="Conflict reconciliation">
-            <p className="sadb-empty">Access restricted to administrators.</p>
+          <SadbCard title={t('ui.conflictReconciliation')}>
+            <p className="sadb-empty">{t('conflicts.accessRestricted')}</p>
           </SadbCard>
         </div>
       </main>
@@ -208,11 +208,11 @@ export default function ConflictsPage() {
     <main className="page-container page-enter sadb-scope">
       <div className="sadb-page">
         <SadbPanelHeader
-          title="Conflict reconciliation"
+          title={t('ui.conflictReconciliation')}
           note="High-risk clinical data (allergies, referrals, discharge status) flagged for human review after a replication conflict."
         />
 
-        <div className="flex gap-1" role="tablist" aria-label="Conflict status" data-tour="admin-conflicts-tabs">
+        <div className="flex gap-1" role="tablist" aria-label={t('ui.conflictStatus')} data-tour="admin-conflicts-tabs">
           {STATUSES.map(s => (
             <button
               key={s}
@@ -232,9 +232,9 @@ export default function ConflictsPage() {
         )}
 
         {loading ? (
-          <SadbCard><p className="sadb-empty">Loading…</p></SadbCard>
+          <SadbCard><p className="sadb-empty">{t('admin.loading')}</p></SadbCard>
         ) : conflicts.length === 0 ? (
-          <SadbCard><p className="sadb-empty">No {STATUS_LABEL[filterStatus as Status].toLowerCase()} conflicts.</p></SadbCard>
+          <SadbCard><p className="sadb-empty">{t('action.no')} {STATUS_LABEL[filterStatus as Status].toLowerCase()} {t('ui.conflicts')}</p></SadbCard>
         ) : (
           <div className="flex flex-col gap-3">
             {conflicts.map(c => {
@@ -247,12 +247,12 @@ export default function ConflictsPage() {
                   action={<SadbChip tone={RISK_CHIP[c.risk]}>{RISK_LABEL[c.risk]}</SadbChip>}
                 >
                   <SadbKvRow
-                    label="Default winner"
+                    label={t('ui.defaultWinner')}
                     value={<span style={{ fontFamily: 'var(--font-platform-mono)' }}>{c.winningRev}</span>}
                   />
                   <div className="sadb-setting-row">
                     <div className="sadb-setting-copy">
-                      <b className="sadb-setting-label">Losing revisions</b>
+                      <b className="sadb-setting-label">{t('ui.losingRevisions')}</b>
                       <span className="sadb-setting-sub">
                         {c.losingRevs.map(r => (
                           <span key={r} style={{ fontFamily: 'var(--font-platform-mono)', marginInlineEnd: 8 }}>{r}</span>
@@ -264,7 +264,7 @@ export default function ConflictsPage() {
                   {c.status !== 'pending' && (
                     <p className="sadb-setting-sub" style={{ padding: '10px 16px' }}>
                       {c.status === 'resolved' ? 'Resolved' : 'Dismissed'} by {c.resolvedBy || 'unknown'} on {c.resolvedAt?.slice(0, 16).replace('T', ' ') ?? ''}
-                      {c.resolvedRev && <> → kept <span style={{ fontFamily: 'var(--font-platform-mono)' }}>{c.resolvedRev}</span></>}
+                      {c.resolvedRev && <> {t('ui.kept')} <span style={{ fontFamily: 'var(--font-platform-mono)' }}>{c.resolvedRev}</span></>}
                       {c.resolutionNote && <> — &ldquo;{c.resolutionNote}&rdquo;</>}
                     </p>
                   )}
@@ -281,7 +281,7 @@ export default function ConflictsPage() {
                         disabled={rowBusy}
                         onClick={() => { setResolveTarget({ id: c._id, rev: c.winningRev }); setResolveNote(''); }}
                       >
-                        Keep winner
+                        {t('conflicts.keepWinner')}
                       </button>
                       {c.losingRevs.map(rev => (
                         <SadbActionButton
@@ -289,11 +289,11 @@ export default function ConflictsPage() {
                           disabled={rowBusy}
                           onClick={() => { setResolveTarget({ id: c._id, rev }); setResolveNote(''); }}
                         >
-                          Use {rev.slice(0, 6)}…
+                          {t('ui.use')} {rev.slice(0, 6)}…
                         </SadbActionButton>
                       ))}
                       <SadbActionButton danger disabled={rowBusy} onClick={() => setDismissTarget(c._id)}>
-                        Dismiss
+                        {t('action.dismiss')}
                       </SadbActionButton>
                     </div>
                   )}
@@ -306,7 +306,7 @@ export default function ConflictsPage() {
 
       {resolveTarget && (
         <SadbEditorModal
-          title="Resolution note"
+          title={t('ui.resolutionNote')}
           sub={`Keep revision ${resolveTarget.rev.slice(0, 8)}… as the resolved version.`}
           value={resolveNote}
           onChange={setResolveNote}
@@ -320,9 +320,9 @@ export default function ConflictsPage() {
 
       {dismissTarget && (
         <SadbConfirmModal
-          title="Dismiss conflict"
+          title={t('ui.dismissConflict')}
           body="Dismissing removes this conflict from the pending queue without choosing a winning revision. It is not deleted — it stays in history as dismissed."
-          confirmLabel="Dismiss"
+          confirmLabel={t('action.dismiss')}
           onCancel={() => { setDismissTarget(null); setDismissNote(''); }}
           onConfirm={submitDismiss}
           busy={dismissBusy}

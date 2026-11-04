@@ -16,13 +16,15 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export default function HrHomeRetiredPage() {
+  const { t } = useTranslation();
   const router = useRouter();
 
   useEffect(() => {
     router.replace('/facility-management');
   }, [router]);
 
-  return <div className="cn-empty">Opening the facility dashboard…</div>;
+  return <div className="cn-empty">{t('ui.openingTheFacilityDashboard')}</div>;
 }

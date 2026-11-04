@@ -10,7 +10,6 @@
 import { useMemo, useState } from 'react';
 import { X } from '@/components/icons/lucide';
 import { ObfQuestion, ObfSection, ObfSelectField, ObfTextField } from '@/components/ehr/chart/panels/order-basket/ObfFields';
-import FormNotices from '@/components/overlay/FormNotices';
 import FormSlider from '@/components/overlay/FormSlider';
 import { FormError } from '@/components/overlay/FormNotices';
 import { useToast } from '@/components/Toast';
@@ -225,7 +224,6 @@ export default function LabIntakeSlider({ presetPatientId, onClose, onPlaced }: 
               {sections.map(section => <ObfSection key={section.id} title={section.label}>{section.body}</ObfSection>)}
             </div>
           </div>
-          <FormNotices />
           <div className="obk-footer">
             <button type="button" className="obk-footer-btn obk-footer-btn--secondary" disabled={saving} onClick={onClose}>{t('action.cancel')}</button>
             <button type="button" className="obk-footer-btn obk-footer-btn--primary lab-intake-save" disabled={saving || !ready} onClick={save}>{t('labIntake.save')}</button>

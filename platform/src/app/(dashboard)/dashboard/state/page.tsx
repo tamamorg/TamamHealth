@@ -141,18 +141,18 @@ export default function StateDashboardPage() {
       <div className="ehr-visit-pop ehr-visit-pop--inline">
         <div className="ehr-visit-pop-body">
           <div className="ehr-visit-pop-row">
-            <span className="ehr-visit-pop-label">ANC coverage</span>
+            <span className="ehr-visit-pop-label">{t('hospitals.colAncCoverage')}</span>
             <div>
-              <strong>{anc1Rate}% ANC1 · {anc4Rate}% ANC4</strong>
-              <p>{c.ancTotal} tracked pregnanc{c.ancTotal === 1 ? 'y' : 'ies'}</p>
+              <strong>{anc1Rate}{t('ui.anc1')} {anc4Rate}{t('ui.anc4')}</strong>
+              <p>{c.ancTotal} {t('ui.trackedPregnanc')}{c.ancTotal === 1 ? 'y' : 'ies'}</p>
             </div>
           </div>
           <div className="ehr-visit-pop-row">
-            <span className="ehr-visit-pop-label">Facilities</span>
+            <span className="ehr-visit-pop-label">{t('government.colFacilities')}</span>
             <div>
               {facilityNames.length > 0
                 ? <p>{facilityNames.join(', ')}</p>
-                : <p>No facility-linked reports yet.</p>}
+                : <p>{t('ui.noFacilityLinkedReportsYet')}</p>}
             </div>
           </div>
         </div>

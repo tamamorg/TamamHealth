@@ -1504,11 +1504,11 @@ export default function FrontDeskDashboardPage() {
               <>
                 <StaffAssignmentControl
                   icon={Stethoscope}
-                  label="Doctor"
+                  label={t('adminUsers.role_doctor')}
                   staff={assignableDoctors}
                   currentId={patient.assignedDoctor}
                   currentName={patient.assignedDoctorName}
-                  emptyLabel="Unassigned"
+                  emptyLabel={t('noteEditor.unassigned')}
                   onSave={doctorId => handleAssignDoctor(patient, doctorId, {
                     triageId: entry.id.startsWith('triage-') ? entry.sourceId : undefined,
                     encounterId: entry.encounterId,
@@ -1516,11 +1516,11 @@ export default function FrontDeskDashboardPage() {
                 />
                 <StaffAssignmentControl
                   icon={ClipboardCheck}
-                  label="Nurse"
+                  label={t('adminUsers.role_nurse')}
                   staff={assignableNurses}
                   currentId={patient.assignedNurse}
                   currentName={patient.assignedNurseName}
-                  emptyLabel="Unassigned"
+                  emptyLabel={t('noteEditor.unassigned')}
                   onSave={nurseId => handleAssignNurse(patient, nurseId, {
                     encounterId: entry.encounterId,
                   })}
@@ -1837,7 +1837,7 @@ export default function FrontDeskDashboardPage() {
           activeTab={queueFilter}
           onTabChange={handleTabChange}
           searchValue={queueSearch}
-          searchPlaceholder="Search patients, reasons, departments"
+          searchPlaceholder={t('ui.searchPatientsReasonsDepartments')}
           onSearchChange={setQueueSearch}
           filters={[]}
           actions={actions}
@@ -1888,10 +1888,10 @@ export default function FrontDeskDashboardPage() {
         {closeoutOpen && (
           <Modal onClose={() => setCloseoutOpen(false)} width={560} labelledBy="fd-closeout-title">
             <DialogFrame>
-              <DialogHeader titleId="fd-closeout-title" title="Needs close-out" description="Open visits from a previous day. Close the ones whose patient left without being seen; a visit that reached the clinician needs a proper checkout from the patient&apos;s row instead." onClose={() => setCloseoutOpen(false)} />
+              <DialogHeader titleId="fd-closeout-title" title={t('ui.needsCloseOut')} description={t('ui.openVisitsFromAPrevious')} onClose={() => setCloseoutOpen(false)} />
               <DialogBody className="space-y-4">
               {staleVisits.length === 0 && (
-                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Nothing waiting — every open visit moved today.</p>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('ui.nothingWaitingEveryOpenVisit')}</p>
               )}
               {staleVisits.map(({ encounter, lastMovedAt, canCloseAsLwbs }) => (
                 <div key={encounter._id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderTop: '1px solid var(--border-light)' }}>
@@ -1900,7 +1900,7 @@ export default function FrontDeskDashboardPage() {
                       {encounter.patientName || encounter.patientId}
                     </p>
                     <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
-                      {encounterVisitState(encounter.status).label || encounter.status} · last movement {formatCompactDateTime(lastMovedAt)}
+                      {encounterVisitState(encounter.status).label || encounter.status} {t('ui.lastMovement')} {formatCompactDateTime(lastMovedAt)}
                     </p>
                   </div>
                   {canCloseAsLwbs ? (
@@ -1909,17 +1909,17 @@ export default function FrontDeskDashboardPage() {
                       onClick={() => void closeStaleVisitAsLwbs(encounter)}
                       style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-card)', color: 'var(--color-danger-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
                     >
-                      Close as LWBS
+                      {t('ui.closeAsLwbs')}
                     </button>
                   ) : (
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>needs checkout</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{t('ui.needsCheckout')}</span>
                   )}
                   <button
                     type="button"
                     onClick={() => { setCloseoutOpen(false); router.push(`/patients/${encounter.patientId}`); }}
                     style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-card)', color: 'var(--accent-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
                   >
-                    Open chart
+                    {t('appointments.openChart')}
                   </button>
                 </div>
               ))}
@@ -2096,15 +2096,15 @@ export default function FrontDeskDashboardPage() {
         {rescheduleTarget && (
           <Modal onClose={() => !reschedSaving && setRescheduleTarget(null)} width={420} labelledBy="reschedule-dialog-title">
             <DialogFrame>
-              <DialogHeader titleId="reschedule-dialog-title" title="Reschedule appointment" description={<>{rescheduleTarget.patientName} · currently {formatDayMonthYear(rescheduleTarget.appointmentDate)} {formatClockTime(rescheduleTarget.appointmentTime)}</>} onClose={() => !reschedSaving && setRescheduleTarget(null)} />
+              <DialogHeader titleId="reschedule-dialog-title" title={t('ui.rescheduleAppointment')} description={<>{rescheduleTarget.patientName} {t('ui.currently')} {formatDayMonthYear(rescheduleTarget.appointmentDate)} {formatClockTime(rescheduleTarget.appointmentTime)}</>} onClose={() => !reschedSaving && setRescheduleTarget(null)} />
               <DialogBody className="space-y-4">
               <div className="grid grid-cols-2 gap-3 mt-4">
                 <div>
-                  <label className="text-[11px] font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: 'var(--text-muted)' }}>New date</label>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: 'var(--text-muted)' }}>{t('ui.newDate')}</label>
                   <input type="date" value={rescheduleDate} min={today} onChange={e => setRescheduleDate(e.target.value)} />
                 </div>
                 <div>
-                  <label className="text-[11px] font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: 'var(--text-muted)' }}>New time</label>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: 'var(--text-muted)' }}>{t('ui.newTime')}</label>
                   <Select value={rescheduleTime} onChange={e => setRescheduleTime(e.target.value)}>
                     {RESCHEDULE_SLOTS.map(slot => <option key={slot} value={slot}>{formatClockTime(slot)}</option>)}
                   </Select>
@@ -2125,13 +2125,13 @@ export default function FrontDeskDashboardPage() {
 
         {noShowTarget && (
           <FormSlider
-            title="Mark as no-show?"
+            title={t('ui.markAsNoShow')}
             subtitle={`${noShowTarget.patientName} · ${formatClockTime(noShowTarget.appointmentTime)}`}
             width={440}
             onClose={() => setNoShowTarget(null)}
             footer={<>
               <button type="button" className="btn btn-secondary" onClick={() => setNoShowTarget(null)}>{t('action.cancel')}</button>
-              <button type="button" className="btn btn-primary" onClick={() => handleNoShow(noShowTarget)}>Mark no-show</button>
+              <button type="button" className="btn btn-primary" onClick={() => handleNoShow(noShowTarget)}>{t('ui.markNoShow')}</button>
             </>}
           >
             <p className="status-slider-body">Check the waiting room first; this removes them from today&apos;s arrivals.</p>
@@ -2140,27 +2140,27 @@ export default function FrontDeskDashboardPage() {
 
         {cancelTarget && (
           <FormSlider
-            title="Cancel this appointment?"
+            title={t('ui.cancelThisAppointment')}
             subtitle={`${cancelTarget.appt.patientName} · ${formatClockTime(cancelTarget.appt.appointmentTime)}`}
             width={440}
             onClose={() => setCancelTarget(null)}
             footer={<>
               <button type="button" className="btn btn-secondary" onClick={() => setCancelTarget(null)}>{t('appointments.goBack')}</button>
               <button type="button" className="btn btn-danger-solid" onClick={() => void handleCancelAppointment()}>
-                Cancel appointment
+                {t('ui.cancelAppointment')}
               </button>
             </>}
           >
               <p className="status-slider-body">The booking stays on record under Finished; you can undo from the notification or reopen it later.</p>
               <label className="block text-xs font-semibold mt-4 mb-1" style={{ color: 'var(--text-secondary)' }} htmlFor="front-desk-cancel-reason">
-                Reason (optional)
+                {t('screenings.declineReason')}
               </label>
               <textarea
                 id="front-desk-cancel-reason"
                 value={cancelReason}
                 onChange={event => setCancelReason(event.target.value)}
                 rows={2}
-                placeholder="e.g. patient called to cancel"
+                placeholder={t('ui.eGPatientCalledTo')}
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', resize: 'vertical' }}
               />
           </FormSlider>

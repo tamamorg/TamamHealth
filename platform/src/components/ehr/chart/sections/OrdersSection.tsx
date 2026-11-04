@@ -189,18 +189,18 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
 
   const filterSlot = (
     <label className="tamam-section-filter">
-      <span className="tamam-filter-caption">Order type:</span>
+      <span className="tamam-filter-caption">{t('ui.orderType')}</span>
       <Select value={typeFilter} onChange={e => { setTypeFilter(e.target.value as OrderTypeFilter); setPage(1); }}>
-        <option value="all">All</option>
-        <option value="drug">Drug</option>
-        <option value="lab">Lab</option>
+        <option value="all">{t('noteEditor.all')}</option>
+        <option value="drug">{t('ui.drug')}</option>
+        <option value="lab">{t('breadcrumb.lab')}</option>
       </Select>
     </label>
   );
 
   return (
     <ChartSection
-      title="Orders"
+      title={t('ui.orders')}
       addLabel="Add"
       onAdd={canAdd ? () => setAddMenuOpen(v => !v) : undefined}
       filterSlot={filterSlot}
@@ -212,10 +212,10 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
         <div style={{ position: 'relative' }}>
           <div style={{ position: 'absolute', right: 0, top: -6, zIndex: 20 }} className="tamam-actions-menu" role="menu">
             {canPrescribe && (
-              <button type="button" onClick={() => { setAddMenuOpen(false); onAddDrug(); }}><Pill /> Drug order</button>
+              <button type="button" onClick={() => { setAddMenuOpen(false); onAddDrug(); }}><Pill /> {t('ui.drugOrder')}</button>
             )}
             {canOrderLabs && (
-              <button type="button" onClick={() => { setAddMenuOpen(false); onAddLab(); }}><FlaskConical /> Lab order</button>
+              <button type="button" onClick={() => { setAddMenuOpen(false); onAddLab(); }}><FlaskConical /> {t('ui.labOrder')}</button>
             )}
           </div>
         </div>
@@ -227,13 +227,13 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
           </colgroup>
           <thead>
             <tr>
-              <th {...columnSort.headerProps(0, r => r.orderNumber)}>Order number</th>
-              <th {...columnSort.headerProps(1, r => r.date || '')}>Date of order</th>
-              <th {...columnSort.headerProps(2, r => r.orderType)}>Order type</th>
-              <th {...columnSort.headerProps(3, r => r.description)}>Order</th>
-              <th {...columnSort.headerProps(4, r => r.priority)}>Priority</th>
-              <th {...columnSort.headerProps(5, r => r.orderedBy)}>Ordered by</th>
-              <th {...columnSort.headerProps(6, r => humanizeStatus(r.status))}>Status</th>
+              <th {...columnSort.headerProps(0, r => r.orderNumber)}>{t('ui.orderNumber')}</th>
+              <th {...columnSort.headerProps(1, r => r.date || '')}>{t('ui.dateOfOrder')}</th>
+              <th {...columnSort.headerProps(2, r => r.orderType)}>{t('ui.orderType2')}</th>
+              <th {...columnSort.headerProps(3, r => r.description)}>{t('labFlow.stepOrder')}</th>
+              <th {...columnSort.headerProps(4, r => r.priority)}>{t('appointments.labelPriority')}</th>
+              <th {...columnSort.headerProps(5, r => r.orderedBy)}>{t('ui.orderedBy')}</th>
+              <th {...columnSort.headerProps(6, r => humanizeStatus(r.status))}>{t('billing.activityColumn.status')}</th>
               <th className="tamam-col-actions">{t('chart.actions')}</th>
             </tr>
           </thead>
@@ -243,7 +243,7 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
                 <td colSpan={8} style={{ cursor: 'default', background: 'transparent' }}>
                   <OmrsEmptyState
                     itemLabel="orders"
-                    actionLabel="Record orders"
+                    actionLabel={t('ui.recordOrders')}
                     onAction={canAdd ? () => setAddMenuOpen(true) : undefined}
                     disabledReason={canAdd ? undefined : 'Requires prescribing or lab-ordering permission'}
                   />

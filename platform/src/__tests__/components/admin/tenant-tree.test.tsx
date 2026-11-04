@@ -102,7 +102,7 @@ describe('the tenant tree draws every depth on one column template', () => {
     const html = renderToStaticMarkup(
       <FacilityUserList id="facusers-hosp-1" users={[]} facilityId="hosp-1" />,
     );
-    expect(html).toContain('No accounts are attached to this facility yet.');
+    expect(html).toContain('ui.noAccountsAreAttachedTo');
   });
 
   it('renders no header of its own — the list above owns the only one', () => {

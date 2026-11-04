@@ -75,6 +75,7 @@ import {
 } from '@/lib/facility-work-queue';
 import type { MessageDoc, UserDoc, PatientDoc, StaffScheduleDoc, HospitalDoc } from '@/lib/db-types';
 import type { LeaveRequestDoc } from '@/lib/db-types-hr';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 // recharts (~80–100 KB) is deferred behind a dynamic boundary so it is fetched
 // only when this chart renders (KAN-66). ssr:false because recharts measures
@@ -273,6 +274,7 @@ const TIER_CLASS: Record<string, string> = {
 };
 
 export default function FacilityManagementDashboard() {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const router = useRouter();
   const scope = useDataScope();
@@ -587,7 +589,7 @@ export default function FacilityManagementDashboard() {
       <SadbPage roles={['org_admin', 'hospital_manager', 'super_admin']}>
         <p className="sadb-empty" aria-live="polite">
           <Loader2 className="w-4 h-4 inline-block me-2 animate-spin" style={{ verticalAlign: -3 }} />
-          Loading facility data…
+          {t('ui.loadingFacilityData')}
         </p>
       </SadbPage>
     );
@@ -630,7 +632,7 @@ export default function FacilityManagementDashboard() {
         {/* The week's arrivals: how many came, and how many stayed. Admissions
             and outpatient encounters are the two ends of the same day's work,
             and nothing on this page said either until now. */}
-        <SadbCard title="Patient Flow" tabletTitle="Patients" meta="This week">
+        <SadbCard title={t('ui.patientFlow')} tabletTitle="Patients" meta="This week">
           <div className="px-3 pt-3 pb-1">
             <WeeklyActivityChart data={weeklyFlow} chartType="bar" series={flowSeries} />
           </div>
@@ -642,46 +644,46 @@ export default function FacilityManagementDashboard() {
             the card, here it shares a row with a 208px chart, so it has
             height to spend and centres itself in it rather than sitting in
             the card's top corner. */}
-        <SadbCard title="Cash Flow" tabletTitle="Cash" meta={`${cash.currency} · this week`}>
+        <SadbCard title={t('ui.cashFlow')} tabletTitle="Cash" meta={`${cash.currency} · this week`}>
           <div className="sadb-readiness-body fmcash-body">
             <div className="fmcash-ring">
               <CashFlowDonut data={cashSlices} />
               <div className="fmcash-center">
                 <b>{formatMoney(cashWeek.total, { currency: cash.currency })}</b>
-                <span>Billed</span>
+                <span>{t('claims.colBilled')}</span>
               </div>
             </div>
             <div className="sadb-readiness-signals fmcash-signals">
               <div className="sadb-signal sadb-signal--green">
                 <b>{formatMoney(cashWeek.received, { currency: cash.currency })}</b>
-                <span>Received</span>
+                <span>{t('facilityQueue.detailReceived')}</span>
               </div>
               <div className="sadb-signal sadb-signal--yellow">
                 <b>{formatMoney(cashWeek.pending, { currency: cash.currency })}</b>
-                <span>Pending</span>
+                <span>{t('postConsult.status.pending')}</span>
               </div>
             </div>
           </div>
         </SadbCard>
 
         <SadbCard
-          title="Today's Operations"
+          title={t('ui.todaySOperations')}
           tabletTitle="Operations"
-          action={<SadbHeadLink onClick={() => router.push(`/hr/schedule?date=${today}`)}>Schedule</SadbHeadLink>}
+          action={<SadbHeadLink onClick={() => router.push(`/hr/schedule?date=${today}`)}>{t('boma.schedule')}</SadbHeadLink>}
         >
           <div className="sadb-kv-fill">
-            <SadbKvRow label="Today's shifts" value={String(metricByKey('shifts-today')?.value ?? 0)} />
+            <SadbKvRow label={t('ui.todaySShifts')} value={String(metricByKey('shifts-today')?.value ?? 0)} />
             <SadbKvRow
-              label="Unfilled shifts"
+              label={t('ui.unfilledShifts')}
               chip={String(unfilledShifts)}
               chipTone={typeof unfilledShifts === 'number' && unfilledShifts > 0 ? 'red' : 'green'}
             />
             <SadbKvRow
-              label="Pending leave"
+              label={t('facilityQueue.kpiPending')}
               chip={String(pendingLeaveCount)}
               chipTone={typeof pendingLeaveCount === 'number' && pendingLeaveCount > 0 ? 'yellow' : 'neutral'}
             />
-            <SadbKvRow label="Staff available now" value={String(overview.activeStaff.count)} valueTone={overview.activeStaff.unavailable ? 'warn' : undefined} />
+            <SadbKvRow label={t('facilityQueue.kpiAvailable')} value={String(overview.activeStaff.count)} valueTone={overview.activeStaff.unavailable ? 'warn' : undefined} />
           </div>
         </SadbCard>
       </div>
@@ -701,14 +703,14 @@ export default function FacilityManagementDashboard() {
       <div className="sadb-lower-row">
         <SadbCard
           className="is-wide"
-          title="Facilities"
+          title={t('government.colFacilities')}
           meta={`${hospitals.length}`}
         >
           <div className="sadb-search-row sadb-search-row--table-aligned">
             <SadbSearch
               value={facilitySearch}
               onChange={setFacilitySearch}
-              placeholder="Search facility, type, location, or status…"
+              placeholder={t('ui.searchFacilityTypeLocationOr')}
               ariaLabel="Search facilities"
             />
             {/* The create actions beside the search of the list they add to

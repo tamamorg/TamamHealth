@@ -105,7 +105,7 @@ export default function HrLeavePage() {
     <HrPageShell>
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="hr-leave-list">
         <EhrListHeader
-          title="Leave requests"
+          title={t('ui.leaveRequests')}
           count={leave.length}
           stats={[
             { label: 'Pending', value: leave.filter(r => r.status === 'pending').length, color: 'var(--color-warning-text)' },
@@ -134,8 +134,8 @@ export default function HrLeavePage() {
             <div className="appointment-card-head" aria-hidden="true">
               <span>{t('hr.colStaff')}</span>
               <span>{t('hr.labelType')}</span>
-              <span>Dates</span>
-              <span>Decision</span>
+              <span>{t('facilityQueue.detailDates')}</span>
+              <span>{t('ui.decision')}</span>
               <span>{t('hr.colStatus')}</span>
             </div>
             {visibleLeave.length === 0 && (
@@ -213,7 +213,7 @@ export default function HrLeavePage() {
                       ] : []}
                       onSelect={next => decide(r._id, next as 'approved' | 'rejected')}
                     />
-                    <small>Requested {formatHrDate(r.requestedAt, { month: 'short', day: 'numeric' })}</small>
+                    <small>{t('appointments.statusRequested')} {formatHrDate(r.requestedAt, { month: 'short', day: 'numeric' })}</small>
                   </div>
                 </div>
               );

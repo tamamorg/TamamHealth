@@ -16,7 +16,7 @@
 import { useId, useState, type ReactNode } from 'react';
 import Modal from '@/components/Modal';
 import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
-import InlineBanner, { type BannerTone } from '@/components/overlay/InlineBanner';
+import NoticeToast, { type NoticeTone } from '@/components/overlay/NoticeToast';
 import FormField from '@/components/overlay/FormField';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatPhoneDisplay } from '@/lib/field-formats';
@@ -45,7 +45,7 @@ export interface PatientTextDialogProps {
   onDone?: (result: PatientTextResult) => void;
 }
 
-const OUTCOME_TONE: Record<PatientTextOutcome, BannerTone> = {
+const OUTCOME_TONE: Record<PatientTextOutcome, NoticeTone> = {
   sent: 'success',
   queued: 'info',
   not_connected: 'warning',
@@ -127,14 +127,14 @@ export default function PatientTextDialog({
         <DialogBody>
           <div className="ptx-stack">
             {result && (
-              <InlineBanner tone={OUTCOME_TONE[result.outcome]} title={t(`patientText.outcomeTitle.${result.outcome}`)}>
+              <NoticeToast tone={OUTCOME_TONE[result.outcome]} title={t(`patientText.outcomeTitle.${result.outcome}`)}>
                 {outcomeText}
-              </InlineBanner>
+              </NoticeToast>
             )}
             {!phone && (
-              <InlineBanner tone="danger" title={t('patientText.noPhoneTitle')}>
+              <NoticeToast tone="danger" title={t('patientText.noPhoneTitle')}>
                 {t('patientText.noPhoneBody')}
-              </InlineBanner>
+              </NoticeToast>
             )}
             {!result && notice}
             {!result && options}

@@ -206,7 +206,7 @@ export default function WardsPage() {
                       onChange={e => setFilterWard(e.target.value)}
                       style={{ width: 'auto', minWidth: '100%', height: 36, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', fontSize: 13 }}
                     >
-                      <option value="">All wards</option>
+                      <option value="">{t('ui.allWards')}</option>
                       {facilityWards.map(w => (
                         <option key={w._id} value={w._id}>{w.name} ({w.occupiedBeds}/{w.totalBeds})</option>
                       ))}

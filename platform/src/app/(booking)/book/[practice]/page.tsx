@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import PracticeBooking from '@/components/booking/PracticeBooking';
 import type { PracticePayload } from '@/lib/booking/public-client';
+import T from '@/components/T';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,7 +52,7 @@ export default async function PracticeBookingPage({
         </div>
         {data.practice.phone && (
           <a className="booking-btn is-ghost" href={`tel:${data.practice.phone.replace(/\s+/g, '')}`}>
-            Call {data.practice.phone}
+            <T k="ui.callPhone" vars={{ phone: data.practice.phone }} en="Call {{phone}}" />
           </a>
         )}
       </header>

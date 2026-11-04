@@ -647,8 +647,8 @@ export default function AppointmentsPage() {
                 <button
                   type="button"
                   className="active"
-                  title="Create new appointment"
-                  aria-label="Create new appointment"
+                  title={t('ui.createNewAppointment')}
+                  aria-label={t('ui.createNewAppointment')}
                   onClick={() => setShowNewForm(true)}
                 >
                   <Plus className="w-4 h-4" /> {t('appointments.bookAppointment')}
@@ -684,13 +684,13 @@ export default function AppointmentsPage() {
                 top rail's quick-add menu went, so a provider could not publish
                 clinic hours anywhere in the app. */}
             {canPublishAvailability && (
-              <button type="button" aria-label="Publish clinic hours" onClick={() => setShowAvailability(true)}>
-                <Clock className="w-4 h-4" /> Clinic hours
+              <button type="button" aria-label={t('ui.publishClinicHours')} onClick={() => setShowAvailability(true)}>
+                <Clock className="w-4 h-4" /> {t('ui.clinicHours')}
               </button>
             )}
             {canExportAppointments && (
-              <button type="button" aria-label="Download appointments (CSV)" onClick={handleDownloadCsv}>
-                <Download className="w-4 h-4" /> Download
+              <button type="button" aria-label={t('ui.downloadAppointmentsCsv')} onClick={handleDownloadCsv}>
+                <Download className="w-4 h-4" /> {t('patientQrCode.download')}
               </button>
             )}
           </div>
@@ -767,7 +767,7 @@ export default function AppointmentsPage() {
                   <button
                     type="button"
                     className="ehr-queue-search-clear"
-                    aria-label="Clear search"
+                    aria-label={t('ui.clearSearch')}
                     onClick={() => setSearch('')}
                   >
                     <X className="w-3.5 h-3.5" />
@@ -810,7 +810,7 @@ export default function AppointmentsPage() {
                   "nothing booked today" rather than "still loading", which is
                   what the calendar was actually doing every cold render. */}
               {appointmentsLoading ? (
-                <div className="appointment-card-empty">Loading appointments…</div>
+                <div className="appointment-card-empty">{t('ui.loadingAppointments')}</div>
               ) : (
               <AppointmentsCalendar
                 events={calendarEvents}
@@ -919,7 +919,7 @@ export default function AppointmentsPage() {
                         className="tm-dialog__ctl"
                         onClick={() => setEventApt(sorted[idx - 1])}
                         disabled={!hasPrev}
-                        aria-label="Previous appointment"
+                        aria-label={t('ui.previousAppointment')}
                       >
                         <ChevronLeft aria-hidden="true" />
                       </button>
@@ -928,7 +928,7 @@ export default function AppointmentsPage() {
                         className="tm-dialog__ctl"
                         onClick={() => setEventApt(sorted[idx + 1])}
                         disabled={!hasNext}
-                        aria-label="Next appointment"
+                        aria-label={t('ui.nextAppointment')}
                       >
                         <ChevronRight aria-hidden="true" />
                       </button>

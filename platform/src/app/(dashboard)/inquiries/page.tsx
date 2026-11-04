@@ -295,7 +295,7 @@ export default function InquiriesPage() {
     <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="inquiries-list">
         <EhrListHeader
-          title="Patient Inquiries"
+          title={t('facilityQueue.titleInquiries')}
           count={summary.total}
           tabs={viewTabs}
           activeTab="inquiries"
@@ -317,35 +317,35 @@ export default function InquiriesPage() {
               children: (
                 <>
                     <label className="flex flex-col gap-1">
-                      <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Status</span>
-                      <Select value={statusFilter} onChange={e => setStatusFilterAndUrl(e.target.value as EnquiryStatus | 'all')} className="w-full text-sm py-2 px-3" style={filterFieldStyle} aria-label="Filter by status">
-                        <option value="all">All statuses</option>
+                      <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('billing.activityColumn.status')}</span>
+                      <Select value={statusFilter} onChange={e => setStatusFilterAndUrl(e.target.value as EnquiryStatus | 'all')} className="w-full text-sm py-2 px-3" style={filterFieldStyle} aria-label={t('notesList.filterStatus')}>
+                        <option value="all">{t('equipment.allStatuses')}</option>
                         {ENQUIRY_STATUSES.map(s => <option key={s} value={s}>{ENQUIRY_STATUS_LABELS[s]}</option>)}
                       </Select>
                     </label>
                     <label className="flex flex-col gap-1">
-                      <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Type</span>
-                      <Select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="w-full text-sm py-2 px-3" style={filterFieldStyle} aria-label="Filter by type">
-                        <option value="all">All types</option>
+                      <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('billing.activityColumn.type')}</span>
+                      <Select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="w-full text-sm py-2 px-3" style={filterFieldStyle} aria-label={t('orgAdmin.filterByType')}>
+                        <option value="all">{t('notesList.typeAll')}</option>
                         {typeOptions.map(t => <option key={t} value={t}>{t}</option>)}
                       </Select>
                     </label>
                     <label className="flex flex-col gap-1">
-                      <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Assigned to</span>
-                      <Select value={assignedFilter} onChange={e => setAssignedFilterAndUrl(e.target.value)} className="w-full text-sm py-2 px-3" style={filterFieldStyle} aria-label="Filter by assigned staff">
-                        <option value="all">Everyone</option>
-                        <option value="unassigned">Unassigned</option>
+                      <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('noteEditor.assignedTo')}</span>
+                      <Select value={assignedFilter} onChange={e => setAssignedFilterAndUrl(e.target.value)} className="w-full text-sm py-2 px-3" style={filterFieldStyle} aria-label={t('ui.filterByAssignedStaff')}>
+                        <option value="all">{t('ui.everyone')}</option>
+                        <option value="unassigned">{t('noteEditor.unassigned')}</option>
                         {facilityUsers.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
                       </Select>
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       <label className="flex flex-col gap-1">
-                        <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>From</span>
-                        <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} aria-label="From date" className="listpage-toolbar-date" style={{ width: '100%' }} />
+                        <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('frontDesk.from')}</span>
+                        <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} aria-label={t('ui.fromDate')} className="listpage-toolbar-date" style={{ width: '100%' }} />
                       </label>
                       <label className="flex flex-col gap-1">
-                        <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>To</span>
-                        <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} aria-label="To date" className="listpage-toolbar-date" style={{ width: '100%' }} />
+                        <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('message.to')}</span>
+                        <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} aria-label={t('ui.toDate')} className="listpage-toolbar-date" style={{ width: '100%' }} />
                       </label>
                     </div>
                 </>
@@ -373,30 +373,30 @@ export default function InquiriesPage() {
                 filter matches nothing, so the list never collapses into a bare
                 message. */}
             <div className="appointment-card-head" aria-hidden="true">
-              <span>Patient</span>
-              <span>Type</span>
-              <span>Received</span>
-              <span>Assigned to</span>
-              <span>Status</span>
+              <span>{t('appointments.labelPatient')}</span>
+              <span>{t('billing.activityColumn.type')}</span>
+              <span>{t('facilityQueue.detailReceived')}</span>
+              <span>{t('noteEditor.assignedTo')}</span>
+              <span>{t('billing.activityColumn.status')}</span>
             </div>
 
-            {loading && <div className="appointment-card-empty">Loading inquiries…</div>}
+            {loading && <div className="appointment-card-empty">{t('ui.loadingInquiries')}</div>}
             {!loading && error && (
               <div className="appointment-card-empty" style={{ gap: 10 }}>
                 <p style={{ color: 'var(--color-danger-text)' }}>{error}</p>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={loadEnquiries}>Retry</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={loadEnquiries}>{t('noteEditor.retry')}</button>
               </div>
             )}
             {!loading && !error && messages.length === 0 && (
               <EmptyState
                 icon={MessageSquarePlus}
-                title="No patient inquiries yet"
+                title={t('ui.noPatientInquiriesYet')}
                 message="Inbound messages from the patient portal land here for triage. You can also log a call or walk-in inquiry manually."
                 action={{ label: 'Add inquiry', onClick: () => setAddOpen(true) }}
               />
             )}
             {!loading && !error && messages.length > 0 && filtered.length === 0 && (
-              <div className="appointment-card-empty">No inquiries match your filters.</div>
+              <div className="appointment-card-empty">{t('ui.noInquiriesMatchYourFilters')}</div>
             )}
             {!loading && !error && filtered.map(m => {
               const status = deriveEnquiryStatus(m);

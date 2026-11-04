@@ -166,14 +166,14 @@ export default function ItOperationsPanel({ embedded = false }: {
   return (
     <div className="it-ops-panel">
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-4">
-        <HealthCard icon={Activity} title="Sync" status={syncStatus} value={syncPaused ? 'Paused' : isOnline ? 'Online' : 'Offline'} detail={lastSync ? `Last sync ${new Date(lastSync).toLocaleString()}` : 'No sync recorded'} />
-        <HealthCard icon={HardDrive} title="Backup" status={backupStatus} value={backupAgeHours === null ? 'None recorded' : `${backupAgeHours}h old`} detail={backupAgeHours === null ? `No backup on this device yet · expected every ${settings.itOperations.backupFrequencyHours}h` : `Expected every ${settings.itOperations.backupFrequencyHours}h`} />
-        <HealthCard icon={Smartphone} title="Devices" status={settings.itOperations.requireDeviceRegistration ? 'healthy' : 'warning'} value={settings.itOperations.requireDeviceRegistration ? 'Registration on' : 'Open'} detail={`Review every ${settings.itOperations.deviceReviewDays} days`} />
+        <HealthCard icon={Activity} title={t('hospitals.colSync')} status={syncStatus} value={syncPaused ? 'Paused' : isOnline ? 'Online' : 'Offline'} detail={lastSync ? `Last sync ${new Date(lastSync).toLocaleString()}` : 'No sync recorded'} />
+        <HealthCard icon={HardDrive} title={t('system.backup')} status={backupStatus} value={backupAgeHours === null ? 'None recorded' : `${backupAgeHours}h old`} detail={backupAgeHours === null ? `No backup on this device yet · expected every ${settings.itOperations.backupFrequencyHours}h` : `Expected every ${settings.itOperations.backupFrequencyHours}h`} />
+        <HealthCard icon={Smartphone} title={t('ui.devices')} status={settings.itOperations.requireDeviceRegistration ? 'healthy' : 'warning'} value={settings.itOperations.requireDeviceRegistration ? 'Registration on' : 'Open'} detail={`Review every ${settings.itOperations.deviceReviewDays} days`} />
         {/* 'unknown', not 'healthy': the retention number is a local setting
             nothing enforces (see /admin/security's "· not enforced" note on
             the same policy) — a green check here claimed a control that does
             not exist. */}
-        <HealthCard icon={ShieldCheck} title="Audit" status="unknown" value={`${settings.itOperations.auditRetentionDays} days`} detail="Retention policy (not enforced)" />
+        <HealthCard icon={ShieldCheck} title={t('ui.audit')} status="unknown" value={`${settings.itOperations.auditRetentionDays} days`} detail="Retention policy (not enforced)" />
       </div>
 
       {/* 50/50 split so the seam lines up with the health-card row above
@@ -183,26 +183,26 @@ export default function ItOperationsPanel({ embedded = false }: {
           <div className="flex items-center justify-between gap-3 px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
             <div className="flex items-center gap-2">
               <Server className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-              <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Operations Console</h2>
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('ui.operationsConsole')}</h2>
             </div>
             <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{currentUser?.hospitalName || currentUser?.organization?.name || 'Platform'}</span>
           </div>
 
           {/* Jobs: one full-width row per runnable job, action on the right. */}
           <div className="px-4 pt-3 pb-1">
-            <p className="it-group-label">Jobs</p>
+            <p className="it-group-label">{t('ui.jobs')}</p>
           </div>
           <div className="px-4 flex flex-col">
             <JobRow
               icon={RefreshCw}
-              label="Start local sync"
+              label={t('ui.startLocalSync')}
               desc="Replicate this device's records with the facility server now."
               busy={syncing}
               onClick={runLocalSync}
             />
             <JobRow
               icon={Upload}
-              label="Push sync events"
+              label={t('ui.pushSyncEvents')}
               desc="Send pending replication events to the country node."
               busy={pushing === 'sync'}
               disabled={!canRunPlatformPush}
@@ -210,7 +210,7 @@ export default function ItOperationsPanel({ embedded = false }: {
             />
             <JobRow
               icon={Upload}
-              label="Push DHIS2 export"
+              label={t('ui.pushDhis2Export')}
               desc="Generate the aggregate dataset and push it to DHIS2."
               busy={pushing === 'dhis2'}
               disabled={!canRunPlatformPush}
@@ -222,7 +222,7 @@ export default function ItOperationsPanel({ embedded = false }: {
           {consoles.length > 0 && (
             <>
               <div className="px-4 pt-4 pb-1">
-                <p className="it-group-label">Consoles</p>
+                <p className="it-group-label">{t('ui.consoles')}</p>
               </div>
               <div className="p-4 pt-1 grid grid-cols-1 md:grid-cols-2 gap-3 mt-auto">
                 {/* SettingsLink, not Link: hosted inside Settings these open
@@ -243,7 +243,7 @@ export default function ItOperationsPanel({ embedded = false }: {
           <div className="flex items-center justify-between gap-2 px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
             <div className="flex items-center gap-2">
               <Database className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-              <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Data Stores</h2>
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('ui.dataStores')}</h2>
             </div>
             <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{loadingStats ? '…' : `${totalDocs.toLocaleString()} documents`}</span>
           </div>
@@ -263,7 +263,7 @@ export default function ItOperationsPanel({ embedded = false }: {
             })}
             {dbStats.length > STORE_BARS_SHOWN && (
               <p className="text-[11px] pt-1" style={{ color: 'var(--text-muted)' }}>
-                Largest {STORE_BARS_SHOWN} of {dbStats.length} stores — the document total above counts all of them.
+                {t('ui.largest')} {STORE_BARS_SHOWN} of {dbStats.length} {t('ui.storesTheDocumentTotalAbove')}
               </p>
             )}
           </div>
@@ -273,7 +273,7 @@ export default function ItOperationsPanel({ embedded = false }: {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
         <section className="dash-card overflow-hidden">
           <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Integrations Enabled in Settings</h2>
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('ui.integrationsEnabledInSettings')}</h2>
           </div>
           <div className="px-4 py-2">
             {/* This list is the facility SETTING (which integrations the
@@ -287,14 +287,14 @@ export default function ItOperationsPanel({ embedded = false }: {
                   <i className="it-dot" style={{ background: 'var(--text-muted)' }} />
                   {integration.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                 </span>
-                <span className="it-pill">Enabled</span>
+                <span className="it-pill">{t('orgAdmin.enabled')}</span>
               </div>
             ))}
           </div>
         </section>
         <section className="dash-card overflow-hidden">
           <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Workflow Controls</h2>
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('ui.workflowControls')}</h2>
           </div>
           <div className="px-4 py-2">
             {[

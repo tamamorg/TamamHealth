@@ -7,8 +7,10 @@ import { useAuth } from '@/lib/context';
 
 import { initials, avatarTint } from '@/lib/patient-utils';
 import { useMessages } from '@/modules/communication/client';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export default function MobileInboxView() {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { messages, loading } = useMessages();
 
@@ -26,7 +28,7 @@ export default function MobileInboxView() {
   }
 
   if (sorted.length === 0) {
-    return <EmptyState title="No messages" message="Messages will appear here." />;
+    return <EmptyState title={t('ui.noMessages')} message="Messages will appear here." />;
   }
 
   return (

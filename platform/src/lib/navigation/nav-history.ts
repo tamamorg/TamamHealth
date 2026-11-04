@@ -30,6 +30,24 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 let current = 0;
 let installed = false;
 
+/**
+ * The address of each page entry, by its index — so "close" can return to the
+ * page the user came from even when slider layers and same-page entries
+ * (a chart's tabs) sit on top of it, which a single history Back cannot step
+ * over. Kept for the tab's session so a reload does not forget it.
+ */
+const URLS_KEY = 'tamamhealth.nav-urls';
+let urls: Record<number, string> = {};
+
+function loadUrls(): void {
+  try { urls = JSON.parse(window.sessionStorage.getItem(URLS_KEY) || '{}') as Record<number, string>; } catch { urls = {}; }
+}
+
+function rememberUrl(): void {
+  urls[current] = window.location.pathname + window.location.search;
+  try { window.sessionStorage.setItem(URLS_KEY, JSON.stringify(urls)); } catch { /* storage full or blocked */ }
+}
+
 type Stamped = { tmIdx?: number; tmLayer?: string } & Record<string, unknown>;
 
 function asObject(data: unknown): Stamped {
@@ -63,6 +81,7 @@ function install(): void {
   });
   // The entry this document opened on: keep a stamp a reload carried over,
   // otherwise it is the floor — nothing in-app behind it.
+  loadUrls();
   const state = asObject(history.state);
   current = typeof state.tmIdx === 'number' ? state.tmIdx : 0;
   if (typeof state.tmIdx !== 'number') {
@@ -77,6 +96,21 @@ export function observeLocation(): void {
   install();
   const idx = (asObject(window.history.state)).tmIdx;
   if (typeof idx === 'number') current = idx;
+  rememberUrl();
+}
+
+/**
+ * The most recent page behind this one that is not `pathname` itself: where
+ * the user was before they opened it. Null when this tab has no such page.
+ */
+export function originBefore(pathname: string): string | null {
+  if (typeof window === 'undefined') return null;
+  install();
+  for (let i = current - 1; i >= 0; i--) {
+    const url = urls[i];
+    if (url && url.split('?')[0] !== pathname) return url;
+  }
+  return null;
 }
 
 /** True when there is an in-app page behind the current one. */
@@ -107,4 +141,5 @@ export function useGoBack(fallbackHref: string): () => void {
 /** Test seam. */
 export function __resetNavHistory(): void {
   current = 0;
+  urls = {};
 }

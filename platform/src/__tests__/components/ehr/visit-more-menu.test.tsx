@@ -68,7 +68,7 @@ describe('visit panel action line', () => {
     const { line, lineLabels } = renderPopup();
 
     const labels = lineLabels();
-    expect(labels).toContain('Open chart');
+    expect(labels).toContain('appointments.openChart');
     for (const gone of ['Escalate', 'LWBS', 'Return to desk', 'Review triage']) {
       expect(labels.some(label => label.includes(gone))).toBe(false);
     }
@@ -121,7 +121,7 @@ describe('visit panel action line', () => {
   it('keeps "Start triage" on the line for an untriaged arrival', () => {
     const { lineLabels, openMore } = renderPopup({ triage: null, entry: null, onEscalate: undefined, onLwbs: undefined, onReturnToDesk: undefined });
 
-    expect(lineLabels()).toContain('Start triage');
+    expect(lineLabels()).toContain('ui.startTriage');
     // Nothing is left for More, so it does not draw an empty menu.
     expect(document.body.querySelector('.ehr-visit-more-trigger')).toBeNull();
     expect(openMore).toThrow();

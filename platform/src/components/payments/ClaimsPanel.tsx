@@ -392,7 +392,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                   </div>
                   {(openClaim.totalDenied || 0) > 0 && (
                     <div>
-                      <span className="bl-stat-label">Denied</span>
+                      <span className="bl-stat-label">{t('claims.status_denied')}</span>
                       <span className="bl-stat-value bl-stat-value--danger">{formatMoney(openClaim.totalDenied || 0, { currency: openClaim.currency || defaultCurrency(), decimals: 2 })}</span>
                     </div>
                   )}
@@ -411,13 +411,13 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                   </div>
                   {openClaim.adjudicatedDate && (
                     <div className="bl-totals-row">
-                      <dt>Adjudicated</dt>
+                      <dt>{t('ui.adjudicated')}</dt>
                       <dd>{new Date(openClaim.adjudicatedDate).toLocaleDateString()}{openClaim.adjudicatedBy ? ` · ${openClaim.adjudicatedBy}` : ''}</dd>
                     </div>
                   )}
                   {!!openClaim.resubmissionCount && (
                     <div className="bl-totals-row">
-                      <dt>Resubmissions</dt>
+                      <dt>{t('ui.resubmissions')}</dt>
                       <dd>{openClaim.resubmissionCount}{openClaim.lastResubmittedAt ? ` · ${new Date(openClaim.lastResubmittedAt).toLocaleDateString()}` : ''}</dd>
                     </div>
                   )}
@@ -432,14 +432,14 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                 <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--ehr-border, #E2E6EB)' }}>
                   {!!openClaim.denialReasons?.length && (
                     <p className="bl-modal-sub" style={{ margin: 0 }}>
-                      <strong style={{ color: 'var(--color-danger, #D92B20)' }}>Denial reason:</strong> {openClaim.denialReasons.join(', ')}
+                      <strong style={{ color: 'var(--color-danger, #D92B20)' }}>{t('ui.denialReason')}</strong> {openClaim.denialReasons.join(', ')}
                     </p>
                   )}
                   {openClaim.adjudicationNotes && (
-                    <p className="bl-modal-sub" style={{ margin: '8px 0 0' }}><strong>Notes:</strong> {openClaim.adjudicationNotes}</p>
+                    <p className="bl-modal-sub" style={{ margin: '8px 0 0' }}><strong>{t('ui.notes')}</strong> {openClaim.adjudicationNotes}</p>
                   )}
                   {openClaim.appealNote && (
-                    <p className="bl-modal-sub" style={{ margin: '8px 0 0' }}><strong>Appeal:</strong> {openClaim.appealNote}</p>
+                    <p className="bl-modal-sub" style={{ margin: '8px 0 0' }}><strong>{t('ui.appeal')}</strong> {openClaim.appealNote}</p>
                   )}
                 </div>
               )}
@@ -472,7 +472,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                   className="bl-btn bl-btn--outline"
                   onClick={() => { setAppealNote(''); setAppealFor(openClaim); setOpenClaim(null); }}
                 >
-                  Appeal denial
+                  {t('ui.appealDenial')}
                 </button>
               )}
               {(openClaim.status === 'accepted' && !!openClaim.payerReceipt) && (
@@ -569,11 +569,11 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
       {/* Appeal modal — denied claim → appealed, with a note for the payer. */}
       {appealFor && (
         <FormSlider
-          title={<>Appeal claim {appealFor.claimNumber}</>}
+          title={<>{t('ui.appealClaim')} {appealFor.claimNumber}</>}
           width={440}
           onClose={() => !lifecycleBusy && setAppealFor(null)}
           footer={<>
-              <button type="button" className="btn btn-secondary" disabled={lifecycleBusy} onClick={() => setAppealFor(null)}>Cancel</button>
+              <button type="button" className="btn btn-secondary" disabled={lifecycleBusy} onClick={() => setAppealFor(null)}>{t('action.cancel')}</button>
               <button type="button" className="btn btn-primary" disabled={lifecycleBusy || !appealNote.trim()} onClick={handleAppeal}>
                 {lifecycleBusy ? 'Submitting…' : 'Submit appeal'}
               </button>
@@ -581,17 +581,17 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
         >
           <div className="bl-root">
             <p className="bl-modal-sub">
-              Denied by {appealFor.payerName} · billed {formatMoney(appealFor.totalBilled || 0, { currency: appealFor.currency || defaultCurrency(), decimals: 2 })}
+              {t('ui.deniedBy')} {appealFor.payerName} {t('ui.billed')} {formatMoney(appealFor.totalBilled || 0, { currency: appealFor.currency || defaultCurrency(), decimals: 2 })}
               {appealFor.denialReasons?.length ? ` · reason: ${appealFor.denialReasons.join(', ')}` : ''}
             </p>
             <div className="bl-field">
-              <label htmlFor="appeal-note">Appeal note</label>
+              <label htmlFor="appeal-note">{t('ui.appealNote')}</label>
               <textarea
                 id="appeal-note"
                 rows={3}
                 value={appealNote}
                 onChange={e => setAppealNote(e.target.value)}
-                placeholder="Why the denial should be reconsidered…"
+                placeholder={t('ui.whyTheDenialShouldBe')}
                 autoFocus
               />
             </div>
@@ -603,12 +603,12 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
           (or a manual amount), then submit through the real claims service. */}
       {newClaimOpen && (
         <FormSlider
-          title="New insurance claim"
+          title={t('ui.newInsuranceClaim')}
           width={480}
           onClose={() => !submittingClaim && resetNewClaim()}
           busy={submittingClaim}
           footer={<>
-              <button type="button" className="btn btn-secondary" disabled={submittingClaim} onClick={resetNewClaim}>Cancel</button>
+              <button type="button" className="btn btn-secondary" disabled={submittingClaim} onClick={resetNewClaim}>{t('action.cancel')}</button>
               <button
                 type="button"
                 className="btn btn-primary"
@@ -624,17 +624,17 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
             {newClaim.patientId ? (
               <div className="bl-id-tag" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '8px 12px' }}>
                 <strong>{patientFullName(patients.find(p => p._id === newClaim.patientId) || { firstName: 'Unknown', surname: '' } as never)}</strong>
-                <button type="button" className="bl-link" onClick={() => setNewClaim(EMPTY_CLAIM)}>Change</button>
+                <button type="button" className="bl-link" onClick={() => setNewClaim(EMPTY_CLAIM)}>{t('consultation.change')}</button>
               </div>
             ) : (
               <div className="bl-field">
-                <label htmlFor="claim-patient-search">Patient</label>
+                <label htmlFor="claim-patient-search">{t('appointments.labelPatient')}</label>
                 <input
                   id="claim-patient-search"
                   type="text"
                   value={patientSearch}
                   onChange={e => setPatientSearch(e.target.value)}
-                  placeholder="Search by name or hospital number…"
+                  placeholder={t('nurse.searchPatientPlaceholder')}
                   autoFocus
                 />
                 {patientSearch.trim().length >= 2 && (
@@ -663,17 +663,17 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
             {newClaim.patientId && (
               patientPolicies.length === 0 ? (
                 <p className="bl-muted" style={{ fontSize: 12.5 }}>
-                  This patient has no insurance policy on file — add one from their chart&rsquo;s Billing tab first.
+                  {t('ui.thisPatientHasNoInsurance')}
                 </p>
               ) : (
                 <div className="bl-field">
-                  <label htmlFor="claim-policy">Insurance policy</label>
+                  <label htmlFor="claim-policy">{t('ui.insurancePolicy')}</label>
                   <Select
                     id="claim-policy"
                     value={newClaim.policyId}
                     onChange={e => setNewClaim(f => ({ ...f, policyId: e.target.value }))}
                   >
-                    <option value="">Select policy…</option>
+                    <option value="">{t('ui.selectPolicy')}</option>
                     {patientPolicies.map(pol => (
                       <option key={pol._id} value={pol._id}>
                         {pol.payerName}{pol.memberId ? ` · ${pol.memberId}` : ''}{pol.isPrimary ? ' (primary)' : ''}
@@ -688,16 +688,16 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
             {newClaim.patientId && patientPolicies.length > 0 && (
               <>
                 <div className="bl-field">
-                  <label htmlFor="claim-bill">Bill to claim against</label>
+                  <label htmlFor="claim-bill">{t('ui.billToClaimAgainst')}</label>
                   <Select
                     id="claim-bill"
                     value={newClaim.billingId}
                     onChange={e => setNewClaim(f => ({ ...f, billingId: e.target.value }))}
                   >
-                    <option value="">No linked bill — enter amount manually</option>
+                    <option value="">{t('ui.noLinkedBillEnterAmount')}</option>
                     {patientBills.map(b => (
                       <option key={b._id} value={b._id}>
-                        {formatMoney(b.balanceDue ?? 0, { currency: b.currency, decimals: 2 })} outstanding · {(b.encounterDate || b.createdAt || '').slice(0, 10)}
+                        {formatMoney(b.balanceDue ?? 0, { currency: b.currency, decimals: 2 })} {t('ui.outstanding')} {(b.encounterDate || b.createdAt || '').slice(0, 10)}
                       </option>
                     ))}
                   </Select>
@@ -708,7 +708,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                     <Select id="claim-currency" value={newClaim.currency} onChange={e => setNewClaim(f => ({ ...f, currency: e.target.value }))}>
                       {offeredCurrencies().map(currency => <option key={currency} value={currency}>{currency}</option>)}
                     </Select>
-                    <label htmlFor="claim-amount">Claim amount</label>
+                    <label htmlFor="claim-amount">{t('ui.claimAmount')}</label>
                     <NumberInput
                       id="claim-amount" step="any"
                       min="0"

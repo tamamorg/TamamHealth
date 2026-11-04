@@ -139,16 +139,16 @@ export default function PatientVitalsTab({ patientAgeYears, isPregnant, vitalsVi
                 <table className="tamam-table" style={{ minWidth: 960 }}>
                   <thead>
                     <tr>
-                      <th>Date</th>
-                      <th>Source</th>
-                      <th>Temp (°C)</th>
-                      <th>BP (mmHg)</th>
-                      <th>Pulse</th>
+                      <th>{t('billing.activityColumn.date')}</th>
+                      <th>{t('ui.source')}</th>
+                      <th>{t('nurse.tempC')}</th>
+                      <th>{t('anc.bpMmhg')}</th>
+                      <th>{t('nurse.pulse')}</th>
                       <th>{t('scribe.vitalRespRate')}</th>
-                      <th>SpO₂</th>
-                      <th>Weight (kg)</th>
+                      <th>{t('nurse.vital_oxygenSaturation')}</th>
+                      <th>{t('anc.weightKg')}</th>
                       <th>BMI</th>
-                      <th>Facility</th>
+                      <th>{t('births.colFacility')}</th>
                       <th>{t('chart.actions')}</th>
                     </tr>
                   </thead>
@@ -156,7 +156,7 @@ export default function PatientVitalsTab({ patientAgeYears, isPregnant, vitalsVi
                     {vitalsTimeline.length === 0 && (
                       <tr>
                         <td colSpan={11} className="text-center text-sm py-8" style={{ color: 'var(--text-muted)' }}>
-                          No vitals recorded yet for this patient.
+                          {t('ui.noVitalsRecordedYetFor')}
                         </td>
                       </tr>
                     )}

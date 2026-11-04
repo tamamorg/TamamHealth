@@ -493,7 +493,7 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
           <div>
             <label style={labelStyle}>{t('orgAdmin.labelContactEmail')}</label>
             <input type="email" id="org-form-email" value={form.contactEmail} onChange={e => setForm(p => ({ ...p, contactEmail: e.target.value }))}
-              placeholder="support.tamam@gmail.com" style={inputStyle} />
+              placeholder={t('ui.supportTamamGmailCom')} style={inputStyle} />
           </div>
           <div>
             <label style={labelStyle}>{t('orgAdmin.labelCountry')}</label>

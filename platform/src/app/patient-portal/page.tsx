@@ -351,9 +351,9 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
 
       {/* ── Top bar — brand · facility · search · patient chip. ── */}
       <header className="pp-top">
-        <button type="button" className="pp-top-brand" onClick={() => goTab('overview')} aria-label="Patient portal home">
+        <button type="button" className="pp-top-brand" onClick={() => goTab('overview')} aria-label={t('ui.patientPortalHome')}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/assets/tamamhealth-logo-full-white.svg" alt="Tamam Healthcare System" />
+          <img src="/assets/tamamhealth-logo-full-white.svg" alt={t('ui.tamamHealthcareSystem')} />
         </button>
         <span className="pp-top-rule" aria-hidden />
         <span className="pp-top-facility" title={patientFacilityName}>{patientFacilityName}</span>
@@ -366,12 +366,12 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
               onChange={e => { setSearchQ(e.target.value); setSearchOpen(e.target.value.trim().length >= 2); }}
               onFocus={() => setSearchOpen(searchQ.trim().length >= 2)}
               onBlur={() => setTimeout(() => setSearchOpen(false), 120)}
-              placeholder="Search your records, results, medications"
-              aria-label="Search your records"
+              placeholder={t('ui.searchYourRecordsResultsMedications')}
+              aria-label={t('ui.searchYourRecords')}
               type="search"
             />
             {searchQ && (
-              <button type="button" className="pp-search-clear" onClick={() => { setSearchQ(''); setSearchOpen(false); }} aria-label="Clear search">
+              <button type="button" className="pp-search-clear" onClick={() => { setSearchQ(''); setSearchOpen(false); }} aria-label={t('ui.clearSearch')}>
                 <X size={9} strokeWidth={2.4} />
               </button>
             )}
@@ -379,7 +379,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           {searchOpen && (
             <div className="pp-pop pp-search-menu">
               {searchResults.length === 0 ? (
-                <p>No matches in your records.</p>
+                <p>{t('ui.noMatchesInYourRecords')}</p>
               ) : searchResults.map(r => (
                 <button key={r.key} type="button" onMouseDown={e => { e.preventDefault(); goTab(r.tab); }}>
                   <strong>{r.title}</strong>
@@ -400,7 +400,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                 ? <img src={patient.photoUrl} alt="" />
                 : initials}
             </span>
-            <span className="pp-user-role">Patient</span>
+            <span className="pp-user-role">{t('appointments.labelPatient')}</span>
           </button>
           {userMenuOpen && (
             <>
@@ -426,7 +426,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
 
         {/* ── Sidebar — three groups per the design; emergencies note pinned
             at the bottom. Collapses to a horizontal strip on small screens. ── */}
-        <aside className="pp-side" aria-label="Patient portal sections">
+        <aside className="pp-side" aria-label={t('ui.patientPortalSections')}>
           {navGroups.map(group => (
             <div key={group.title} className="pp-side-group">
               <p className="pp-side-title">{group.title}</p>
@@ -527,18 +527,18 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                   <Calendar size={15} strokeWidth={1.8} /> {t('patientPortal.bookAppointment')}
                 </button>
                 <button type="button" className="pp-hero-btn" onClick={() => goTab('chat')}>
-                  <MessageSquare size={15} strokeWidth={1.8} /> Message care team
+                  <MessageSquare size={15} strokeWidth={1.8} /> {t('ui.messageCareTeam')}
                 </button>
                 <button type="button" className="pp-hero-btn" onClick={() => goTab('lab')}>
-                  <FlaskConical size={15} strokeWidth={1.8} /> View results{pendingLabCount > 0 ? ` (${pendingLabCount})` : ''}
+                  <FlaskConical size={15} strokeWidth={1.8} /> {t('ui.viewResults')}{pendingLabCount > 0 ? ` (${pendingLabCount})` : ''}
                 </button>
                 <button type="button" className="pp-hero-btn" onClick={() => goTab('billing')}>
-                  <Wallet size={15} strokeWidth={1.8} /> Pay a bill
+                  <Wallet size={15} strokeWidth={1.8} /> {t('ui.payABill')}
                 </button>
               </div>
             </div>
             <div className="pp-hero-next">
-              <p className="pp-hero-next-label"><Clock size={13} strokeWidth={1.8} /> Next visit</p>
+              <p className="pp-hero-next-label"><Clock size={13} strokeWidth={1.8} /> {t('visitSummary.followUp')}</p>
               {nextApt ? (
                 <button type="button" className="pp-hero-next-body" onClick={() => goTab('appointments')}>
                   <span className="pp-date-plate"><b>{dateParts(nextApt.appointmentDate).day}</b><small>{dateParts(nextApt.appointmentDate).mon}</small></span>
@@ -550,8 +550,8 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                 </button>
               ) : (
                 <div className="pp-hero-next-empty">
-                  <p>No visit booked yet.</p>
-                  <button type="button" className="pp-hero-btn pp-hero-btn--solid" onClick={() => setShowBooking(true)}>Book your next visit</button>
+                  <p>{t('ui.noVisitBookedYet')}</p>
+                  <button type="button" className="pp-hero-btn pp-hero-btn--solid" onClick={() => setShowBooking(true)}>{t('ui.bookYourNextVisit')}</button>
                 </div>
               )}
             </div>
@@ -560,7 +560,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           {/* Things to do */}
           {todos.length > 0 && (
             <div className="pp-card pp-card--section">
-              <CardHead icon={CheckCircle2} title="Things to do" tone="amber" right={<small>{todos.length} open</small>} />
+              <CardHead icon={CheckCircle2} title={t('ui.thingsToDo')} tone="amber" right={<small>{todos.length} open</small>} />
               <div className="pp-todos">
                 {todos.map(td => (
                   <button key={td.key} type="button" className="pp-todo" onClick={td.go}>
@@ -581,14 +581,14 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           {/* Latest vitals */}
           {vitalTiles.length > 0 && (
             <>
-              <h2 className="pp-section-title"><Heart size={14} strokeWidth={1.8} /> Latest vitals <small>{latestDate ? `${shortDate(latestDate)} · ${latestVisitType}` : ''}</small></h2>
+              <h2 className="pp-section-title"><Heart size={14} strokeWidth={1.8} /> {t('sbar.latestVitals')} <small>{latestDate ? `${shortDate(latestDate)} · ${latestVisitType}` : ''}</small></h2>
               <div className="pp-tiles">
                 {vitalTiles.map(v => (
                   <div key={v.key} className={`pp-tile pp-tile--${v.tone}`} title={v.note}>
                     <p className="pp-tile-label">{v.label}</p>
                     <p className="pp-tile-value">{v.value} <small>{v.unit}</small></p>
                     <p className="pp-tile-sub">
-                      {v.tone === 'neutral' ? null : v.tone !== 'ok' ? <b className="pp-tile-flag">{v.tone === 'bad' ? 'Needs attention' : 'Outside normal range'}</b> : <b className="pp-tile-flag pp-tile-flag--ok">In normal range</b>}
+                      {v.tone === 'neutral' ? null : v.tone !== 'ok' ? <b className="pp-tile-flag">{v.tone === 'bad' ? 'Needs attention' : 'Outside normal range'}</b> : <b className="pp-tile-flag pp-tile-flag--ok">{t('ui.inNormalRange')}</b>}
                       {v.delta && <span>{v.delta.dir === 'same' ? 'No change since last visit' : `${v.delta.dir === 'up' ? 'Up' : 'Down'} ${v.delta.amount} since last visit`}</span>}
                     </p>
                   </div>
@@ -601,7 +601,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
             {/* Upcoming appointments */}
             <div className="pp-card">
               <CardHead icon={Calendar} title={t('patientPortal.upcomingAppointments')} tone="blue"
-                right={<button type="button" className="pp-card-link" onClick={() => goTab('appointments')}>All ›</button>} />
+                right={<button type="button" className="pp-card-link" onClick={() => goTab('appointments')}>{t('ui.all')}</button>} />
               {upcomingApts.length > 0 ? upcomingApts.slice(0, 3).map(apt => {
                 const { day, mon } = dateParts(apt.appointmentDate);
                 const chip = aptChip(apt.status);
@@ -640,7 +640,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
               )) : (
                 <div className="pp-empty-line"><p>{t('patientPortal.noMedications')}</p></div>
               )}
-              <button type="button" className="pp-card-foot" onClick={() => goTab('prescriptions')}>All prescriptions ›</button>
+              <button type="button" className="pp-card-foot" onClick={() => goTab('prescriptions')}>{t('ui.allPrescriptions')}</button>
             </div>
 
             {/* Health alerts */}
@@ -682,7 +682,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                       <i className="pp-dot" style={{ background: 'var(--accent-primary)' }} />
                       <div className="pp-row-main">
                         <b style={{ fontSize: 13 }}>{t('patientPortal.pendingLabResults', { count: pendingLabCount })}</b>
-                        <span style={{ fontSize: 11.5 }}>Results are released after your clinician reviews them.</span>
+                        <span style={{ fontSize: 11.5 }}>{t('ui.resultsAreReleasedAfterYour')}</span>
                       </div>
                     </div>
                   )}
@@ -713,7 +713,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           <div className="pp-head">
             <div>
               <h1>{t('patientPortal.tabAppointments')}</h1>
-              <p className="pp-head-note">Upcoming and past visits.</p>
+              <p className="pp-head-note">{t('ui.upcomingAndPastVisits')}</p>
             </div>
             <button type="button" className="pp-btn pp-btn-primary" onClick={() => setShowBooking(true)}>{t('patientPortal.bookAppointment')}</button>
           </div>
@@ -746,7 +746,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           <div className="pp-head">
             <div>
               <h1>{t('patientPortal.tabMedicalRecords')}</h1>
-              <p className="pp-head-note">Notes and visit summaries your clinicians have shared with you.</p>
+              <p className="pp-head-note">{t('ui.notesAndVisitSummariesYour')}</p>
             </div>
           </div>
           {records.length === 0 ? (
@@ -767,7 +767,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                         <span>{shortDate(rec.createdAt?.slice(0, 10) || '')} · {((r.diagnoses as Array<{ name: string }>) || []).map(d => d.name).join(', ') || t('patientPortal.noDiagnosisRecorded')}</span>
                       </div>
                       <span className="pp-row-action" aria-hidden>
-                        View <ChevronRight size={12} style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
+                        {t('anc.view')} <ChevronRight size={12} style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
                       </span>
                     </button>
                     {open && (
@@ -809,7 +809,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           <div className="pp-head">
             <div>
               <h1>{t('patientPortal.tabLabResults')}</h1>
-              <p className="pp-head-note">Results are released after your clinician reviews them.</p>
+              <p className="pp-head-note">{t('ui.resultsAreReleasedAfterYour')}</p>
             </div>
           </div>
           {labResults.length === 0 ? (
@@ -834,7 +834,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                       <span className={`pp-chip pp-chip--${chip.tone}`}>{chip.label}</span>
                       {lab.status === 'completed' && (
                         <span className="pp-row-action" aria-hidden>
-                          View <ChevronRight size={12} style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
+                          {t('anc.view')} <ChevronRight size={12} style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
                         </span>
                       )}
                     </button>
@@ -874,7 +874,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           <div className="pp-head">
             <div>
               <h1>{t('patientPortal.tabPrescriptions')}</h1>
-              <p className="pp-head-note">What you have been prescribed, and what each is for.</p>
+              <p className="pp-head-note">{t('ui.whatYouHaveBeenPrescribed')}</p>
             </div>
           </div>
           {prescriptions.length === 0 ? (
@@ -936,7 +936,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                         <b>{svc}</b>
                         <span>{t('patientPortal.imagingNotice')}</span>
                       </div>
-                      <span className="pp-chip pp-chip--blue">Service</span>
+                      <span className="pp-chip pp-chip--blue">{t('billing.service')}</span>
                     </div>
                   ))}
                 </div>
@@ -976,10 +976,10 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
                     {due ? (
                       <>
                         <span className="pp-chip pp-chip--yellow">{t('patientPortal.nextDue', { date: shortDate(imm.nextDueDate!) })}</span>
-                        <button type="button" className="pp-row-action" onClick={() => setShowBooking(true)}>Book</button>
+                        <button type="button" className="pp-row-action" onClick={() => setShowBooking(true)}>{t('frontDesk.bookThisPatient')}</button>
                       </>
                     ) : (
-                      <span className="pp-chip pp-chip--green">Given</span>
+                      <span className="pp-chip pp-chip--green">{t('anc.optGiven')}</span>
                     )}
                   </div>
                 );

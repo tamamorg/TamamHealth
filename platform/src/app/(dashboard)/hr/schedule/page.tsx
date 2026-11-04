@@ -105,7 +105,7 @@ export default function HrSchedulePage() {
     <HrPageShell>
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="hr-schedule-list">
         <EhrListHeader
-          title="Shift schedule"
+          title={t('ui.shiftSchedule')}
           count={schedules.length}
           stats={[
             ...SHIFT_TYPES.map(shift => ({
@@ -144,10 +144,10 @@ export default function HrSchedulePage() {
           >
             <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--color-danger-text)' }}>
               <AlertTriangle className="w-4 h-4" />
-              Staffing shortfall
+              {t('ui.staffingShortfall')}
             </span>
             <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              Below the configured minimum for {date}.
+              {t('ui.belowTheConfiguredMinimumFor')} {date}.
             </span>
             <div className="flex flex-wrap gap-2 ms-auto">
               {staffingGaps.map(g => (
@@ -170,7 +170,7 @@ export default function HrSchedulePage() {
             className="mx-4 mt-3 mb-1 p-3 rounded-xl text-[11px] font-semibold"
             style={{ background: 'rgba(15, 160, 106, 0.08)', border: '1px solid rgba(15, 160, 106, 0.3)', color: 'var(--color-success-text)' }}
           >
-            Fully staffed — every shift type meets its configured minimum for {date}.
+            {t('ui.fullyStaffedEveryShiftType')} {date}.
           </div>
         )}
         {/* The patient registry's list, exactly: the same surface + flow
@@ -186,14 +186,14 @@ export default function HrSchedulePage() {
             <div className="appointment-card-head" aria-hidden="true">
               <span>{t('hr.colStaff')}</span>
               <span>{t('hr.labelShift')}</span>
-              <span>Time</span>
+              <span>{t('noteEditor.time')}</span>
               <span>{t('hr.labelDepartment')}</span>
               <span>{t('hr.colStatus')}</span>
             </div>
             {schedules.length === 0 && (
               <EmptyState
                 icon={CalendarClock}
-                title="No shifts scheduled"
+                title={t('ui.noShiftsScheduled')}
                 message={`${t('hr.noShiftsScheduled', { date })} ${t('hr.scheduleShift')} ${t('hr.aboveToAddOne')}`}
                 action={{ label: 'Create shift', onClick: () => setOpen(true) }}
               />

@@ -41,8 +41,8 @@ export const CLINICAL_SPECIALTIES: readonly { value: ClinicalSpecialty; label: s
   { value: 'psychiatry', label: 'Psychiatry', aliases: ['psychiatrist'] },
   { value: 'radiology', label: 'Radiology', aliases: ['radiologist'] },
   { value: 'paediatrics', label: 'Paediatrics', aliases: ['pediatrics', 'paediatrician', 'pediatrician'] },
-  { value: 'obstetrics_gynaecology', label: 'Obstetrics & gynaecology', aliases: ['obstetrics and gynaecology', 'obstetrics and gynecology', 'ob/gyn', 'obgyn'] },
-  { value: 'physiotherapy', label: 'Physiotherapy', aliases: ['physiotherapist', 'physical therapy', 'rehabilitation'] },
+  { value: 'obstetrics_gynaecology', label: 'Obstetrics & gynaecology', aliases: ['obstetrics and gynaecology', 'obstetrics and gynecology', 'obstetrics & gynecology', 'ob/gyn', 'obgyn', 'gynaecologist', 'gynecologist'] },
+  { value: 'physiotherapy', label: 'Physiotherapy', aliases: ['physiotherapist', 'physical therapy', 'physical therapist', 'rehabilitation'] },
 ] as const;
 
 function normalized(value: string): string {

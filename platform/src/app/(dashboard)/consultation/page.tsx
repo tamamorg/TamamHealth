@@ -172,11 +172,11 @@ export default function ConsultationRedirectPage() {
       <div className="cn-empty">
         <p>{error}</p>
         <button type="button" className="cn-btn" onClick={() => router.push('/patients')}>
-          Go to Patients
+          {t('keyboardShortcuts.goToPatients')}
         </button>
       </div>
     );
   }
 
-  return <div className="cn-empty">Opening clinical note…</div>;
+  return <div className="cn-empty">{t('ui.openingClinicalNote')}</div>;
 }

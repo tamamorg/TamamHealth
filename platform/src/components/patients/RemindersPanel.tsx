@@ -78,18 +78,18 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
           </colgroup>
           <thead>
             <tr>
-              <th>Message</th>
-              <th>Channel</th>
-              <th>Send date</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th>{t('lab.message')}</th>
+              <th>{t('feedback.channel')}</th>
+              <th>{t('ui.sendDate')}</th>
+              <th>{t('billing.activityColumn.status')}</th>
+              <th>{t('adminBilling.colActions')}</th>
             </tr>
           </thead>
           <tbody>
             {reminders.length === 0 && (
               <tr>
                 <td colSpan={5} style={{ cursor: 'default', background: 'transparent' }}>
-                  <OmrsEmptyState itemLabel="reminders" actionLabel="Queue reminder" onAction={() => setAdding(true)} />
+                  <OmrsEmptyState itemLabel="reminders" actionLabel={t('ui.queueReminder')} onAction={() => setAdding(true)} />
                 </td>
               </tr>
             )}
@@ -116,8 +116,8 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
                     <RowActionsMenu
                       ariaLabel="Reminder actions"
                       actions={r.status === 'queued' ? [
-                        { key: 'sent', label: 'Mark sent', onClick: () => markSent(r._id) },
-                        { key: 'cancel', label: 'Cancel reminder', tone: 'danger', onClick: () => cancel(r._id) },
+                        { key: 'sent', label: t('ui.markSent'), onClick: () => markSent(r._id) },
+                        { key: 'cancel', label: t('ui.cancelReminder'), tone: 'danger', onClick: () => cancel(r._id) },
                       ] : []}
                     />
                   </td>

@@ -131,6 +131,7 @@ export default function PatientHistoryTab({ patient, patientProblems, vitalsTime
               onOpenEvent={canViewClinical ? openEvent : undefined}
               renderEventActions={canViewClinical ? event => <RowActionsMenu actions={eventActions(event)} ariaLabel={t('timeline.actions')} /> : undefined}
               focusId={focusId}
+              returnKey={patient._id}
             />
       )}
       {noteViewer && (

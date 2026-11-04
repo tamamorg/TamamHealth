@@ -242,10 +242,10 @@ function TransferPackageViewer({ pkg, refAttachments, reason, notes, onPreview }
                       )}
                       {rec.vitalSigns && (
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                          <span>Temp: {rec.vitalSigns.temperature}°C</span>
-                          <span>BP: {rec.vitalSigns.systolic}/{rec.vitalSigns.diastolic}</span>
-                          <span>Pulse: {rec.vitalSigns.pulse}</span>
-                          <span>SpO2: {rec.vitalSigns.oxygenSaturation}%</span>
+                          <span>{t('ui.temp')} {rec.vitalSigns.temperature}°C</span>
+                          <span>{t('ui.bp')} {rec.vitalSigns.systolic}/{rec.vitalSigns.diastolic}</span>
+                          <span>{t('ui.pulse')} {rec.vitalSigns.pulse}</span>
+                          <span>{t('ui.spo2')} {rec.vitalSigns.oxygenSaturation}%</span>
                         </div>
                       )}
                       {rec.prescriptions.length > 0 && (
@@ -678,12 +678,12 @@ export default function ReferralsPage() {
             {/* The column head is the list's frame, not a label for whichever
                 rows happen to be loaded — it stays put when nothing matches. */}
             <div className="appointment-card-head" aria-hidden="true">
-              <span>Patient</span>
+              <span>{t('appointments.labelPatient')}</span>
               {/* One side of the route is always the viewer's own facility, so
                   the column names only the counterpart. */}
               <span>{activeTab === 'incoming' ? t('referrals.colReferredFrom') : t('referrals.colReferredTo')}</span>
-              <span>Context</span>
-              <span>Status</span>
+              <span>{t('ui.context')}</span>
+              <span>{t('billing.activityColumn.status')}</span>
               {canManageReferrals && <span>{t('chart.actions')}</span>}
             </div>
             {filteredReferrals.length === 0 ? (
@@ -790,7 +790,7 @@ export default function ReferralsPage() {
                     </div>
                     <div className="appointment-card-provider">
                       <strong>{ref.department || 'Department unassigned'}</strong>
-                      <span>Referral service</span>
+                      <span>{t('ui.referralService')}</span>
                     </div>
                     {/* Status reads: the pill with the urgency as the small
                         operational cue beneath it. What can be done to the

@@ -8,7 +8,7 @@ export function TriageRail({ f }: { f: TriageFormState }) {
   return (
     <>
       {lockedPatientId && (
-        <aside className="tamam-reg-rail" aria-label="Triage progress">
+        <aside className="tamam-reg-rail" aria-label={t('ui.triageProgress')}>
           <h1 className="tamam-reg-title">{t('triageForm.railTitle')}</h1>
           {selectedTriagePatient && (
             <div className="triage-rail-patient">
@@ -28,9 +28,9 @@ export function TriageRail({ f }: { f: TriageFormState }) {
               </button>
             </div>
           )}
-          <p className="tamam-reg-railnote">Complete the assessment from top to bottom, then save the triage record.</p>
+          <p className="tamam-reg-railnote">{t('ui.completeTheAssessmentFromTop')}</p>
           <p className="tamam-reg-jump">{t('triageForm.assessmentSteps')}</p>
-          <nav className="tamam-reg-nav" aria-label="Triage sections">
+          <nav className="tamam-reg-nav" aria-label={t('ui.triageSections')}>
             {triageSections.map(section => {
               const isCurrent = activeSection === section.id;
               return (

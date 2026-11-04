@@ -24,6 +24,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNo
 import { createPortal } from 'react-dom';
 import { ChevronDown, Filter, Search, X } from '@/components/icons/lucide';
 import EhrPageTitle from '@/components/ehr/EhrPageTitle';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export interface EhrListHeaderStat {
   label: string;
@@ -357,6 +358,7 @@ function FilterPanel({
   onClose: () => void;
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
   return createPortal(
     <div
       ref={panelRef}
@@ -365,18 +367,23 @@ function FilterPanel({
       className="ehr-list-filters-panel"
       style={{ top: coords.top, left: coords.left, width: coords.width, maxHeight: coords.maxHeight }}
     >
+      {/* Drawn as the popups are: a grey title band with ✕, the fields on the
+          form surface, and the two-part action bar — Clear all | Done. */}
       <div className="ehr-list-filters-head">
         <span>{label}</span>
-        <div className="flex items-center gap-2">
-          {activeCount > 0 && onClear && (
-            <button type="button" onClick={onClear} className="text-[11px] font-semibold" style={{ color: 'var(--accent-primary)' }}>Clear all</button>
-          )}
-          <button type="button" onClick={onClose} className="p-1 rounded hover:bg-[var(--overlay-subtle)]" aria-label="Close">
-            <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-          </button>
-        </div>
+        <button type="button" onClick={onClose} className="ehr-list-filters-close" aria-label={t('billing.activityClose')}>
+          <X className="w-4 h-4" />
+        </button>
       </div>
       <div className="ehr-list-filters-body">{children}</div>
+      <div className="ehr-list-filters-foot tm-action-bar">
+        <button type="button" className="tm-action-bar__btn tm-action-bar__btn--secondary" onClick={onClear} disabled={!onClear || activeCount === 0}>
+          {t('ui.clearAll')}
+        </button>
+        <button type="button" className="tm-action-bar__btn tm-action-bar__btn--primary" onClick={onClose}>
+          {t('common.done')}
+        </button>
+      </div>
     </div>,
     document.body,
   );

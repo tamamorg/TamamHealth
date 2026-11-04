@@ -258,7 +258,7 @@ export default function AlertsPage() {
     <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
         <EhrListHeader
-          title="All alerts"
+          title={t('ui.allAlerts')}
           count={counts.all}
           stats={[
             { label: 'Critical', value: counts.critical, color: 'var(--color-danger)' },
@@ -272,7 +272,7 @@ export default function AlertsPage() {
           {visibleAlerts.length === 0 ? (
             <EmptyState
               icon={CheckCircle2}
-              title="All clear"
+              title={t('ui.allClear')}
               message="No active clinical alerts. We will notify you the moment something needs attention."
             />
           ) : (

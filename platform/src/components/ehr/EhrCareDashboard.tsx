@@ -32,6 +32,7 @@ import { toIsoDate as visitIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import type { AppointmentStatus } from '@/lib/db-types';
 import { readCareDashboardUrl, updateCareDashboardSearch } from '@/lib/navigation/care-dashboard-url';
 import { stopsClickPropagation } from '@/lib/a11y';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const EHR_CARE_PREVIEW_HISTORY_KEY = '__tamamEhrCarePreview';
 /** Marks a visit-status pick on a locked row's picker, whose own options are
@@ -384,6 +385,7 @@ export default function EhrCareDashboard({
   autoOpenRowId?: string | null;
   children?: ReactNode;
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   // Sliders dock over the right panel on a dashboard (see the hook).
   const rightRailRef = useRef<HTMLElement>(null);
@@ -854,7 +856,7 @@ export default function EhrCareDashboard({
                   <button
                     type="button"
                     className="ehr-queue-search-clear"
-                    aria-label="Clear search"
+                    aria-label={t('ui.clearSearch')}
                     onClick={() => onSearchChange('')}
                   >
                     <X className="w-3.5 h-3.5" />
@@ -895,11 +897,11 @@ export default function EhrCareDashboard({
                       empty day or a filter that matches nothing, so the table
                       never collapses into a bare message. */}
                   <div className="appointment-card-head" aria-hidden="true">
-                    <span>Patient</span>
-                    <span>Time</span>
-                    <span>Care team</span>
-                    <span>Context</span>
-                    <span>Status</span>
+                    <span>{t('appointments.labelPatient')}</span>
+                    <span>{t('noteEditor.time')}</span>
+                    <span>{t('chartMessages.careTeam')}</span>
+                    <span>{t('ui.context')}</span>
+                    <span>{t('billing.activityColumn.status')}</span>
                   </div>
                   {visibleRows.length === 0 && (
                     <div className="ehr-empty-state">

@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { ArrowLeft, ChevronDown, ChevronUp, Check, X } from '@/components/icons/lucide';
 import type { TourStep } from '@/lib/tour/types';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const CARD_WIDTH = 300;
 const GAP = 14;
@@ -81,6 +82,7 @@ export default function TourCard({
   onSkip: () => void;
   isLast: boolean;
 }) {
+  const { t } = useTranslation();
   const cardRef = useRef<HTMLDivElement>(null);
   const [cardH, setCardH] = useState(180);
   const [showAllSteps, setShowAllSteps] = useState(false);
@@ -161,12 +163,12 @@ export default function TourCard({
           {/* "Step 3 of 10" rather than "3/10": the tour is read once, by
               someone learning the product, and a ratio makes them decode it. */}
           <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--accent-primary)', letterSpacing: '0.02em' }}>
-            Step {index + 1} of {total}
+            {t('ui.step')} {index + 1} of {total}
           </span>
           <button
             type="button"
             onClick={onSkip}
-            aria-label="Close tour"
+            aria-label={t('ui.closeTour')}
             style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2, lineHeight: 0 }}
           >
             <X className="w-4 h-4" />
@@ -259,13 +261,13 @@ export default function TourCard({
             <button
               type="button"
               onClick={onBack}
-              aria-label="Previous step"
+              aria-label={t('ui.previousStep')}
               style={{
                 display: 'flex', alignItems: 'center', gap: 4, background: 'transparent', border: 'none',
                 color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '6px 4px',
               }}
             >
-              <ArrowLeft className="w-3.5 h-3.5" /> Back
+              <ArrowLeft className="w-3.5 h-3.5" /> {t('action.back')}
             </button>
           ) : <span />}
 

@@ -17,6 +17,7 @@ import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import Modal from '@/components/Modal';
 import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import InlineBanner from '@/components/overlay/InlineBanner';
+import NoticeToast from '@/components/overlay/NoticeToast';
 import { useToast } from '@/components/Toast';
 import { Printer, MessageSquare } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -206,9 +207,9 @@ export default function PrescriptionCopyDialog({
           <DialogBody>
             <div className="ph-stack">
               {!settings.clinicalPolicy.onSitePharmacy && (
-                <InlineBanner tone="info" title={t('patientCopy.noPharmacyTitle')}>
+                <NoticeToast tone="info" title={t('patientCopy.noPharmacyTitle')}>
                   {t('patientCopy.noPharmacyBody')}
-                </InlineBanner>
+                </NoticeToast>
               )}
               {offered.length === 0 ? (
                 <InlineBanner tone="warning">{t('patientCopy.nothingActive')}</InlineBanner>
@@ -256,9 +257,9 @@ export default function PrescriptionCopyDialog({
                 </label>
               )}
               {text.withheld.length > 0 && (
-                <InlineBanner tone="warning" compact>
+                <NoticeToast tone="warning">
                   {t('patientCopy.controlledWithheld', { names: text.withheld.map(rx => rx.medication).join(', ') })}
-                </InlineBanner>
+                </NoticeToast>
               )}
             </div>
           </DialogBody>

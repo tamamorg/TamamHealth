@@ -208,7 +208,7 @@ export default function BookingFlow({
   // ── Confirmed ──
   if (step === 'done' && confirmation) {
     return (
-      <BookingCard title="Appointment requested" onClose={onClose}>
+      <BookingCard title={t('ui.appointmentRequested')} onClose={onClose}>
         <p className="booking-hint" style={{ fontSize: 15 }}>
           {confirmation.status === 'scheduled'
             ? 'Your appointment is confirmed.'
@@ -221,7 +221,7 @@ export default function BookingFlow({
           {confirmation.visitReasonName} · {confirmation.providerName} · {confirmation.facilityName}
         </span>
         <p className="booking-hint">
-          Keep this reference — you can check or cancel this booking with it.
+          {t('ui.keepThisReferenceYouCan')}
         </p>
       </BookingCard>
     );
@@ -235,7 +235,7 @@ export default function BookingFlow({
 
         {eligibleReasons.length === 0 ? (
           <p className="booking-empty-note">
-            This practice is not taking {patientClass === 'new' ? 'new' : 'returning'} patients online right now.
+            {t('ui.thisPracticeIsNotTaking')} {patientClass === 'new' ? 'new' : 'returning'} {t('ui.patientsOnlineRightNow')}
           </p>
         ) : (
           <BookingSelect value={reasonId} onChange={v => { setReasonId(v); setTime(''); }} ariaLabel="Reason for visit">
@@ -259,7 +259,7 @@ export default function BookingFlow({
             />
             <div className="booking-divider" />
             {loadingSlots
-              ? <p className="booking-empty-note">Loading times…</p>
+              ? <p className="booking-empty-note">{t('ui.loadingTimes')}</p>
               : slotNote
                 ? <p className="booking-empty-note">{slotNote}</p>
                 : <SlotChips times={times} selected={time} onPick={pickTime} />}
@@ -286,25 +286,25 @@ export default function BookingFlow({
 
       {step === 'details' ? (
         <>
-          <Field label="First Name" htmlFor="bk-first">
+          <Field label={t('deaths.firstNameRequired')} htmlFor="bk-first">
             <input id="bk-first" className="booking-input" value={draft.firstName}
               autoComplete="given-name" onChange={e => set('firstName', e.target.value)} />
           </Field>
-          <Field label="Last Name" htmlFor="bk-last">
+          <Field label={t('ui.lastName')} htmlFor="bk-last">
             <input id="bk-last" className="booking-input" value={draft.lastName}
               autoComplete="family-name" onChange={e => set('lastName', e.target.value)} />
           </Field>
           <div className="booking-field-row">
-            <Field label="Email" htmlFor="bk-email">
-              <input id="bk-email" type="email" className="booking-input" placeholder="email@domain.com"
+            <Field label={t('adminUsers.email')} htmlFor="bk-email">
+              <input id="bk-email" type="email" className="booking-input" placeholder={t('ui.emailDomainCom')}
                 value={draft.email} autoComplete="email" onChange={e => set('email', e.target.value)} />
             </Field>
-            <Field label="Phone" htmlFor="bk-phone">
+            <Field label={t('noteEditor.type.phone')} htmlFor="bk-phone">
               <input id="bk-phone" type="tel" className="booking-input" placeholder="+211 900 000 000"
                 value={draft.phone} autoComplete="tel" onChange={e => set('phone', e.target.value)} />
             </Field>
           </div>
-          <Field label="Date of Birth" htmlFor="bk-dob">
+          <Field label={t('births.colDateOfBirth')} htmlFor="bk-dob">
             <input id="bk-dob" type="date" value={draft.dateOfBirth}
               max={today} onChange={e => set('dateOfBirth', e.target.value)} />
           </Field>
@@ -333,9 +333,9 @@ export default function BookingFlow({
                 rather than markup inside the consent string, which is
                 tenant-authored and rendered as plain text on purpose. */}
             <p className="booking-consent-links">
-              <a href="/terms" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a>
+              <a href="/terms" target="_blank" rel="noopener noreferrer">{t('login.termsAndConditions')}</a>
               <span aria-hidden> · </span>
-              <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+              <a href="/privacy" target="_blank" rel="noopener noreferrer">{t('login.privacyPolicy')}</a>
             </p>
 
             {/* Practice-authored, rendered as text. Never dangerouslySetInnerHTML:
@@ -356,21 +356,21 @@ export default function BookingFlow({
         </>
       ) : (
         <>
-          <Field label="Insurance" htmlFor="bk-ins">
+          <Field label={t('billing.insurance')} htmlFor="bk-ins">
             <input id="bk-ins" className="booking-input" value={draft.insuranceProvider}
               onChange={e => set('insuranceProvider', e.target.value)} />
           </Field>
           <div className="booking-field-row">
-            <Field label="Insurance Member ID#" htmlFor="bk-member">
+            <Field label={t('ui.insuranceMemberId')} htmlFor="bk-member">
               <input id="bk-member" className="booking-input" value={draft.insuranceMemberId}
                 onChange={e => set('insuranceMemberId', e.target.value)} />
             </Field>
-            <Field label="Insurance Group ID#" htmlFor="bk-group">
+            <Field label={t('ui.insuranceGroupId')} htmlFor="bk-group">
               <input id="bk-group" className="booking-input" value={draft.insuranceGroupId}
                 onChange={e => set('insuranceGroupId', e.target.value)} />
             </Field>
           </div>
-          <Field label="Additional notes for the practice" htmlFor="bk-notes">
+          <Field label={t('ui.additionalNotesForThePractice')} htmlFor="bk-notes">
             <textarea id="bk-notes" className="booking-input" rows={3}
               style={{ minHeight: 88, padding: 12, resize: 'vertical' }}
               value={draft.notes} onChange={e => set('notes', e.target.value)} />

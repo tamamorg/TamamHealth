@@ -131,10 +131,10 @@ export default function TransfersPage() {
     const q = search.trim().toLowerCase();
     if (!q) return base;
     const terms = q.split(/\s+/);
-    return base.filter(t => {
+    return base.filter(transfer => {
       const hay = [
-        t.patientName, t.hospitalNumber, t.reason,
-        describeAssignment(t.from), describeAssignment(t.to), t.status,
+        transfer.patientName, transfer.hospitalNumber, transfer.reason,
+        describeAssignment(transfer.from), describeAssignment(transfer.to), transfer.status,
       ].filter(Boolean).join(' ').toLowerCase();
       return terms.every(term => hay.includes(term));
     });
@@ -142,10 +142,10 @@ export default function TransfersPage() {
 
   // Wrapped, not passed by reference: `isTransferOverdue(t, now?)` would
   // otherwise receive Array#filter's index as its `now` argument.
-  const overdueCount = incoming.filter(t => isTransferOverdue(t)).length;
+  const overdueCount = incoming.filter(transfer => isTransferOverdue(transfer)).length;
 
-  const openChart = (t: PatientTransferDoc) =>
-    router.push(`/patients/${t.patientId}?tab=referrals`);
+  const openChart = (transfer: PatientTransferDoc) =>
+    router.push(`/patients/${transfer.patientId}?tab=referrals`);
 
   return (
     <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>

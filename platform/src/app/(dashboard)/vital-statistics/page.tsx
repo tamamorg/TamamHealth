@@ -33,7 +33,7 @@ export default function VitalStatisticsPage() {
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <aside style={{ width: 224, flexShrink: 0 }}>
-            <nav className="ehr-set-nav" aria-label="Vital statistics sections" data-tour="vs-section-nav">
+            <nav className="ehr-set-nav" aria-label={t('ui.vitalStatisticsSections')} data-tour="vs-section-nav">
               {sections.map(item => {
                 const Icon = item.icon;
                 return (

@@ -310,24 +310,23 @@ export function FacilitySettingsView({
         return (
           <SectionCard icon={meta.icon} title={meta.title} note={note}>
             <p className="fs-hint">
-              The codes that identify this facility in its records and in national reporting.
-              Currency and tax are network-wide — they live under Billing &amp; payors.
+              {t('ui.theCodesThatIdentifyThis')}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Hospital number prefix">
+              <Field label={t('ui.hospitalNumberPrefix')}>
                 <input
                   className="fs-input"
                   value={draft.hospitalNumberPrefix}
                   onChange={e => setDraft({ ...draft, hospitalNumberPrefix: e.target.value })}
-                  placeholder="e.g. TAB"
+                  placeholder={t('ui.eGTab')}
                 />
               </Field>
-              <Field label="DHIS2 organisation unit ID">
+              <Field label={t('ui.dhis2OrganisationUnitId')}>
                 <input
                   className="fs-input"
                   value={draft.reporting.dhis2OrgUnitId}
                   onChange={e => setDraft({ ...draft, reporting: { ...draft.reporting, dhis2OrgUnitId: e.target.value } })}
-                  placeholder="Optional"
+                  placeholder={t('hr.optional')}
                 />
               </Field>
             </div>
@@ -353,14 +352,14 @@ export function FacilitySettingsView({
           <SectionCard icon={meta.icon} title={meta.title} note={note}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <TagListEditor
-                label="Departments / clinics"
-                placeholder="e.g. General Medicine"
+                label={t('ui.departmentsClinics')}
+                placeholder={t('ui.eGGeneralMedicine')}
                 values={draft.departments}
                 onChange={departments => setDraft({ ...draft, departments })}
               />
               <TagListEditor
-                label="Rooms / bays"
-                placeholder="e.g. Room 1"
+                label={t('ui.roomsBays')}
+                placeholder={t('ui.eGRoom1')}
                 values={draft.rooms}
                 onChange={rooms => setDraft({ ...draft, rooms })}
               />
@@ -398,7 +397,7 @@ export function FacilitySettingsView({
       case 'lab':
         return (
           <SectionCard icon={meta.icon} title={meta.title} note={note}>
-            <p className="fs-hint">The investigations this facility can actually run — a county hospital and a health-care unit rarely offer the same list.</p>
+            <p className="fs-hint">{t('ui.theInvestigationsThisFacilityCan')}</p>
             <div className="overflow-x-auto">
               <table className="w-full" style={{ minWidth: 520 }}>
                 <thead>
@@ -416,7 +415,7 @@ export function FacilitySettingsView({
                           className="fs-input"
                           value={test.name}
                           onChange={e => updateLabRow(draft, setDraft, i, { name: e.target.value })}
-                          placeholder="e.g. Full Blood Count"
+                          placeholder={t('ui.eGFullBloodCount')}
                         />
                       </td>
                       <td className="px-3 py-2" style={{ width: 150 }}>
@@ -425,8 +424,8 @@ export function FacilitySettingsView({
                           value={test.tier}
                           onChange={e => updateLabRow(draft, setDraft, i, { tier: e.target.value as LabTestDef['tier'] })}
                         >
-                          <option value="basic">Basic</option>
-                          <option value="special">Special</option>
+                          <option value="basic">{t('admin.planBasic')}</option>
+                          <option value="special">{t('labOrder.tierSpecial')}</option>
                         </Select>
                       </td>
                       <td className="px-3 py-2" style={{ width: 180 }}>
@@ -434,7 +433,7 @@ export function FacilitySettingsView({
                           className="fs-input"
                           value={test.specimen}
                           onChange={e => updateLabRow(draft, setDraft, i, { specimen: e.target.value })}
-                          placeholder="e.g. Blood"
+                          placeholder={t('ui.eGBlood')}
                         />
                       </td>
                       <td className="px-3 py-2 text-end" style={{ width: 48 }}>
@@ -443,7 +442,7 @@ export function FacilitySettingsView({
                           onClick={() => setDraft({ ...draft, labCatalog: draft.labCatalog.filter((_, idx) => idx !== i) })}
                           className="p-1.5 rounded-lg"
                           style={{ color: 'var(--color-danger-text)' }}
-                          aria-label="Remove test"
+                          aria-label={t('ui.removeTest')}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -451,7 +450,7 @@ export function FacilitySettingsView({
                     </tr>
                   ))}
                   {draft.labCatalog.length === 0 && (
-                    <tr><td colSpan={4} className="px-3 py-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>No tests yet. Add the first investigation.</td></tr>
+                    <tr><td colSpan={4} className="px-3 py-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('ui.noTestsYetAddThe')}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -461,7 +460,7 @@ export function FacilitySettingsView({
               onClick={() => setDraft({ ...draft, labCatalog: [...draft.labCatalog, { name: '', tier: 'basic', specimen: '' }] })}
               className="btn btn-secondary inline-flex items-center gap-2 mt-3"
             >
-              <Plus className="w-4 h-4" /> Add test
+              <Plus className="w-4 h-4" /> {t('ui.addTest')}
             </button>
             <SaveBar
               saving={saving === 'lab'}
@@ -475,10 +474,10 @@ export function FacilitySettingsView({
       case 'workflow':
         return (
           <SectionCard icon={meta.icon} title={meta.title} note={note}>
-            <p className="fs-hint">The stations a patient passes through here, and what has to be closed before they leave.</p>
+            <p className="fs-hint">{t('ui.theStationsAPatientPasses')}</p>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
-                <p className="fs-grouplabel">Default station sequence</p>
+                <p className="fs-grouplabel">{t('ui.defaultStationSequence')}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {ALL_STATIONS.map(key => (
                     <CheckRow
@@ -491,7 +490,7 @@ export function FacilitySettingsView({
                 </div>
               </div>
               <div>
-                <p className="fs-grouplabel">Facility checkout gates</p>
+                <p className="fs-grouplabel">{t('ui.facilityCheckoutGates')}</p>
                 <div className="grid grid-cols-1 gap-2">
                   {ALL_CHECKOUT_GATES.map(key => (
                     <CheckRow
@@ -505,7 +504,7 @@ export function FacilitySettingsView({
               </div>
             </div>
 
-            <p className="fs-grouplabel" style={{ marginTop: 16 }}>Triage required for</p>
+            <p className="fs-grouplabel" style={{ marginTop: 16 }}>{t('ui.triageRequiredFor')}</p>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               {ALL_PATIENT_PROFILES.map(key => (
                 <CheckRow
@@ -517,7 +516,7 @@ export function FacilitySettingsView({
               ))}
             </div>
 
-            <p className="fs-grouplabel" style={{ marginTop: 16 }}>Default routing</p>
+            <p className="fs-grouplabel" style={{ marginTop: 16 }}>{t('ui.defaultRouting')}</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {(['appointment', 'walkIn', 'referral', 'emergency', 'maternity', 'child'] as const).map(key => (
                 <Field key={key} label={key.replace(/([A-Z])/g, ' $1')}>
@@ -530,9 +529,9 @@ export function FacilitySettingsView({
               ))}
             </div>
 
-            <p className="fs-grouplabel" style={{ marginTop: 16 }}>Direct service access</p>
+            <p className="fs-grouplabel" style={{ marginTop: 16 }}>{t('ui.directServiceAccess')}</p>
             <div className="ehr-set-locked" style={{ justifyContent: 'flex-start', padding: '12px 0' }}>
-              <Lock /> Not available until lab, radiology, and refill entry points enforce this policy
+              <Lock /> {t('ui.notAvailableUntilLabRadiology')}
             </div>
             <SaveBar
               saving={saving === 'workflow'}
@@ -551,11 +550,11 @@ export function FacilitySettingsView({
   const content = (
     <div className={`fs-shell${hideNav ? ' fs-shell--nonav' : ''}`}>
       {!hideNav && (
-      <nav className="fs-nav" aria-label="Settings modules">
+      <nav className="fs-nav" aria-label={t('ui.settingsModules')}>
         <p className="fs-nav-group">
-          This facility
+          {t('patientCopy.thisFacility')}
           {effectiveHospitalId && selectedHospital && <small title={selectedHospital.name}>{selectedHospital.name}</small>}
-          {!effectiveHospitalId && <small>None chosen</small>}
+          {!effectiveHospitalId && <small>{t('ui.noneChosen')}</small>}
         </p>
         {FACILITY_MODULES.map(m => (
           <button
@@ -571,7 +570,7 @@ export function FacilitySettingsView({
         ))}
 
         <p className="fs-nav-group">
-          All facilities
+          {t('orgAdmin.allFacilities')}
           <small>{networkTargets.length === 1 ? 'Shared settings' : `Shared by ${networkTargets.length}`}</small>
         </p>
         {NETWORK_MODULES.map(m => (
@@ -588,7 +587,7 @@ export function FacilitySettingsView({
 
         {!embedded && (
           <Link href="/settings/manage" className="fs-nav-foot">
-            <Layers className="w-4 h-4" aria-hidden /> All settings
+            <Layers className="w-4 h-4" aria-hidden /> {t('ui.allSettings')}
           </Link>
         )}
       </nav>
@@ -655,7 +654,7 @@ export function FacilitySettingsView({
   return (
     <main className="page-container page-enter">
       <div className="dash-card overflow-hidden mb-4">
-        <EhrListHeader title="Facility Settings" />
+        <EhrListHeader title={t('nav.facilitySettings')} />
       </div>
       {content}
     </main>

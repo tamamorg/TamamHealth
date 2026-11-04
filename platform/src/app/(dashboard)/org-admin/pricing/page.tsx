@@ -196,16 +196,16 @@ export default function ServicePricingPage() {
     <SadbPage roles={['org_admin', 'super_admin']}>
       <div data-tour="org-pricing-table">
         <SadbCard
-          title="Service Pricing"
+          title={t('ui.servicePricing')}
           meta={loading ? undefined : `${filtered.length} of ${fees.length}`}
           action={
             <button type="button" className="btn btn-primary btn-sm" onClick={openAdd}>
-              <Plus className="w-4 h-4" /> Add service
+              <Plus className="w-4 h-4" /> {t('ui.addService')}
             </button>
           }
         >
           <div className="sadb-search-row" style={{ paddingBottom: 12 }}>
-            <SadbSearch value={search} onChange={setSearch} placeholder="Search services…" />
+            <SadbSearch value={search} onChange={setSearch} placeholder={t('ui.searchServices')} />
           </div>
 
           <SadbGridList
@@ -248,27 +248,27 @@ export default function ServicePricingPage() {
             />
             <DialogBody tight>
             <div className="flex flex-col gap-3">
-              <Field label="Service name">
-                <input className="sadb-modal-input" value={form.serviceName} onChange={e => setForm({ ...form, serviceName: e.target.value })} placeholder="e.g. General consultation" />
+              <Field label={t('ui.serviceName')}>
+                <input className="sadb-modal-input" value={form.serviceName} onChange={e => setForm({ ...form, serviceName: e.target.value })} placeholder={t('ui.eGGeneralConsultation')} />
               </Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Category">
+                <Field label={t('equipment.colCategory')}>
                   <Select className="sadb-modal-input" value={form.category} onChange={e => setForm({ ...form, category: e.target.value as ChargeCategory })}>
                     {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                   </Select>
                 </Field>
-                <Field label="Service code">
-                  <input className="sadb-modal-input" value={form.serviceCode} onChange={e => setForm({ ...form, serviceCode: e.target.value })} placeholder="e.g. CONS-GEN" />
+                <Field label={t('ui.serviceCode')}>
+                  <input className="sadb-modal-input" value={form.serviceCode} onChange={e => setForm({ ...form, serviceCode: e.target.value })} placeholder={t('ui.eGConsGen')} />
                 </Field>
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <Field label="Price">
+                <Field label={t('ui.price')}>
                   <NumberInput className="sadb-modal-input" step="any" min={0} value={form.unitPrice} onChange={e => setForm({ ...form, unitPrice: Number(e.target.value) })} />
                 </Field>
-                <Field label="Currency">
+                <Field label={t('hr.labelCurrency')}>
                   <input className="sadb-modal-input" value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })} />
                 </Field>
-                <Field label="Unit">
+                <Field label={t('lab.unit')}>
                   <Select className="sadb-modal-input" value={form.billingUnit || 'each'} onChange={e => setForm({ ...form, billingUnit: e.target.value as BillingUnit })}>
                     {(['each', 'session', 'night', 'procedure', 'item'] as BillingUnit[]).map(unit => <option key={unit} value={unit}>{unit}</option>)}
                   </Select>
@@ -276,7 +276,7 @@ export default function ServicePricingPage() {
               </div>
               <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)', textTransform: 'none' }}>
                 <input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} />
-                Active (available for charging)
+                {t('ui.activeAvailableForCharging')}
               </label>
             </div>
             </DialogBody>
@@ -287,11 +287,11 @@ export default function ServicePricingPage() {
                   className="btn btn-danger"
                   onClick={() => setRemovingFee(editingFee)}
                 >
-                  Remove service
+                  {t('ui.removeService')}
                 </button>
               )}
             >
-              <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>{t('action.cancel')}</button>
               <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
                 <Save className="w-4 h-4" /> {saving ? 'Saving…' : 'Save'}
               </button>
@@ -304,9 +304,9 @@ export default function ServicePricingPage() {
           catalog row is deleted, so an accidental Remove click is recoverable. */}
       {removingFee && (
         <SadbConfirmModal
-          title="Remove service?"
+          title={t('ui.removeService2')}
           body={`${removingFee.serviceName} (${formatMoney(removingFee.unitPrice, { currency: removingFee.currency, decimals: 2 })}) will be removed from the price catalog and no longer available for charging.`}
-          confirmLabel="Remove"
+          confirmLabel={t('action.remove')}
           auditNote={false}
           onCancel={() => setRemovingFee(null)}
           onConfirm={confirmRemove}

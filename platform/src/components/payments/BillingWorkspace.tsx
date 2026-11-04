@@ -711,22 +711,22 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
               <div className="bl-card-head">
                 <h2 className="bl-card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Clock size={16} style={{ color: 'var(--color-warning-text)' }} />
-                  Pending verification
+                  {t('ui.pendingVerification')}
                   <span className="bl-chip bl-chip--partial">{pendingPayments.length}</span>
                 </h2>
-                <p className="bl-card-sub">Approving posts the payment and credits the patient&rsquo;s balance.</p>
+                <p className="bl-card-sub">{t('ui.approvingPostsThePaymentAnd')}</p>
                 <span className="bl-underline" />
               </div>
               <div className="bl-table-wrap">
                 <table className="bl-table">
                   <thead>
                     <tr>
-                      <th>Patient</th>
-                      <th>Reference</th>
-                      <th>Method</th>
-                      <th>Submitted</th>
-                      <th className="bl-right">Amount</th>
-                      <th aria-label="Actions" />
+                      <th>{t('appointments.labelPatient')}</th>
+                      <th>{t('billing.activityColumn.reference')}</th>
+                      <th>{t('payments.methodFallback')}</th>
+                      <th>{t('claims.status_submitted')}</th>
+                      <th className="bl-right">{t('billing.activityColumn.amount')}</th>
+                      <th aria-label={t('adminBilling.colActions')} />
                     </tr>
                   </thead>
                   <tbody>
@@ -757,7 +757,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                               className="bl-btn bl-btn--outline"
                               style={{ padding: '5px 12px', fontSize: 12, borderColor: 'var(--color-danger)', color: 'var(--color-danger-text)' }}
                             >
-                              <Ban size={14} /> Reject
+                              <Ban size={14} /> {t('hr.reject')}
                             </button>
                           </div>
                         </td>
@@ -813,7 +813,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
               </div>
               <EhrRailMenu
                 variant="primary"
-                label="Actions"
+                label={t('adminBilling.colActions')}
                 ariaLabel="Billing actions"
                 align="right"
                 items={actionItems}

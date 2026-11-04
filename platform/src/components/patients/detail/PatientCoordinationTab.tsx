@@ -50,7 +50,7 @@ export default function PatientCoordinationTab({ patient, canViewClinical, canMa
             <div className="space-y-3">
               <TransferHistoryPanel patient={patient} canViewClinical={canViewClinical} />
               <ChartSection
-                title="Referrals"
+                title={t('admin.dbReferrals')}
                 addLabel="New referral"
                 onAdd={canManageReferrals ? () => setShowReferModal(true) : undefined}
                 filterSlot={(
@@ -68,13 +68,13 @@ export default function PatientCoordinationTab({ patient, canViewClinical, canMa
                 <table className="tamam-table tamam-table--referrals">
                     <thead>
                       <tr>
-                        <th>Date</th>
+                        <th>{t('billing.activityColumn.date')}</th>
                         <th>From</th>
-                        <th>Department</th>
-                        <th>Reason</th>
+                        <th>{t('adminUsers.department')}</th>
+                        <th>{t('appointments.labelReason')}</th>
                         <th>{t('ptDetail.referredBy')}</th>
-                        <th>Urgency</th>
-                        <th>Status</th>
+                        <th>{t('consultation.urgency')}</th>
+                        <th>{t('billing.activityColumn.status')}</th>
                         <th className="tamam-col-actions">{t('chart.actions')}</th>
                       </tr>
                     </thead>
@@ -84,7 +84,7 @@ export default function PatientCoordinationTab({ patient, canViewClinical, canMa
                           <td colSpan={8} style={{ cursor: 'default', background: 'transparent' }}>
                             <OmrsEmptyState
                               itemLabel="referrals"
-                              actionLabel="New referral"
+                              actionLabel={t('ui.newReferral')}
                               onAction={canManageReferrals ? () => setShowReferModal(true) : undefined}
                             />
                           </td>
@@ -118,7 +118,7 @@ export default function PatientCoordinationTab({ patient, canViewClinical, canMa
                                       text on hover — one verbose referral used
                                       to set the height of the whole row. */}
                                   <div className="tamam-cell-clamp" title={ref.reason}>{ref.reason}</div>
-                                  {ref.notes && <div className="tamam-cell-sub tamam-cell-clamp" title={ref.notes}>Notes: {ref.notes}</div>}
+                                  {ref.notes && <div className="tamam-cell-sub tamam-cell-clamp" title={ref.notes}>{t('ui.notes')} {ref.notes}</div>}
                                   {extras && <div className="tamam-cell-sub">{extras}</div>}
                                 </>
                               ) : (

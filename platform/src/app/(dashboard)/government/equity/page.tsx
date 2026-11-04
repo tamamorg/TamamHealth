@@ -16,6 +16,7 @@ import { useANC } from '@/lib/hooks/useANC';
 import { useDataQuality } from '@/lib/hooks/useDataQuality';
 import { SOUTH_SUDAN_STATES } from '@/lib/geographic-data';
 import { ChevronUp, ChevronDown, AlertTriangle } from '@/components/icons/lucide';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 type View = 'comparison' | 'burden' | 'access';
 const VIEWS: { key: View; label: string }[] = [
@@ -61,6 +62,7 @@ interface StateRow {
 }
 
 export default function EquityPlanningPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const viewParam = searchParams?.get('view');
@@ -149,7 +151,7 @@ export default function EquityPlanningPage() {
     <main className="page-container page-enter">
       <div data-tour="gov-equity-header" className="dash-card mb-3">
         <EhrListHeader
-          title="Equity & planning"
+          title={t('ui.equityPlanning')}
           count={rows.length}
           stats={[
             { label: 'Facilities', value: rows.reduce((sum, r) => sum + r.facilities, 0), color: LIST_STAT_COLORS.blue },
@@ -162,7 +164,7 @@ export default function EquityPlanningPage() {
       </div>
 
       {loading ? (
-        <div className="dash-card p-8 text-center" style={{ color: 'var(--text-muted)' }}>Loading state comparisons…</div>
+        <div className="dash-card p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('ui.loadingStateComparisons')}</div>
       ) : (
         <>
           {view === 'comparison' && (
@@ -171,12 +173,12 @@ export default function EquityPlanningPage() {
                 <table className="w-full" style={{ minWidth: 860 }}>
                   <thead>
                     <tr>
-                      <Th onClick={() => toggleSort('state')} active={sortKey === 'state'} dir={sortDir}>State</Th>
-                      <Th onClick={() => toggleSort('facilities')} active={sortKey === 'facilities'} dir={sortDir}>Facilities</Th>
-                      <Th onClick={() => toggleSort('activeCases')} active={sortKey === 'activeCases'} dir={sortDir}>Active alert cases</Th>
-                      <Th onClick={() => toggleSort('immRecords')} active={sortKey === 'immRecords'} dir={sortDir}>Immunization records</Th>
-                      <Th onClick={() => toggleSort('ancVisits')} active={sortKey === 'ancVisits'} dir={sortDir}>ANC visits</Th>
-                      <Th onClick={() => toggleSort('avgCompleteness')} active={sortKey === 'avgCompleteness'} dir={sortDir}>Avg. reporting completeness</Th>
+                      <Th onClick={() => toggleSort('state')} active={sortKey === 'state'} dir={sortDir}>{t('births.colState')}</Th>
+                      <Th onClick={() => toggleSort('facilities')} active={sortKey === 'facilities'} dir={sortDir}>{t('government.colFacilities')}</Th>
+                      <Th onClick={() => toggleSort('activeCases')} active={sortKey === 'activeCases'} dir={sortDir}>{t('ui.activeAlertCases')}</Th>
+                      <Th onClick={() => toggleSort('immRecords')} active={sortKey === 'immRecords'} dir={sortDir}>{t('ui.immunizationRecords2')}</Th>
+                      <Th onClick={() => toggleSort('ancVisits')} active={sortKey === 'ancVisits'} dir={sortDir}>{t('ui.ancVisits')}</Th>
+                      <Th onClick={() => toggleSort('avgCompleteness')} active={sortKey === 'avgCompleteness'} dir={sortDir}>{t('ui.avgReportingCompleteness')}</Th>
                     </tr>
                   </thead>
                   <tbody>
@@ -201,14 +203,14 @@ export default function EquityPlanningPage() {
           {view === 'burden' && (
             <div className="dash-card">
               <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-                <span className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>Active case burden vs. reporting completeness</span>
+                <span className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>{t('ui.activeCaseBurdenVsReporting')}</span>
                 <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  Reporting completeness is used here as a visibility proxy, not a measure of service coverage. States without any facility assessment are excluded from this chart.
+                  {t('ui.reportingCompletenessIsUsedHere')}
                 </p>
               </div>
               <div className="px-4 py-4" style={{ height: 380 }}>
                 {scatterRows.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-[13px]" style={{ color: 'var(--text-muted)' }}>No facility assessments on file to plot.</div>
+                  <div className="flex items-center justify-center h-full text-[13px]" style={{ color: 'var(--text-muted)' }}>{t('ui.noFacilityAssessmentsOnFile2')}</div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <ScatterChart margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
@@ -221,8 +223,8 @@ export default function EquityPlanningPage() {
                         return (
                           <div style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)', borderRadius: 8, padding: '8px 10px', fontSize: 12 }}>
                             <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{p.state}</div>
-                            <div style={{ color: 'var(--text-secondary)' }}>{p.activeCases.toLocaleString()} active cases</div>
-                            <div style={{ color: 'var(--text-secondary)' }}>{p.avgCompleteness}% avg. completeness</div>
+                            <div style={{ color: 'var(--text-secondary)' }}>{p.activeCases.toLocaleString()} {t('ui.activeCases')}</div>
+                            <div style={{ color: 'var(--text-secondary)' }}>{p.avgCompleteness}{t('ui.avgCompleteness')}</div>
                           </div>
                         );
                       }} />
@@ -238,15 +240,15 @@ export default function EquityPlanningPage() {
                 )}
               </div>
               <div className="px-4 pb-4">
-                <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--color-warning-text)' }}>High burden / low visibility — priority</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--color-warning-text)' }}>{t('ui.highBurdenLowVisibilityPriority')}</p>
                 {priorityStates.length === 0 ? (
-                  <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>No states currently fall in the high-burden / low-visibility quadrant.</p>
+                  <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>{t('ui.noStatesCurrentlyFallIn')}</p>
                 ) : (
                   <ul className="space-y-1">
                     {priorityStates.map((r, i) => (
                       <li key={r.state} className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>
                         <span className="font-bold" style={{ color: 'var(--ehr-text, var(--text-primary))' }}>{i + 1}. {r.state}</span>
-                        {' — '}{r.activeCases.toLocaleString()} active cases, {r.avgCompleteness}% avg. completeness
+                        {' — '}{r.activeCases.toLocaleString()} {t('ui.activeCases2')} {r.avgCompleteness}{t('ui.avgCompleteness')}
                       </li>
                     ))}
                   </ul>
@@ -259,18 +261,18 @@ export default function EquityPlanningPage() {
             <div className="dash-card overflow-hidden">
               <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
                 <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                  Population denominators are not on file — density figures below are per recorded activity (active alert cases), not per-capita.
+                  {t('ui.populationDenominatorsAreNotOn')}
                 </p>
               </div>
               <div className="show-scrollbar" style={{ overflowX: 'auto' }}>
                 <table className="w-full" style={{ minWidth: 720 }}>
                   <thead>
                     <tr>
-                      <Th>State</Th>
-                      <Th>Facilities</Th>
-                      <Th>Active alert cases</Th>
-                      <Th>Facilities per 100 active cases</Th>
-                      <Th>Flag</Th>
+                      <Th>{t('births.colState')}</Th>
+                      <Th>{t('government.colFacilities')}</Th>
+                      <Th>{t('ui.activeAlertCases')}</Th>
+                      <Th>{t('ui.facilitiesPer100ActiveCases')}</Th>
+                      <Th>{t('lab.flag')}</Th>
                     </tr>
                   </thead>
                   <tbody>
@@ -283,7 +285,7 @@ export default function EquityPlanningPage() {
                         <td className="px-4 py-2.5">
                           {r.accessGap && (
                             <span className="gov-chip gap-1" style={{ background: 'rgba(255, 153, 51,0.14)', color: '#b35900', border: '1px solid rgba(255, 153, 51,0.4)' }}>
-                              <AlertTriangle className="w-3 h-3" /> Access gap
+                              <AlertTriangle className="w-3 h-3" /> {t('ui.accessGap')}
                             </span>
                           )}
                         </td>

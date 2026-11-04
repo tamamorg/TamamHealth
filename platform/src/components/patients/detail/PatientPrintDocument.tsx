@@ -83,23 +83,23 @@ export default function PatientPrintDocument({ patient, patientProblems, allPres
                       <div className="rx-section-title">{t('ptDetail.printConsultationNote')}</div>
                       <div className="rx-section-body">
                         <div className="rx-two-col" style={{ marginBottom: 6 }}>
-                          <div className="rx-field"><b>Date:</b> {formatPrintedAt(new Date(latestRecord.consultedAt || latestRecord.visitDate)).slice(0, 16)}</div>
-                          <div className="rx-field"><b>Visit type:</b> {latestRecord.visitType}</div>
-                          <div className="rx-field"><b>Provider:</b> {latestRecord.providerName}</div>
-                          <div className="rx-field"><b>Department:</b> {latestRecord.department}</div>
+                          <div className="rx-field"><b>{t('ui.date')}</b> {formatPrintedAt(new Date(latestRecord.consultedAt || latestRecord.visitDate)).slice(0, 16)}</div>
+                          <div className="rx-field"><b>{t('ui.visitType2')}</b> {latestRecord.visitType}</div>
+                          <div className="rx-field"><b>{t('referrals.providerLabel')}</b> {latestRecord.providerName}</div>
+                          <div className="rx-field"><b>{t('ui.department')}</b> {latestRecord.department}</div>
                         </div>
-                        {latestRecord.chiefComplaint && <div className="rx-field"><b>Chief complaint:</b> {latestRecord.chiefComplaint}</div>}
-                        {latestRecord.historyOfPresentIllness && <div className="rx-field" style={{ marginTop: 4 }}><b>History of present illness:</b> {latestRecord.historyOfPresentIllness}</div>}
+                        {latestRecord.chiefComplaint && <div className="rx-field"><b>{t('sbar.chiefComplaintLabel')}</b> {latestRecord.chiefComplaint}</div>}
+                        {latestRecord.historyOfPresentIllness && <div className="rx-field" style={{ marginTop: 4 }}><b>{t('ui.historyOfPresentIllness')}</b> {latestRecord.historyOfPresentIllness}</div>}
                         {latestRecord.physicalExamination && Object.entries(latestRecord.physicalExamination).filter(([, v]) => v).length > 0 && (
                           <div className="rx-field" style={{ marginTop: 4 }}>
-                            <b>Physical examination:</b>{' '}
+                            <b>{t('ui.physicalExamination')}</b>{' '}
                             {Object.entries(latestRecord.physicalExamination)
                               .filter(([, v]) => v)
                               .map(([sys, v]) => `${sys.charAt(0).toUpperCase()}${sys.slice(1)}: ${v}`)
                               .join('; ')}
                           </div>
                         )}
-                        {latestRecord.treatmentPlan && <div className="rx-field" style={{ marginTop: 4 }}><b>Treatment plan:</b> {latestRecord.treatmentPlan}</div>}
+                        {latestRecord.treatmentPlan && <div className="rx-field" style={{ marginTop: 4 }}><b>{t('ui.treatmentPlan')}</b> {latestRecord.treatmentPlan}</div>}
                       </div>
                     </div>
                   )}
@@ -108,7 +108,7 @@ export default function PatientPrintDocument({ patient, patientProblems, allPres
                   {printSections.has('problems') && <div className="rx-two-col">
                     {latestRecord?.diagnoses && latestRecord.diagnoses.length > 0 && (
                       <div className="rx-section">
-                        <div className="rx-section-title">Diagnoses (This Visit)</div>
+                        <div className="rx-section-title">{t('ui.diagnosesThisVisit')}</div>
                         <div className="rx-section-body">
                           {latestRecord.diagnoses.map((d, i) => (
                             <div key={i} className="rx-dx-row">
@@ -156,7 +156,7 @@ export default function PatientPrintDocument({ patient, patientProblems, allPres
                   {/* Prescriptions */}
                   {printSections.has('medications') && currentMeds.length > 0 && (
                     <div className="rx-section">
-                      <div className="rx-section-title">Prescriptions</div>
+                      <div className="rx-section-title">{t('admin.dbPrescriptions')}</div>
                       <div className="rx-section-body">
                         {currentMeds.map((rx, i) => (
                           <div key={rx._id} className="rx-row" style={{ display: 'flex', gap: 12 }}>
@@ -181,7 +181,7 @@ export default function PatientPrintDocument({ patient, patientProblems, allPres
                             )}
                             <b>{a.substance}</b>
                             {a.classification && <span style={{ color: '#555', fontSize: '8pt' }}>{a.classification}</span>}
-                            {a.reaction && <span style={{ color: '#555', fontSize: '8pt' }}>— Reaction: {a.reaction}</span>}
+                            {a.reaction && <span style={{ color: '#555', fontSize: '8pt' }}>{t('ui.reaction2')} {a.reaction}</span>}
                           </div>
                         ))}
                         {legacyAllergies.map((a: string, i: number) => (
@@ -199,11 +199,11 @@ export default function PatientPrintDocument({ patient, patientProblems, allPres
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8pt' }}>
                           <thead>
                             <tr style={{ background: 'var(--color-slate-50)' }}>
-                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #cfd6dd', fontWeight: 700 }}>Test</th>
-                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #cfd6dd', fontWeight: 700 }}>Result</th>
-                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #cfd6dd', fontWeight: 700 }}>Unit</th>
-                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #cfd6dd', fontWeight: 700 }}>Reference</th>
-                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #cfd6dd', fontWeight: 700 }}>Date</th>
+                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #cfd6dd', fontWeight: 700 }}>{t('lab.testName')}</th>
+                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #cfd6dd', fontWeight: 700 }}>{t('lab.result')}</th>
+                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #cfd6dd', fontWeight: 700 }}>{t('lab.unit')}</th>
+                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #cfd6dd', fontWeight: 700 }}>{t('billing.activityColumn.reference')}</th>
+                              <th style={{ textAlign: 'start', padding: '3pt 8pt', borderBottom: '1pt solid #cfd6dd', fontWeight: 700 }}>{t('billing.activityColumn.date')}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -244,10 +244,10 @@ export default function PatientPrintDocument({ patient, patientProblems, allPres
                     <div className="rx-section">
                       <div className="rx-section-title">{t('patientPortal.nextAppointment')}</div>
                       <div className="rx-section-body rx-two-col">
-                        <div className="rx-field"><b>Date &amp; Time:</b> {upcomingPrint.appointmentDate}{upcomingPrint.appointmentTime ? ` ${upcomingPrint.appointmentTime}` : ''}</div>
-                        {upcomingPrint.reason && <div className="rx-field"><b>Reason:</b> {upcomingPrint.reason}</div>}
-                        {upcomingPrint.providerName && <div className="rx-field"><b>Provider:</b> {upcomingPrint.providerName}</div>}
-                        <div className="rx-field"><b>Facility:</b> {printFacilityName}</div>
+                        <div className="rx-field"><b>{t('ui.dateTime2')}</b> {upcomingPrint.appointmentDate}{upcomingPrint.appointmentTime ? ` ${upcomingPrint.appointmentTime}` : ''}</div>
+                        {upcomingPrint.reason && <div className="rx-field"><b>{t('ui.reason')}</b> {upcomingPrint.reason}</div>}
+                        {upcomingPrint.providerName && <div className="rx-field"><b>{t('referrals.providerLabel')}</b> {upcomingPrint.providerName}</div>}
+                        <div className="rx-field"><b>{t('ui.facility')}</b> {printFacilityName}</div>
                       </div>
                     </div>
                   )}
@@ -259,13 +259,13 @@ export default function PatientPrintDocument({ patient, patientProblems, allPres
                       <div className="rx-sig-line" />
                       <div className="rx-sig-name">{printSignature}</div>
                       <div className="rx-sig-role">{currentUser?.role ? roleLabel(currentUser.role) : ''}</div>
-                      <div className="rx-sig-role">Signed: {printedAt}</div>
+                      <div className="rx-sig-role">{t('ui.signed')} {printedAt}</div>
                     </div>
                     <div>
                       <div className="rx-sig-label">{t('ptDetail.printGuardianSignature')}</div>
                       <div className="rx-sig-line" />
-                      <div className="rx-sig-role">Date: ______________________</div>
-                      <div className="rx-sig-role" style={{ marginTop: 4 }}>Relationship: ______________</div>
+                      <div className="rx-sig-role">{t('ui.date2')}</div>
+                      <div className="rx-sig-role" style={{ marginTop: 4 }}>{t('ui.relationship')}</div>
                     </div>
                   </div>
 
@@ -273,9 +273,9 @@ export default function PatientPrintDocument({ patient, patientProblems, allPres
 
                 {/* Fixed footer on every page */}
                 <div className="rx-footer">
-                  <span className="rx-footer-conf">CONFIDENTIAL — Patient Medical Record</span>
-                  <span>Tamam · {patient.hospitalNumber || patient.geocodeId} · {printFacilityName}</span>
-                  <span>Printed: {printedAt}</span>
+                  <span className="rx-footer-conf">{t('ui.confidentialPatientMedicalRecord')}</span>
+                  <span>{t('ui.tamam2')} {patient.hospitalNumber || patient.geocodeId} · {printFacilityName}</span>
+                  <span>{t('ui.printed')} {printedAt}</span>
                 </div>
 
               </div>

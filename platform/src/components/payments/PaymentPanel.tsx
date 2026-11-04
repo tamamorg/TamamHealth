@@ -435,7 +435,7 @@ export default function PaymentPanel({
               </div>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>{t('payments.phoneNumber')}</label>
-                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+211 9XX XXX XXX"
+                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder={t('patientPortal.payPhonePlaceholder')}
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', fontSize: 14, background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
                 />
               </div>
@@ -519,7 +519,7 @@ export default function PaymentPanel({
                         onChange={e => setPayerName(e.target.value)}
                         style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', fontSize: 14, background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
                       >
-                        <option value="">Select payor…</option>
+                        <option value="">{t('ui.selectPayor')}</option>
                         {settings.payors.filter(p => p !== 'out_of_pocket').map(p => (
                           <option key={p} value={PAYOR_LABELS[p]}>{PAYOR_LABELS[p]}</option>
                         ))}

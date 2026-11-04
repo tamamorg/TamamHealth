@@ -7,6 +7,7 @@ import { useImmunizations } from '@/lib/hooks/useImmunizations';
 import { useANC } from '@/lib/hooks/useANC';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
 import { Syringe, HeartPulse, ArrowUpRight, Info } from '@/components/icons/lucide';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 function StatTile({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
   return (
@@ -70,6 +71,7 @@ function PlaceholderCard({ title, note }: { title: string; note: React.ReactNode
 }
 
 export default function DiseaseProgramsPage() {
+  const { t } = useTranslation();
   const { stats: immStats, loading: immLoading } = useImmunizations();
   const { stats: ancStats, loading: ancLoading } = useANC();
   const { alerts, loading: alertsLoading } = useSurveillance();
@@ -84,49 +86,49 @@ export default function DiseaseProgramsPage() {
   return (
     <main className="page-container page-enter">
       <div data-tour="gov-programs-header" className="dash-card mb-3">
-        <EhrListHeader title="Disease programs" stats={[{ label: 'Scope', value: 'Programme monitoring · National' }]} />
+        <EhrListHeader title={t('ui.diseasePrograms')} stats={[{ label: 'Scope', value: 'Programme monitoring · National' }]} />
       </div>
 
       {loading ? (
-        <div className="dash-card p-8 text-center" style={{ color: 'var(--text-muted)' }}>Loading programme data…</div>
+        <div className="dash-card p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('ui.loadingProgrammeData')}</div>
       ) : (
         <>
-          <ProgramCard icon={Syringe} iconColor="var(--chart-1)" title="Immunization (EPI)" period="All records · National"
+          <ProgramCard icon={Syringe} iconColor="var(--chart-1)" title={t('ui.immunizationEpi')} period="All records · National"
             links={[{ label: 'Open immunizations', href: '/immunizations' }]}>
             {immStats ? (
               <div className="grid grid-cols-3 gap-2">
-                <StatTile label="Coverage" value={`${immStats.coverageRate}%`} color="var(--chart-1)" />
-                <StatTile label="Fully immunized" value={immStats.fullyImmunized.toLocaleString()} sub={`of ${immStats.totalChildren.toLocaleString()} children`} />
-                <StatTile label="Overdue / missed" value={(immStats.overdue + immStats.missed).toLocaleString()} color="var(--color-warning-text)" />
+                <StatTile label={t('labOrder.fieldCoverage')} value={`${immStats.coverageRate}%`} color="var(--chart-1)" />
+                <StatTile label={t('ui.fullyImmunized')} value={immStats.fullyImmunized.toLocaleString()} sub={`of ${immStats.totalChildren.toLocaleString()} children`} />
+                <StatTile label={t('ui.overdueMissed')} value={(immStats.overdue + immStats.missed).toLocaleString()} color="var(--color-warning-text)" />
               </div>
             ) : (
-              <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>No data on file for immunization coverage.</p>
+              <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>{t('ui.noDataOnFileFor')}</p>
             )}
           </ProgramCard>
 
-          <ProgramCard icon={HeartPulse} iconColor="var(--color-success)" title="RMNCAH — Antenatal Care" period="All records · National"
+          <ProgramCard icon={HeartPulse} iconColor="var(--color-success)" title={t('ui.rmncahAntenatalCare')} period="All records · National"
             links={[{ label: 'Open ANC', href: '/anc' }, { label: 'Open MCH analytics', href: '/mch-analytics' }]}>
             {ancStats ? (
               <div className="grid grid-cols-3 gap-2">
-                <StatTile label="ANC4+ rate" value={`${ancStats.anc4PlusRate}%`} color="var(--color-success-text)" />
-                <StatTile label="Mothers on record" value={ancStats.totalMothers.toLocaleString()} />
-                <StatTile label="High-risk pregnancies" value={ancStats.highRiskCount.toLocaleString()} color="var(--color-danger-text)" />
+                <StatTile label={t('ui.anc4Rate')} value={`${ancStats.anc4PlusRate}%`} color="var(--color-success-text)" />
+                <StatTile label={t('ui.mothersOnRecord')} value={ancStats.totalMothers.toLocaleString()} />
+                <StatTile label={t('ui.highRiskPregnancies')} value={ancStats.highRiskCount.toLocaleString()} color="var(--color-danger-text)" />
               </div>
             ) : (
-              <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>No data on file for antenatal care coverage.</p>
+              <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>{t('ui.noDataOnFileFor2')}</p>
             )}
           </ProgramCard>
 
-          <PlaceholderCard title="HIV programme" note="Programme reporting not yet configured — no HIV programme dataset is collected in TamamHealth yet." />
-          <PlaceholderCard title="TB programme" note="Programme reporting not yet configured — no TB programme dataset is collected in TamamHealth yet." />
+          <PlaceholderCard title={t('ui.hivProgramme')} note="Programme reporting not yet configured — no HIV programme dataset is collected in TamamHealth yet." />
+          <PlaceholderCard title={t('ui.tbProgramme')} note="Programme reporting not yet configured — no TB programme dataset is collected in TamamHealth yet." />
           <PlaceholderCard
-            title="Malaria programme"
+            title={t('ui.malariaProgramme')}
             note={
               <>
-                Programme reporting not yet configured — no malaria programme dataset is collected in TamamHealth yet.
+                {t('ui.programmeReportingNotYetConfigured')}
                 {' '}
                 <span style={{ color: 'var(--text-secondary)' }}>
-                  {malariaAlertCount} active malaria surveillance signal{malariaAlertCount === 1 ? '' : 's'} on file (surveillance signal, not programme data).
+                  {malariaAlertCount} {t('ui.activeMalariaSurveillanceSignal')}{malariaAlertCount === 1 ? '' : 's'} {t('ui.onFileSurveillanceSignalNot')}
                 </span>
               </>
             }

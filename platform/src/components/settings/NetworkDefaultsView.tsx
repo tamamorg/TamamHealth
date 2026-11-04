@@ -175,14 +175,14 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
 
   const unavailable = (text: string) => (
     <div className="ehr-set-locked" style={{ justifyContent: 'flex-start', padding: '12px 0' }}>
-      <Lock /> {text} — not available until the workflow enforces it
+      <Lock /> {text} {t('ui.notAvailableUntilTheWorkflow')}
     </div>
   );
 
   if (loading) {
     return (
       <SectionCard icon={meta.icon} title={meta.title} note={scopeNote}>
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading current values…</p>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('ui.loadingCurrentValues')}</p>
       </SectionCard>
     );
   }
@@ -195,23 +195,22 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
         <div className="fs-net-warn">
           <AlertTriangle className="w-4 h-4 flex-none" />
           <span>
-            {divergent} {divergent === 1 ? 'facility currently holds' : 'facilities currently hold'} different
-            values for this module. Saving will align {divergent === 1 ? 'it' : 'them'} with what is shown here.
+            {divergent} {divergent === 1 ? 'facility currently holds' : 'facilities currently hold'} {t('ui.differentValuesForThisModule')} {divergent === 1 ? 'it' : 'them'} {t('ui.withWhatIsShownHere')}
           </span>
         </div>
       )}
 
       {module === 'standards' && (
         <>
-          <p className="fs-grouplabel">Result-review SLA</p>
+          <p className="fs-grouplabel">{t('ui.resultReviewSla')}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Critical results — review within (hours)">
+            <Field label={t('ui.criticalResultsReviewWithinHours')}>
               <NumberInput step="1" min={0} className="fs-input"
                 value={draft.resultReviewSLA.criticalHours}
                 onChange={e => setDraft({ ...draft, resultReviewSLA: { ...draft.resultReviewSLA, criticalHours: Number(e.target.value) } })}
               />
             </Field>
-            <Field label="Routine results — review within (hours)">
+            <Field label={t('ui.routineResultsReviewWithinHours')}>
               <NumberInput step="1" min={0} className="fs-input"
                 value={draft.resultReviewSLA.routineHours}
                 onChange={e => setDraft({ ...draft, resultReviewSLA: { ...draft.resultReviewSLA, routineHours: Number(e.target.value) } })}
@@ -219,7 +218,7 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
             </Field>
           </div>
 
-          <p className="fs-grouplabel" style={{ marginTop: 16 }}>Queue acuity</p>
+          <p className="fs-grouplabel" style={{ marginTop: 16 }}>{t('ui.queueAcuity')}</p>
           {unavailable('Automatic wait-time acuity escalation')}
         </>
       )}
@@ -231,7 +230,7 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
       {module === 'it' && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Sync failure alert (minutes)">
+            <Field label={t('ui.syncFailureAlertMinutes')}>
               <NumberInput step="1" min={1} className="fs-input" value={draft.itOperations.syncFailureAlertMinutes} onChange={e => setDraft({ ...draft, itOperations: { ...draft.itOperations, syncFailureAlertMinutes: Number(e.target.value) } })} />
             </Field>
           </div>
@@ -242,15 +241,15 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
       {module === 'billing' && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Field label="Currency">
+            <Field label={t('hr.labelCurrency')}>
               <input
                 className="fs-input"
                 value={draft.currency}
                 onChange={e => setDraft({ ...draft, currency: e.target.value })}
-                placeholder="e.g. SSP"
+                placeholder={t('ui.eGSsp')}
               />
             </Field>
-            <Field label="Service tax / VAT (%)">
+            <Field label={t('ui.serviceTaxVat')}>
               <NumberInput min={0} step={0.5} className="fs-input"
                 value={draft.taxRatePercent}
                 onChange={e => setDraft({ ...draft, taxRatePercent: Number(e.target.value) })}
@@ -258,7 +257,7 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
             </Field>
           </div>
 
-          <p className="fs-grouplabel" style={{ marginTop: 16 }}>Accepted payment methods</p>
+          <p className="fs-grouplabel" style={{ marginTop: 16 }}>{t('ui.acceptedPaymentMethods')}</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {ALL_PAYMENT_METHODS.map(key => (
               <CheckRow
@@ -270,7 +269,7 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
             ))}
           </div>
 
-          <p className="fs-grouplabel" style={{ marginTop: 16 }}>Payors / funding sources</p>
+          <p className="fs-grouplabel" style={{ marginTop: 16 }}>{t('ui.payorsFundingSources')}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {ALL_PAYORS.map(key => (
               <CheckRow
@@ -282,21 +281,21 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
             ))}
           </div>
 
-          <p className="fs-grouplabel" style={{ marginTop: 16 }}>Collection timeline (days into an unpaid balance)</p>
+          <p className="fs-grouplabel" style={{ marginTop: 16 }}>{t('ui.collectionTimelineDaysIntoAn')}</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Field label="Follow-up reminder">
+            <Field label={t('ui.followUpReminder')}>
               <NumberInput step="1" min={0} className="fs-input"
                 value={draft.collectionStageDays.followUp}
                 onChange={e => setDraft({ ...draft, collectionStageDays: { ...draft.collectionStageDays, followUp: Number(e.target.value) } })}
               />
             </Field>
-            <Field label="Warning notice">
+            <Field label={t('ui.warningNotice')}>
               <NumberInput step="1" min={0} className="fs-input"
                 value={draft.collectionStageDays.warning}
                 onChange={e => setDraft({ ...draft, collectionStageDays: { ...draft.collectionStageDays, warning: Number(e.target.value) } })}
               />
             </Field>
-            <Field label="Pre-write-off">
+            <Field label={t('ui.preWriteOff')}>
               <NumberInput step="1" min={0} className="fs-input"
                 value={draft.collectionStageDays.preWriteOff}
                 onChange={e => setDraft({ ...draft, collectionStageDays: { ...draft.collectionStageDays, preWriteOff: Number(e.target.value) } })}
@@ -308,7 +307,7 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
 
       {module === 'security' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Auto-lock after idle (minutes)">
+          <Field label={t('ui.autoLockAfterIdleMinutes')}>
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
               <NumberInput step="1" min={0} className="fs-input"

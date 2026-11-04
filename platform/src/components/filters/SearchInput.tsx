@@ -1,6 +1,7 @@
 'use client';
 
 import { Search, X } from '@/components/icons/lucide';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface SearchInputProps {
   value: string;
@@ -28,6 +29,7 @@ export default function SearchInput({
   autoFocus,
   'aria-label': ariaLabel,
 }: SearchInputProps) {
+  const { t } = useTranslation();
   return (
     <div
       className={`relative ${grow ? 'flex-1 min-w-[180px]' : ''} ${className}`}
@@ -50,7 +52,7 @@ export default function SearchInput({
       {value && (
         <button
           type="button"
-          aria-label="Clear search"
+          aria-label={t('ui.clearSearch')}
           onClick={() => onChange('')}
           className="absolute end-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full transition-colors"
           style={{ width: 20, height: 20, color: 'var(--text-muted)', background: 'var(--border-light)' }}

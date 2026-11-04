@@ -3,6 +3,7 @@
 import { useAuth, useSync } from '@/lib/context';
 import Badge, { type BadgeTone } from '@/components/Badge';
 import { Menu } from '@/components/icons/lucide';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 function syncChip(opts: {
   isOnline: boolean;
@@ -24,6 +25,7 @@ function syncChip(opts: {
  * this is always visible — the first persistent sync indicator in the app.
  */
 export default function MobileHeader({ onOpenModules }: { onOpenModules: () => void }) {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { isOnline, isNetworkUp, syncPaused, syncStatus, syncNow } = useSync();
   const chip = syncChip({ isOnline, isNetworkUp, syncPaused, syncState: syncStatus?.state });
@@ -33,9 +35,9 @@ export default function MobileHeader({ onOpenModules }: { onOpenModules: () => v
       {/* The full mark, as everywhere else. The bare dot icon this used is no
           longer in the product — one logo, every surface and every width. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/assets/tamamhealth-logo-full-white.svg" alt="Tamam Healthcare System" className="mobile-shell-header-logo" />
+      <img src="/assets/tamamhealth-logo-full-white.svg" alt={t('ui.tamamHealthcareSystem')} className="mobile-shell-header-logo" />
       <div className="mobile-shell-header-text">
-        <p className="mobile-shell-header-greeting">Welcome, {currentUser?.name || 'there'}</p>
+        <p className="mobile-shell-header-greeting">{t('ui.welcome')} {currentUser?.name || 'there'}</p>
         <p className="mobile-shell-header-facility">{currentUser?.hospitalName || currentUser?.hospital?.name || ''}</p>
       </div>
       <button
@@ -46,7 +48,7 @@ export default function MobileHeader({ onOpenModules }: { onOpenModules: () => v
       >
         <Badge tone={chip.tone} size="sm">{chip.label}</Badge>
       </button>
-      <button type="button" className="mobile-shell-header-modules" onClick={onOpenModules} title="All modules" aria-label="Open all modules">
+      <button type="button" className="mobile-shell-header-modules" onClick={onOpenModules} title={t('ui.allModules')} aria-label={t('ui.openAllModules')}>
         <Menu className="w-5 h-5" />
       </button>
     </header>

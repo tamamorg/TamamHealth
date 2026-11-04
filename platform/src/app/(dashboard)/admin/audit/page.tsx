@@ -222,27 +222,27 @@ export default function AuditLogsPage() {
   return (
     <SadbPage>
       <SadbCard
-        title="Audit logs"
+        title={t('ui.auditLogs')}
         meta={`${filtered.length} of ${inRange.length} events`}
         action={
           <div className="sadb-legend">
-            <span><i style={{ background: stats.failures ? 'var(--color-danger-500)' : 'var(--text-muted)' }} />Failures ({stats.failures})</span>
-            <span><i style={{ background: stats.highRisk ? 'var(--color-danger-500)' : 'var(--color-warning-600)' }} />High-risk ({stats.highRisk})</span>
-            <span><i style={{ background: 'var(--text-muted)' }} />Distinct users ({stats.users})</span>
+            <span><i style={{ background: stats.failures ? 'var(--color-danger-500)' : 'var(--text-muted)' }} />{t('ui.failures')}{stats.failures})</span>
+            <span><i style={{ background: stats.highRisk ? 'var(--color-danger-500)' : 'var(--color-warning-600)' }} />{t('ui.highRisk')}{stats.highRisk})</span>
+            <span><i style={{ background: 'var(--text-muted)' }} />{t('ui.distinctUsers')}{stats.users})</span>
           </div>
         }
       >
         <div className="sadb-search-row sadb-search-row--table-aligned">
           <SadbSearch
             value={search} onChange={setSearch}
-            placeholder="Search action, user, or details…" ariaLabel="Search audit log"
+            placeholder={t('ui.searchActionUserOrDetails')} ariaLabel="Search audit log"
             filters={{
               activeCount: activeFilterCount,
               onClear: () => { setSuccessFilter('all'); setRiskFilter('all'); setOrgFilter('all'); setRange('7d'); setUserScope(null); },
               children: (
                 <>
                 <FilterSelect
-                  label="Result"
+                  label={t('lab.result')}
                   value={successFilter}
                   onChange={value => setSuccessFilter(value as SuccessFilter)}
                   neutralValue="all"
@@ -250,7 +250,7 @@ export default function AuditLogsPage() {
                   options={[{ value: 'all', label: 'All results' }, { value: 'success', label: 'Success' }, { value: 'failure', label: 'Failure' }]}
                 />
                 <FilterSelect
-                  label="Risk"
+                  label={t('routeContext.risk')}
                   value={riskFilter}
                   onChange={value => setRiskFilter(value as RiskFilter)}
                   neutralValue="all"
@@ -258,7 +258,7 @@ export default function AuditLogsPage() {
                   options={[{ value: 'all', label: 'All risk' }, ...SEVERITIES.map(s => ({ value: s, label: s[0].toUpperCase() + s.slice(1) }))]}
                 />
                 <FilterSelect
-                  label="Organization"
+                  label={t('adminBilling.colOrganization')}
                   value={orgFilter}
                   onChange={setOrgFilter}
                   neutralValue="all"
@@ -266,7 +266,7 @@ export default function AuditLogsPage() {
                   options={[{ value: 'all', label: 'All organizations' }, ...organizations.map(org => ({ value: org._id, label: org.name }))]}
                 />
                 <FilterSelect
-                  label="Date range"
+                  label={t('ui.dateRange')}
                   value={range}
                   onChange={value => setRange(value as RangeFilter)}
                   neutralValue="7d"
@@ -290,12 +290,12 @@ export default function AuditLogsPage() {
               type="button"
               className="btn btn-secondary btn-sm flex-shrink-0"
               onClick={() => setUserScope(null)}
-              title="Show every user again"
+              title={t('ui.showEveryUserAgain')}
             >
-              Activity: {userScope.name || userScope.id} <X className="w-3.5 h-3.5" />
+              {t('ui.activity')} {userScope.name || userScope.id} <X className="w-3.5 h-3.5" />
             </button>
           )}
-          <button type="button" className="btn btn-primary btn-sm flex-shrink-0" onClick={exportCsv}>Export evidence (CSV)</button>
+          <button type="button" className="btn btn-primary btn-sm flex-shrink-0" onClick={exportCsv}>{t('ui.exportEvidenceCsv')}</button>
         </div>
         {/* No pager: every matching event lives in one scroll area, and the
             head's "Showing X of Y" meta states the count. */}
@@ -329,7 +329,7 @@ export default function AuditLogsPage() {
                 <td><SadbChip tone={SEVERITY_CHIP[risk]}>{risk.toUpperCase()}</SadbChip></td>
                 <td>
                   {log.success ? (
-                    <span className="sadb-table-action-state">Not needed</span>
+                    <span className="sadb-table-action-state">{t('ui.notNeeded')}</span>
                   ) : (
                     <button
                       type="button"
@@ -452,6 +452,7 @@ function AuditEntryDialog({
   onReopen: () => void | Promise<void>;
   onCopyJson: () => void;
 }) {
+  const { t } = useTranslation();
   const [noteDraft, setNoteDraft] = useState('');
   const when = log.createdAt
     ? `${new Date(log.createdAt).toLocaleString()} (${formatWhen(log.createdAt)})`
@@ -465,14 +466,14 @@ function AuditEntryDialog({
         <DialogHeader titleId="audit-entry-title" title={log.action} description={when} onClose={onClose} />
         <DialogBody>
         <div className="flex items-center flex-wrap gap-2" style={{ margin: '0 0 16px' }}>
-          {log.success ? <SadbChip tone="green">Success</SadbChip> : <SadbChip tone="red">Failure</SadbChip>}
+          {log.success ? <SadbChip tone="green">{t('admin.statusSuccess')}</SadbChip> : <SadbChip tone="red">{t('ui.failure')}</SadbChip>}
           <SadbChip tone={SEVERITY_CHIP[risk]}>{risk.toUpperCase()} RISK</SadbChip>
-          {resolution && <SadbChip tone="green">RESOLVED</SadbChip>}
+          {resolution && <SadbChip tone="green">{t('ui.resolved')}</SadbChip>}
         </div>
 
         {resolution && (
           <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: '0 0 16px' }}>
-            Resolved {formatWhen(resolution.resolvedAt)}
+            {t('conflicts.actionResolved')} {formatWhen(resolution.resolvedAt)}
             {resolution.resolvedByName ? ` by ${resolution.resolvedByName}` : ''}
             {resolution.note ? ` — ${resolution.note}` : ''}
           </p>
@@ -486,19 +487,19 @@ function AuditEntryDialog({
         )}
 
         <div style={{ border: '1px solid var(--border-light)', borderRadius: 8, marginBottom: 16 }}>
-          <EntryKv label="User" value={log.username || log.userId || 'System'} />
-          <EntryKv label="User id" value={log.userId} mono />
-          <EntryKv label="Role" value={log.role} />
-          <EntryKv label="Organization" value={orgName || log.orgId} />
-          <EntryKv label="Facility" value={log.hospitalId} mono />
-          <EntryKv label="IP address" value={log.ip} mono />
-          <EntryKv label="Route" value={log.route} mono />
-          <EntryKv label="Resource type" value={log.resourceType} />
-          <EntryKv label="Resource id" value={log.resourceId} mono />
-          <EntryKv label="Patient" value={log.patientId} mono />
-          <EntryKv label="Search query" value={log.query} mono />
-          <EntryKv label="Records returned" value={log.resultCount} />
-          <EntryKv label="Entry id" value={log._id} mono />
+          <EntryKv label={t('admin.colUser')} value={log.username || log.userId || 'System'} />
+          <EntryKv label={t('ui.userId')} value={log.userId} mono />
+          <EntryKv label={t('adminUsers.colRole')} value={log.role} />
+          <EntryKv label={t('adminBilling.colOrganization')} value={orgName || log.orgId} />
+          <EntryKv label={t('births.colFacility')} value={log.hospitalId} mono />
+          <EntryKv label={t('ui.ipAddress')} value={log.ip} mono />
+          <EntryKv label={t('consultation.rxRoute')} value={log.route} mono />
+          <EntryKv label={t('ui.resourceType')} value={log.resourceType} />
+          <EntryKv label={t('ui.resourceId')} value={log.resourceId} mono />
+          <EntryKv label={t('appointments.labelPatient')} value={log.patientId} mono />
+          <EntryKv label={t('ui.searchQuery')} value={log.query} mono />
+          <EntryKv label={t('ui.recordsReturned')} value={log.resultCount} />
+          <EntryKv label={t('ui.entryId')} value={log._id} mono />
         </div>
 
         {/* An optional line on what was done, written before resolving. It
@@ -507,14 +508,14 @@ function AuditEntryDialog({
         {!log.success && !resolution && (
           <div style={{ marginBottom: 14 }}>
             <label htmlFor="audit-resolve-note" style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
-              What was done about it (optional)
+              {t('ui.whatWasDoneAboutIt')}
             </label>
             <textarea rows={1}
               id="audit-resolve-note"
               className="sadb-modal-input"
               value={noteDraft}
               onChange={e => setNoteDraft(e.target.value)}
-              placeholder="e.g. Reset the account and confirmed the next login succeeded"
+              placeholder={t('ui.eGResetTheAccount')}
             />
           </div>
         )}
@@ -526,20 +527,20 @@ function AuditEntryDialog({
         <DialogFooter
           start={(
             <div className="flex flex-wrap gap-2">
-              <button type="button" className="btn btn-ghost btn-sm" onClick={onFilterUser}>Show this user&apos;s activity</button>
-              {onOpenUser && <button type="button" className="btn btn-ghost btn-sm" onClick={onOpenUser}>View in User Management</button>}
-              {onOpenPatient && <button type="button" className="btn btn-ghost btn-sm" onClick={onOpenPatient}>Open patient chart</button>}
-              <button type="button" className="btn btn-ghost btn-sm" onClick={onCopyJson}>Copy entry JSON</button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={onFilterUser}>{t('ui.showThisUserSActivity')}</button>
+              {onOpenUser && <button type="button" className="btn btn-ghost btn-sm" onClick={onOpenUser}>{t('ui.viewInUserManagement')}</button>}
+              {onOpenPatient && <button type="button" className="btn btn-ghost btn-sm" onClick={onOpenPatient}>{t('referrals.openPatientChart')}</button>}
+              <button type="button" className="btn btn-ghost btn-sm" onClick={onCopyJson}>{t('ui.copyEntryJson')}</button>
             </div>
           )}
         >
-          <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>{t('action.close')}</button>
           {/* Only failures reach the Risk Center, so only failures can be
               resolved from here — offering it on a successful entry would
               imply a queue row that does not exist. */}
           {!log.success && (resolution
-            ? <button type="button" className="btn btn-primary" onClick={() => onReopen()}>Reopen risk</button>
-            : <button type="button" className="btn btn-primary" onClick={() => onResolve(noteDraft)}>Mark resolved</button>
+            ? <button type="button" className="btn btn-primary" onClick={() => onReopen()}>{t('ui.reopenRisk')}</button>
+            : <button type="button" className="btn btn-primary" onClick={() => onResolve(noteDraft)}>{t('issues.action.resolve')}</button>
           )}
         </DialogFooter>
       </DialogFrame>

@@ -21,7 +21,10 @@ import { formatMoney } from '@/lib/format-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import { dismissBackdrop } from '@/lib/a11y';
 import { orderBannerAllergies, type BannerAllergy } from './allergy-order';
-import BackLink from '@/components/navigation/BackLink';
+import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { originBefore } from '@/lib/navigation/nav-history';
+import { routeLabelKeyFor } from '@/lib/navigation/route-context';
 import { useInlineRouteBack } from '@/components/navigation/RouteContextBar';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import './chart-frame.css';
@@ -91,6 +94,7 @@ function activeAllergies(patient: PatientDoc): BannerAllergy[] | undefined {
  *  and ungraded allergies lead in bold; beyond the first three the rest fold
  *  into "+N more" (never hiding a severe/ungraded one). */
 function AllergyBanner({ allergies, onShow }: { allergies?: BannerAllergy[]; onShow?: () => void }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const has = !!allergies && allergies.length > 0;
   const { ordered, visibleCount } = orderBannerAllergies(allergies ?? []);
@@ -118,7 +122,7 @@ function AllergyBanner({ allergies, onShow }: { allergies?: BannerAllergy[]; onS
   const lead = (
     <>
       <DuotoneIcon name={has ? 'alert' : 'shield'} size={14} />
-      <span className="tamam-allergy-label">Allergies</span>
+      <span className="tamam-allergy-label">{t('noteEditor.section.allergies')}</span>
       {list}
     </>
   );
@@ -157,6 +161,20 @@ export default function ChartHeader({
   // closing the patient, as in a clinical workspace (Epic's patient tab, the
   // O3 workspace). Same destination the bar's Back had.
   const closeTo = useInlineRouteBack();
+  // ✕ always leaves the chart for the page the user opened it from, whatever
+  // is open on top (a slider, the drawer, another tab of the chart): one
+  // history Back only closed the top layer or stepped back a tab. A worklist
+  // that named its own ?returnTo= wins; then the last page that is not this
+  // chart; then the list. The chart renders only on the client, after the
+  // patient loads, so reading the history here does not differ from a server
+  // render.
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const origin = closeTo && !searchParams.get('returnTo') ? originBefore(pathname) : null;
+  const closeHref = origin ?? closeTo?.href ?? '/patients';
+  const closeLabelKey = origin ? routeLabelKeyFor(origin) : closeTo?.labelKey;
+  const closeLabel = closeLabelKey ? t('chart.closeTo', { place: t(closeLabelKey) }) : t('chart.close');
 
   // Only surface the actions this role actually uses — e.g. a registration
   // clerk never writes clinical notes or prescriptions, so those buttons are
@@ -196,7 +214,7 @@ export default function ChartHeader({
               anything else on the row, the way the O3 banner tags it. */}
           {patient.isDeceased && (
             <span className="tamam-chip tamam-chip--deceased">
-              Deceased{patient.deceasedDate ? ` · ${formatDobOmrs(patient.deceasedDate)}` : ''}
+              {t('deaths.colDeceased')}{patient.deceasedDate ? ` · ${formatDobOmrs(patient.deceasedDate)}` : ''}
             </span>
           )}
           {genderSymbol && (
@@ -212,14 +230,14 @@ export default function ChartHeader({
           <AllergyBanner allergies={allergies} onShow={onShowAllergies} />
         </div>
         <div className="tamam-header-meta">
-          {patientAgeLabel(patient)} &middot; {formatDobOmrs(patient.dateOfBirth)} &middot; Facility ID: {patientIdDisplay}
+          {patientAgeLabel(patient)} &middot; {formatDobOmrs(patient.dateOfBirth)} {t('ui.facilityId2')} {patientIdDisplay}
         </div>
 
         {/* Contact line — always on. It is two short fields, not enough to be
             worth a collapse control. */}
         <div className="tamam-header-details">
-          <span>Phone: <strong>{patient.phone || '—'}</strong></span>
-          <span>Location: <strong>{[patient.state, patient.county, foreignCountry].filter(Boolean).join(', ') || '—'}</strong></span>
+          <span>{t('ui.phone')} <strong>{patient.phone || '—'}</strong></span>
+          <span>{t('ui.location')} <strong>{[patient.state, patient.county, foreignCountry].filter(Boolean).join(', ') || '—'}</strong></span>
         </div>
       </div>
 
@@ -271,21 +289,21 @@ export default function ChartHeader({
                 )}
                 {canSendMessages && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onMessage(); }}>
-                    <DuotoneIcon name="message" size={15} /> Message patient
+                    <DuotoneIcon name="message" size={15} /> {t('ptDetail.messagePatient')}
                   </button>
                 )}
                 {canViewClinical && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onPatientEd(); }}>
-                    <DuotoneIcon name="fileText" size={15} /> Patient education
+                    <DuotoneIcon name="fileText" size={15} /> {t('ui.patientEducation')}
                   </button>
                 )}
                 {canViewClinical && onVisitSummary && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onVisitSummary(); }}>
-                    <DuotoneIcon name="fileText" size={15} /> Visit summary
+                    <DuotoneIcon name="fileText" size={15} /> {t('visitSummary.title')}
                   </button>
                 )}
                 <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onPrint(); }}>
-                  <DuotoneIcon name="printer" size={15} /> Print chart
+                  <DuotoneIcon name="printer" size={15} /> {t('ui.printChart')}
                 </button>
                 {onAssignProvider && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onAssignProvider(); }}>
@@ -294,12 +312,12 @@ export default function ChartHeader({
                 )}
                 {onEndAssignment && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onEndAssignment(); }}>
-                    <DuotoneIcon name="userX" size={15} /> End assignment
+                    <DuotoneIcon name="userX" size={15} /> {t('msg.endAssignment')}
                   </button>
                 )}
                 {canRegisterPatients && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onEdit(); }}>
-                    <DuotoneIcon name="edit" size={15} /> Edit details
+                    <DuotoneIcon name="edit" size={15} /> {t('ui.editDetails')}
                   </button>
                 )}
                 {/* One slot, two verbs: the O3 actions menu offers "Mark
@@ -315,14 +333,20 @@ export default function ChartHeader({
           )}
         </div>
         {closeTo && (
-          <BackLink
+          <Link
+            href={closeHref}
             className="tamam-header-close"
-            fallbackHref={closeTo.href}
-            ariaLabel={t('chart.closeTo', { place: t(closeTo.labelKey) })}
+            aria-label={closeLabel}
+            onClick={event => {
+              // New tab / window: follow the link itself.
+              if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+              event.preventDefault();
+              router.push(closeHref);
+            }}
           >
             <DuotoneIcon name="close" size={16} aria-hidden />
-            <span className="tamam-header-close-tip" aria-hidden>{t('chart.closeTo', { place: t(closeTo.labelKey) })}</span>
-          </BackLink>
+            <span className="tamam-header-close-tip" aria-hidden>{closeLabel}</span>
+          </Link>
         )}
       </div>
 
@@ -332,7 +356,7 @@ export default function ChartHeader({
           onClick={onCollectPayment}
         >
           <DuotoneIcon name="dollarSign" size={13} />
-          <span className="tamam-allergy-label">Balance</span>
+          <span className="tamam-allergy-label">{t('financialReview.due')}</span>
           {/* A negative balance is money the facility owes the patient (an
               overpayment, or a paid charge since reversed) — "-3,000 due"
               said the opposite. */}

@@ -114,14 +114,14 @@ export default function BirthsPage() {
     <div className="ehr-visit-pop ehr-visit-pop--inline">
       <div className="ehr-visit-pop-body">
         <div className="ehr-visit-pop-row">
-          <span className="ehr-visit-pop-label">Certificate</span>
+          <span className="ehr-visit-pop-label">{t('ui.certificate')}</span>
           <div>
             <strong>{selectedBirth.certificateNumber}</strong>
             <p className="capitalize">{selectedBirth.birthType} · {selectedBirth.deliveryType} · {selectedBirth.birthWeight}g</p>
           </div>
         </div>
         <div className="ehr-visit-pop-row">
-          <span className="ehr-visit-pop-label">Mother</span>
+          <span className="ehr-visit-pop-label">{t('births.colMother')}</span>
           <div>
             <strong>{selectedBirth.motherName}</strong>
             <p>
@@ -131,24 +131,24 @@ export default function BirthsPage() {
           </div>
         </div>
         <div className="ehr-visit-pop-row">
-          <span className="ehr-visit-pop-label">Father</span>
+          <span className="ehr-visit-pop-label">{t('births.father')}</span>
           <div>
             <strong>{selectedBirth.fatherName || 'Not recorded'}</strong>
             {selectedBirth.fatherNationality && <p>{selectedBirth.fatherNationality}</p>}
           </div>
         </div>
         <div className="ehr-visit-pop-row">
-          <span className="ehr-visit-pop-label">Place</span>
+          <span className="ehr-visit-pop-label">{t('ward.journeyPlace')}</span>
           <div>
             <strong>{selectedBirth.placeOfBirth || selectedBirth.facilityName}</strong>
             <p>{selectedBirth.county || 'County not recorded'}, {selectedBirth.state}</p>
           </div>
         </div>
         <div className="ehr-visit-pop-row">
-          <span className="ehr-visit-pop-label">Recorded by</span>
+          <span className="ehr-visit-pop-label">{t('meds.reported.colRecorded')}</span>
           <div>
             <strong>{selectedBirth.attendedBy || 'Attendant not recorded'}</strong>
-            <p>Registered by {selectedBirth.registeredBy || 'not recorded'}</p>
+            <p>{t('ui.registeredBy')} {selectedBirth.registeredBy || 'not recorded'}</p>
           </div>
         </div>
       </div>
@@ -178,7 +178,7 @@ export default function BirthsPage() {
           />
           <div className="ehr-list-scroll">
           {loading ? (
-            <div className="p-8 text-center"><p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</p></div>
+            <div className="p-8 text-center"><p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('admin.loading')}</p></div>
           ) : (
             <table className="data-table" style={{ minWidth: 1080, tableLayout: 'fixed' }}>
               {/* State needs room for "Western Bahr el Ghazal", not the 6% it
@@ -197,15 +197,15 @@ export default function BirthsPage() {
               </colgroup>
               <thead>
                 <tr>
-                  <th>Certificate #</th>
-                  <th>Child Name</th>
-                  <th>Gender</th>
-                  <th>Date of Birth</th>
-                  <th>Weight</th>
-                  <th>Delivery</th>
-                  <th>Mother</th>
-                  <th>Facility</th>
-                  <th>State</th>
+                  <th>{t('births.colCertificate')}</th>
+                  <th>{t('births.colChildName')}</th>
+                  <th>{t('deaths.gender')}</th>
+                  <th>{t('births.colDateOfBirth')}</th>
+                  <th>{t('births.colWeight')}</th>
+                  <th>{t('births.colDelivery')}</th>
+                  <th>{t('births.colMother')}</th>
+                  <th>{t('births.colFacility')}</th>
+                  <th>{t('births.colState')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -265,12 +265,12 @@ export default function BirthsPage() {
         {/* Registration Form Modal */}
         {showForm && (
           <FormSlider
-            title="Register New Birth"
+            title={t('births.registerNewBirth')}
             width={672}
             onClose={() => setShowForm(false)}
             footer={<>
-                <button onClick={() => setShowForm(false)} className="btn btn-secondary">Cancel</button>
-                <button onClick={handleSubmit} className="btn btn-primary" style={{ opacity: !form.childFirstName.trim() || !form.childSurname.trim() || !form.motherName.trim() || !form.dateOfBirth ? 0.5 : 1 }}>Register Birth</button>
+                <button onClick={() => setShowForm(false)} className="btn btn-secondary">{t('action.cancel')}</button>
+                <button onClick={handleSubmit} className="btn btn-primary" style={{ opacity: !form.childFirstName.trim() || !form.childSurname.trim() || !form.motherName.trim() || !form.dateOfBirth ? 0.5 : 1 }}>{t('births.registerBirth')}</button>
             </>}
           >
             <div className="space-y-4">
@@ -278,19 +278,19 @@ export default function BirthsPage() {
                 {/* Child Information */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="field-required text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Child First Name</label>
+                    <label className="field-required text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('births.childFirstName')}</label>
                     <input type="text" required value={form.childFirstName} onChange={e => setForm({ ...form, childFirstName: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
                   </div>
                   <div>
-                    <label className="field-required text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Child Surname</label>
+                    <label className="field-required text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('births.childSurname')}</label>
                     <input type="text" required value={form.childSurname} onChange={e => setForm({ ...form, childSurname: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
                   </div>
                   <div>
-                    <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Gender</label>
-                    <PopupSelect label="Gender" value={form.childGender} onChange={value => setForm({ ...form, childGender: value as 'Male' | 'Female' })} options={['Male', 'Female']} />
+                    <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('deaths.gender')}</label>
+                    <PopupSelect label={t('deaths.gender')} value={form.childGender} onChange={value => setForm({ ...form, childGender: value as 'Male' | 'Female' })} options={['Male', 'Female']} />
                   </div>
                   <div>
-                    <label className="field-required text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Date of Birth</label>
+                    <label className="field-required text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('births.colDateOfBirth')}</label>
                     <input type="date" required value={form.dateOfBirth} onChange={e => setForm({ ...form, dateOfBirth: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
                   </div>
                 </div>
@@ -300,20 +300,20 @@ export default function BirthsPage() {
                 {/* Birth Details */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Birth Weight (grams)</label>
+                    <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('births.birthWeightGrams')}</label>
                     <NumberInput step="any" value={form.birthWeight} onChange={e => setForm({ ...form, birthWeight: Number(e.target.value) })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
                   </div>
                   <div>
-                    <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Delivery Type</label>
-                    <PopupSelect label="Delivery Type" value={form.deliveryType} onChange={value => setForm({ ...form, deliveryType: value as 'normal' | 'caesarean' | 'assisted' })} options={[{ value: 'normal', label: 'Normal' }, { value: 'caesarean', label: 'Caesarean' }, { value: 'assisted', label: 'Assisted' }]} />
+                    <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('births.deliveryType')}</label>
+                    <PopupSelect label={t('births.deliveryType')} value={form.deliveryType} onChange={value => setForm({ ...form, deliveryType: value as 'normal' | 'caesarean' | 'assisted' })} options={[{ value: 'normal', label: 'Normal' }, { value: 'caesarean', label: 'Caesarean' }, { value: 'assisted', label: 'Assisted' }]} />
                   </div>
                   <div>
-                    <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Birth Type</label>
-                    <PopupSelect label="Birth Type" value={form.birthType} onChange={value => setForm({ ...form, birthType: value as 'single' | 'twin' | 'multiple' })} options={[{ value: 'single', label: 'Single' }, { value: 'twin', label: 'Twin' }, { value: 'multiple', label: 'Multiple' }]} />
+                    <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('births.birthType')}</label>
+                    <PopupSelect label={t('births.birthType')} value={form.birthType} onChange={value => setForm({ ...form, birthType: value as 'single' | 'twin' | 'multiple' })} options={[{ value: 'single', label: 'Single' }, { value: 'twin', label: 'Twin' }, { value: 'multiple', label: 'Multiple' }]} />
                   </div>
                   <div>
-                    <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Attended By</label>
-                    <PopupSelect label="Attended By" value={form.attendedBy} onChange={value => setForm({ ...form, attendedBy: value })} placeholder="Select..." options={[{ value: '', label: 'Select...' }, 'Doctor', 'Midwife', 'Nurse', 'TBA', 'None']} />
+                    <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('births.attendedBy')}</label>
+                    <PopupSelect label={t('births.attendedBy')} value={form.attendedBy} onChange={value => setForm({ ...form, attendedBy: value })} placeholder={t('births.optSelect')} options={[{ value: '', label: 'Select...' }, 'Doctor', 'Midwife', 'Nurse', 'TBA', 'None']} />
                   </div>
                 </div>
 
@@ -322,27 +322,27 @@ export default function BirthsPage() {
                 {/* Parent Information */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="field-required text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Mother Name</label>
+                    <label className="field-required text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('anc.motherName')}</label>
                     <input type="text" required value={form.motherName} onChange={e => setForm({ ...form, motherName: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
                   </div>
                   <div>
-                    <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Mother Age</label>
+                    <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('births.motherAge')}</label>
                     <NumberInput step="1" value={form.motherAge} onChange={e => setForm({ ...form, motherAge: Number(e.target.value) })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
                   </div>
                   <div>
-                    <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Father Name</label>
+                    <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('births.fatherName')}</label>
                     <input type="text" value={form.fatherName} onChange={e => setForm({ ...form, fatherName: e.target.value })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
                   </div>
                   <div>
-                    <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Facility</label>
+                    <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('births.colFacility')}</label>
                     <PopupSelect
-                      label="Facility"
+                      label={t('births.colFacility')}
                       value={form.facilityId}
                       onChange={value => {
                         const h = hospitals.find(hospital => hospital._id === value);
                         setForm({ ...form, facilityId: value, facilityName: h?.name || '', state: h?.state || '' });
                       }}
-                      placeholder="Current facility"
+                      placeholder={t('births.currentFacility')}
                       options={[{ value: '', label: 'Current facility' }, ...hospitals.map(h => ({ value: h._id, label: h.name }))]}
                     />
                   </div>

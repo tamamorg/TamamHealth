@@ -11,6 +11,7 @@ import { useDataQuality } from '@/lib/hooks/useDataQuality';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { Printer } from '@/components/icons/lucide';
 import { printElementById } from '@/lib/safe-html';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 function Section({ heading, children }: { heading: string; children: React.ReactNode }) {
   return (
@@ -26,11 +27,12 @@ function Section({ heading, children }: { heading: string; children: React.React
 }
 
 function Bullets({ items }: { items: string[] }) {
+  const { t } = useTranslation();
   return (
     <ul className="space-y-1.5">
       {items.map((line, i) => (
         <li key={i} className="text-[13px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-          &bull;&nbsp; {line}
+          {t('ui.bull')} {line}
         </li>
       ))}
     </ul>
@@ -38,6 +40,7 @@ function Bullets({ items }: { items: string[] }) {
 }
 
 export default function ExecutiveBriefingPage() {
+  const { t } = useTranslation();
   const { alerts, loading: alertsLoading } = useSurveillance();
   const { stats: immStats, loading: immLoading } = useImmunizations();
   const { stats: ancStats, loading: ancLoading } = useANC();
@@ -90,7 +93,7 @@ export default function ExecutiveBriefingPage() {
   if (loading) {
     return (
       <main className="page-container page-enter">
-        <div className="dash-card p-8 text-center" style={{ color: 'var(--text-muted)' }}>Compiling briefing…</div>
+        <div className="dash-card p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('ui.compilingBriefing')}</div>
       </main>
     );
   }
@@ -99,17 +102,17 @@ export default function ExecutiveBriefingPage() {
     <main id="executive-briefing-print" className="page-container page-enter">
       <div data-tour="gov-briefing-header" className="dash-card mb-3 no-print">
         <EhrListHeader
-          title="Executive briefing"
+          title={t('ui.executiveBriefing')}
           stats={[{ label: 'As of', value: `${today} · National` }]}
           actions={
             <button onClick={() => printElementById('executive-briefing-print', { label: 'Executive Briefing', issuer: 'Ministry of Health', fieldsTitle: 'Report Scope', fields: [{ label: 'Coverage', value: 'National' }] })} className="btn btn-secondary print-visible" style={{ height: 36 }}>
-              <Printer className="w-4 h-4" /> Print briefing
+              <Printer className="w-4 h-4" /> {t('ui.printBriefing')}
             </button>
           }
         />
       </div>
 
-      <Section heading="Situation overview">
+      <Section heading={t('ui.situationOverview')}>
         <Bullets items={[
           activeAlerts.length > 0
             ? `${activeAlerts.length} active disease alert${activeAlerts.length === 1 ? '' : 's'} on file: ${emergencyCount} emergency, ${warningCount} warning, ${watchCount} watch.`
@@ -123,7 +126,7 @@ export default function ExecutiveBriefingPage() {
         ]} />
       </Section>
 
-      <Section heading="Service delivery">
+      <Section heading={t('ui.serviceDelivery')}>
         <Bullets items={[
           immStats
             ? `Immunization coverage: ${immStats.coverageRate}% fully immunized (${immStats.fullyImmunized.toLocaleString()} of ${immStats.totalChildren.toLocaleString()} children on record).`
@@ -134,7 +137,7 @@ export default function ExecutiveBriefingPage() {
         ]} />
       </Section>
 
-      <Section heading="Vital events">
+      <Section heading={t('ui.vitalEvents')}>
         <Bullets items={[
           birthStats
             ? `Births registered: ${birthStats.total.toLocaleString()} total on record, ${birthStats.thisMonth.toLocaleString()} this month.`
@@ -145,7 +148,7 @@ export default function ExecutiveBriefingPage() {
         ]} />
       </Section>
 
-      <Section heading="Data quality">
+      <Section heading={t('dataMgmt.dataQuality')}>
         <Bullets items={[
           dq
             ? `Average reporting completeness ${dq.avgCompleteness}%, timeliness ${dq.avgTimeliness}%, across ${dq.facilitiesReporting} of ${dq.totalFacilities} facilities assessed.`
@@ -156,7 +159,7 @@ export default function ExecutiveBriefingPage() {
         ]} />
       </Section>
 
-      <Section heading="Recommended actions">
+      <Section heading={t('ui.recommendedActions')}>
         <Bullets items={[
           emergencyCount > 0
             ? `Verify ${emergencyCount} emergency alert${emergencyCount === 1 ? '' : 's'} at source before dispatch of response teams.`

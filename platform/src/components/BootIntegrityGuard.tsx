@@ -12,6 +12,7 @@
 
 import { useEffect, useState } from 'react';
 import { requestReload } from '@/lib/unsaved/unsaved-registry';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 // Timestamp (ms) of the last recovery reload, kept in sessionStorage so it
 // survives that reload — the whole point of the cap.
@@ -90,6 +91,7 @@ export function recoveryAction(input: {
 }
 
 export default function BootIntegrityGuard() {
+  const { t } = useTranslation();
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -142,15 +144,15 @@ export default function BootIntegrityGuard() {
         <div style={{ width: 56, height: 56, borderRadius: 16, margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(224, 49, 39,0.12)', border: '1px solid rgba(224, 49, 39,0.25)' }}>
           <span style={{ fontSize: 28, lineHeight: 1 }} aria-hidden>⚠️</span>
         </div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 8px' }}>Couldn’t load the app</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 8px' }}>{t('ui.couldnTLoadTheApp')}</h2>
         <p style={{ fontSize: 14, color: '#94a2b3', margin: '0 0 24px', lineHeight: 1.5 }}>
-          Some files didn’t load correctly — this is usually a network hiccup or an out-of-date copy of the app. Reloading should fix it.
+          {t('ui.someFilesDidnTLoad')}
         </p>
         <button
           onClick={() => { try { sessionStorage.removeItem(RELOAD_FLAG); } catch { /* ignore */ } window.location.reload(); }}
           style={{ background: 'var(--accent-primary)', color: 'white', border: 'none', padding: '12px 24px', borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
         >
-          Reload
+          {t('ui.reload')}
         </button>
       </div>
     </div>

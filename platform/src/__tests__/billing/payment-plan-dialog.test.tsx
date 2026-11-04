@@ -9,6 +9,9 @@ jest.mock('@/lib/context', () => ({ useAuth: () => ({ currentUser: { _id: 'bille
 jest.mock('@/lib/i18n/useTranslation', () => ({ useTranslation: () => ({ t: mockT }) }));
 jest.mock('@/lib/services/ledger-service', () => ({ getPatientLedger: jest.fn() }));
 jest.mock('@/lib/services/payment-service', () => ({ createPaymentPlan: jest.fn() }));
+// Errors are the bottom-left notification, not a banner in the form.
+const mockShowToast = jest.fn();
+jest.mock('@/components/Toast', () => ({ useToast: () => ({ showToast: mockShowToast }) }));
 import { getPatientLedger } from '@/lib/services/ledger-service';
 import { createPaymentPlan } from '@/lib/services/payment-service';
 
@@ -26,7 +29,7 @@ it('uses the selected currency, preserves the selected term after failure and co
   try {
     await clickAsync(button('payments.reviewPlan'));
     await clickAsync(button('payments.createPlan'));
-    expect(document.querySelector('[role="alert"]')?.textContent).toBe('payments.planFailed');
+    expect(mockShowToast).toHaveBeenCalledWith('payments.planFailed', 'error', { title: undefined });
     expect(props.onComplete).not.toHaveBeenCalled();
     await clickAsync(button('payments.createPlan'));
     expect(createPaymentPlan).toHaveBeenLastCalledWith(expect.objectContaining({ currency: 'USD', totalBalance: 100, termMonths: 3 }));
@@ -56,7 +59,7 @@ it('does not advance on an unreadable balance', async () => {
   const mounted = await mountAndFlush(<PaymentPlanWizard {...props} />);
   try {
     expect(button('payments.reviewPlan').disabled).toBe(true);
-    expect(document.querySelector('[role="alert"]')).not.toBeNull();
+    expect(mockShowToast).toHaveBeenCalledWith(expect.any(String), 'error', expect.anything());
     expect(createPaymentPlan).not.toHaveBeenCalled();
   } finally { mounted.unmount(); }
 });

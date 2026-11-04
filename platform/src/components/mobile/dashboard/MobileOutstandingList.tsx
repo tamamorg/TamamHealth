@@ -2,17 +2,19 @@
 
 import { useRouter } from 'next/navigation';
 import type { MobileOutstandingItem } from '@/lib/mobile-shell/dashboard-strategy';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface MobileOutstandingListProps {
   items: MobileOutstandingItem[];
 }
 
 export default function MobileOutstandingList({ items }: MobileOutstandingListProps) {
+  const { t } = useTranslation();
   const router = useRouter();
 
   return (
     <div className="mobile-outstanding-card">
-      <h3 className="mobile-outstanding-title">Outstanding items</h3>
+      <h3 className="mobile-outstanding-title">{t('ui.outstandingItems')}</h3>
       {items.map((item) => (
         <button
           key={item.key}
