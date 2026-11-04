@@ -24,6 +24,7 @@ import Select from '@/components/Select';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { locationLabel, states } from '@/lib/data/south-sudan-reference';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import NumberInput from '@/components/forms/NumberInput';
 
 const EMERGENCY_TYPES: { value: EmergencyType; label: string }[] = [
   { value: 'disease_outbreak', label: 'Disease outbreak' },
@@ -348,11 +349,11 @@ export default function EmergencyPreparednessPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Surge beds</label>
-                    <input type="number" step="1" min={0} value={form.surgeBeds} onChange={e => setForm({ ...form, surgeBeds: Math.max(0, parseInt(e.target.value) || 0) })} />
+                    <NumberInput step="1" min={0} value={form.surgeBeds} onChange={e => setForm({ ...form, surgeBeds: Math.max(0, parseInt(e.target.value) || 0) })} />
                   </div>
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Est. capacity / day</label>
-                    <input type="number" step="1" min={0} value={form.estimatedCapacity} onChange={e => setForm({ ...form, estimatedCapacity: Math.max(0, parseInt(e.target.value) || 0) })} />
+                    <NumberInput step="1" min={0} value={form.estimatedCapacity} onChange={e => setForm({ ...form, estimatedCapacity: Math.max(0, parseInt(e.target.value) || 0) })} />
                   </div>
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>State</label>

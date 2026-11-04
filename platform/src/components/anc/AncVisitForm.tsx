@@ -32,6 +32,7 @@ import {
 import type { ANCVisitDoc, PatientDoc } from '@/lib/db-types';
 import '@/components/ehr/chart/panels/start-visit-panel.css';
 import './anc-visit-form.css';
+import NumberInput from '@/components/forms/NumberInput';
 
 const RISK_FACTOR_OPTIONS = [
   'hypertension', 'anemia', 'previous_csection', 'multiple_pregnancy',
@@ -274,7 +275,7 @@ export default function AncVisitForm({ layout, lockedPatient, onClose, onSaved }
           </div>
           <div>
             <label {...req('motherAge')}>{t('anc.age')}</label>
-            <input className={box('motherAge')} type="number" step="1" min={14} max={55} value={form.motherAge} onChange={e => setForm({ ...form, motherAge: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
+            <NumberInput className={box('motherAge')} step="1" min={14} max={55} value={form.motherAge} onChange={e => setForm({ ...form, motherAge: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
           </div>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
@@ -309,21 +310,21 @@ export default function AncVisitForm({ layout, lockedPatient, onClose, onSaved }
         </div>
         <div>
           <label>{t('anc.weightKg')}</label>
-          <input type="number" step="0.1" value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value === '' ? '' : parseFloat(e.target.value) })} />
+          <NumberInput step="0.1" value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value === '' ? '' : parseFloat(e.target.value) })} />
         </div>
         <div>
           <label>{t('anc.fundalHeight')}</label>
-          <input type="number" step="any" value={form.fundalHeight} onChange={e => setForm({ ...form, fundalHeight: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
+          <NumberInput step="any" value={form.fundalHeight} onChange={e => setForm({ ...form, fundalHeight: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
         </div>
         <div>
           <label>{t('anc.fetalHrBpm')}</label>
-          <input type="number" step="1" value={form.fetalHeartRate} onChange={e => setForm({ ...form, fetalHeartRate: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
+          <NumberInput step="1" value={form.fetalHeartRate} onChange={e => setForm({ ...form, fetalHeartRate: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
         </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
         <div>
           <label>{t('anc.hemoglobin')}</label>
-          <input type="number" step="0.1" value={form.hemoglobin} onChange={e => setForm({ ...form, hemoglobin: e.target.value === '' ? '' : parseFloat(e.target.value) })} />
+          <NumberInput step="0.1" value={form.hemoglobin} onChange={e => setForm({ ...form, hemoglobin: e.target.value === '' ? '' : parseFloat(e.target.value) })} />
         </div>
         <div>
           <label {...req('urineProtein')}>{t('anc.urineProtein')}</label>

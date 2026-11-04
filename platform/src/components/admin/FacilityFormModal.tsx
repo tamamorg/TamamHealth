@@ -33,6 +33,7 @@ import {
 } from '@/lib/facility-form';
 import type { HospitalDoc, OrganizationDoc } from '@/lib/db-types';
 import { describeError } from '@/lib/user-facing-error';
+import NumberInput from '@/components/forms/NumberInput';
 
 export interface FacilityFormModalProps {
   onClose: () => void;
@@ -164,8 +165,7 @@ export default function FacilityFormModal({
   const numberField = (key: keyof FacilityFormValues, text: string) => (
     <div key={String(key)}>
       {label(text)}
-      <input
-        type="number" step="1" min="0" style={inputStyle}
+      <NumberInput step="1" min="0" style={inputStyle}
         data-field={`facility-${String(key)}`}
         value={form[key] as number}
         onChange={e => set(key, (parseInt(e.target.value, 10) || 0) as FacilityFormValues[typeof key])}
@@ -379,15 +379,13 @@ export default function FacilityFormModal({
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   {label(t('orgHospitals.labelLatitude'))}
-                  <input
-                    type="number" step="0.0001" style={inputStyle} data-field="facility-lat"
+                  <NumberInput step="0.0001" style={inputStyle} data-field="facility-lat"
                     value={form.lat} onChange={e => set('lat', parseFloat(e.target.value) || 0)}
                   />
                 </div>
                 <div>
                   {label(t('orgHospitals.labelLongitude'))}
-                  <input
-                    type="number" step="0.0001" style={inputStyle} data-field="facility-lng"
+                  <NumberInput step="0.0001" style={inputStyle} data-field="facility-lng"
                     value={form.lng} onChange={e => set('lng', parseFloat(e.target.value) || 0)}
                   />
                 </div>

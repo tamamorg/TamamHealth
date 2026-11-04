@@ -215,7 +215,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
             </div>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="dir-desc" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Detail</label>
-              <input id="dir-desc" autoFocus value={addForm.description} onChange={e => setAddForm({ ...addForm, description: e.target.value })} placeholder="e.g. General consent to treat" className={fieldCls} style={fieldStyle} />
+              <textarea rows={1} id="dir-desc" autoFocus value={addForm.description} onChange={e => setAddForm({ ...addForm, description: e.target.value })} placeholder="e.g. General consent to treat" className={fieldCls} style={fieldStyle} />
             </div>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="dir-start" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Effective from</label>
@@ -260,7 +260,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
             </div>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="dir-edesc" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Detail</label>
-              <input id="dir-edesc" value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} className={fieldCls} style={fieldStyle} />
+              <textarea rows={1} id="dir-edesc" value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} className={fieldCls} style={fieldStyle} />
             </div>
           </div>
         </FormSlider>
@@ -334,7 +334,7 @@ export default function DirectivesSection({ patient }: { patient: PatientDoc }) 
             </p>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="dir-reason" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Reason (required)</label>
-              <input id="dir-reason" autoFocus value={revokeReason} onChange={e => setRevokeReason(e.target.value)} className={fieldCls} style={fieldStyle} />
+              <textarea rows={1} id="dir-reason" autoFocus value={revokeReason} onChange={e => setRevokeReason(e.target.value)} className={fieldCls} style={fieldStyle} />
             </div>
             </DialogBody>
             <DialogFooter>

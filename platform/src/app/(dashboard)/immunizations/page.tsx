@@ -25,6 +25,7 @@ import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { describeError } from '@/lib/user-facing-error';
 import { useUrlView } from '@/lib/navigation/use-url-view';
+import NumberInput from '@/components/forms/NumberInput';
 
 const VACCINES = ['BCG', 'OPV', 'Penta', 'PCV', 'Rota', 'Measles', 'Yellow Fever', 'Vitamin A'];
 const SITES: Array<'left arm' | 'right arm' | 'left thigh' | 'right thigh' | 'oral'> = ['left arm', 'right arm', 'left thigh', 'right thigh', 'oral'];
@@ -949,7 +950,7 @@ export default function ImmunizationsPage() {
                   </div>
                   <div>
                     <label>{t('immun.doseNumber')}</label>
-                    <input type="number" step="1" min={0} max={5} value={form.doseNumber} onChange={e => setForm({ ...form, doseNumber: parseInt(e.target.value, 10) || 0 })} />
+                    <NumberInput step="1" min={0} max={5} value={form.doseNumber} onChange={e => setForm({ ...form, doseNumber: parseInt(e.target.value, 10) || 0 })} />
                   </div>
                 </div>
 
@@ -1022,7 +1023,7 @@ export default function ImmunizationsPage() {
                   </div>
                   <div>
                     <label>{t('immun.doseNumber')}</label>
-                    <input type="number" step="1" min={0} max={5} value={editDose.doseNumber} onChange={e => setEditDose({ ...editDose, doseNumber: parseInt(e.target.value, 10) || 0 })} />
+                    <NumberInput step="1" min={0} max={5} value={editDose.doseNumber} onChange={e => setEditDose({ ...editDose, doseNumber: parseInt(e.target.value, 10) || 0 })} />
                   </div>
                 </div>
 

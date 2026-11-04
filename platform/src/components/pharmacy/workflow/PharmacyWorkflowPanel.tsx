@@ -25,6 +25,7 @@ import UnlabelledDrugNotice from '@/components/clinical-notes/prescribe/Unlabell
 import { usePharmacyWorkflow, type PharmacyWorkflowController } from './usePharmacyWorkflow';
 import '@/components/lab/order/lab-order.css';
 import '@/components/lab/workflow/lab-workflow.css';
+import NumberInput from '@/components/forms/NumberInput';
 
 /** Picked from the row's dropdown: this form sends it back, or records it cannot be filled. */
 export type RxIntent = 'hold' | 'stockout';
@@ -185,8 +186,8 @@ export default function PharmacyWorkflowPanel({
     body: (
       <>
         <ObfQuestion label={t('rxFlow.quantityToHand')} htmlFor="rx-qty" required>
-          <input
-            id="rx-qty" type="number" step="any" min={1}
+          <NumberInput
+            id="rx-qty" step="any" min={1}
             value={draft.quantity}
             onChange={e => setDraft({ ...draft, quantity: Number(e.target.value) })}
           />

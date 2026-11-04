@@ -15,6 +15,7 @@ import '@/components/billing/billing.css';
 import Select from '@/components/Select';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { FormError } from '@/components/overlay/FormNotices';
+import NumberInput from '@/components/forms/NumberInput';
 
 interface PaymentPanelProps {
   patientId: string;
@@ -400,7 +401,7 @@ export default function PaymentPanel({
           {/* Amount */}
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>{t('payments.amountWithCurrency', { currency })}</label>
-            <input type="number" step="any" value={amount} onChange={e => setAmount(e.target.value)}
+            <NumberInput step="any" value={amount} onChange={e => setAmount(e.target.value)}
               style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', fontSize: 16, fontWeight: 600, background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
             />
           </div>
@@ -542,7 +543,7 @@ export default function PaymentPanel({
                 <>
                   <div>
                     <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>{t('payments.reasonForWaiver')}</label>
-                    <input type="text" value={waiverReason} onChange={e => setWaiverReason(e.target.value)} placeholder={t('payments.reasonForWaiverPlaceholder')}
+                    <textarea rows={1} value={waiverReason} onChange={e => setWaiverReason(e.target.value)} placeholder={t('payments.reasonForWaiverPlaceholder')}
                       style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', fontSize: 14, background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
                     />
                   </div>

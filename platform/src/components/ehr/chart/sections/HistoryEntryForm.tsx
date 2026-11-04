@@ -186,9 +186,8 @@ export default function HistoryEntryForm({
                 ))}
               </div>
             )}
-            <input
+            <textarea rows={1}
               id="history-detail"
-              type="text"
               value={detail}
               onChange={e => setDetail(e.target.value)}
               placeholder={t(`history.factorPlaceholder.${factor}`)}

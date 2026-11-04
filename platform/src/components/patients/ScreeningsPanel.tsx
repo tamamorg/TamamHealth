@@ -29,6 +29,7 @@ import RowActionsMenu from '@/components/RowActionsMenu';
 import { FormError } from '@/components/overlay/FormNotices';
 import FormField from '@/components/overlay/FormField';
 import FormSlider from '@/components/overlay/FormSlider';
+import NumberInput from '@/components/forms/NumberInput';
 
 const COMMON_SCREENINGS = ['Blood pressure', 'HIV test', 'Cervical cancer (VIA)', 'Diabetes (blood glucose)', 'TB symptom screen', 'Well-child check', 'Nutrition (MUAC)'];
 const screeningOptions = COMMON_SCREENINGS.map(s => ({ code: '', name: s }));
@@ -234,7 +235,7 @@ export default function ScreeningsPanel({ patient }: { patient: PatientDoc }) {
               {control => <input {...control} type="date" value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} />}
             </FormField>
             <FormField label={t('screenings.recallLabel')} optional>
-              {control => <input {...control} type="number" step="1" min="0" value={form.intervalMonths} onChange={e => setForm({ ...form, intervalMonths: e.target.value })} placeholder={t('screenings.recallPlaceholder')} />}
+              {control => <NumberInput {...control} step="1" min="0" value={form.intervalMonths} onChange={e => setForm({ ...form, intervalMonths: e.target.value })} placeholder={t('screenings.recallPlaceholder')} />}
             </FormField>
             {error && <FormError message={error} />}
           </div>

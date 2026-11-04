@@ -12,6 +12,7 @@ import { patientFullName } from '@/lib/patient-utils';
 import Select from '@/components/Select';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import NumberInput from '@/components/forms/NumberInput';
 
 interface Line {
   fee: FeeScheduleDoc;
@@ -198,8 +199,7 @@ export function SuperbillDraft({ sb }: { sb: Superbill }) {
                 <tr key={l.fee._id}>
                   <td>{l.fee.serviceName}</td>
                   <td className="bl-center">
-                    <input
-                      type="number" step="any"
+                    <NumberInput step="any"
                       min={1}
                       value={l.quantity}
                       onChange={(e) => setLines((ls) => ls.map((x, j) => j === i ? { ...x, quantity: Math.max(1, parseInt(e.target.value) || 1) } : x))}

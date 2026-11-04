@@ -514,7 +514,7 @@ export default function StartVisitPanel({ patient, patientName, currentUser, app
                   {billing.exemption === 'other' && (
                     <label className="sv-field">
                       <span className="sv-label">{t('startVisit.exemptionReason')}</span>
-                      <input type="text" value={billing.exemptionReason || ''} onChange={event => setBilling(prev => ({ ...prev, exemptionReason: event.target.value }))} />
+                      <textarea rows={1} value={billing.exemptionReason || ''} onChange={event => setBilling(prev => ({ ...prev, exemptionReason: event.target.value }))} />
                     </label>
                   )}
                   <p className="sv-hint">{t('startVisit.nonPayingHint')}</p>

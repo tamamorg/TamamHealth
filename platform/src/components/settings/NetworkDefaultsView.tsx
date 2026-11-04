@@ -39,6 +39,7 @@ import {
   SectionCard, Field, SaveBar, CheckRow, toggleKey,
 } from '@/components/settings/settings-controls';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import NumberInput from '@/components/forms/NumberInput';
 
 export type NetworkModuleKey =
   | 'standards' | 'consultation' | 'reporting' | 'it' | 'billing' | 'security';
@@ -205,15 +206,13 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
           <p className="fs-grouplabel">Result-review SLA</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Critical results — review within (hours)">
-              <input
-                type="number" step="1" min={0} className="fs-input"
+              <NumberInput step="1" min={0} className="fs-input"
                 value={draft.resultReviewSLA.criticalHours}
                 onChange={e => setDraft({ ...draft, resultReviewSLA: { ...draft.resultReviewSLA, criticalHours: Number(e.target.value) } })}
               />
             </Field>
             <Field label="Routine results — review within (hours)">
-              <input
-                type="number" step="1" min={0} className="fs-input"
+              <NumberInput step="1" min={0} className="fs-input"
                 value={draft.resultReviewSLA.routineHours}
                 onChange={e => setDraft({ ...draft, resultReviewSLA: { ...draft.resultReviewSLA, routineHours: Number(e.target.value) } })}
               />
@@ -233,7 +232,7 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Sync failure alert (minutes)">
-              <input type="number" step="1" min={1} className="fs-input" value={draft.itOperations.syncFailureAlertMinutes} onChange={e => setDraft({ ...draft, itOperations: { ...draft.itOperations, syncFailureAlertMinutes: Number(e.target.value) } })} />
+              <NumberInput step="1" min={1} className="fs-input" value={draft.itOperations.syncFailureAlertMinutes} onChange={e => setDraft({ ...draft, itOperations: { ...draft.itOperations, syncFailureAlertMinutes: Number(e.target.value) } })} />
             </Field>
           </div>
           {unavailable('Backup scheduling, device registration, offline-mode enforcement, and integration switches')}
@@ -252,8 +251,7 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
               />
             </Field>
             <Field label="Service tax / VAT (%)">
-              <input
-                type="number" min={0} step={0.5} className="fs-input"
+              <NumberInput min={0} step={0.5} className="fs-input"
                 value={draft.taxRatePercent}
                 onChange={e => setDraft({ ...draft, taxRatePercent: Number(e.target.value) })}
               />
@@ -287,22 +285,19 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
           <p className="fs-grouplabel" style={{ marginTop: 16 }}>Collection timeline (days into an unpaid balance)</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Field label="Follow-up reminder">
-              <input
-                type="number" step="1" min={0} className="fs-input"
+              <NumberInput step="1" min={0} className="fs-input"
                 value={draft.collectionStageDays.followUp}
                 onChange={e => setDraft({ ...draft, collectionStageDays: { ...draft.collectionStageDays, followUp: Number(e.target.value) } })}
               />
             </Field>
             <Field label="Warning notice">
-              <input
-                type="number" step="1" min={0} className="fs-input"
+              <NumberInput step="1" min={0} className="fs-input"
                 value={draft.collectionStageDays.warning}
                 onChange={e => setDraft({ ...draft, collectionStageDays: { ...draft.collectionStageDays, warning: Number(e.target.value) } })}
               />
             </Field>
             <Field label="Pre-write-off">
-              <input
-                type="number" step="1" min={0} className="fs-input"
+              <NumberInput step="1" min={0} className="fs-input"
                 value={draft.collectionStageDays.preWriteOff}
                 onChange={e => setDraft({ ...draft, collectionStageDays: { ...draft.collectionStageDays, preWriteOff: Number(e.target.value) } })}
               />
@@ -316,8 +311,7 @@ export default function NetworkDefaultsView({ module, targets, sessionHospitalId
           <Field label="Auto-lock after idle (minutes)">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-              <input
-                type="number" step="1" min={0} className="fs-input"
+              <NumberInput step="1" min={0} className="fs-input"
                 value={draft.lockTimeoutMinutes}
                 onChange={e => setDraft({ ...draft, lockTimeoutMinutes: Number(e.target.value) })}
               />

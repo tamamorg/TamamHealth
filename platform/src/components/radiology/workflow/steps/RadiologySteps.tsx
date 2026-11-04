@@ -23,6 +23,7 @@ import {
 import type { RadiologyWorkflowController } from '../useRadiologyWorkflow';
 import StudyImageWorkspace from '../StudyImageWorkspace';
 import { ResultReview } from '@/components/lab/workflow/steps/LabSteps';
+import NumberInput from '@/components/forms/NumberInput';
 
 export function Field({ label, value }: { label: string; value?: React.ReactNode }) {
   return (
@@ -272,7 +273,7 @@ export function SafetyStep({ study, ctrl }: { study: LabResultDoc; ctrl: Radiolo
 
         <div className="labord-form labord-form--pairs" style={{ marginTop: 10 }}>
           <label className="labord-field-label" htmlFor="img-safety-note">{t('imgFlow.note')}</label>
-          <input
+          <textarea rows={1}
             id="img-safety-note"
             className="labord-x"
             value={ctrl.safetyDraft.note}
@@ -327,10 +328,9 @@ export function AcquireStep({ study, ctrl }: { study: LabResultDoc; ctrl: Radiol
               placeholder={t('imgFlow.techniquePlaceholder')}
             />
             <label className="labord-field-label" htmlFor="img-count">{t('imgFlow.imageCount')}</label>
-            <input
+            <NumberInput
               id="img-count"
-              className="labord-x"
-              type="number" step="1"
+              className="labord-x" step="1"
               min={0}
               value={ctrl.acquireDraft.imageCount}
               onChange={e => ctrl.setAcquireDraft({ ...ctrl.acquireDraft, imageCount: Number(e.target.value) })}

@@ -474,7 +474,7 @@ export default function WardsPage() {
 
                 <div className="wdis-field">
                   <label className="field-required" htmlFor="ward-discharge-diagnosis">{t('ward.dischargeDiagnosis')}</label>
-                  <input
+                  <textarea rows={1}
                     id="ward-discharge-diagnosis"
                     value={dischargeForm.dischargeDiagnosis}
                     onChange={e => setDischargeForm({ ...dischargeForm, dischargeDiagnosis: e.target.value })}

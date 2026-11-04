@@ -9675,6 +9675,7 @@ const apd: TranslationMap = {
   'reload.now': 'حدّث هسع',
   'routeContext.transfers': 'التحويلات',
   'routeContext.inquiries': 'الاستفسارات',
+  'dhis2.totalsToDate': 'المجموع لحد هسع، ما الفترة المختارة',
 };
 
 export default apd;

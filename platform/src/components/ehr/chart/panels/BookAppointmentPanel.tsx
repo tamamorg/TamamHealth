@@ -37,6 +37,7 @@ import './book-appointment-panel.css';
 import FormNotices from '@/components/overlay/FormNotices';
 import Select from '@/components/Select';
 import { APPOINTMENT_TYPE_OPTIONS } from '@/lib/visits/visit-details';
+import NumberInput from '@/components/forms/NumberInput';
 
 const TYPE_OPTIONS = APPOINTMENT_TYPE_OPTIONS;
 const PATTERNS = ['weekly', 'biweekly', 'monthly', 'quarterly'] as const;
@@ -338,7 +339,7 @@ export default function BookAppointmentPanel({ patient, patientName, onClose, on
             </div>
             <label className="bap-field">
               <span className="bap-label">{t('bookPanel.duration')}</span>
-              <input type="number" min={5} max={480} step={5} value={duration} onChange={e => setDuration(e.target.value)} aria-invalid={!durationValid} />
+              <NumberInput min={5} max={480} step={5} value={duration} onChange={e => setDuration(e.target.value)} aria-invalid={!durationValid} />
             </label>
           </div>
         </section>

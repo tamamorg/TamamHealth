@@ -17,6 +17,7 @@ import { Building2, ClipboardCheck, Wifi, Droplets, Users, Activity, TrendingUp,
 import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
 import type { UserRole } from '@/lib/db-types';
+import NumberInput from '@/components/forms/NumberInput';
 
 /**
  * Restyled onto the shared admin console kit (sadb-*) 2026-08-30, matching the
@@ -351,7 +352,7 @@ export default function FacilityAssessmentsPage() {
               ] as const).map(([key, label]) => (
                 <div key={key}>
                   <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-secondary)' }}>{label}</label>
-                  <input type="number" step="1" min={0} max={100} value={form[key]} onChange={e => setForm({ ...form, [key]: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })} />
+                  <NumberInput step="1" min={0} max={100} value={form[key]} onChange={e => setForm({ ...form, [key]: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })} />
                 </div>
               ))}
             </div>
@@ -365,7 +366,7 @@ export default function FacilityAssessmentsPage() {
               ] as const).map(([key, label]) => (
                 <div key={key}>
                   <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-secondary)' }}>{label}</label>
-                  <input type="number" step="1" min={0} max={100} value={form[key]} onChange={e => setForm({ ...form, [key]: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })} />
+                  <NumberInput step="1" min={0} max={100} value={form[key]} onChange={e => setForm({ ...form, [key]: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })} />
                 </div>
               ))}
             </div>
@@ -391,11 +392,11 @@ export default function FacilityAssessmentsPage() {
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div>
                 <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-secondary)' }}>{t('facilityAssessments.fieldHISStaffCount')}</label>
-                <input type="number" step="1" min={0} value={form.hisStaffCount} onChange={e => setForm({ ...form, hisStaffCount: Math.max(0, parseInt(e.target.value) || 0) })} />
+                <NumberInput step="1" min={0} value={form.hisStaffCount} onChange={e => setForm({ ...form, hisStaffCount: Math.max(0, parseInt(e.target.value) || 0) })} />
               </div>
               <div>
                 <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-secondary)' }}>{t('facilityAssessments.fieldHISStaffTrained')}</label>
-                <input type="number" step="1" min={0} value={form.hisStaffTrained} onChange={e => setForm({ ...form, hisStaffTrained: Math.max(0, parseInt(e.target.value) || 0) })} />
+                <NumberInput step="1" min={0} value={form.hisStaffTrained} onChange={e => setForm({ ...form, hisStaffTrained: Math.max(0, parseInt(e.target.value) || 0) })} />
               </div>
             </div>
 

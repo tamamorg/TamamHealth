@@ -9,6 +9,7 @@ import { useDepartments } from '@/lib/hooks/useDepartments';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useToast } from '@/components/Toast';
 import type { ClinicDay, DepartmentDoc } from '../core/types';
+import NumberInput from '@/components/forms/NumberInput';
 
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
 
@@ -81,7 +82,7 @@ export default function DepartmentDirectoryEditor({ facilityId, orgId }: { facil
             <Select value={String(weekday)} onChange={event => setWeekday(Number(event.target.value) as ClinicDay['weekday'])} aria-label={t('facilitySettings.departmentWeekday')}>{DAYS.map((day, index) => <option key={day} value={index}>{t(`facilitySettings.weekday.${day}`)}</option>)}</Select>
             <input className="fs-input" type="time" value={startTime} aria-label={t('facilitySettings.departmentStartTime')} onChange={event => setStartTime(event.target.value)} />
             <input className="fs-input" type="time" value={endTime} aria-label={t('facilitySettings.departmentEndTime')} onChange={event => setEndTime(event.target.value)} />
-            <input className="fs-input" type="number" min={5} step={5} value={slotMinutes} aria-label={t('facilitySettings.departmentSlotMinutes')} onChange={event => setSlotMinutes(Number(event.target.value))} />
+            <NumberInput className="fs-input" min={5} step={5} value={slotMinutes} aria-label={t('facilitySettings.departmentSlotMinutes')} onChange={event => setSlotMinutes(Number(event.target.value))} />
             <button type="button" className="btn btn-primary sm:col-start-4" disabled={savingId === department._id} onClick={() => void addHours(department)}>{savingId === department._id ? t('facilitySettings.departmentSaving') : t('facilitySettings.departmentSaveHours')}</button>
           </div>}
         </div>

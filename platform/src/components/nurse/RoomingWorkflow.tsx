@@ -14,6 +14,7 @@ import { getVitalFlags, isVitalInRange, type VitalsInput } from '@/lib/clinical/
 import FormSlider from '@/components/overlay/FormSlider';
 import { chartFormHref } from '@/components/ehr/chart/panels/role-form-access';
 import { describeError } from '@/lib/user-facing-error';
+import NumberInput from '@/components/forms/NumberInput';
 
 /**
  * The rooming station (KAN-99 / KAN-108).
@@ -358,8 +359,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
                 return (
                   <label key={field.key} className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
                     <span className="flex justify-between gap-2 mb-1"><span>{field.label}</span><span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{field.unit}</span></span>
-                    <input
-                      type="number"
+                    <NumberInput
                       inputMode="decimal"
                       min="0"
                       step="any"
@@ -376,7 +376,7 @@ export default function RoomingWorkflow({ patientId }: { patientId?: string } = 
             </div>
             <label className="block mt-3 text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
               Notes
-              <textarea value={vitalsDraft.notes || ''} onChange={event => setVitalsDraft(current => ({ ...current, notes: event.target.value }))} rows={2} className="w-full mt-1 rounded border px-2.5 py-2 text-sm resize-none" placeholder="Position, oxygen, symptoms, or other observation" style={{ borderColor: 'var(--border-light)', background: 'var(--bg-input, var(--bg-app))', color: 'var(--text-primary)' }} />
+              <textarea value={vitalsDraft.notes || ''} onChange={event => setVitalsDraft(current => ({ ...current, notes: event.target.value }))} rows={2} className="w-full mt-1 rounded border px-2.5 py-2 text-sm resize-y" placeholder="Position, oxygen, symptoms, or other observation" style={{ borderColor: 'var(--border-light)', background: 'var(--bg-input, var(--bg-app))', color: 'var(--text-primary)' }} />
             </label>
           </div>
         </FormSlider>

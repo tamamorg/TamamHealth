@@ -181,7 +181,7 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
             <p className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>
               Remove <strong>{removingEntry.substance}</strong> from the allergy list? A reason is required.
             </p>
-            <input autoFocus value={removalReason} onChange={(e) => setRemovalReason(e.target.value)} placeholder="Reason for removal" className={inputCls} style={inputStyle} />
+            <textarea rows={1} autoFocus value={removalReason} onChange={(e) => setRemovalReason(e.target.value)} placeholder="Reason for removal" className={inputCls} style={inputStyle} />
             {error && <FormError message={error} />}
             </DialogBody>
             <DialogFooter>

@@ -9,6 +9,7 @@ import { worldCountries, worldLanguages } from '@/lib/country/world-lists';
 import RegistrationField from '../RegistrationField';
 import type { RegistrationSectionProps } from '../registration-form';
 import { todayIso } from '@/lib/date-utils';
+import NumberInput from '@/components/forms/NumberInput';
 
 export interface DemographicsSectionProps extends RegistrationSectionProps {
   /**
@@ -108,7 +109,7 @@ export default function DemographicsSection({
         </RegistrationField>
         <RegistrationField name="estimatedAge" label={t('patientNew.estimatedAge')} error={errors.estimatedAge}>
           {field => (
-            <input {...field} type="number" step="1" min={0} max={150} value={form.estimatedAge}
+            <NumberInput {...field} step="1" min={0} max={150} value={form.estimatedAge}
               onChange={e => update('estimatedAge', e.target.value)}
               placeholder={t('patientNew.estimatedAgePlaceholder')} />
           )}

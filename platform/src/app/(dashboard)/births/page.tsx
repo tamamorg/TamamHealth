@@ -17,6 +17,7 @@ import FormSlider from '@/components/overlay/FormSlider';
 import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { Plus, ChevronDown } from '@/components/icons/lucide';
+import NumberInput from '@/components/forms/NumberInput';
 
 export default function BirthsPage() {
   const { births, loading, register } = useBirths();
@@ -300,7 +301,7 @@ export default function BirthsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Birth Weight (grams)</label>
-                    <input type="number" step="any" value={form.birthWeight} onChange={e => setForm({ ...form, birthWeight: Number(e.target.value) })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
+                    <NumberInput step="any" value={form.birthWeight} onChange={e => setForm({ ...form, birthWeight: Number(e.target.value) })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
                   </div>
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Delivery Type</label>
@@ -326,7 +327,7 @@ export default function BirthsPage() {
                   </div>
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Mother Age</label>
-                    <input type="number" step="1" value={form.motherAge} onChange={e => setForm({ ...form, motherAge: Number(e.target.value) })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
+                    <NumberInput step="1" value={form.motherAge} onChange={e => setForm({ ...form, motherAge: Number(e.target.value) })} className="w-full p-2 rounded-lg text-sm outline-none" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }} />
                   </div>
                   <div>
                     <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Father Name</label>

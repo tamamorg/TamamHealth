@@ -18,6 +18,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import { formatMoney } from '@/lib/format-utils';
 import { expandHref } from '@/lib/navigation/expand-to-page';
 import { roleLabel } from '@/lib/role-display';
+import NumberInput from '@/components/forms/NumberInput';
 
 export interface AddPayrollEntryDialogProps {
   onClose: () => void;
@@ -100,15 +101,15 @@ export default function AddPayrollEntryDialog({ onClose, period, onCreated, pres
           </div>
           <div>
             <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelBaseSalary')}</label>
-            <input type="number" step="any" min={0} value={form.baseSalary || ''} onChange={e => setForm({ ...form, baseSalary: parseFloat(e.target.value) || 0 })} />
+            <NumberInput step="any" min={0} value={form.baseSalary || ''} onChange={e => setForm({ ...form, baseSalary: parseFloat(e.target.value) || 0 })} />
           </div>
           <div>
             <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelAllowances')}</label>
-            <input type="number" step="any" min={0} value={form.allowances || ''} onChange={e => setForm({ ...form, allowances: parseFloat(e.target.value) || 0 })} />
+            <NumberInput step="any" min={0} value={form.allowances || ''} onChange={e => setForm({ ...form, allowances: parseFloat(e.target.value) || 0 })} />
           </div>
           <div>
             <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelDeductions')}</label>
-            <input type="number" step="any" min={0} value={form.deductions || ''} onChange={e => setForm({ ...form, deductions: parseFloat(e.target.value) || 0 })} />
+            <NumberInput step="any" min={0} value={form.deductions || ''} onChange={e => setForm({ ...form, deductions: parseFloat(e.target.value) || 0 })} />
           </div>
         </div>
         <div className="px-3 py-2 rounded-lg" style={{ background: 'var(--overlay-subtle)' }}>

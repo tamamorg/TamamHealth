@@ -509,7 +509,7 @@ function AuditEntryDialog({
             <label htmlFor="audit-resolve-note" style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
               What was done about it (optional)
             </label>
-            <input
+            <textarea rows={1}
               id="audit-resolve-note"
               className="sadb-modal-input"
               value={noteDraft}

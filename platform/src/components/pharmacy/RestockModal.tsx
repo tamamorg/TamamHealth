@@ -3,6 +3,7 @@
 import FormSlider from '@/components/overlay/FormSlider';
 import FormField from '@/components/overlay/FormField';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import NumberInput from '@/components/forms/NumberInput';
 
 export interface RestockForm {
   qty: number;
@@ -34,9 +35,8 @@ export default function RestockModal({ restockTarget, restockForm, setRestockFor
       <div className="space-y-4">
         <FormField label={t('pharmacy.quantityReceived', { unit: restockTarget.unit })} required>
           {control => (
-            <input
-              {...control}
-              type="number" step="any"
+            <NumberInput
+              {...control} step="any"
               min={1}
               autoFocus
               value={restockForm.qty || ''}

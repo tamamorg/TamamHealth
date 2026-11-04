@@ -20,6 +20,7 @@ import { stockPositionFor, type StockPosition, type StockState } from '@/lib/pha
 import type { RxDraft } from './types';
 import Select from '@/components/Select';
 import StockNotice from './StockNotice';
+import NumberInput from '@/components/forms/NumberInput';
 
 const RECOMMENDED_SIGS = [
   'Once daily',
@@ -139,9 +140,8 @@ export default function DrugInfoSection({
 
         <label className="cn-rx-field">
           <span className="field-required">Quantity</span>
-          <input
-            className="cn-input"
-            type="number" step="any"
+          <NumberInput
+            className="cn-input" step="any"
             min={1}
             value={draft.quantity}
             onChange={e => onChange({ quantity: e.target.value })}
@@ -169,9 +169,8 @@ export default function DrugInfoSection({
 
         <label className="cn-rx-field">
           <span>Days Supply</span>
-          <input
-            className="cn-input"
-            type="number" step="1"
+          <NumberInput
+            className="cn-input" step="1"
             min={0}
             value={draft.daysSupply}
             onChange={e => onChange({ daysSupply: e.target.value })}

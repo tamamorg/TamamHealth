@@ -31,6 +31,7 @@ import { ESSENTIAL_MEDICINES } from '@/lib/services/supply-chain-service';
 import { classifyStockStatus, dispensedTodayOf } from '@/lib/services/pharmacy-inventory-service';
 import { downloadCsv, safeFilenamePart } from '@/lib/export-file';
 import { ChartLoadingState } from '@/components/ChartCard';
+import { isPositiveResult } from '@/lib/lab/result-polarity';
 
 /* ── Charts ────────────────────────────────────────────────────────
  * recharts (~80-100 KB) sits behind a dynamic boundary so the catalogue —
@@ -301,7 +302,6 @@ export default function ReportsPage() {
           if (hivResults.length === 0) {
             return { rows: [], title: 'HIV/AIDS Program Report', placeholder: t('reports.placeholderHivAids') };
           }
-          const POSITIVE_RE = /positive|reactive|detected/i;
           const byTest: Record<string, {
             ordered: number; completed: number; positive: number; abnormal: number; facilities: Set<string>;
           }> = {};
@@ -312,7 +312,7 @@ export default function ReportsPage() {
             d.ordered++;
             if (r.status === 'completed') {
               d.completed++;
-              if (POSITIVE_RE.test(r.result || '')) d.positive++;
+              if (isPositiveResult(r.result)) d.positive++;
               if (r.abnormal) d.abnormal++;
             }
             d.facilities.add(r.hospitalName || r.hospitalId || 'Unknown');

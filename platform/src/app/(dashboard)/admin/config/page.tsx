@@ -13,6 +13,7 @@ import { Building2, Server, ShieldAlert, Shield, MessageSquare } from '@/compone
 import type { PlatformConfigDoc } from '@/lib/db-types';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import NumberInput from '@/components/forms/NumberInput';
 
 /** One flat draft covering every editable field across the identity,
  *  tenant-defaults, and maintenance sections — so the whole page shares a
@@ -182,16 +183,14 @@ export default function AdminConfigPage() {
                 />
                 <SadbSettingGroup title="Trial & capacity">
                   <SadbSettingRow label="Trial days" sub="Length of the free trial period for new organizations.">
-                    <input
-                      type="number" step="1" min={1} max={365}
+                    <NumberInput step="1" min={1} max={365}
                       className="sadb-modal-input" style={{ maxWidth: 120 }}
                       value={draft.trialDays}
                       onChange={e => setField('trialDays', parseInt(e.target.value, 10) || 1)}
                     />
                   </SadbSettingRow>
                   <SadbSettingRow label="Max organizations" sub="Platform-wide ceiling on the number of tenant organizations.">
-                    <input
-                      type="number" step="1" min={1}
+                    <NumberInput step="1" min={1}
                       className="sadb-modal-input" style={{ maxWidth: 120 }}
                       value={draft.maxOrganizations}
                       onChange={e => setField('maxOrganizations', parseInt(e.target.value, 10) || 1)}

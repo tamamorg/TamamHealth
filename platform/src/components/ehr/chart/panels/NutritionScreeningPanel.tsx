@@ -28,6 +28,7 @@ import FormNotices from '@/components/overlay/FormNotices';
 import type { NutritionFollowUpAction, NutritionScreeningDoc, PatientDoc } from '@/lib/db-types';
 import type { ChartPanelUser } from './types';
 import './start-visit-panel.css';
+import NumberInput from '@/components/forms/NumberInput';
 
 interface NutritionScreeningPanelProps {
   patient: PatientDoc;
@@ -180,16 +181,16 @@ export default function NutritionScreeningPanel({ patient, currentUser, onClose 
           <div className="nsp-grid">
             <label className="sv-field">
               <span className="sv-label">{t('nutrition.formMuac')}</span>
-              <input type="number" step="0.1" min="0" inputMode="decimal" value={muac}
+              <NumberInput step="0.1" min="0" inputMode="decimal" value={muac}
                 onChange={e => setMuac(e.target.value)} data-modal-initial-focus />
             </label>
             <label className="sv-field">
               <span className="sv-label">{t('nutrition.formWeight')}</span>
-              <input type="number" step="0.1" min="0" inputMode="decimal" value={weight} onChange={e => setWeight(e.target.value)} />
+              <NumberInput step="0.1" min="0" inputMode="decimal" value={weight} onChange={e => setWeight(e.target.value)} />
             </label>
             <label className="sv-field">
               <span className="sv-label">{t('nutrition.formHeight')}</span>
-              <input type="number" step="0.1" min="0" inputMode="decimal" value={height} onChange={e => setHeight(e.target.value)} />
+              <NumberInput step="0.1" min="0" inputMode="decimal" value={height} onChange={e => setHeight(e.target.value)} />
             </label>
           </div>
 

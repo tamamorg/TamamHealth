@@ -56,6 +56,7 @@ import { shortenPersonName } from '@/lib/patient-utils';
 import '@/components/billing/billing.css';
 import { useNow } from '@/lib/hooks/useNow';
 import { useUrlView } from '@/lib/navigation/use-url-view';
+import NumberInput from '@/components/forms/NumberInput';
 
 const ClaimsPanel = dynamic(() => import('@/components/payments/ClaimsPanel'));
 const PaymentPanel = dynamic(() => import('@/components/payments/PaymentPanel'));
@@ -1071,9 +1072,8 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
           <div className="bl-root">
             <div className="bl-field">
               <label htmlFor="bl-plan-amount">{t('plans.paymentAmountLabel')}</label>
-              <input
-                id="bl-plan-amount"
-                type="number" step="any"
+              <NumberInput
+                id="bl-plan-amount" step="any"
                 value={planAmount}
                 onChange={(e) => setPlanAmount(e.target.value)}
                 placeholder={t('plans.paymentAmountPlaceholder')}

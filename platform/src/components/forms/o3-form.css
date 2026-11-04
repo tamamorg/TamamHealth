@@ -182,7 +182,9 @@
   font-size: 14px;
 }
 .o3f textarea.o3f-input { min-height: 96px; padding: 10px 12px; resize: vertical; }
-.o3f .o3f-input:focus, .o3f .o3f-number input:focus { outline: 2px solid var(--accent-primary); outline-offset: -2px; box-shadow: none; }
+/* A one-line answer that grows (O3TextField wide): starts at a field's height. */
+.o3f textarea.o3f-input[rows="1"] { min-height: 40px; overflow: hidden; }
+.o3f .o3f-input:focus, .o3f .o3f-number input:focus { outline: 2px solid var(--accent-primary); outline-offset: -2px; box-shadow: none; } /* the !important version lives at the end of globals.css (one focus mark) */
 .o3f-input--date { max-width: 360px; }
 
 .o3f-number {

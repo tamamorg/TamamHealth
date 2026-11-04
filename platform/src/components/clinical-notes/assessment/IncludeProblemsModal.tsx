@@ -369,7 +369,7 @@ export default function IncludeProblemsModal({
                       <span>Start date</span>
                       <input type="date" className="cn-input" value={startDate} onChange={e => setStartDate(e.target.value)} aria-label="Start date" />
                     </label>
-                    <input
+                    <textarea rows={1}
                       className="cn-input"
                       placeholder="Comments"
                       value={comments}
