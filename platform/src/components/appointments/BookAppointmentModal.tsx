@@ -516,7 +516,7 @@ export default function BookAppointmentModal({
               </button>
             )}
             <div style={{ minWidth: 0 }}>
-              <h2 className="truncate" style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
+              <h2 className="tm-dialog__title truncate">
                 {t('appointments.bookAppointment')}
               </h2>
               {!fullPage && stepped && (

@@ -9686,6 +9686,8 @@ const apd: TranslationMap = {
   'reload.reason.chartArrived': 'الملف المحوّل وصل.',
   'reload.keepTyping': 'حدّث الصفحة لما تكون جاهز. الكتبته محفوظ في الجهاز ده.',
   'reload.now': 'حدّث هسع',
+  'routeContext.transfers': 'التحويلات',
+  'routeContext.inquiries': 'الاستفسارات',
 };
 
 export default apd;

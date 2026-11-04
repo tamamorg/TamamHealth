@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import { WifiOff } from '@/components/icons/lucide';
 import { useAuth, useSync } from '@/lib/context';
 import { getRoleConfig } from '@/lib/permissions';
@@ -15,6 +15,7 @@ import MobileCalendarView from './calendar/MobileCalendarView';
 import MobileInboxView from './inbox/MobileInboxView';
 import MobileQuickCreateSheet from './sheets/MobileQuickCreateSheet';
 import MobileModulesSheet from './sheets/MobileModulesSheet';
+import RouteContextBar from '@/components/navigation/RouteContextBar';
 
 interface MobileAppShellProps {
   archetype: MobileDashboardArchetype;
@@ -58,6 +59,9 @@ export default function MobileAppShell({ archetype, children }: MobileAppShellPr
       ) : (
         <>
           <MobileHeader onOpenModules={() => shell.openSheet('modules')} />
+          {/* A page outside the four tabs gets the same Back + title bar as on
+              desktop: pages no longer draw a Back of their own. */}
+          {body === children && <Suspense fallback={null}><RouteContextBar /></Suspense>}
           <main className="mobile-shell-body">{body}</main>
           <MobileTabBar
             activeTab={shell.tab}

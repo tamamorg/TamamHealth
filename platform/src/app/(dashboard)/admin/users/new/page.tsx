@@ -17,7 +17,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { ArrowLeft } from '@/components/icons/lucide';
+import { useConsoleTrail } from '@/components/navigation/ConsoleTrail';
 import { SadbPage } from '@/components/admin/sadb-ui';
 import { UserForm, USER_FORM_SECTIONS, type UserCredentialHandoff } from '@/components/admin/UserForm';
 import { CredentialHandoffModal } from '@/modules/identity/client';
@@ -60,18 +60,15 @@ export default function AdminUserCreatePage() {
   }, []);
   const backToRoster = () => router.push(returnTo);
 
+  // Title and Back are in the bar at the top (RouteContextBar).
+  useConsoleTrail('admin-user-new', [{ label: t('breadcrumb.users'), href: returnTo }, { label: t('adminUsers.createUser') }]);
+
   return (
     <SadbPage>
       <div className="sadb-regpage-shell">
-        <div className="patient-registration-toolbar">
-          <button type="button" onClick={backToRoster} className="patient-registration-back">
-            <ArrowLeft className="w-4 h-4" /> {t('adminUsers.backToUsers')}
-          </button>
-        </div>
 
         <div className="sadb-regpage">
           <aside className="sadb-regpage-rail" aria-label={t('adminUsers.jumpToSection')}>
-            <h1 className="sadb-regpage-title">{t('adminUsers.createUser')}</h1>
             <p className="sadb-regpage-note">{t('adminUsers.createPageNote')}</p>
             <p className="sadb-regpage-jump">{t('adminUsers.jumpToSection')}</p>
             <nav className="sadb-regpage-nav">

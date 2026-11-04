@@ -9697,6 +9697,8 @@ const en: TranslationMap = {
   'reload.reason.chartArrived': 'Transferred chart arrived.',
   'reload.keepTyping': 'Reload the page when ready. What you typed is kept on this device.',
   'reload.now': 'Reload now',
+  'routeContext.transfers': 'Transfers',
+  'routeContext.inquiries': 'Inquiries',
 };
 
 export default en;

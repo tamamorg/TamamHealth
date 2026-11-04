@@ -23,11 +23,9 @@ import { useAuth } from '@/lib/context';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { getRoleConfig } from '@/lib/permissions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { ArrowLeft } from '@/components/icons/lucide';
 import TriageWorkflow from '@/components/nurse/TriageWorkflow';
 import type { PatientDoc } from '@/lib/db-types';
 import { returnToFromSearch } from '@/lib/navigation/return-to';
-import { useGoBack } from '@/lib/navigation/nav-history';
 
 export default function PatientTriagePage() {
 
@@ -47,7 +45,6 @@ export default function PatientTriagePage() {
     ? getRoleConfig(currentUser.role)?.defaultDashboard || '/dashboard'
     : '/dashboard';
   // Back is the screen the user came from; ?returnTo= or the dashboard when there is none.
-  const goBack = useGoBack(typeof window !== 'undefined' ? returnToFromSearch(window.location.search, backTarget) : backTarget);
 
   const scopedPatient = useMemo(
     () => patients.find(p => p._id === patientId) || null,
@@ -106,17 +103,7 @@ export default function PatientTriagePage() {
 
   return (
     <main className="page-container page-enter patient-registration-page triage-patient-page">
-      {/* Not `.ehr-chart-back` — globals hides that class outright; it belongs
-          to the chart, which has its own way back. */}
-      <button
-        type="button"
-        onClick={goBack}
-        className="patient-registration-back no-print"
-      >
-        <ArrowLeft className="w-4 h-4" style={{ stroke: 'currentColor' }} />
-        Back
-      </button>
-
+      {/* Back is in the bar at the top (RouteContextBar). */}
       <div className="triage-patient-workspace">
         <TriageWorkflow
           lockedPatientId={patient._id}

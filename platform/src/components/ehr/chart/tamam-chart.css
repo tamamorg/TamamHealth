@@ -1696,15 +1696,23 @@
 
 /* ══════════════════ RIGHT ACTION RAIL ══════════════════ */
 
+/* The column itself is not sticky: a sticky column as tall as the screen can
+   only stick while the chart is much taller than it, so on a short chart it
+   slid up with the page. It now runs the chart's full height and the button
+   stack inside it sticks, which holds however long the chart is. */
 .tamam-right-rail {
   flex: 0 0 56px;
   width: 56px;
   background: var(--ehr-panel, #fff);
   border-left: 1px solid var(--ehr-border, var(--border-light));
+  align-self: stretch;
+}
+
+.tamam-right-rail-stack {
   position: sticky;
   top: 0;
-  align-self: flex-start;
-  max-height: 100vh;
+  max-height: 100svh;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   align-items: center;

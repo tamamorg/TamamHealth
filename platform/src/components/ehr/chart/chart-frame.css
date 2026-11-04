@@ -373,3 +373,22 @@ body .tamam-root :is(.tm-menu__trigger, .tamam-header-close, .tamam-header-balan
 body .tamam-root .tamam-header-balance:not(.tamam-header-balance--due) svg { color: var(--accent-primary); }
 body .tamam-root .tamam-header-close { border-color: color-mix(in srgb, var(--accent-primary) 35%, var(--border-light)); }
 body .tamam-root .tm-menu__trigger svg { color: currentColor !important; stroke: currentColor !important; }
+
+/* ── A little colour (2026-11-04, from #183) ───────────────────────────────
+ * The chart read as grey on white. Colour goes where it guides, never where
+ * it would read as status: brand-blue section icons in the list, the patient
+ * banner on a faint brand wash, and each summary card with a tinted head.
+ * Flat: no shadows, no gradients (design-direction-flat-clean).
+ * Merged with the same day's user decisions: the current section is the
+ * solid Tamam-blue row above (not a wash with an edge), and cards carry no
+ * blue top bar ("remove this blue colors all across the platform"). */
+body .tamam-root .tamam-left-rail .tamam-rail-item svg {
+  color: var(--accent-text, var(--accent-primary));
+}
+body .tamam-root .tamam-rail-item:hover:not(.is-active) { background: var(--accent-light); }
+body .tamam-root .tamam-sticky-zone .tamam-header {
+  background: color-mix(in srgb, var(--accent-primary) 7%, var(--ehr-panel, #fff));
+}
+body .tamam-root .tebra-panel__head {
+  background: color-mix(in srgb, var(--accent-primary) 4%, var(--ehr-panel, #fff));
+}

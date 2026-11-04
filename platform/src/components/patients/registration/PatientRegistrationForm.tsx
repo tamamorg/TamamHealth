@@ -4,7 +4,6 @@ import { usesAddressLists } from '@/lib/country/country-pack';
 import { isValidDocumentNumber } from '@/lib/country/patient-identity';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft } from '@/components/icons/lucide';
 import { type CapturedFingerprint } from '@/components/FingerprintCapture';
 import PhotoCaptureModal from '@/components/patients/PhotoCaptureModal';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -631,18 +630,11 @@ export function PatientRegistrationForm({
   return (
     <>
       <main className={`page-container page-enter patient-registration-page${embedded ? ' patient-registration-page--embedded' : ''}`}>
-        {!embedded && (
-          <div className="patient-registration-toolbar">
-            <button onClick={() => void handleCancel()} className="patient-registration-back">
-              <ArrowLeft className="w-4 h-4" /> {t('patientNew.backToPatients')}
-            </button>
-          </div>
-        )}
-
+        {/* Back and the page title are in the bar at the top (RouteContextBar). */}
         <div className="tamam-reg">
           {/* Left rail: the form's table of contents and its two actions. */}
           <aside className="tamam-reg-rail" aria-label={t('patientNew.registrationProgressAriaLabel')}>
-            <h1 className="tamam-reg-title">{t('patientNew.topBarTitle')}</h1>
+            {embedded && <h1 className="tamam-reg-title">{t('patientNew.topBarTitle')}</h1>}
             {/* Said once, here, instead of under every section heading. */}
             <p className="tamam-reg-railnote field-required">{t('patientNew.requiredFieldsNote')}</p>
             <p className="tamam-reg-jump">{t('patientNew.jumpTo')}</p>
