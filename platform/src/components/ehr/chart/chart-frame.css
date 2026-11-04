@@ -354,3 +354,37 @@ body .tamam-root .tamam-rail-col { position: relative; }
 }
 
 body .tamam-root .tamam-vitals-number { white-space: nowrap; }
+
+/* ── A little colour (2026-11-04) ──────────────────────────────────────────
+ * The chart read as grey on white. Colour goes where it guides, never where
+ * it would read as status: brand-blue section icons in the list, the current
+ * section on a blue wash with a blue edge, the patient banner on a faint brand
+ * wash, and each summary card with a brand edge and a tinted head. Flat: no
+ * shadows, no gradients (design-direction-flat-clean). */
+body .tamam-root .tamam-left-rail .tamam-rail-item svg {
+  color: var(--accent-text, var(--accent-primary));
+}
+body .tamam-root .tamam-rail-item:hover:not(.is-active) { background: var(--accent-light); }
+body .tamam-root .tamam-rail-item.is-active {
+  position: relative;
+  background: var(--color-info-bg);
+  color: var(--accent-text, var(--accent-primary));
+}
+body .tamam-root .tamam-rail-item.is-active::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 3px;
+  background: var(--accent-primary);
+}
+body .tamam-root .tamam-sticky-zone .tamam-header {
+  background: color-mix(in srgb, var(--accent-primary) 7%, var(--ehr-panel, #fff));
+}
+/* !important: the facesheet's card rules set every border with it. */
+body .tamam-root .tebra-panel {
+  border-top: 3px solid var(--accent-primary) !important;
+}
+body .tamam-root .tebra-panel__head {
+  background: color-mix(in srgb, var(--accent-primary) 4%, var(--ehr-panel, #fff));
+}

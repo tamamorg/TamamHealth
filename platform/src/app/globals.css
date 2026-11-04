@@ -36287,3 +36287,111 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 /* A slider takes the bottom-right corner: the messages button steps aside rather
    than sit behind Save with its edge showing. */
 html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ONE FORM LOOK (2026-11-04) — every form wears the patient chart's.
+
+   The chart's forms (O3Form, the workspace drawer) are the model: fields grouped on a
+   grey surface, white fields with one bottom rule, square, 40px; labels
+   14px/500 in body ink, sentence case; titles 16px/600 in the platform font;
+   the accent as a 2px focus outline. Registration used the same shape in
+   light blue with 12px grey labels; popups shouted UPPERCASE labels over
+   rounded boxes. This layer brings both to the chart's.
+
+   Not touched: the chart's own forms (already the model), the note editor,
+   the searchable-select popup, and anything under [data-form-look="off"].
+   Carbon's layer rule: a field on a grey surface is white, a field on a white
+   surface is grey — so it stays visible either way.
+   ═══════════════════════════════════════════════════════════════════════ */
+:root {
+  --form-surface: var(--color-slate-100);
+  --form-field-on-white: var(--color-slate-100);
+  --form-field-on-grey: var(--bg-card-solid);
+  --form-rule: var(--color-slate-400);
+  --form-label: var(--text-primary);
+}
+
+/* Titles: the drawer's 16px/600 in the platform font, not condensed caps.
+   Hand-rolled popup headings get the face too (their size stays theirs). */
+.modal-portal-dialog :is(h1, h2, h3, h4):not(:where(.o3f, .cn-editor, [data-form-look="off"]) *) {
+  font-family: var(--font-platform);
+  letter-spacing: normal;
+  text-transform: none;
+}
+.modal-portal-dialog .tm-dialog__title {
+  font-family: var(--font-platform);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+/* Labels. `display` deliberately left alone (platform-form-css-traps). */
+.modal-portal-dialog :is(label, legend, .sv-label):not(:where(.o3f, .o3f-multi, .cn-editor, [data-form-look="off"]) *) {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  font-family: var(--font-platform);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--form-label);
+}
+
+/* Fields. */
+.modal-portal-dialog :is(input:not([type]), input[type="text"], input[type="email"], input[type="tel"], input[type="number"], input[type="date"], input[type="time"], input[type="datetime-local"], input[type="password"], input[type="url"], select, textarea):not(:where(.o3f, .o3f-multi, .cn-editor, .tsel-menu, .nv-root, [data-form-look="off"]) *) {
+  min-height: 40px;
+  padding-inline: 12px;
+  border: 0 !important;
+  border-bottom: 1px solid var(--form-rule) !important;
+  border-radius: 0 !important;
+  /* background-color, never the shorthand: a select's chevron is its image. */
+  background-color: var(--form-field-on-white) !important;
+  box-shadow: none !important;
+  color: var(--text-primary);
+  font-family: var(--font-platform);
+  font-size: 14px;
+}
+.modal-portal-dialog textarea:not(:where(.o3f, .o3f-multi, .cn-editor, [data-form-look="off"]) *) { padding-block: 10px; }
+.modal-portal-dialog :is(input, select, textarea):focus-visible:not(:where(.o3f, .o3f-multi, .cn-editor, [data-form-look="off"]) *) {
+  outline: 2px solid var(--accent-primary) !important;
+  outline-offset: -2px;
+}
+
+/* A popup body that holds a form becomes the grey surface, and its fields
+   turn white on it, exactly as in the chart's drawer. */
+.modal-portal-dialog .tm-dialog__body:has(:is(input:not([type="checkbox"]):not([type="radio"]):not([type="search"]):not([type="hidden"]), select, textarea):not(:where(.o3f, .cn-editor, [data-form-look="off"]) *)) {
+  background: var(--form-surface);
+}
+.modal-portal-dialog .tm-dialog__body :is(input:not([type]), input[type="text"], input[type="email"], input[type="tel"], input[type="number"], input[type="date"], input[type="time"], input[type="datetime-local"], input[type="password"], input[type="url"], select, textarea):not(:where(.o3f, .o3f-multi, .cn-editor, .tsel-menu, .nv-root, [data-form-look="off"]) *) {
+  background-color: var(--form-field-on-grey) !important;
+}
+
+/* Registration: the same grey surface and labels as the chart's forms. */
+.tamam-reg .tamam-reg-fields {
+  background: var(--form-surface);
+  border-color: transparent;
+}
+.tamam-reg label,
+.tamam-reg .registration-field label,
+.tamam-reg .registration-field > span {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: normal;
+  color: var(--form-label);
+  margin-bottom: 8px;
+}
+.tamam-reg input:not([type="checkbox"]):not([type="radio"]),
+.tamam-reg select,
+.tamam-reg textarea {
+  padding-inline: 12px;
+  background-color: var(--form-field-on-grey);
+  border-bottom-color: var(--form-rule);
+  font-weight: 500;
+  letter-spacing: normal;
+  color: var(--text-primary);
+}
+.tamam-reg :is(input, select, textarea):focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
+}
+/* Buttons inside a form popup are square, like the chart's controls. */
+.modal-portal-dialog .btn:not(:where(.o3f, .cn-editor, [data-form-look="off"]) *) { border-radius: 0 !important; }
