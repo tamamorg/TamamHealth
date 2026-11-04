@@ -208,7 +208,14 @@ export default function AdminUserDetailPage() {
   if (!user) {
     return (
       <SadbPage roles={['super_admin', 'org_admin']}>
-        <p className="sadb-empty">{t('adminUsers.userNotFound')}</p>
+        <div className="sadb-card">
+          <p className="sadb-empty">{t('adminUsers.userNotFound')}</p>
+          {/* A dead id has no record for the bar to name, so no bar Back:
+              the way out stays here, as on the facility page. */}
+          <button type="button" className="btn btn-secondary btn-sm" onClick={backToRoster}>
+            {t('adminUsers.backToUsers')}
+          </button>
+        </div>
       </SadbPage>
     );
   }

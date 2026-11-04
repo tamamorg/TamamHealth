@@ -1711,6 +1711,8 @@
 .tamam-right-rail-stack {
   position: sticky;
   top: 0;
+  max-height: 100svh;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   align-items: center;

@@ -36297,10 +36297,10 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
    the accent as a 2px focus outline. Registration used the same shape in
    light blue with 12px grey labels; popups shouted UPPERCASE labels over
    rounded boxes. This layer brings both to the chart's, and the full-page
-   create forms (`.sadb-regpage-form`, the popups' Expand pages) and every
-   page-level <form> with them. The chart itself is the model and is left
-   alone, as is registration, which has its own block below. A form that is
-   not a <form> element opts in with `.tm-form`.
+   create forms (`.sadb-regpage-form`, the popups' Expand pages) with them.
+   Any other page form opts in with `.tm-form` — deliberately not every
+   <form>: table edit cells, filters and steppers live in forms too. The chart
+   is the model and registration has its own block below.
 
    Not touched: the chart's own forms (already the model), the note editor,
    the searchable-select popup, and anything under [data-form-look="off"].
@@ -36331,7 +36331,7 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
 }
 
 /* Labels. `display` deliberately left alone (platform-form-css-traps). */
-:is(.modal-portal-dialog, .sadb-regpage-form, .tm-form, #main-content form:not([role="search"]):not(:where(.tamam-root, .tamam-reg) *)) :is(label, legend, .sv-label):not(:where(.o3f, .o3f-multi, .cn-editor, [data-form-look="off"]) *) {
+:is(.modal-portal-dialog, .sadb-regpage-form, .tm-form) :is(label, legend, .sv-label):not(:has(input[type="checkbox"], input[type="radio"])):not(:where(.o3f, .o3f-multi, .cn-editor, [data-form-look="off"]) *) {
   text-transform: none !important;
   letter-spacing: normal !important;
   font-family: var(--font-platform);
@@ -36341,7 +36341,7 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
 }
 
 /* Fields. */
-:is(.modal-portal-dialog, .sadb-regpage-form, .tm-form, #main-content form:not([role="search"]):not(:where(.tamam-root, .tamam-reg) *)) :is(input:not([type]), input[type="text"], input[type="email"], input[type="tel"], input[type="number"], input[type="date"], input[type="time"], input[type="datetime-local"], input[type="password"], input[type="url"], select, textarea):not(:where(.o3f, .o3f-multi, .cn-editor, .tsel-menu, .nv-root, [data-form-look="off"]) *) {
+:is(.modal-portal-dialog, .sadb-regpage-form, .tm-form) :is(input:not([type]), input[type="text"], input[type="email"], input[type="tel"], input[type="number"], input[type="date"], input[type="time"], input[type="datetime-local"], input[type="password"], input[type="url"], select, textarea):not(:where(.o3f, .o3f-multi, .cn-editor, .tsel-menu, .nv-root, [data-form-look="off"]) *) {
   min-height: 40px;
   padding-inline: 12px;
   border: 0 !important;
@@ -36354,8 +36354,8 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
   font-family: var(--font-platform);
   font-size: 14px;
 }
-:is(.modal-portal-dialog, .sadb-regpage-form, .tm-form, #main-content form:not([role="search"]):not(:where(.tamam-root, .tamam-reg) *)) textarea:not(:where(.o3f, .o3f-multi, .cn-editor, [data-form-look="off"]) *) { padding-block: 10px; }
-:is(.modal-portal-dialog, .sadb-regpage-form, .tm-form, #main-content form:not([role="search"]):not(:where(.tamam-root, .tamam-reg) *)) :is(input, select, textarea):focus-visible:not(:where(.o3f, .o3f-multi, .cn-editor, [data-form-look="off"]) *) {
+:is(.modal-portal-dialog, .sadb-regpage-form, .tm-form) textarea:not(:where(.o3f, .o3f-multi, .cn-editor, [data-form-look="off"]) *) { padding-block: 10px; }
+:is(.modal-portal-dialog, .sadb-regpage-form, .tm-form) :is(input, select, textarea):focus-visible:not(:where(.o3f, .o3f-multi, .cn-editor, [data-form-look="off"]) *) {
   outline: 2px solid var(--accent-primary) !important;
   outline-offset: -2px;
 }
@@ -36397,5 +36397,6 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
   outline: 2px solid var(--accent-primary);
   outline-offset: -2px;
 }
-/* Buttons inside a form popup are square, like the chart's controls. */
-:is(.modal-portal-dialog, .sadb-regpage-form, .tm-form, #main-content form:not([role="search"]):not(:where(.tamam-root, .tamam-reg) *)) .btn:not(:where(.o3f, .cn-editor, [data-form-look="off"]) *) { border-radius: 0 !important; }
+/* A form's action buttons are square, like the chart's. Toggles and chips
+   (aria-pressed, other classes) keep their own shape. */
+:is(.modal-portal-dialog, .sadb-regpage-form, .tm-form) :is(.btn-primary, .btn-secondary, .btn-outline, .btn-danger):not([aria-pressed]):not(:where(.o3f, .cn-editor, [data-form-look="off"]) *) { border-radius: 0 !important; }
