@@ -65,7 +65,7 @@ describe('ClinicalNoteViewer', () => {
     m.unmount();
   });
 
-  it('shows a draft locked, with no Edit for someone who may not write notes', async () => {
+  it('shows a draft read-only, with no Locked banner and no Edit for someone who may not write notes', async () => {
     getById.mockResolvedValue({ ...base, status: 'draft' });
     mockShowToast.mockClear();
     const m = await mountAndFlush(<ClinicalNoteViewer noteId="n1" kind="clinical" onClose={jest.fn()} />);
@@ -73,6 +73,7 @@ describe('ClinicalNoteViewer', () => {
     // The draft reads locked by having no fields and, here, no Edit.
     expect(m.container.querySelector('.tm-banner')).toBeNull();
     expect(mockShowToast).not.toHaveBeenCalledWith(expect.stringMatching(/locked/i), expect.anything(), expect.anything());
+    expect(m.container.textContent).not.toContain('Choose Edit to change this note.');
     expect(btn(m.container, 'Edit')).toBeUndefined();
     expect(m.container.querySelector('textarea, input')).toBeNull();
     m.unmount();
