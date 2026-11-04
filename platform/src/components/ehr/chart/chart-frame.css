@@ -82,11 +82,16 @@ body .tamam-root .tamam-rail-item {
 
 body .tamam-root .tamam-rail-item:hover { background: var(--bg-app, #f4f4f4); }
 
-body .tamam-root .tamam-rail-item.is-active {
-  background: var(--color-slate-100, #e8e8e8);
-  color: var(--text-primary);
+/* The selected section is Tamam blue: a solid fill with white type and icon,
+   so where you are reads at a glance. Through --accent-primary, so a tenant's
+   branding carries. */
+body .tamam-root .tamam-rail-item.is-active,
+body .tamam-root .tamam-rail-item.is-active:hover {
+  background: var(--accent-primary);
+  color: var(--color-white, #fff);
   font-weight: 600;
 }
+body .tamam-root .tamam-rail-item.is-active:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 body .tamam-root .tamam-left-rail .tamam-rail-item svg {
   width: 16px;
@@ -95,9 +100,11 @@ body .tamam-root .tamam-left-rail .tamam-rail-item svg {
   stroke: currentColor;
 }
 
+/* White on the blue fill: an accent-blue icon on an accent-blue row vanishes
+   (icon-on-fill), and the global svg rules repaint icons with !important. */
 body .tamam-root .tamam-left-rail .tamam-rail-item.is-active svg {
-  color: var(--accent-primary);
-  stroke: currentColor;
+  color: var(--color-white, #fff) !important;
+  stroke: currentColor !important;
 }
 
 /* ── Patient banner ────────────────────────────────────────────────────── */
@@ -355,35 +362,32 @@ body .tamam-root .tamam-rail-col { position: relative; }
 
 body .tamam-root .tamam-vitals-number { white-space: nowrap; }
 
-/* ── A little colour (2026-11-04) ──────────────────────────────────────────
+/* ── Chart buttons in Tamam blue ──────────────────────────────────────────
+   Every control on the chart reads as one family in the brand blue: the row
+   ⋮ menus, the header's close and a settled balance, banner links. The
+   allergy chip stays red and an outstanding balance stays in the danger
+   colour on purpose: those are warnings, not buttons. */
+body .tamam-root :is(.tm-menu__trigger, .tamam-header-close, .tamam-header-balance:not(.tamam-header-balance--due)) {
+  color: var(--accent-primary);
+}
+body .tamam-root .tamam-header-balance:not(.tamam-header-balance--due) svg { color: var(--accent-primary); }
+body .tamam-root .tamam-header-close { border-color: color-mix(in srgb, var(--accent-primary) 35%, var(--border-light)); }
+body .tamam-root .tm-menu__trigger svg { color: currentColor !important; stroke: currentColor !important; }
+
+/* ── A little colour (2026-11-04, from #183) ───────────────────────────────
  * The chart read as grey on white. Colour goes where it guides, never where
- * it would read as status: brand-blue section icons in the list, the current
- * section on a blue wash with a blue edge, the patient banner on a faint brand
- * wash, and each summary card with a brand edge and a tinted head. Flat: no
- * shadows, no gradients (design-direction-flat-clean). */
+ * it would read as status: brand-blue section icons in the list, the patient
+ * banner on a faint brand wash, and each summary card with a tinted head.
+ * Flat: no shadows, no gradients (design-direction-flat-clean).
+ * Merged with the same day's user decisions: the current section is the
+ * solid Tamam-blue row above (not a wash with an edge), and cards carry no
+ * blue top bar ("remove this blue colors all across the platform"). */
 body .tamam-root .tamam-left-rail .tamam-rail-item svg {
   color: var(--accent-text, var(--accent-primary));
 }
 body .tamam-root .tamam-rail-item:hover:not(.is-active) { background: var(--accent-light); }
-body .tamam-root .tamam-rail-item.is-active {
-  position: relative;
-  background: var(--color-info-bg);
-  color: var(--accent-text, var(--accent-primary));
-}
-body .tamam-root .tamam-rail-item.is-active::before {
-  content: '';
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
-  width: 3px;
-  background: var(--accent-primary);
-}
 body .tamam-root .tamam-sticky-zone .tamam-header {
   background: color-mix(in srgb, var(--accent-primary) 7%, var(--ehr-panel, #fff));
-}
-/* !important: the facesheet's card rules set every border with it. */
-body .tamam-root .tebra-panel {
-  border-top: 3px solid var(--accent-primary) !important;
 }
 body .tamam-root .tebra-panel__head {
   background: color-mix(in srgb, var(--accent-primary) 4%, var(--ehr-panel, #fff));

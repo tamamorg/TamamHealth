@@ -46,6 +46,12 @@ interface ModalProps {
   variant?: 'dialog' | 'drawer' | 'slider';
   /** When true, clicking the backdrop does not close the modal. Default false. */
   disableBackdropClose?: boolean;
+  /** A slider that is a question (a confirm): never put aside under a newer
+   *  chart workspace (lib/overlay-order.ts), so it cannot wait unanswered out of sight. */
+  pinnedLayer?: boolean;
+  /** False for a question: a reason typed for one confirm must never be
+   *  restored into a later one that happens to share its title. */
+  keepDraft?: boolean;
   /** id of the element labelling the dialog (for a11y). */
   labelledBy?: string;
   /** id of the element describing the dialog — its lead paragraph. */
@@ -85,7 +91,8 @@ export function isAnyModalOpen(): boolean {
 }
 
 function isTopModal(sequence: number): boolean {
-  for (const other of openModals) if (other > sequence) return false;
+  // A slider put aside under a newer workspace is not "above" anything.
+  for (const other of openModals) if (other > sequence && !buriedModals.has(other)) return false;
   return true;
 }
 
@@ -107,6 +114,8 @@ export default function Modal({
   width = 600,
   size,
   variant = 'dialog',
+  keepDraft = true,
+  pinnedLayer = false,
   disableBackdropClose = false,
   labelledBy,
   describedBy,
@@ -149,9 +158,9 @@ export default function Modal({
   }, [buried, sequence]);
   useEffect(() => {
     if (!isSlider) return;
-    openSliderLayer(layerOrder);
+    openSliderLayer(layerOrder, pinnedLayer);
     return () => closeSliderLayer(layerOrder);
-  }, [isSlider, layerOrder]);
+  }, [isSlider, layerOrder, pinnedLayer]);
 
   // Portals require the DOM — only render after mount (also keeps SSR happy).
   useEffect(() => { setMounted(true); }, []);
@@ -160,7 +169,7 @@ export default function Modal({
   // away asks first while anything is unsaved (lib/unsaved).
   const { markDismissed } = useDraftKeeper(dialogRef, {
     active: mounted,
-    scope: () => popupDraftScope(dialogRef.current, labelledBy, describedBy),
+    scope: () => (keepDraft ? popupDraftScope(dialogRef.current, labelledBy, describedBy) : null),
   });
   useEffect(() => { markDismissedRef.current = markDismissed; }, [markDismissed]);
 

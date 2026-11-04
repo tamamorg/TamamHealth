@@ -11,7 +11,7 @@
  * width variables on its parent only, so the shared CSS stays the default.
  */
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /** Within this many px of the default, the panel snaps to it. */
@@ -31,14 +31,20 @@ export default function SliderResizeHandle() {
   const [width, setWidth] = useState<number | null>(null);
   const [dragging, setDragging] = useState(false);
 
-  const apply = (next: number | null) => {
+  // A drag in progress when the panel closes: its window listeners go with it.
+  const stopDrag = useRef<(() => void) | null>(null);
+  useEffect(() => () => stopDrag.current?.(), []);
+
+  /** `snap`: a drag settles onto the default within SNAP px; the arrow keys
+   *  step exactly, or a 32px step from the default would snap straight back. */
+  const apply = (next: number | null, snap = true) => {
     const panel = ref.current?.parentElement;
     if (!panel) return;
     const base = defaultWidth();
     const max = Math.max(base, window.innerWidth - MIN_PAGE);
     const clamped = next == null ? null : Math.min(Math.max(next, base), max);
     // Dragged back close to the default: settle exactly on it.
-    const settled = clamped == null || clamped - base < SNAP ? null : clamped;
+    const settled = clamped == null || clamped - base < (snap ? SNAP : 1) ? null : clamped;
     if (settled == null) {
       panel.style.removeProperty('--slider-std-w');
       panel.style.removeProperty('--chart-slider-w');
@@ -66,7 +72,9 @@ export default function SliderResizeHandle() {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', up);
+      stopDrag.current = null;
     };
+    stopDrag.current = up;
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', up);
@@ -77,8 +85,8 @@ export default function SliderResizeHandle() {
     const rtl = ref.current?.parentElement && getComputedStyle(ref.current.parentElement).direction === 'rtl';
     const wider = rtl ? 'ArrowRight' : 'ArrowLeft';
     const narrower = rtl ? 'ArrowLeft' : 'ArrowRight';
-    if (event.key === wider) apply(current + KEY_STEP);
-    else if (event.key === narrower) apply(current - KEY_STEP);
+    if (event.key === wider) apply(current + KEY_STEP, false);
+    else if (event.key === narrower) apply(current - KEY_STEP, false);
     else if (event.key === 'Home') apply(null);
     else return;
     event.preventDefault();

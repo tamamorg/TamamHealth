@@ -166,7 +166,7 @@ export default function CheckoutPage() {
   if (reference) {
     return (
       <Shell>
-        <div className="card-elevated" style={{ textAlign: 'center', padding: '40px 28px', borderTop: '4px solid var(--accent-primary)' }}>
+        <div className="card-elevated" style={{ textAlign: 'center', padding: '40px 28px' }}>
           <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
             <Clock size={56} style={{ color: 'var(--accent-primary)' }} />
           </div>

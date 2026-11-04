@@ -986,8 +986,7 @@
    needs real elevation to stand out over any page. */
 .tour-spotlight {
   box-shadow:
-    0 0 0 3px var(--accent-primary),
-    0 0 0 6px rgba(33, 145, 208, 0.30),
+    0 0 0 3px var(--color-white, #fff),
     0 0 0 9999px rgba(0, 29, 63, 0.50) !important;
 }
 
@@ -8876,9 +8875,6 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   align-self: flex-start;
 }
 
-.ehr-chart-details .card-elevated:first-child {
-  border-top: 4px solid var(--ehr-blue) !important;
-}
 
 .ehr-chart-details .space-y-3 {
   display: flex;
@@ -13358,7 +13354,7 @@ span:has(> svg:only-child) {
   gap: 8px;
   flex-shrink: 0;
   padding: 12px 16px;
-  border-top: 1px solid var(--color-brand-500);
+  border-top: 1px solid var(--border-light);
   background: var(--color-info-bg);
 }
 
@@ -30269,7 +30265,7 @@ table.patient-data-table.patient-data-table {
 .pp-ic--amber { border-color: var(--color-warning-border); color: var(--color-warning-text); }
 .pp-ic--rose { border-color: var(--color-danger-border); color: var(--color-danger-text); }
 .pp-ic--iris { border-color: color-mix(in srgb, var(--accent-purple) 45%, transparent); color: var(--accent-purple); }
-.pp-tile { border-top: 3px solid var(--accent-primary); }
+.pp-tile { border-top: 3px solid var(--border-medium); } /* neutral unless the reading carries a status */
 .pp-tile--ok { background: var(--bg-card-solid); border-top-color: var(--color-success); }
 /* Not assessed (weight, height): no range claim, so no success colour either. */
 .pp-tile--neutral { background: var(--bg-card-solid); border-top-color: var(--border-medium); }
@@ -35633,7 +35629,9 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 .tm-resize-handle {
   position: absolute;
   inset-block: 0;
-  inset-inline-start: -4px;
+  /* Inside the panel's box: the panel clips its overflow, so a grip hanging
+     over the edge lost half its hit area (and in RTL grew a scrollbar). */
+  inset-inline-start: 0;
   z-index: 6;
   display: block;
   width: 8px;
@@ -35644,7 +35642,7 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   content: '';
   position: absolute;
   inset-block: 0;
-  inset-inline-start: 3px;
+  inset-inline-start: 0;
   width: 2px;
   background: transparent;
   transition: background-color 120ms ease;
@@ -35652,6 +35650,9 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 .tm-resize-handle:is(:hover, :focus-visible, .is-dragging)::after { background: var(--accent-primary); }
 .tm-resize-handle:focus-visible { outline: none; }
 @media (max-width: 899px) { .tm-resize-handle { display: none; } }
+/* Full screen has no edge to drag; the handle stays mounted so its width state
+   still matches the panel when full screen is left. */
+.tamam-drawer.is-maximized > .tm-resize-handle { display: none; }
 @media (min-width: 900px) { html.tm-dash-rail .tm-slider > .tm-resize-handle { display: none; } }
 
 /* ── Read-only facts in a slider or the chart drawer ──────────────────────

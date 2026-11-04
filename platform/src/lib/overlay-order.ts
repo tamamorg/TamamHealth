@@ -13,6 +13,8 @@
 
 let counter = 0;
 const sliders = new Set<number>();
+/** Sliders that are a question waiting for an answer: never put aside. */
+const pinned = new Set<number>();
 let drawerOrder = 0;
 let drawerOpen = false;
 const listeners = new Set<() => void>();
@@ -35,12 +37,16 @@ export function reserveOverlayOrder(): number {
   return ++counter;
 }
 
-export function openSliderLayer(order: number) {
+/** `pin`: a question (a confirm) stays in view until it is answered, even
+ *  under a newer workspace — hidden, it would wait unanswered out of sight. */
+export function openSliderLayer(order: number, pin = false) {
   sliders.add(order);
+  if (pin) pinned.add(order);
   recompute();
 }
 
 export function closeSliderLayer(order: number) {
+  pinned.delete(order);
   if (!sliders.delete(order)) return;
   recompute();
 }
@@ -60,5 +66,5 @@ export function closeDrawerLayer() {
 
 /** Whether this slider is under a newer workspace (and so hidden). */
 export function isSliderBuried(order: number): boolean {
-  return drawerOpen && order < drawerOrder;
+  return drawerOpen && order < drawerOrder && !pinned.has(order);
 }

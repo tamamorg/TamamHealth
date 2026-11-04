@@ -2800,7 +2800,7 @@ body .tamam-root .tamam-table.tamam-table--referrals td.tamam-num,
   min-width: 0;
   border-inline-start: 4px solid var(--accent-primary);
   background: var(--bg-app, #f4f4f4);
-  border-top: 1px solid color-mix(in srgb, var(--accent-primary) 25%, transparent);
+  border-top: 1px solid var(--border-light);
   border-bottom: 1px solid var(--border-light);
 }
 
@@ -3297,3 +3297,32 @@ html.tm-chart-open .tm-slider .tamam-table :is(th, td) { padding-inline: 8px; ov
 .tamam-drawer .omf-back,
 .tamam-drawer .o3f-back,
 .tamam-drawer .obf-back { display: none; }
+
+/* Full screen (the header's expand): the workspace covers the chart from the
+ * window's start edge up to the icon rail, below the top rail, the way an
+ * OpenMRS O3 maximized workspace does. A note form opens like this. The inline
+ * height the shell measures for the docked drawer must not apply here.
+ * (Lost with drawer-resize.css on 2026-11-01, which left the button a no-op.) */
+.tamam-drawer.tamam-drawer.is-maximized {
+  position: fixed;
+  top: var(--app-overlay-top-inset, var(--ehr-top-rail-height, 0px));
+  bottom: 0;
+  inset-inline-start: 0;
+  inset-inline-end: 56px;
+  width: auto;
+  height: calc(100dvh - var(--app-overlay-top-inset, var(--ehr-top-rail-height, 0px))) !important;
+  max-height: none;
+  flex-basis: auto;
+  z-index: 40;
+}
+
+@media (max-width: 900px) {
+  .tamam-drawer.tamam-drawer.is-maximized { inset-inline-end: 44px; }
+  /* Below 900px the workspace is a fixed overlay pinned top to bottom; the
+   * inline height the shell measures for the docked drawer would stop it short
+   * of the window's bottom edge. */
+  .tamam-drawer.tamam-drawer {
+    height: calc(100dvh - var(--app-overlay-top-inset, var(--ehr-top-rail-height, 0px))) !important;
+    max-height: none;
+  }
+}

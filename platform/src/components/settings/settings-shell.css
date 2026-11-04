@@ -1,0 +1,189 @@
+/* ── Settings in the patient chart's frame ─────────────────────────────────
+   The user asked Settings to read like the patient chart: sharp (square
+   corners, hairline borders, no card shadows) and a left navigation the same
+   size as the chart's section list — a 240px column flush to the page edge,
+   40px rows, 14px type, 16px icons, and the selected row in solid Tamam blue
+   with white type (chart-frame.css, `.tamam-rail-item`). Layered over the
+   older `ehr-set-*` rules in globals.css, hence the `body .ehr-set-shell`
+   prefix. Brand colour only through --accent-primary. */
+
+/* Flush to the page edges like the chart: the page container's gutter goes. */
+body main.page-container:has(> .ehr-set-shell) { padding: 0 !important; }
+body .ehr-set-shell {
+  height: 100%;
+  padding: 0 !important;
+  gap: 0;
+}
+
+/* Title row: a flat band under the top rail, ruled off from the content. */
+body .ehr-set-shell .ehr-set-header {
+  min-height: 56px;
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-card-solid);
+}
+body .ehr-set-shell .ehr-set-header h1 {
+  color: var(--accent-primary);
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+body .ehr-set-shell :is(.ehr-set-saved, .ehr-set-btn, .ehr-set-back, .ehr-set-crumb) { border-radius: 0 !important; }
+body .ehr-set-shell .ehr-set-btn.primary {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--color-white, #fff);
+}
+
+/* Navigation column + content, no gap: the column's own border divides them. */
+body .ehr-set-shell .ehr-set-grid {
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 0;
+  align-items: stretch;
+}
+body .ehr-set-shell .ehr-set-rail {
+  gap: 0;
+  border-inline-end: 1px solid var(--border-light);
+  background: var(--bg-card-solid);
+}
+body .ehr-set-shell .ehr-set-nav {
+  padding: 0 0 16px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+body .ehr-set-shell .ehr-set-nav-group-title {
+  padding: 16px 16px 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Rows: the chart section list's metrics exactly. */
+body .ehr-set-shell .ehr-set-nav button {
+  gap: 16px;
+  min-height: 40px;
+  padding: 8px 16px;
+  border-radius: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.35;
+}
+body .ehr-set-shell .ehr-set-nav button svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted) !important;
+  stroke: currentColor !important;
+}
+body .ehr-set-shell .ehr-set-nav button em { font-style: normal; }
+body .ehr-set-shell .ehr-set-nav button:hover { background: var(--bg-app, #f4f4f4); }
+body .ehr-set-shell .ehr-set-nav button.ehr-set-nav-sub { padding-inline-start: 48px; }
+
+/* Selected: solid Tamam blue, white type and icon, as on the chart. */
+body .ehr-set-shell .ehr-set-nav button.active,
+body .ehr-set-shell .ehr-set-nav button.active:hover {
+  background: var(--accent-primary);
+  color: var(--color-white, #fff);
+  font-weight: 600;
+}
+body .ehr-set-shell .ehr-set-nav button.active svg { color: var(--color-white, #fff) !important; }
+body .ehr-set-shell .ehr-set-nav button.active .is-badge { background: var(--color-white, #fff); color: var(--accent-primary); }
+body .ehr-set-shell .ehr-set-nav button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+body .ehr-set-shell .ehr-set-nav-subhead { padding: 10px 16px 4px 48px; font-size: 12px; text-transform: none; letter-spacing: 0; }
+
+/* Content: square panels with a hairline, like the chart's sections. */
+body .ehr-set-shell .ehr-set-main { padding: 16px 24px 24px; gap: 16px; }
+body .ehr-set-shell .ehr-set-main :is(.ehr-set-section, .ehr-set-card, .ehr-set-panel) {
+  border: 1px solid var(--border-light);
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+body .ehr-set-shell .ehr-set-main :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea, .ehr-set-select, .ehr-set-input, button:not(.ehr-set-toggle)) { border-radius: 0; }
+
+/* The account card: name in Tamam blue, its one action a solid blue button. */
+body .ehr-set-shell .ehr-set-account-head {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-light);
+}
+body .ehr-set-shell .ehr-set-account-head b { color: var(--accent-primary); font-size: 16px; font-weight: 600; }
+body .ehr-set-shell .ehr-set-account-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 0;
+  background: var(--accent-primary);
+  color: var(--color-white, #fff);
+  font-size: 14px;
+  font-weight: 600;
+}
+body .ehr-set-shell .ehr-set-account-edit svg { width: 16px; height: 16px; color: var(--color-white, #fff) !important; stroke: currentColor !important; }
+body .ehr-set-shell .ehr-set-account-edit:hover { filter: brightness(1.08); }
+/* Its fact rows: sentence-case labels, not micro capitals. */
+body .ehr-set-shell .ehr-set-account-rows > div > span {
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+@media (max-width: 899px) {
+  body .ehr-set-shell .ehr-set-grid { grid-template-columns: minmax(0, 1fr); }
+  body .ehr-set-shell .ehr-set-rail { border-inline-end: 0; border-bottom: 1px solid var(--border-light); }
+}
+
+/* Rows run the column's full width (the old groups inset them). */
+body .ehr-set-shell .ehr-set-nav-group { margin: 0; padding: 0; border: 0; }
+body .ehr-set-shell .ehr-set-nav-group + .ehr-set-nav-group { margin-top: 8px; }
+body .ehr-set-shell .ehr-set-nav button { width: 100%; margin: 0; }
+body .ehr-set-shell .ehr-set-nav-group-title { font-family: inherit; }
+
+/* A panel's heading reads like a chart section title: Tamam blue, sentence
+   case, 16/600, on the panel's own white — no tint wash, no icon tile. */
+body .ehr-set-shell .ehr-set-section-head {
+  padding: 16px 20px;
+  background: var(--bg-card-solid);
+}
+body .ehr-set-shell .ehr-set-section-head > span {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+  color: var(--accent-primary);
+}
+body .ehr-set-shell .ehr-set-section-head > span svg { color: var(--accent-primary) !important; stroke: currentColor !important; }
+body .ehr-set-shell .ehr-set-section-head h3 {
+  color: var(--accent-primary);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+body .ehr-set-shell .ehr-set-section-head small {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+body .ehr-set-shell .ehr-set-section-head > .ehr-set-head-action { border-radius: 0; background: var(--accent-primary); color: var(--color-white, #fff); }
+
+/* "Not available yet" and the other locked states: a plain square tag. */
+body .ehr-set-shell .ehr-set-locked {
+  border-radius: 0;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}

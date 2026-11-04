@@ -653,7 +653,7 @@ export function TransferBanner({
         <span> · {describeTransferRoute(tr, { id: currentUser?._id, hospitalId: currentUser?.hospitalId }, { to: t('transfers.routeTo'), from: t('transfers.routeFrom') })}</span>
         {tr.expiresAt && <span> · {t('transfers.ends', { date: formatDateTime(tr.expiresAt) })}</span>}
         {onOpenHistory && (
-          <button className="ms-2 underline" onClick={onOpenHistory}>{t('transfers.view')}</button>
+          <button type="button" className="ms-2 underline" style={{ color: 'var(--accent-primary)', fontWeight: 600 }} onClick={onOpenHistory}>{t('transfers.view')}</button>
         )}
       </div>
     </div>

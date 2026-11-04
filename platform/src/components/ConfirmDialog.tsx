@@ -165,6 +165,8 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
         <Modal
           onClose={() => settle(false)}
           variant={asSlider ? 'slider' : 'dialog'}
+          pinnedLayer
+          keepDraft={false}
           width={asSlider ? 560 : 480}
           labelledBy="confirm-dialog-title"
           describedBy={pending.message ? 'confirm-dialog-desc' : undefined}

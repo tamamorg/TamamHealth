@@ -1,0 +1,279 @@
+/* ── Tamam blue pass: selection, headings, form controls ───────────────────
+ * Loaded after globals.css and tablet-desktop.css (see layout.tsx). One place
+ * for the three rules the product follows:
+ *
+ *   1. Where you are / what is chosen = a SOLID Tamam-blue fill, white type
+ *      and a white icon, weight 600 (the reference is the chart's left list).
+ *   2. Headings are Tamam blue (not navy), body text and data stay neutral.
+ *   3. Form controls (checkbox, radio, range, progress, focus ring) and the
+ *      outline/secondary buttons carry the accent.
+ *
+ * Everything goes through --accent-primary so a tenant's branding carries; no
+ * literal blues. Light theme only: the dark theme keeps its own values (blue
+ * fill on a dark ground would lose the contrast its tokens were tuned for).
+ * The Settings screens (ehr-set-*, settings-tab-strip) and the account dialog
+ * (acct-*) are owned by their own restyle and are deliberately not touched.
+ * The visit popup's Current visit / Previous visit tabs keep their underline
+ * (globals.css `.ehr-visit-pop-tabs`): the user asked for them back on
+ * 2026-11-04.
+ *
+ * Why !important: globals.css has many later duplicate rules (some already
+ * !important) for the same classes, and svg.lucide:not([style*="color"]) /
+ * stroke rules repaint icons. This file only changes colour and weight.
+ */
+
+/* ── 1a. Selected control: solid blue, white type ─────────────────────── */
+:root:not([data-theme="dark"]) :is(
+  .th-tabs > button:is([aria-selected="true"], .is-active),
+  .btn-filter:is([aria-pressed="true"], .is-active),
+  .ehr-mobile-tabbar button.active,
+  .mobile-shell-tabbar button.active,
+  .ehr-chart-nav button.is-active,
+  .ehr-chart-nav-button.is-active,
+  .ehr-chart-subtabs > button:is(.is-selected, .is-active, .active, [aria-selected="true"]),
+  .vt-tabs > button:is(.is-selected, .is-active, .active, [aria-selected="true"]),
+  .sv-segmented > button:is(.is-selected, [aria-checked="true"]):not(.is-danger),
+  .tebra-demo-tabs > button.active,
+  .ehr-day-tabs > button:is(.is-selected, .is-active, .active, [aria-selected="true"]),
+  .ehr-segmented button.active,
+  .ehr-care-filter.active,
+  .ehr-care-rail-action.active,
+  .ehr-finance-dialog__terms > button[aria-pressed="true"],
+  .appointment-detail-sidebar__tabs button.active,
+  .appointment-detail-modal__tabs button.active,
+  .mgmt-tabs button.active,
+  .ward-stat-chip.is-active,
+  .listpage-icon-btn.is-active,
+  .listpage-icon-select.is-active,
+  .fs-nav button.is-active,
+  .fac-secnav-item.is-active,
+  .sadb-tab.is-active,
+  .sadb-pill.is-active,
+  .sadb-rail-item.is-active,
+  .sadb-viewswitch-tab.is-active,
+  .rpt-ctl-kinds button.is-on,
+  .rpt-rail-item.is-on,
+  .rpt-kinds button.is-on,
+  .rpt-nav-generate.is-on,
+  .gov-map-layers button.is-active,
+  .pp-side-item.active,
+  .tamam-reg-navitem.is-current,
+  .o3f-nav-item.is-active,
+  .omf-nav-item.is-active,
+  .cn-section-nav-item[aria-current="true"],
+  .cn-type-item.is-selected,
+  .tamam-activity-filters button.is-active,
+  .tamam-section-toggle button.is-active,
+  .tamam-right-rail-btn.is-active,
+  .tamam-appt-switcher button.is-selected,
+  .tamam-icon-toggle button.is-active,
+  .pp-payment-choices button[aria-pressed="true"],
+  .bl-search-filter.is-active,
+  .booking-segmented button.is-active,
+  .booking-slot.is-selected,
+  .booking-tabs button.is-active,
+  .lg-rolerow.is-selected,
+  .mobile-chart-tabs button.active,
+  .mobile-week-day.selected,
+  .ehr-mini-calendar-grid button.selected,
+  .popup-select-row.is-selected,
+  .tsel-row.is-selected,
+  .tm-menu__item[aria-current="page"],
+  .tm-menu__item[aria-checked="true"],
+  [role="tab"][aria-selected="true"]:not(.ehr-set-nav *, .settings-tab-strip *, .acct-modal *),
+  [role="option"][aria-selected="true"]:not(.ehr-set-nav *, .acct-modal *)
+) {
+  background: var(--accent-primary) !important;
+  border-color: var(--accent-primary) !important;
+  color: var(--color-white, #fff) !important;
+  font-weight: 600 !important;
+}
+/* Hover/focus on the chosen item stays blue (a pale hover fill under white
+   type would make it vanish). */
+:root:not([data-theme="dark"]) :is(
+  .th-tabs > button:is([aria-selected="true"], .is-active),
+  .ehr-chart-nav button.is-active,
+  .ehr-chart-subtabs > button:is(.is-selected, .is-active, .active, [aria-selected="true"]),
+  .vt-tabs > button:is(.is-selected, .is-active, .active, [aria-selected="true"]),
+  .sv-segmented > button:is(.is-selected, [aria-checked="true"]):not(.is-danger),
+  .ehr-day-tabs > button:is(.is-selected, .is-active, .active, [aria-selected="true"]),
+  .ehr-segmented button.active,
+  .fs-nav button.is-active,
+  .fac-secnav-item.is-active,
+  .sadb-tab.is-active,
+  .sadb-rail-item.is-active,
+  .rpt-rail-item.is-on,
+  .pp-side-item.active,
+  .o3f-nav-item.is-active,
+  .omf-nav-item.is-active,
+  .tsel-row.is-selected,
+  .tm-menu__item[aria-checked="true"],
+  .tm-menu__item[aria-current="page"]
+):is(:hover, :focus-visible) {
+  background: var(--accent-primary) !important;
+  color: var(--color-white, #fff) !important;
+}
+
+/* White icons, white badges' text stays its own: an accent-blue icon on the
+   accent fill would vanish (icon-on-fill). */
+:root:not([data-theme="dark"]) :is(
+  .th-tabs > button:is([aria-selected="true"], .is-active),
+  .btn-filter:is([aria-pressed="true"], .is-active),
+  .ehr-chart-nav button.is-active,
+  .ehr-chart-nav-button.is-active,
+  .ehr-chart-subtabs > button:is(.is-selected, .is-active, .active, [aria-selected="true"]),
+  .vt-tabs > button:is(.is-selected, .is-active, .active, [aria-selected="true"]),
+  .sv-segmented > button:is(.is-selected, [aria-checked="true"]):not(.is-danger),
+  .ehr-day-tabs > button:is(.is-selected, .is-active, .active, [aria-selected="true"]),
+  .ehr-care-filter.active,
+  .ehr-care-rail-action.active,
+  .ward-stat-chip.is-active,
+  .listpage-icon-btn.is-active,
+  .listpage-icon-select.is-active,
+  .fs-nav button.is-active,
+  .fac-secnav-item.is-active,
+  .sadb-tab.is-active,
+  .sadb-pill.is-active,
+  .sadb-rail-item.is-active,
+  .sadb-viewswitch-tab.is-active,
+  .rpt-ctl-kinds button.is-on,
+  .rpt-rail-item.is-on,
+  .rpt-kinds button.is-on,
+  .rpt-nav-generate.is-on,
+  .gov-map-layers button.is-active,
+  .pp-side-item.active,
+  .tamam-reg-navitem.is-current,
+  .o3f-nav-item.is-active,
+  .omf-nav-item.is-active,
+  .cn-section-nav-item[aria-current="true"],
+  .tamam-activity-filters button.is-active,
+  .tamam-section-toggle button.is-active,
+  .tamam-right-rail-btn.is-active,
+  .tamam-appt-switcher button.is-selected,
+  .tamam-icon-toggle button.is-active,
+  .bl-search-filter.is-active,
+  .booking-segmented button.is-active,
+  .booking-tabs button.is-active,
+  .tsel-row.is-selected,
+  .popup-select-row.is-selected,
+  .tm-menu__item[aria-current="page"],
+  .tm-menu__item[aria-checked="true"],
+  .ehr-mobile-tabbar button.active,
+  .mobile-shell-tabbar button.active,
+  .mobile-chart-tabs button.active,
+  [role="tab"][aria-selected="true"]:not(.ehr-set-nav *, .settings-tab-strip *, .acct-modal *)
+) :is(svg, svg.lucide, svg *) {
+  color: var(--color-white, #fff) !important;
+  stroke: currentColor !important;
+}
+/* The ✓ in a chosen menu row reads white too. */
+:root:not([data-theme="dark"]) .tm-menu__item:is([aria-checked="true"], [aria-current="page"]) .tm-menu__item-check { color: var(--color-white, #fff); }
+
+/* ── 1b. Selected DATA row: tint + 3px accent bar, not a solid fill ─────
+   A whole row of data keeps its coloured status text readable. */
+:root:not([data-theme="dark"]) :is(.msgs-conv.is-active, .cn-meds-row.is-selected) {
+  background: color-mix(in srgb, var(--accent-primary) 8%, transparent) !important;
+  box-shadow: inset 3px 0 0 var(--accent-primary);
+}
+
+/* ── 1c. Current step in a step list: solid dot ─────────────────────── */
+:root:not([data-theme="dark"]) .ehr-work-item-progress__stage.is-current .ehr-work-item-progress__stage-dot {
+  background: var(--accent-primary) !important;
+  border-color: var(--accent-primary) !important;
+  color: var(--color-white, #fff) !important;
+}
+
+/* ── 2. Headings in Tamam blue ──────────────────────────────────────────
+   Titles only: page, card/section, dialog/slider and form-section heads. Not
+   patient names, stat numbers, field labels or status text. A coloured
+   dialog head (brand/danger/warning) keeps the colour it already sets. */
+:root:not([data-theme="dark"]) :is(
+  .tm-dialog__title,
+  .tamam-section-title,
+  .tamam-section-head,
+  .tamam-panel-section-title,
+  .tamam-drawer-title,
+  .tamam-activity-title,
+  .tamam-vitals-title,
+  .tamam-reported-meds-title,
+  .tamam-nv-title,
+  .o3f-section-head,
+  .o3f-page-head,
+  .obf-section-head,
+  .obf-form-title,
+  .lwf-section-head,
+  .lwf-title,
+  .omf-group-head,
+  .labord-section-head,
+  .labord-title,
+  .cn-section-head,
+  .cn-header-title,
+  .cn-meds-title,
+  .bl-title,
+  .bl-section-title,
+  .bl-section-head,
+  .bl-card-title,
+  .bl-modal-title,
+  .sv-section-title,
+  .listpage-title,
+  .listpage-section-title,
+  .ehr-page-title,
+  .ehr-branded-page-title,
+  .ehr-panel-title,
+  .ehr-list-title,
+  .ehr-schedule-title,
+  .ehr-outstanding-title,
+  .ehr-vitals-group-title,
+  .ehr-work-item-progress__title,
+  .page-title,
+  .page-header__title,
+  .type-page-title,
+  .type-section-title,
+  .type-card-title,
+  .dashboard-panel-title,
+  .dash-section-title,
+  .card-title,
+  .sadb-card-title,
+  .sadb-panel-title,
+  .sadb-group-title,
+  .sadb-modal-title,
+  .sadb-page-head > h1,
+  .sa-card-title,
+  .pp-section-title,
+  .pp-side-title,
+  .tebra-section-title,
+  .appointment-detail-sidebar__title,
+  .popup-resource-header__title,
+  .notifications-popover-title,
+  .rpt-stats-title,
+  .epi-title,
+  .epi-list-title,
+  .bap-heading
+):not(.tm-dialog__head--brand *, .tm-dialog__head--danger *, .tm-dialog__head--warning *) {
+  color: var(--accent-primary);
+}
+
+/* ── 3. Form controls ─────────────────────────────────────────────────── */
+:root:not([data-theme="dark"]) :is(input[type="checkbox"], input[type="radio"], input[type="range"], progress):not(.ehr-queue-move-option--escalate input) {
+  accent-color: var(--accent-primary);
+}
+/* One focus ring colour for keyboard focus everywhere. */
+:root:not([data-theme="dark"]) :is(button, a, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+  outline-color: var(--accent-primary);
+}
+
+/* Secondary / outline buttons keep their shape and ground; text and border
+   take the accent instead of steel grey. Danger buttons are separate classes
+   and stay red. Not the buttons of a slider's action bar: there the
+   secondary sits on the dark --action-secondary fill with white type, and
+   accent text on it was all but invisible. */
+:root:not([data-theme="dark"]) :is(.btn-secondary, .btn-ghost, .cn-btn-neutral, .labord-btn--ghost, .sa-btn:not(.primary)):not(.tm-slider .tm-dialog__foot *):not(.tm-slider div:has(> .btn-primary) > *) {
+  color: var(--accent-primary);
+}
+:root:not([data-theme="dark"]) :is(.btn-secondary, .sa-btn:not(.primary)):not(.tm-slider .tm-dialog__foot *):not(.tm-slider div:has(> .btn-primary) > *) {
+  border-color: color-mix(in srgb, var(--accent-primary) 40%, var(--border-medium));
+}
+:root:not([data-theme="dark"]) :is(.btn-secondary, .btn-ghost, .cn-btn-neutral, .labord-btn--ghost, .sa-btn:not(.primary)):not(.tm-slider .tm-dialog__foot *):not(.tm-slider div:has(> .btn-primary) > *) :is(svg, svg.lucide) {
+  color: currentColor !important;
+  stroke: currentColor !important;
+}

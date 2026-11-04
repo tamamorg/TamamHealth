@@ -42,4 +42,12 @@ describe('overlay order', () => {
     expect(listener).toHaveBeenCalledTimes(2);
     unsubscribe();
   });
+
+  it('never puts a question (a pinned confirm) aside under a newer workspace', () => {
+    const question = reserveOverlayOrder();
+    openSliderLayer(question, true);
+    raiseDrawerLayer();
+    expect(isSliderBuried(question)).toBe(false);
+    closeSliderLayer(question);
+  });
 });
