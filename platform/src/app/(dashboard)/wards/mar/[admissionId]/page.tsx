@@ -503,7 +503,7 @@ export default function MARPage() {
             busy={submitting}
             footerNote={<>{t('mar.recordedAs')} <strong style={{ color: 'var(--text-primary)' }}>{currentUser?.name}</strong></>}
             footer={<>
-              <button type="button" onClick={closeModal} className="btn btn-secondary">{t('action.cancel')}</button>
+              <button type="button" onClick={closeModal} disabled={submitting} className="btn btn-secondary">{t('action.cancel')}</button>
               <button
                 type="button"
                 onClick={handleSubmit}

@@ -696,7 +696,7 @@ export default function TamamChartShell({
             aria-label={activePanel.title}
           >
             {/* Widen from the inner edge; it settles back on the standard width. */}
-            {!drawerMaximized && <SliderResizeHandle />}
+            <SliderResizeHandle />
             <div className="tamam-drawer-header">
               <span className="tamam-drawer-title">{activePanel.title}</span>
               {/* Right side only. × closes completely; → (Hide) is there only when

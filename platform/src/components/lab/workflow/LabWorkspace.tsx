@@ -71,7 +71,8 @@ export default function LabWorkspace({
           openLabel={t('chart.resultOpenWorkflow')}
           onOpen={() => setSelectedId(report._id)}
           documentLabel={t(reportIsImaging ? 'report.imagingReport' : 'print.labReport')}
-          date={report.completedAt || report.orderedAt}
+          // The paper heading's date is the sheet's own: an imaging report is dated when reported.
+          date={(reportIsImaging ? report.reportedAt : undefined) || report.completedAt || report.orderedAt}
         >
           {reportIsImaging ? <ImagingReportSheet study={report} /> : <LabReportSheet order={report} />}
         </ReportView>

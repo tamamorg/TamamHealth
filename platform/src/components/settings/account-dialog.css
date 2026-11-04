@@ -1,0 +1,84 @@
+/* ── Update account (Settings) ─────────────────────────────────────────────
+   A centred dialog on the shared kit (Settings popups stay centred). Three
+   short sections: what you can change about yourself, how the app behaves
+   for you, and the two credential hand-offs. Facts an administrator owns are
+   not repeated here; the account card behind the popup shows them.
+   Namespace `acct-`: the global `label` rule uppercases every <label>. */
+.acct-dialog .acct-body { display: flex; flex-direction: column; gap: 24px; padding-block: 20px 24px; }
+
+.acct-dialog .acct-section-title {
+  margin: 0 0 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--accent-primary);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.acct-dialog .acct-field { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+.acct-dialog .acct-label {
+  display: block;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.acct-dialog .acct-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 1px solid var(--border-medium, var(--border-light));
+  border-radius: 0;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+.acct-dialog .acct-input:focus { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+.acct-dialog .acct-hint { margin: 0; color: var(--text-muted); font-size: 12.5px; }
+
+/* One row per setting: name and what it does on the left, its control on the
+   right, a hairline between rows. */
+.acct-dialog .acct-rows { display: flex; flex-direction: column; }
+.acct-dialog .acct-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 56px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.acct-dialog .acct-row:last-child { border-bottom: 0; }
+.acct-dialog .acct-row-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: start; }
+.acct-dialog .acct-row-label { color: var(--text-primary); font-size: 14px; font-weight: 500; }
+.acct-dialog .acct-row-hint { color: var(--text-muted); font-size: 12.5px; font-weight: 400; }
+.acct-dialog .acct-row-control { flex: none; }
+.acct-dialog .acct-row-control .ehr-set-select {
+  min-width: 168px;
+  height: 36px;
+  border-radius: 0;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+/* Change password / PIN: whole-row links that open their own popup. */
+.acct-dialog .acct-link-row {
+  width: 100%;
+  justify-content: flex-start;
+  border-inline: 0;
+  border-top: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.acct-dialog .acct-link-row:hover { background: color-mix(in srgb, var(--accent-primary) 5%, transparent); }
+.acct-dialog .acct-link-row:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+.acct-dialog .acct-link-row .acct-row-text { flex: 1 1 auto; }
+.acct-dialog .acct-link-row .acct-row-label { color: var(--accent-primary); font-weight: 600; }
+.acct-dialog .acct-link-icon { flex: none; width: 18px; height: 18px; color: var(--accent-primary) !important; stroke: currentColor !important; margin-inline-start: 4px; }
+.acct-dialog .acct-link-chevron { flex: none; width: 16px; height: 16px; color: var(--text-muted) !important; stroke: currentColor !important; }
+[dir="rtl"] .acct-dialog .acct-link-chevron { transform: scaleX(-1); }

@@ -269,7 +269,7 @@ export default function ReferralFormModal({ onClose, onSent, presentation = 'mod
 
   const actions = (
     <>
-        <button onClick={onClose} className="btn btn-secondary">
+        <button type="button" onClick={onClose} disabled={submitting} className="btn btn-secondary">
           {t('action.cancel')}
         </button>
         <button
@@ -304,6 +304,7 @@ export default function ReferralFormModal({ onClose, onSent, presentation = 'mod
       width={760}
       subtitle={t('referrals.autoPackages')}
       onClose={onClose}
+      busy={submitting}
       onExpand={() => { onClose(); router.push(expandHref('/referrals/new')); }}
       footer={actions}
     >

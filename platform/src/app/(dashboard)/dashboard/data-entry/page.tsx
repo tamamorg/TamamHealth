@@ -498,14 +498,15 @@ export default function DataEntryDashboard() {
             onClose={() => setShowForm(false)}
             busy={saving}
             footer={<>
-              <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary">{t('action.cancel')}</button>
+              <button type="button" onClick={() => setShowForm(false)} disabled={saving} className="btn btn-secondary">{t('action.cancel')}</button>
               <button type="button" onClick={handleSave} disabled={saving} className="btn btn-primary">
                 <Save className="w-3.5 h-3.5" /> {saving ? t('nurse.savingDots') : t('dataEntry.saveCensusReport')}
               </button>
             </>}
           >
-            <div>
-              <div data-tour="census-form-header" className="flex items-center justify-end mb-4">
+            {/* The tour's "daily tally" step frames the whole form. */}
+            <div data-tour="census-form-header">
+              <div className="flex items-center justify-end mb-4">
                 <input type="date" value={census.date} onChange={e => updateField('date', e.target.value)}
                   aria-label={t('dataEntry.dailyFacilityCensus')}
                   className="px-2 py-1 rounded text-xs" style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)' }} />

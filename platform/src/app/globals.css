@@ -35633,7 +35633,9 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 .tm-resize-handle {
   position: absolute;
   inset-block: 0;
-  inset-inline-start: -4px;
+  /* Inside the panel's box: the panel clips its overflow, so a grip hanging
+     over the edge lost half its hit area (and in RTL grew a scrollbar). */
+  inset-inline-start: 0;
   z-index: 6;
   display: block;
   width: 8px;
@@ -35644,7 +35646,7 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   content: '';
   position: absolute;
   inset-block: 0;
-  inset-inline-start: 3px;
+  inset-inline-start: 0;
   width: 2px;
   background: transparent;
   transition: background-color 120ms ease;
@@ -35652,6 +35654,9 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 .tm-resize-handle:is(:hover, :focus-visible, .is-dragging)::after { background: var(--accent-primary); }
 .tm-resize-handle:focus-visible { outline: none; }
 @media (max-width: 899px) { .tm-resize-handle { display: none; } }
+/* Full screen has no edge to drag; the handle stays mounted so its width state
+   still matches the panel when full screen is left. */
+.tamam-drawer.is-maximized > .tm-resize-handle { display: none; }
 @media (min-width: 900px) { html.tm-dash-rail .tm-slider > .tm-resize-handle { display: none; } }
 
 /* ── Read-only facts in a slider or the chart drawer ──────────────────────

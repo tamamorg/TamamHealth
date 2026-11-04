@@ -18,6 +18,9 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type React
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Modal from '@/components/Modal';
+import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
+import './account-dialog.css';
+import './settings-shell.css';
 import { useAuth, useSync } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -1172,87 +1175,87 @@ export default function RoleSettingsView() {
              credential hand-offs. Editing writes to the same draft the rest
              of Settings uses, so Save is the page's one save path. ── */}
       {acctOpen && (
-        <Modal onClose={closeAccountEditor} width={640} labelledBy="acct-modal-title">
-          <div className="ehr-handoff-modal ehr-set-acct">
-            <div className="ehr-handoff-head">
-              <div className="ehr-handoff-head-title">
-                <User />
-                <div>
-                  <h2 id="acct-modal-title">Update account</h2>
-                  <p>{currentUser.username}</p>
-                </div>
-              </div>
-              <div className="ehr-handoff-head-actions">
-                <button type="button" className="ehr-handoff-close" aria-label="Close" onClick={closeAccountEditor}>✕</button>
-              </div>
-            </div>
-
-            <div className="ehr-handoff-body ehr-set-acct-body">
-              <section className="ehr-set-acct-group">
-                <h3>Identity</h3>
-                <div className="ehr-set-acct-field">
-                  <label htmlFor="acct-display-name">Display name</label>
+        <Modal onClose={closeAccountEditor} width={560} labelledBy="acct-modal-title" describedBy="acct-modal-desc" className="acct-dialog">
+          <DialogFrame busy={saving}>
+            <DialogHeader
+              titleId="acct-modal-title"
+              descriptionId="acct-modal-desc"
+              title={t('acct.title')}
+              description={`${currentUser.name} · ${currentUser.username}`}
+              onClose={closeAccountEditor}
+            />
+            <DialogBody className="acct-body">
+              {/* Only what this person can change. Role, organisation and
+                  facility are an administrator's, and the account card behind
+                  this popup already shows them. */}
+              <section className="acct-section" aria-labelledby="acct-profile">
+                <h3 id="acct-profile" className="acct-section-title">{t('acct.profile')}</h3>
+                <div className="acct-field">
+                  <label htmlFor="acct-display-name" className="acct-label">{t('acct.displayName')}</label>
                   <input
                     id="acct-display-name"
                     type="text"
-                    className="ehr-handoff-input"
+                    className="acct-input"
                     autoComplete="name"
                     value={displayName}
                     onChange={e => setValue(displayNameKey, e.target.value)}
+                    aria-describedby="acct-display-name-hint"
                   />
-                  <small>Shown on notes, receipts, and referrals</small>
+                  <p id="acct-display-name-hint" className="acct-hint">{t('acct.displayNameHint')}</p>
                 </div>
-                <div className="ehr-set-acct-facts">
-                  {identityRows.filter(row => row.label !== 'Username').map(row => (
-                    <div key={row.label}>
-                      <span>{row.label}</span>
-                      <b title={row.value}>{row.value}</b>
+              </section>
+
+              <section className="acct-section" aria-labelledby="acct-preferences">
+                <h3 id="acct-preferences" className="acct-section-title">{t('acct.preferences')}</h3>
+                <div className="acct-rows">
+                  {accountRows.filter(row => row.key !== displayNameKey).map(row => (
+                    <div key={row.key} className="acct-row">
+                      <div className="acct-row-text">
+                        <span className="acct-row-label">{row.label}</span>
+                        {row.hint && <span className="acct-row-hint">{row.hint}</span>}
+                      </div>
+                      <div className="acct-row-control">{renderControl(row)}</div>
                     </div>
                   ))}
                 </div>
-                <p className="ehr-set-acct-note">
-                  Role and facility are assigned by an administrator and can&rsquo;t be changed here.
-                </p>
               </section>
 
-              <section className="ehr-set-acct-group">
-                <h3>Preferences</h3>
-                {accountRows.filter(row => row.key !== displayNameKey).map(row => (
-                  <div key={row.key} className="ehr-set-row ehr-set-acct-row">
-                    <div className="ehr-set-row-label">
-                      <b>{row.label}</b>
-                      <span>{row.hint}</span>
-                    </div>
-                    {renderControl(row)}
-                  </div>
-                ))}
-              </section>
-
-              <section className="ehr-set-acct-group">
-                <h3>Sign-in &amp; device</h3>
-                <div className="ehr-set-acct-actions">
-                  <button type="button" className="ehr-handoff-btn" onClick={() => { setAcctOpen(false); setPwOpen(true); }}>
-                    <KeyRound /> Change password
+              <section className="acct-section" aria-labelledby="acct-security">
+                <h3 id="acct-security" className="acct-section-title">{t('acct.security')}</h3>
+                {/* Each opens its own popup; the edits made here are kept,
+                    since they continue the same errand. */}
+                <div className="acct-rows">
+                  <button type="button" className="acct-row acct-link-row" onClick={() => { setAcctOpen(false); setPwOpen(true); }}>
+                    <KeyRound className="acct-link-icon" aria-hidden />
+                    <span className="acct-row-text">
+                      <span className="acct-row-label">{t('acct.changePassword')}</span>
+                      <span className="acct-row-hint">{t('acct.changePasswordHint')}</span>
+                    </span>
+                    <ChevronRight className="acct-link-chevron" aria-hidden />
                   </button>
-                  <button type="button" className="ehr-handoff-btn" onClick={() => { setAcctOpen(false); setPinOpen(true); }}>
-                    <Lock /> {pinIsSet ? 'Change screen-lock PIN' : 'Set screen-lock PIN'}
+                  <button type="button" className="acct-row acct-link-row" onClick={() => { setAcctOpen(false); setPinOpen(true); }}>
+                    <Lock className="acct-link-icon" aria-hidden />
+                    <span className="acct-row-text">
+                      <span className="acct-row-label">{pinIsSet ? t('acct.changePin') : t('acct.setPin')}</span>
+                      <span className="acct-row-hint">{t('acct.pinHint')}</span>
+                    </span>
+                    <ChevronRight className="acct-link-chevron" aria-hidden />
                   </button>
                 </div>
               </section>
-            </div>
-
-            <div className="ehr-set-acct-foot">
-              <button type="button" className="ehr-handoff-btn" onClick={closeAccountEditor}>Cancel</button>
+            </DialogBody>
+            <DialogFooter>
+              <button type="button" className="btn btn-secondary" disabled={saving} onClick={closeAccountEditor}>{t('common.cancel')}</button>
               <button
                 type="button"
-                className="ehr-handoff-btn primary"
+                className="btn btn-primary"
                 disabled={saving || !displayName.trim()}
                 onClick={async () => { await handleSave(); setAcctOpen(false); }}
               >
-                {saving ? 'Saving…' : 'Save changes'}
+                {saving ? t('acct.saving') : t('acct.save')}
               </button>
-            </div>
-          </div>
+            </DialogFooter>
+          </DialogFrame>
         </Modal>
       )}
 

@@ -240,7 +240,7 @@ export default function InsurancePolicyModal({
 
   const actions = (
     <>
-      <button type="button" onClick={onClose} className="btn btn-secondary">{t('common.cancel') || 'Cancel'}</button>
+      <button type="button" onClick={onClose} disabled={saving} className="btn btn-secondary">{t('common.cancel') || 'Cancel'}</button>
       <button type="button" onClick={handleSubmit} disabled={saving} className="btn btn-primary">
         {saving ? (t('common.saving') || 'Saving…') : (t('common.save') || 'Save')}
       </button>
