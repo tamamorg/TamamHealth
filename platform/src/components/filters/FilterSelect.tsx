@@ -19,6 +19,7 @@ interface FilterSelectProps {
    * Defaults to the first option's value.
    */
   neutralValue?: string;
+  /** Kept for callers; every filter field is the same height now. */
   size?: 'sm' | 'md';
   className?: string;
   'aria-label'?: string;
@@ -37,44 +38,23 @@ export default function FilterSelect({
   options,
   label,
   neutralValue,
-  size = 'md',
   className = '',
   'aria-label': ariaLabel,
 }: FilterSelectProps) {
   const neutral = neutralValue ?? options[0]?.value;
   const isActive = value !== neutral;
-  const pad = size === 'sm' ? '6px 30px 6px 11px' : '8px 32px 8px 13px';
-  const font = size === 'sm' ? 11 : 12.5;
 
+  // Styled by the one filter look (globals.css "FILTER PANELS"): a label above
+  // a square field; a field narrowing the list shows the accent. `size` is
+  // kept for callers; the panel gives every field the same height.
   return (
-    <div className={`inline-flex items-center gap-1.5 ${className}`}>
-      {label && (
-        <span
-          className="text-[9px] font-bold uppercase tracking-[0.07em] whitespace-nowrap"
-          style={{ color: 'var(--text-muted)' }}
-        >
-          {label}
-        </span>
-      )}
+    <label className={`tm-filter-select${isActive ? ' is-active' : ''} ${className}`.trim()}>
+      {label && <span className="tm-filter-select__label">{label}</span>}
       <Select
         value={value}
         aria-label={ariaLabel ?? label}
         onChange={e => onChange(e.target.value)}
-        className="font-semibold cursor-pointer transition-all"
-        style={{
-          fontSize: font,
-          width: 'auto',
-          // backgroundColor, never the `background` shorthand: the shorthand
-          // also resets background-image, which is where the global `select`
-          // rule draws the dropdown chevron — leaving the 32px of padding-end
-          // reserved for it below standing empty on every filter in the app.
-          backgroundColor: isActive ? 'var(--accent-light)' : 'var(--bg-card-solid)',
-          color: isActive ? 'var(--accent-primary)' : 'var(--text-primary)',
-          border: `1.5px solid ${isActive ? 'var(--accent-border)' : 'var(--border-light)'}`,
-          borderRadius: 'var(--input-radius)',
-          padding: pad,
-          boxShadow: isActive ? '0 0 0 3px var(--accent-light)' : 'none',
-        }}
+        className="tm-filter-select__control"
       >
         {options.map(o => (
           <option key={o.value} value={o.value}>
@@ -82,6 +62,6 @@ export default function FilterSelect({
           </option>
         ))}
       </Select>
-    </div>
+    </label>
   );
 }
