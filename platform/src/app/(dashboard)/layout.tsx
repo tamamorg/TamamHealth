@@ -28,6 +28,7 @@ import { ConsoleTrailProvider } from '@/components/navigation/ConsoleTrail';
 import { MessagingDock, MessagingDockProvider, PatientTextOutbox } from '@/modules/communication/client';
 import NavHistoryTracker from '@/components/navigation/NavHistoryTracker';
 import TableSortEnhancer from '@/components/table/TableSortEnhancer';
+import PageDraftKeeper from '@/components/unsaved/PageDraftKeeper';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -199,6 +200,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <main id="main-content" className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
                 <RoleGuard>{children}</RoleGuard>
                 <GetStartedCard />
+                <PageDraftKeeper />
               </main>
             </div>
           </div>

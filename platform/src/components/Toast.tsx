@@ -212,6 +212,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** The toast API, or undefined outside ToastProvider — for shared components that also render in isolation. */
+export function useOptionalToast(): ToastContextType | undefined {
+  return useContext(ToastContext);
+}
+
 export function useToast() {
   const context = useContext(ToastContext);
   if (!context) throw new Error('useToast must be used within ToastProvider');

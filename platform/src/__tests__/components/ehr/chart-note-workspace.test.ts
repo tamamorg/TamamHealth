@@ -11,7 +11,7 @@ describe('patient chart note workspace', () => {
   });
 
   it('takes the one chart slider size; × closes completely, → (Hide) only when there is somewhere to go back to', () => {
-    expect(chartShell).toContain('onClick={closeAllWorkspaces}><X />');
+    expect(chartShell).toContain('void closeAllWorkspaces(); }}><X />');
     expect(chartShell).toMatch(/\(innerBack \|\| stack\.length > 1\) && \(\s*<Tooltip content=\{t\('overlay\.hide'\)\}>/);
     // No Back on the left any more.
     expect(chartShell).not.toContain('tamam-drawer-back');

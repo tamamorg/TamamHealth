@@ -41,6 +41,7 @@ import { useToast } from '@/components/Toast';
 import { clickable } from '@/lib/a11y';
 import { describeError } from '@/lib/user-facing-error';
 import { resultWithUnit } from '@/components/lab/workflow/lab-workflow-types';
+import { requestReload } from '@/lib/unsaved/unsaved-registry';
 
 // The same pills as the referrals table beside it.
 const STATUS_STYLE: Record<PatientTransferStatus, { label: string; badge: string }> = {
@@ -424,7 +425,10 @@ export function TransferArriving({ patientId, fallback }: { patientId: string; f
     if (!arrivingId || !scope) return;
     const timer = setInterval(() => {
       void getPatientById(patientId, scope).then(patient => {
-        if (patient) window.location.reload();
+        if (!patient) return;
+        clearInterval(timer);
+        // Asks first while a form holds unsaved text (lib/unsaved).
+        requestReload('reload.reason.chartArrived');
       }, () => { /* still on its way */ });
     }, 15_000);
     return () => clearInterval(timer);

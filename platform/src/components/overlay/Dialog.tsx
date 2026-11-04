@@ -39,6 +39,7 @@ import { ArrowRight, ChevronDown, Maximize2, X } from '@/components/icons/lucide
 import Tooltip from './Tooltip';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import FormNotices from './FormNotices';
+import { useMarkDraftDismissed } from '@/components/unsaved/draft-dismiss-context';
 
 export type DialogTone = 'plain' | 'brand' | 'danger' | 'warning';
 
@@ -105,6 +106,8 @@ export function DialogHeader({
   actions?: ReactNode;
   className?: string;
 }) {
+  // X dismisses: text typed in the popup is kept for when it is reopened.
+  const markDraftDismissed = useMarkDraftDismissed();
   const { t } = useTranslation();
   const iconTone = tone === 'danger' ? ' tm-dialog__icon--danger' : tone === 'warning' ? ' tm-dialog__icon--warning' : '';
   return (
@@ -139,7 +142,7 @@ export function DialogHeader({
           <button
             type="button"
             className="tm-dialog__ctl"
-            onClick={onClose}
+            onClick={() => { markDraftDismissed(); onClose(); }}
             aria-label={closeLabel || t('overlay.close')}
             data-action="popup-close"
           >

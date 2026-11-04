@@ -9676,6 +9676,13 @@ const en: TranslationMap = {
   'dup.visitWarning': 'Visit started on a duplicate record. Use {{name}} where you can, and check allergies on both records.',
   'dup.visitPanelWarning': 'This is a duplicate record. Starting a visit here is allowed in an emergency. Otherwise use {{name}}.',
   'dup.keptUnknown': 'the record kept',
+  'drafts.restored': 'Unsaved text restored from {{time}}.',
+  'drafts.discard': 'Discard',
+  'unsaved.leave': 'Changes not saved. Leave this page anyway?',
+  'reload.reason.update': 'Update ready.',
+  'reload.reason.chartArrived': 'Transferred chart arrived.',
+  'reload.keepTyping': 'Reload the page when ready. What you typed is kept on this device.',
+  'reload.now': 'Reload now',
 };
 
 export default en;

@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
+import { clearAllDrafts } from './unsaved/draft-store';
 import { syncFlagAllowsSync } from './sync/sync-config';
 import type { HospitalDoc, OrganizationDoc, UserRole, UserDoc } from './db-types';
 import type { AggregateStatus } from './sync/sync-manager';
@@ -1071,6 +1072,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(LOGOUT_PENDING_KEY, 'true');
       window.localStorage.removeItem('tamamhealth.active-user-preferences');
+      // Unsaved form text belongs to the session that typed it.
+      clearAllDrafts();
     }
 
     // Clear cookies that are readable by JavaScript immediately. The server
@@ -1221,6 +1224,11 @@ export function useApp() {
   const context = useContext(AppContext);
   if (!context) throw new Error('useApp must be used within AppProvider');
   return context;
+}
+
+/** Identity, or undefined outside AppProvider — for shared components that also render in isolation. */
+export function useOptionalAuth(): AuthSlice | undefined {
+  return useContext(AuthContext);
 }
 
 /**
