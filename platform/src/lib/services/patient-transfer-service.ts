@@ -70,11 +70,6 @@ export const TRANSFER_SLA_HOURS: Record<PatientTransferUrgency, number> = {
   routine: 48,
 };
 
-/** Statuses that mean the receiving side has answered. */
-const DECIDED_STATUSES = new Set<PatientTransferStatus>([
-  'accepted', 'rejected', 'cancelled', 'completed', 'expired',
-]);
-
 /** Statuses in which the transfer is still live and awaiting something. */
 export const OPEN_TRANSFER_STATUSES = new Set<PatientTransferStatus>([
   'draft', 'requested', 'accepted',

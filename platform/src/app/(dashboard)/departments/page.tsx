@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Building2, RefreshCw } from '@/components/icons/lucide';
+import { Building2 } from '@/components/icons/lucide';
 import { SadbCard, SadbGridList, SadbGridRow, SadbSearch } from '@/components/admin/sadb-ui';
 import FacilityKpiBand from '@/components/dashboards/FacilityKpiBand';
 import InlineBanner from '@/components/overlay/InlineBanner';
