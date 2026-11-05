@@ -1,20 +1,31 @@
 'use client';
 
-import { useMemo } from 'react';
+/**
+ * Every open alert — disease surveillance, critical lab results, overdue
+ * immunizations — in one table drawn like the patient list: the same card,
+ * search bar, column head and hairline rows. A row opens the module that
+ * works it.
+ */
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import EhrListHeader from '@/components/ehr/EhrListHeader';
-import EmptyState from '@/components/EmptyState';
-import Badge, { type BadgeTone } from '@/components/Badge';
-import {
-  AlertTriangle, FlaskConical, Syringe, ChevronRight, CheckCircle2,
-} from '@/components/icons/lucide';
+import Select from '@/components/Select';
+import { AlertTriangle, FlaskConical, Syringe } from '@/components/icons/lucide';
+import { stopsClickPropagation } from '@/lib/a11y';
+import { formatShortDate } from '@/lib/format-utils';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
 import { useImmunizations } from '@/lib/hooks/useImmunizations';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useAuth } from '@/lib/context';
 
 type Severity = 'critical' | 'warning' | 'info';
 type AlertCategory = 'surveillance' | 'lab' | 'immunization';
+type Translate = (key: string, vars?: Record<string, string | number>) => string;
+
+const SEVERITIES: Severity[] = ['critical', 'warning', 'info'];
+const CATEGORIES: AlertCategory[] = ['surveillance', 'lab', 'immunization'];
 
 interface AlertItem {
   id: string;
@@ -22,33 +33,15 @@ interface AlertItem {
   category: AlertCategory;
   title: string;
   body: string;
-  source?: string;
-  timestamp: string;            // ISO
+  /** Where it is: a county and state, or the module it came from. */
+  place: string;
+  placeDetail: string;
+  /** One short line under the severity pill (the trend, or what is waiting). */
+  note: string;
+  timestamp: string; // ISO
   actionLabel: string;
   actionHref: string;
-  resolved?: boolean;
 }
-
-const SEVERITY_STYLES: Record<Severity, { bg: string; border: string; color: string; label: string }> = {
-  critical: {
-    bg: 'rgba(224, 49, 39, 0.06)',
-    border: 'rgba(224, 49, 39, 0.22)',
-    color: 'var(--color-danger)',
-    label: 'CRITICAL',
-  },
-  warning: {
-    bg: 'rgba(254, 230, 151, 0.10)',
-    border: 'rgba(254, 230, 151, 0.30)',
-    color: 'var(--color-warning-text)',
-    label: 'WARNING',
-  },
-  info: {
-    bg: 'var(--accent-light)',
-    border: 'var(--accent-border)',
-    color: 'var(--accent-primary)',
-    label: 'INFO',
-  },
-};
 
 const CATEGORY_ICONS = {
   surveillance: AlertTriangle,
@@ -56,31 +49,10 @@ const CATEGORY_ICONS = {
   immunization: Syringe,
 };
 
-// Severity → Badge tone for the alert-level pill.
-const SEVERITY_TONE: Record<Severity, BadgeTone> = {
-  critical: 'danger',
-  warning: 'warning',
-  info: 'info',
-};
+/** Tie-break for alerts raised at the same moment: the more severe first. */
+const SEVERITY_ORDER: Record<Severity, number> = { critical: 0, warning: 1, info: 2 };
 
-function bucketByRecency(alerts: AlertItem[]) {
-  const now = Date.now();
-  const day = 24 * 60 * 60 * 1000;
-  const recent: AlertItem[] = [];   // last 24h
-  const thisWeek: AlertItem[] = []; // 1-7 days
-  const earlier: AlertItem[] = [];  // older
-
-  for (const a of alerts) {
-    const t = new Date(a.timestamp).getTime() || now;
-    const ageDays = (now - t) / day;
-    if (ageDays < 1)        recent.push(a);
-    else if (ageDays < 7)   thisWeek.push(a);
-    else                    earlier.push(a);
-  }
-  return { recent, thisWeek, earlier };
-}
-
-function formatRelative(iso: string, t: (key: string, vars?: Record<string, string | number>) => string): string {
+function formatRelative(iso: string, t: Translate): string {
   const time = new Date(iso).getTime();
   if (!time) return '—';
   const diffMin = (Date.now() - time) / 60000;
@@ -88,28 +60,31 @@ function formatRelative(iso: string, t: (key: string, vars?: Record<string, stri
   if (diffMin < 60) return t('alerts.minutesAgo', { count: Math.floor(diffMin) });
   const diffHr = diffMin / 60;
   if (diffHr < 24) return t('alerts.hoursAgo', { count: Math.floor(diffHr) });
-  const diffDay = diffHr / 24;
-  if (diffDay < 7) return t('alerts.daysAgo', { count: Math.floor(diffDay) });
-  return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+  return t('alerts.daysAgo', { count: Math.floor(diffHr / 24) });
 }
 
 export default function AlertsPage() {
   const router = useRouter();
   const { t } = useTranslation();
+  const { currentUser } = useAuth();
+  // Lab and immunization alerts are this facility's own queues.
+  const facilityName = currentUser?.hospital?.name || currentUser?.hospitalName || t('alerts.thisFacility');
   const { alerts: diseaseAlerts } = useSurveillance();
   const { immunizations } = useImmunizations();
   const { results: labResults } = useLabResults();
+  const [query, setQuery] = useState('');
+  const [severity, setSeverity] = useState<Severity | ''>('');
+  const [category, setCategory] = useState<AlertCategory | ''>('');
+
   const overdueImmunizations = useMemo(
     () => (immunizations || []).filter(imm => imm.status === 'overdue'),
     [immunizations],
   );
-  // Lab results that are flagged critical and not yet reviewed/finalized.
-  // Replaces the previous 3%-of-patients fudge with a real PouchDB query.
+  // Lab results flagged critical and not yet reviewed/finalized.
   const criticalLabResults = useMemo(
     () => (labResults || []).filter(r => r.critical && r.status !== 'completed'),
     [labResults],
   );
-
 
   const allAlerts = useMemo<AlertItem[]>(() => {
     const items: AlertItem[] = [];
@@ -119,57 +94,60 @@ export default function AlertsPage() {
     for (const a of diseaseAlerts) {
       if (a.alertLevel !== 'emergency' && a.alertLevel !== 'warning') continue;
       const sev: Severity = a.alertLevel === 'emergency' ? 'critical' : 'warning';
+      const cases = t('alerts.casesCount', { count: a.cases || 0 });
       items.push({
         id: `surv-${a._id}`,
         severity: sev,
         category: 'surveillance',
-        title: `${a.disease} ${sev === 'critical' ? 'outbreak' : 'surveillance warning'}`,
-        body: `${a.cases || 0} cases reported${a.deaths ? `, ${a.deaths} deaths` : ''} — trend ${a.trend}`,
-        source: [a.county, a.state].filter(Boolean).join(', '),
+        title: t(sev === 'critical' ? 'alerts.survOutbreak' : 'alerts.survWarning', { disease: a.disease }),
+        body: a.deaths ? `${cases} · ${t('alerts.deathsCount', { count: a.deaths })}` : cases,
+        place: a.county || a.state || t('alerts.type.surveillance'),
+        placeDetail: a.county ? a.state || '' : '',
+        note: a.trend ? t(`alerts.trend.${a.trend}`) : '',
         timestamp: a.reportDate || nowIso,
-        actionLabel: 'Open surveillance',
+        actionLabel: t('alerts.openSurveillance'),
         actionHref: '/surveillance',
       });
     }
 
-    // Critical lab results — actual count from the lab results store.
-    const criticalLabCount = criticalLabResults.length;
-    if (criticalLabCount > 0) {
+    if (criticalLabResults.length > 0) {
       items.push({
         id: 'lab-critical',
         severity: 'critical',
         category: 'lab',
-        title: 'Critical lab results awaiting review',
-        body: `${criticalLabCount} result(s) flagged critical and pending clinician sign-off.`,
-        source: 'Laboratory',
+        title: t('alerts.labCriticalTitle'),
+        body: t('alerts.labCriticalBody', { count: criticalLabResults.length }),
+        place: facilityName,
+        placeDetail: '',
+        note: t('alerts.labCriticalNote'),
         timestamp: nowIso,
-        actionLabel: 'Review lab queue',
+        actionLabel: t('alerts.openLab'),
         actionHref: '/lab',
       });
     }
 
-    // Overdue immunizations
     if (overdueImmunizations.length > 0) {
       items.push({
         id: 'imm-overdue',
         severity: 'info',
         category: 'immunization',
-        title: 'Overdue immunizations',
-        body: `${overdueImmunizations.length} patient(s) past their scheduled vaccination window.`,
-        source: 'Immunizations',
+        title: t('alerts.immOverdueTitle'),
+        body: t('alerts.immOverdueBody', { count: overdueImmunizations.length }),
+        place: facilityName,
+        placeDetail: '',
+        note: t('alerts.immOverdueNote'),
         timestamp: nowIso,
-        actionLabel: 'Open immunizations',
+        actionLabel: t('alerts.openImmunizations'),
         actionHref: '/immunizations',
       });
     }
 
-    // Sort newest-first
-    return items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [diseaseAlerts, overdueImmunizations, criticalLabResults]);
+    // Newest first; within the same moment, the more severe first.
+    return items.sort((a, b) =>
+      (new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      || SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
+  }, [diseaseAlerts, overdueImmunizations, criticalLabResults, facilityName, t]);
 
-  const visibleAlerts = allAlerts;
-
-  const buckets = useMemo(() => bucketByRecency(visibleAlerts), [visibleAlerts]);
   const counts = useMemo(() => ({
     all: allAlerts.length,
     critical: allAlerts.filter(a => a.severity === 'critical').length,
@@ -177,82 +155,15 @@ export default function AlertsPage() {
     info: allAlerts.filter(a => a.severity === 'info').length,
   }), [allAlerts]);
 
-  const renderAlertCard = (a: AlertItem) => {
-    const styles = SEVERITY_STYLES[a.severity];
-    const CatIcon = CATEGORY_ICONS[a.category];
-    return (
-      <button
-        key={a.id}
-        onClick={() => router.push(a.actionHref)}
-        className="w-full text-start rounded-xl transition-all"
-        style={{
-          background: styles.bg,
-          border: `1px solid ${styles.border}`,
-          padding: '14px 16px',
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 12,
-        }}
-        onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-1px)')}
-        onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}
-      >
-        <div
-          className="icon-box flex-shrink-0"
-          style={{
-            border: `1px solid ${styles.border}`,
-            color: styles.color,
-          }}
-        >
-          <CatIcon className="w-4 h-4" style={{ color: styles.color }} />
-        </div>
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return allAlerts.filter(a =>
+      (!severity || a.severity === severity)
+      && (!category || a.category === category)
+      && (!q || [a.title, a.body, a.place, a.placeDetail].some(v => v.toLowerCase().includes(q))));
+  }, [allAlerts, query, severity, category]);
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            <Badge tone={SEVERITY_TONE[a.severity]} uppercase>
-              {styles.label}
-            </Badge>
-            {a.source && (
-              <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                · {a.source}
-              </span>
-            )}
-            <span className="text-[11px] ms-auto" style={{ color: 'var(--text-muted)' }}>
-              {formatRelative(a.timestamp, t)}
-            </span>
-          </div>
-          <p className="text-sm font-semibold mb-0.5" style={{ color: 'var(--text-primary)' }}>
-            {a.title}
-          </p>
-          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-            {a.body}
-          </p>
-          <div className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold" style={{ color: styles.color }}>
-            {a.actionLabel}
-            <ChevronRight className="w-3.5 h-3.5" />
-          </div>
-        </div>
-      </button>
-    );
-  };
-
-  const renderSection = (title: string, items: AlertItem[]) => {
-    if (items.length === 0) return null;
-    return (
-      <section className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-            {title}
-          </h3>
-          <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-            {items.length}
-          </span>
-        </div>
-        <div className="flex flex-col gap-2">
-          {items.map(renderAlertCard)}
-        </div>
-      </section>
-    );
-  };
+  const activeFilters = (severity ? 1 : 0) + (category ? 1 : 0);
 
   return (
     <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
@@ -261,27 +172,101 @@ export default function AlertsPage() {
           title={t('ui.allAlerts')}
           count={counts.all}
           stats={[
-            { label: 'Critical', value: counts.critical, color: 'var(--color-danger)' },
-            { label: 'Warning',  value: counts.warning,  color: 'var(--color-warning-text)' },
-            { label: 'Info',     value: counts.info,     color: 'var(--accent-primary)' },
+            { label: t('alerts.severity.critical'), value: counts.critical, color: 'var(--color-danger)' },
+            { label: t('alerts.severity.warning'), value: counts.warning, color: 'var(--color-warning-text)' },
+            { label: t('alerts.severity.info'), value: counts.info, color: 'var(--accent-primary)' },
           ]}
+          search={{
+            value: query,
+            onChange: setQuery,
+            placeholder: t('alerts.searchPlaceholder'),
+            filters: {
+              activeCount: activeFilters,
+              onClear: () => { setSeverity(''); setCategory(''); },
+              children: (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('alerts.colSeverity')}</span>
+                    <Select value={severity} onChange={e => setSeverity(e.target.value as Severity | '')}>
+                      <option value="">{t('alerts.filterAll')}</option>
+                      {SEVERITIES.map(s => <option key={s} value={s}>{t(`alerts.severity.${s}`)}</option>)}
+                    </Select>
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('alerts.colType')}</span>
+                    <Select value={category} onChange={e => setCategory(e.target.value as AlertCategory | '')}>
+                      <option value="">{t('alerts.filterAll')}</option>
+                      {CATEGORIES.map(c => <option key={c} value={c}>{t(`alerts.type.${c}`)}</option>)}
+                    </Select>
+                  </label>
+                </div>
+              ),
+            },
+          }}
         />
 
-        {/* Alerts feed */}
-        <div style={{ overflowY: 'auto', flex: 1, minHeight: 0, padding: 16 }}>
-          {visibleAlerts.length === 0 ? (
-            <EmptyState
-              icon={CheckCircle2}
-              title={t('ui.allClear')}
-              message="No active clinical alerts. We will notify you the moment something needs attention."
-            />
-          ) : (
-            <>
-              {renderSection('Recent · last 24 hours', buckets.recent)}
-              {renderSection('Earlier this week', buckets.thisWeek)}
-              {renderSection('Older', buckets.earlier)}
-            </>
-          )}
+        <div className="appointment-card-surface patients-list-surface alerts-list-surface">
+          <div className="appointment-card-flow">
+            {/* The column head stays when nothing matches (list rule). */}
+            <div className="appointment-card-head" aria-hidden="true">
+              <span>{t('alerts.colAlert')}</span>
+              <span>{t('alerts.colSource')}</span>
+              <span>{t('alerts.colType')}</span>
+              <span>{t('alerts.colReported')}</span>
+              <span>{t('alerts.colSeverity')}</span>
+            </div>
+            {visible.length === 0 && (
+              <div className="appointment-card-empty">
+                {allAlerts.length === 0 ? t('alerts.emptyAllClear') : t('alerts.emptyNoMatch')}
+              </div>
+            )}
+            {visible.map(a => {
+              const Icon = CATEGORY_ICONS[a.category];
+              const open = () => router.push(a.actionHref);
+              return (
+                <div
+                  key={a.id}
+                  className="ehr-appointment-row appointment-card-row"
+                  role="button"
+                  tabIndex={0}
+                  onClick={open}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } }}
+                >
+                  <div className="ehr-appointment-identity">
+                    <span className={`alerts-row-plate is-${a.severity}`} aria-hidden="true">
+                      <Icon className="w-5 h-5" />
+                    </span>
+                    <div className="ehr-appointment-main appointment-card-patient">
+                      <Link href={a.actionHref} {...stopsClickPropagation}>{a.title}</Link>
+                      <p>{a.body}</p>
+                    </div>
+                  </div>
+
+                  <div className="appointment-card-provider">
+                    <strong>{a.place}</strong>
+                    {a.placeDetail && <span>{a.placeDetail}</span>}
+                  </div>
+
+                  <div className="appointment-card-provider">
+                    <strong>{t(`alerts.type.${a.category}`)}</strong>
+                    <span>{a.actionLabel}</span>
+                  </div>
+
+                  <div className="ehr-appointment-time">
+                    <strong>{formatShortDate(a.timestamp, { year: true }) || '—'}</strong>
+                    <span>{formatRelative(a.timestamp, t)}</span>
+                  </div>
+
+                  <div className="appointment-card-status">
+                    <span className={`appointment-status-pill alerts-pill is-${a.severity}`}>
+                      {t(`alerts.severity.${a.severity}`)}
+                    </span>
+                    {a.note && <small>{a.note}</small>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </main>
