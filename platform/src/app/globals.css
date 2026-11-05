@@ -10129,7 +10129,8 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 /* ============ Patient chart: blue clinical record theme ============ */
 
 .ehr-chart-page {
-  --ehr-page-bg: var(--bg-app);
+  /* White behind the chart's cards (2026-11-05: no blue washes in the chart). */
+  --ehr-page-bg: var(--bg-card-solid);
   --ehr-panel: var(--bg-card-solid);
   --ehr-panel-soft: var(--color-info-bg);
   --ehr-table-head: var(--color-info-bg);

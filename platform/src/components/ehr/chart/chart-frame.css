@@ -386,9 +386,33 @@ body .tamam-root .tamam-left-rail .tamam-rail-item svg {
   color: var(--accent-text, var(--accent-primary));
 }
 body .tamam-root .tamam-rail-item:hover:not(.is-active) { background: var(--accent-light); }
+/* 2026-11-05 the user took the washes back out ("change the blue background
+   colors to just white", across every chart tab): the header band, the
+   summary card heads, the page behind the cards, table head rows and chips
+   are all the card colour now; hairlines carry the structure. */
 body .tamam-root .tamam-sticky-zone .tamam-header {
-  background: color-mix(in srgb, var(--accent-primary) 7%, var(--ehr-panel, #fff));
+  background: var(--bg-card-solid);
+  border-bottom: 1px solid var(--border-light);
 }
 body .tamam-root .tebra-panel__head {
-  background: color-mix(in srgb, var(--accent-primary) 4%, var(--ehr-panel, #fff));
+  background: var(--bg-card-solid);
+  border-bottom: 1px solid var(--border-light);
+}
+
+/* The page behind the chart: the shell, the chart column and the content
+   area all read white, so the cards sit on white with their own borders.
+   The app shell and .ehr-chart-page paint --ehr-page-bg at !important
+   (globals.css), so the chart page sets that variable rather than fight it.
+   Table head rows are white at their source (chart-tables.css). */
+body:has(.ehr-chart-page) { --ehr-page-bg: var(--bg-card-solid); }
+body:has(.ehr-chart-page),
+body .ehr-chart-page .tamam-root,
+body .tamam-root :is(.tamam-main-col, .tamam-sticky-zone, .tamam-content) {
+  background: var(--bg-card-solid);
+}
+
+/* Visit chips (Visits & timeline) and the demographics avatar plate. */
+body .tamam-root :is(.vt-chip, .tebra-demo-avatar) {
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
 }
