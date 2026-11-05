@@ -309,21 +309,21 @@ export default function AncVisitForm({ layout, lockedPatient, onClose, onSaved }
         </div>
         <div>
           <label>{t('anc.weightKg')}</label>
-          <NumberInput step="0.1" value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value === '' ? '' : parseFloat(e.target.value) })} />
+          <NumberInput step="0.1" min={20} max={250} value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value === '' ? '' : parseFloat(e.target.value) })} />
         </div>
         <div>
           <label>{t('anc.fundalHeight')}</label>
-          <NumberInput step="any" value={form.fundalHeight} onChange={e => setForm({ ...form, fundalHeight: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
+          <NumberInput step="any" min={5} max={60} value={form.fundalHeight} onChange={e => setForm({ ...form, fundalHeight: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
         </div>
         <div>
           <label>{t('anc.fetalHrBpm')}</label>
-          <NumberInput step="1" value={form.fetalHeartRate} onChange={e => setForm({ ...form, fetalHeartRate: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
+          <NumberInput step="1" min={40} max={250} value={form.fetalHeartRate} onChange={e => setForm({ ...form, fetalHeartRate: e.target.value === '' ? '' : parseInt(e.target.value, 10) })} />
         </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
         <div>
           <label>{t('anc.hemoglobin')}</label>
-          <NumberInput step="0.1" value={form.hemoglobin} onChange={e => setForm({ ...form, hemoglobin: e.target.value === '' ? '' : parseFloat(e.target.value) })} />
+          <NumberInput step="0.1" min={2} max={25} value={form.hemoglobin} onChange={e => setForm({ ...form, hemoglobin: e.target.value === '' ? '' : parseFloat(e.target.value) })} />
         </div>
         <div>
           <label {...req('urineProtein')}>{t('anc.urineProtein')}</label>

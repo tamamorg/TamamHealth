@@ -20,12 +20,28 @@ const MANAGEMENT_PREFIXES: readonly string[] = [
   '/my-facility', '/facility-settings', '/it', '/system-admin',
   // Ministry and county oversight
   '/government', '/dashboard/state', '/public-stats',
+];
+
+/**
+ * Registers and reports that front-line staff open too (a doctor's blood bank,
+ * a pharmacist's controlled substances, the front desk's inquiries). They are
+ * management surfaces for the management and records roles, and keep the
+ * clinical workspace's own frame for the roles in CLINICAL_ROLES.
+ */
+const SHARED_REGISTER_PREFIXES: readonly string[] = [
   // Facility operations registers
   '/hr', '/dashboard/hr', '/equipment', '/inquiries', '/departments',
   '/blood-bank', '/controlled-substances', '/emergency-preparedness',
   // Reporting, surveillance and analytics
   '/reports', '/data-quality', '/vital-statistics', '/facility-assessments',
   '/dhis2-export', '/epidemic-intelligence', '/mch-analytics', '/surveillance',
+];
+
+/** Front-line roles: their screens wear the clinical workspace, not the management frame. */
+const CLINICAL_ROLES: readonly string[] = [
+  'doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife', 'triage_nurse', 'rooming_nurse',
+  'lab_tech', 'pharmacist', 'radiologist', 'nutritionist',
+  'front_desk', 'cashier', 'central_registration_clerk', 'clinic_clerk',
 ];
 
 /**
@@ -47,7 +63,8 @@ export function isManagementSurface(pathname: string | null | undefined, role?: 
   if (!pathname) return false;
   if (role && ALL_MANAGEMENT_ROLES.includes(role) && pathname !== '/settings' && !pathname.startsWith('/settings/') && pathname !== '/messages' && !pathname.startsWith('/messages/')) return true;
   if (pathname === '/dashboard' && role && MANAGEMENT_DASHBOARD_ROLES.includes(role)) return true;
-  return MANAGEMENT_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
+  const under = (prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
+  if (MANAGEMENT_PREFIXES.some(under)) return true;
+  if (role && CLINICAL_ROLES.includes(role)) return false;
+  return SHARED_REGISTER_PREFIXES.some(under);
 }

@@ -289,13 +289,15 @@ export default function FacilityManagementDashboard() {
      reported-issues inbox for management roles (PR #196), so the tile that
      links there counts issues, not patient inquiries. */
   const [issueReports, setIssueReports] = useState<MessageDoc[]>([]);
+  const [issuesLoaded, setIssuesLoaded] = useState(false);
   useEffect(() => {
     if (!scope) return;
     let cancelled = false;
     import('@/modules/communication/services/issue-report-service')
       .then(({ getIssueReports }) => getIssueReports(scope))
       .then(rows => { if (!cancelled) setIssueReports(rows); })
-      .catch(() => { /* the tile reads 0 rather than blocking the dashboard */ });
+      .catch(() => { /* the tile reads 0 rather than blocking the dashboard */ })
+      .finally(() => { if (!cancelled) setIssuesLoaded(true); });
     return () => { cancelled = true; };
   }, [scope]);
   const issueSummary = useMemo(() => summariseIssues(issueReports), [issueReports]);
@@ -511,12 +513,13 @@ export default function FacilityManagementDashboard() {
     };
   }, [overview, hospitals.length, wardBedTotal, wardOccupancy, issueSummary.total, t]);
 
+  // No trend until its data is in: an empty list read as "0 this week vs 0
+  // last", which looks like a real, flat week.
   const tileTrends = useMemo<Record<string, SadbTrendValue | undefined>>(() => ({
-    patients: weekTrend(patients),
-    // More inquiries arriving is more work waiting: up is not good news here.
+    patients: patientsLoading ? undefined : weekTrend(patients),
     // More issues arriving is more work waiting: up is not good news here.
-    issues: { ...weekTrend(issueReports), good: 'down' },
-  }), [weekTrend, patients, issueReports]);
+    issues: issuesLoaded ? { ...weekTrend(issueReports), good: 'down' } : undefined,
+  }), [weekTrend, patients, patientsLoading, issueReports, issuesLoaded]);
 
   /* This week, Monday-first, on the CLINICAL calendar: both cards below read
      the same seven days, and a visit at 23:00 in Juba belongs to that day

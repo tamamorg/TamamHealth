@@ -40,7 +40,10 @@ export interface ToastOptions {
 export { splitNotice } from '@/components/overlay/notice-hosts';
 
 interface ToastContextType {
-  showToast: (message: string, type?: ToastType, opts?: ToastOptions) => void;
+  /** Returns the notification's id, for `dismissToast`. */
+  showToast: (message: string, type?: ToastType, opts?: ToastOptions) => number;
+  /** Take a notification down — a sticky one whose condition has cleared. */
+  dismissToast?: (id: number) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -108,6 +111,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       ? prev.map(toast => (toast.id === id ? { ...toast, action: opts?.action, ttl } : toast))
       : [...prev, { id, ttl, message, type, title, action: opts?.action }]));
     arm(id, ttl);
+    return id;
   }, [arm]);
 
   useEffect(() => {
@@ -116,7 +120,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={{ showToast, dismissToast: remove }}>
       {children}
       {/* Toast container */}
       <div
