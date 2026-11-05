@@ -10,7 +10,7 @@ import { getDefaultDashboard } from '@/lib/role-routes';
 import { resolveRouteContext, routeContextBackHref } from '@/lib/navigation/route-context';
 import { useConsoleTrailInline, useConsoleTrailValue } from './ConsoleTrail';
 import BackLink from './BackLink';
-import { useModuleHubTabs } from './ModuleHubTabs';
+import ModuleHubMenu, { useModuleHubTabs } from './ModuleHubTabs';
 
 /**
  * Back for a page that draws it inside its own layout (`inlineBack`): where it
@@ -95,11 +95,11 @@ export default function RouteContextBar() {
   const { t } = useTranslation();
   const { hasContext, inline, showBack, backHref, crumbs } = useRouteBack();
   // A page that carries Back in its own layout (the patient chart, every
-  // create form via FormPageHead) gets no bar: no strip above the page. Nor
-  // does a management hub's page: its tabs (ModuleHubTabs) say where you are,
-  // and there is no level above a hub page to go back to.
-  const hubTabs = useModuleHubTabs();
-  const shown = hasContext && !inline && !hubTabs;
+  // create form via FormPageHead) gets no bar: no strip above the page. A
+  // management hub's page gets the bar even without a curated route: it
+  // carries the hub's dropdown (ModuleHubMenu) after the hub's name.
+  const hub = useModuleHubTabs();
+  const shown = (hasContext || !!hub) && !inline;
 
   /* Publish the bar's height as --app-route-bar-h. Whatever docks below the
      bar — the chart's workspace drawer, every <Modal variant="slider"> —
@@ -146,7 +146,14 @@ export default function RouteContextBar() {
       )}
 
       <nav className="route-context-crumbs" aria-label={t('breadcrumb.label')}>
-        {crumbs.map((crumb, index) => (
+        {hub && (
+          <span className="route-context-crumb">
+            <span>{hub.hub.label}</span>
+            <ChevronRight className="route-context-chevron" aria-hidden="true" />
+            <ModuleHubMenu {...hub} />
+          </span>
+        )}
+        {!hub && crumbs.map((crumb, index) => (
           <span className="route-context-crumb" key={`${crumb.label}-${index}`}>
             {index > 0 && <ChevronRight className="route-context-chevron" aria-hidden="true" />}
             {crumb.href ? (

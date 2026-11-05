@@ -1,36 +1,37 @@
 'use client';
 
 /**
- * The Reports control panel: choose what to visualise, then Apply.
+ * The Reports control panel: a short form of dropdowns, then Show report.
  *
- * Was `_ReportRail` — a picker that redrew the chart on every click, with the
- * chart-form buttons living on the chart itself and the data table hidden
- * behind a button labelled "Generate" that generated nothing (it toggled a
- * table whose rows were already computed). Three controls in three places for
- * one question: what am I looking at?
+ * 2026-11-04 (user): the panel was a sixteen-row list of report names under
+ * five headings, with the Reports hub's seven pages as a tab strip above the
+ * page. Now every choice is a field you select from, in the order you decide
+ * them: which area of reporting, which topic, how often, which report, and
+ * what shape to draw it in. The Report field searches as you type (Select
+ * adds a filter box once a list is long), so the separate search box went.
  *
- * They are one panel now. Report choice is draft state until Apply, while the
- * chart form redraws immediately: choosing "Donut" and seeing Columns until a
- * second action is neither useful feedback nor an honest selected state.
- *
- * The filter above the list is deliberately NOT draft state. Searching for
- * "malaria" is how you FIND the thing to visualise, not part of the view
- * being assembled, so it narrows the list immediately and Apply has nothing
- * to say about it.
+ * Report choice is draft state until Show report, because it reloads the
+ * chart and its table. Chart type redraws immediately: choosing "Donut" and
+ * still seeing columns is neither useful feedback nor an honest selection.
+ * Topic and frequency only narrow the Report field.
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Search, X } from '@/components/icons/lucide';
+import { usePathname, useRouter } from 'next/navigation';
+import { Check } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useAuth } from '@/lib/context';
 import type { LucideIcon } from '@/components/icons/lucide';
 import type { ReportChartKind } from './_ReportCharts';
 import {
   REPORT_CATEGORIES, REPORT_PERIODS,
-  categoryKey, countFilteredReports, filterReportSections, isFilterActive,
+  categoryKey, filterReportSections,
   periodKey, reportNameKey,
   type ReportFilter,
 } from './_ReportCatalogue';
 import Select from '@/components/Select';
+import { MODULE_HUBS, visibleMembers } from '@/lib/navigation/module-hubs';
+import './report-control-panel.css';
 
 /** The view being assembled. Applied as one unit. */
 export interface ReportView {
@@ -46,7 +47,7 @@ export interface ChartKindOption {
 }
 
 export default function ReportControlPanel({
-  filter, onFilterChange, applied, onApply, kinds, partToWholeOkFor, total,
+  filter, onFilterChange, applied, onApply, kinds, partToWholeOkFor,
 }: {
   filter: ReportFilter;
   onFilterChange: (next: ReportFilter) => void;
@@ -56,184 +57,149 @@ export default function ReportControlPanel({
   kinds: readonly ChartKindOption[];
   /** Whether donut/treemap are honest for a given report's numbers. */
   partToWholeOkFor: (report: string) => boolean;
-  total: number;
+  /** Kept for the page's call; the Report field counts its own options. */
+  total?: number;
 }) {
   const { t } = useTranslation();
+  const router = useRouter();
+  const pathname = usePathname();
+  const { currentUser } = useAuth();
   const [draftReport, setDraftReport] = useState(applied.report);
 
   /* Re-sync the drafted report when an outside control changes the visible
-     report. Chart form is not draft state: it is applied immediately below. */
+     report. Chart type is not draft state: it is applied immediately. */
   useEffect(() => { setDraftReport(applied.report); }, [applied.report]);
 
-  const sections = useMemo(() => filterReportSections(filter, t), [filter, t]);
-  const shown = useMemo(() => countFilteredReports(filter, t), [filter, t]);
-  const active = isFilterActive(filter);
-  const selectedIsHidden = active && !sections.some(s => s.items.some(i => i.name === draftReport));
+  /* The Reports hub's other pages (facility statistics, data quality, DHIS2
+     export, …) as the first field, in place of the tab strip above the page. */
+  const areas = useMemo(() => {
+    const hub = MODULE_HUBS.find(h => h.id === 'reports');
+    return hub ? visibleMembers(hub, currentUser?.role) : [];
+  }, [currentUser?.role]);
+
+  // Topic and frequency narrow the Report field; there is no free-text query.
+  const narrowing: ReportFilter = { ...filter, query: '' };
+  const sections = useMemo(() => filterReportSections(narrowing, t), [narrowing.category, narrowing.period, t]); // eslint-disable-line react-hooks/exhaustive-deps
+  const options = sections.flatMap(section => section.items.map(item => ({ section, item })));
+
+  /* A narrowed list that no longer holds the drafted report moves the draft
+     to its first report, so the Report field never shows a choice it does not
+     list. */
+  useEffect(() => {
+    if (options.length && !options.some(o => o.item.name === draftReport)) setDraftReport(options[0].item.name);
+  }, [options, draftReport]);
 
   const dirty = draftReport !== applied.report;
-
-  /* A form the DRAFTED report cannot honestly take is offered as disabled
-     rather than hidden, so the row does not reflow as you move between
-     reports — and a donut left selected from a previous report falls back
-     rather than drawing percentages of nothing. */
-  const visiblePartToWholeOk = partToWholeOkFor(applied.report);
-  const setFilter = (patch: Partial<ReportFilter>) => onFilterChange({ ...filter, ...patch });
+  const setFilter = (patch: Partial<ReportFilter>) => onFilterChange({ ...filter, ...patch, query: '' });
 
   const applyReport = () => {
     const activeKind = kinds.find(kind => kind.id === applied.kind);
-    const kind = activeKind?.partToWhole && !partToWholeOkFor(draftReport)
-      ? 'column'
-      : applied.kind;
+    const kind = activeKind?.partToWhole && !partToWholeOkFor(draftReport) ? 'column' : applied.kind;
     onApply({ report: draftReport, kind });
   };
 
+  /* A shape the report cannot honestly take (percentages of a list that is
+     not a whole) is offered as disabled, so the list does not change length
+     from report to report. */
+  const partToWholeOk = partToWholeOkFor(applied.report);
+
   return (
-    <aside className="rpt-rail" aria-label={t('reports.controlPanelTitle')}>
-      <div className="rpt-rail-head">
-        <span>{t('reports.controlPanelTitle')}</span>
-        {dirty && <b className="rpt-rail-dirty">{t('reports.controlPending')}</b>}
+    <aside className="rpt-rail rcp" aria-label={t('reports.controlPanelTitle')}>
+      <div className="rcp-head">
+        <h2 className="rcp-title">{t('reports.controlPanelTitle')}</h2>
+        {dirty && <span className="rcp-pending">{t('reports.controlPending')}</span>}
       </div>
 
-      <div className="rpt-rail-scroll">
-        {/* ── 1. What to visualise ─────────────────────────────────── */}
-        <p className="rpt-ctl-legend">
-          {t('reports.controlReport')}
-          <span>{active ? t('reports.railCount', { shown, total }) : total}</span>
-        </p>
-
-
-        <div className="rpt-rail-filter">
-          <div className="rpt-rail-search">
-            <Search className="w-3.5 h-3.5" aria-hidden="true" />
-            <input
-              type="search"
-              value={filter.query}
-              onChange={e => setFilter({ query: e.target.value })}
-              placeholder={t('reports.filterSearchPlaceholder')}
-              aria-label={t('reports.filterSearch')}
-              data-action="report-filter-search"
-            />
-          </div>
-          <div className="rpt-rail-selects">
+      <div className="rcp-body">
+        {areas.length > 1 && (
+          <label className="rcp-field">
+            <span className="rcp-label">{t('reports.controlArea')}</span>
             <Select
-              className="rpt-rail-select"
-              value={filter.category}
-              onChange={e => setFilter({ category: e.target.value })}
-              aria-label={t('reports.filterCategory')}
-              data-action="report-filter-category"
+              value={pathname ?? '/reports'}
+              onChange={e => { if (e.target.value !== pathname) router.push(e.target.value); }}
+              data-action="report-control-area"
             >
-              <option value="">{t('reports.filterAllCategories')}</option>
-              {REPORT_CATEGORIES.map(c => (
-                <option key={c} value={c}>{t(categoryKey[c] ?? c)}</option>
-              ))}
+              {areas.map(area => <option key={area.href} value={area.href}>{area.label}</option>)}
             </Select>
-            <Select
-              className="rpt-rail-select"
-              value={filter.period}
-              onChange={e => setFilter({ period: e.target.value })}
-              aria-label={t('reports.filterPeriod')}
-              data-action="report-filter-period"
-            >
-              <option value="">{t('reports.filterAllPeriods')}</option>
-              {REPORT_PERIODS.map(p => (
-                <option key={p} value={p}>{t(periodKey[p] ?? p)}</option>
-              ))}
-            </Select>
-          </div>
-          {active && (
-            <button
-              type="button"
-              className="rpt-rail-clear"
-              onClick={() => onFilterChange({ query: '', category: '', period: '' })}
-              data-action="report-filter-clear"
-            >
-              <X className="w-3 h-3" aria-hidden="true" />
-              {t('reports.filterClear')}
-            </button>
-          )}
-        </div>
-
-        {/* Chart form belongs directly under the filter selections and acts
-            on the chart immediately. Its checked state therefore always
-            names the shape visible in the plot, not an unapplied draft. */}
-        <div className="rpt-ctl-chart-form">
-          <p className="rpt-ctl-legend">{t('reports.controlForm')}</p>
-          <div className="rpt-ctl-kinds" role="radiogroup" aria-label={t('reports.chartForm')}>
-            {kinds.map(kind => {
-              const blocked = kind.partToWhole && !visiblePartToWholeOk;
-              const on = applied.kind === kind.id;
-              return (
-                <button
-                  key={kind.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  className={on ? 'is-on' : undefined}
-                  disabled={blocked}
-                  title={blocked ? t('reports.chartFormUnavailable') : t(kind.labelKey)}
-                  onClick={() => onApply({ ...applied, kind: kind.id })}
-                >
-                  <kind.icon />
-                  <span>{t(kind.labelKey)}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {selectedIsHidden && (
-          <p className="rpt-rail-note">
-            {t('reports.railSelectedHidden', { name: t(reportNameKey[draftReport] ?? draftReport) })}
-          </p>
+          </label>
         )}
 
-        {sections.length === 0 ? (
-          <p className="rpt-rail-empty">{t('reports.railNoMatches')}</p>
-        ) : sections.map(section => (
-          <div key={section.category} className="rpt-rail-group">
-            <p className="rpt-rail-group-title">{t(categoryKey[section.category] ?? section.category)}</p>
-            {section.items.map(item => {
-              const on = item.name === draftReport;
-              return (
-                <button
-                  key={item.name}
-                  type="button"
-                  className={`rpt-rail-item${on ? ' is-on' : ''}`}
-                  aria-current={on ? 'true' : undefined}
-                  onClick={() => setDraftReport(item.name)}
-                >
-                  {/* Name only. Each row used to carry a cadence chip and an
-                      "11 rows" count under it — two labels per item, sixteen
-                      items, none of it the thing you are picking by. The
-                      cadence is a filter above and a fact on the report itself;
-                      the row count belongs to the table, not to choosing. */}
-                  <span className="rpt-rail-name">{t(reportNameKey[item.name] ?? item.name)}</span>
-                </button>
-              );
-            })}
-          </div>
-        ))}
+        <label className="rcp-field">
+          <span className="rcp-label">{t('reports.filterCategory')}</span>
+          <Select
+            value={filter.category}
+            onChange={e => setFilter({ category: e.target.value })}
+            data-action="report-filter-category"
+          >
+            <option value="">{t('reports.filterAllCategories')}</option>
+            {REPORT_CATEGORIES.map(c => <option key={c} value={c}>{t(categoryKey[c] ?? c)}</option>)}
+          </Select>
+        </label>
 
-        {/* No "Include" section. The data table is generated from the chart's
-            own header now and its export sits with the table it exports —
-            both belong to the result, not to assembling the view. */}
+        <label className="rcp-field">
+          <span className="rcp-label">{t('reports.filterPeriod')}</span>
+          <Select
+            value={filter.period}
+            onChange={e => setFilter({ period: e.target.value })}
+            data-action="report-filter-period"
+          >
+            <option value="">{t('reports.filterAllPeriods')}</option>
+            {REPORT_PERIODS.map(p => <option key={p} value={p}>{t(periodKey[p] ?? p)}</option>)}
+          </Select>
+        </label>
+
+        <label className="rcp-field">
+          <span className="rcp-label">{t('reports.controlReport')}</span>
+          {options.length === 0 ? (
+            <p className="rcp-empty">{t('reports.railNoMatches')}</p>
+          ) : (
+            <Select
+              value={draftReport}
+              onChange={e => setDraftReport(e.target.value)}
+              searchPlaceholder={t('reports.filterSearchPlaceholder')}
+              data-action="report-control-report"
+            >
+              {sections.map(section => (
+                <optgroup key={section.category} label={t(categoryKey[section.category] ?? section.category)}>
+                  {section.items.map(item => (
+                    <option key={item.name} value={item.name}>{t(reportNameKey[item.name] ?? item.name)}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </Select>
+          )}
+        </label>
+
+        <label className="rcp-field">
+          <span className="rcp-label">{t('reports.controlForm')}</span>
+          <Select
+            value={applied.kind}
+            onChange={e => onApply({ ...applied, kind: e.target.value as ReportChartKind })}
+            data-action="report-control-kind"
+          >
+            {kinds.map(kind => (
+              <option key={kind.id} value={kind.id} disabled={kind.partToWhole && !partToWholeOk}>
+                {t(kind.labelKey)}
+              </option>
+            ))}
+          </Select>
+        </label>
       </div>
 
-      {/* Apply sits outside the scroller so it is reachable whatever the list
-          length — a commit button below the fold is a commit button nobody
-          presses. */}
-      <div className="rpt-ctl-apply">
+      {/* Outside the scroller, so it is reachable whatever the panel's
+          height: a commit button below the fold is one nobody presses. */}
+      <div className="rcp-foot">
         <button
           type="button"
-          className="btn btn-primary btn-sm"
+          className="btn btn-primary"
           disabled={!dirty}
           onClick={applyReport}
           data-action="report-control-apply"
         >
-          <Check className="w-4 h-4" /> {t('reports.controlApply')}
+          <Check className="w-4 h-4" aria-hidden="true" /> {t('reports.controlApply')}
         </button>
         {dirty && (
-          <button type="button" className="rpt-rail-clear" onClick={() => setDraftReport(applied.report)}>
+          <button type="button" className="rcp-undo" onClick={() => setDraftReport(applied.report)}>
             {t('reports.controlReset')}
           </button>
         )}

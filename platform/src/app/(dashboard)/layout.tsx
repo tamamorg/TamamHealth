@@ -25,7 +25,6 @@ import MobileAppShell from '@/components/mobile/MobileAppShell';
 import UsageTracker from '@/components/UsageTracker';
 import { ConfirmProvider } from '@/components/ConfirmDialog';
 import RouteContextBar from '@/components/navigation/RouteContextBar';
-import ModuleHubTabs from '@/components/navigation/ModuleHubTabs';
 import { ConsoleTrailProvider } from '@/components/navigation/ConsoleTrail';
 import { MessagingDock, MessagingDockProvider, PatientTextOutbox } from '@/modules/communication/client';
 import NavHistoryTracker from '@/components/navigation/NavHistoryTracker';
@@ -209,8 +208,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 className="relative flex-1 flex flex-col min-w-0 overflow-hidden"
                 data-surface={managementSurface ? 'management' : undefined}
               >
-                {/* A management hub's pages as tabs (module-hubs.ts); null elsewhere. */}
-                <ModuleHubTabs />
                 <RoleGuard>{children}</RoleGuard>
                 <GetStartedCard />
                 <PageDraftKeeper />

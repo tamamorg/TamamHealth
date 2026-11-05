@@ -160,7 +160,7 @@ function FacilityOverview() {
   const mohLabel = !submittedAt ? 'Not yet submitted' : hasPendingChanges ? 'Changes pending submission' : 'Submitted to Ministry of Health';
 
   return (
-    <SadbPage roles={FACILITY_OVERVIEW_ROLES} greeting="Facility overview">
+    <SadbPage roles={FACILITY_OVERVIEW_ROLES}>
 
       {/* ═══ MINISTRY OF HEALTH SUBMISSION GATE ═══ */}
       <SadbCard
@@ -204,18 +204,32 @@ function FacilityOverview() {
           <SadbKpiTile
             label={t('admin.dbPatients')}
             value={facilityCensus && hospitalId ? String(censusFor(facilityCensus, hospitalId).patients) : '…'}
+            delta="Registered at this facility"
           />
-          <SadbKpiTile label={t('dashboard.beds')} value={String(hospital?.totalBeds ?? 0)} />
-          <SadbKpiTile label={t('ui.clinicalStaff')} value={String(staff)} />
+          <SadbKpiTile
+            label="Beds"
+            value={String(hospital?.totalBeds ?? 0)}
+            delta={`${hospital?.icuBeds ?? 0} ICU · ${hospital?.maternityBeds ?? 0} maternity`}
+          />
+          <SadbKpiTile
+            label="Clinical Staff"
+            value={String(staff)}
+            delta={`${hospital?.doctors ?? 0} doctors · ${hospital?.nurses ?? 0} nurses · ${hospital?.clinicalOfficers ?? 0} COs`}
+          />
           <SadbKpiTile
             label={t('boma.todaysVisits')}
             value={facilityCensus && hospitalId ? String(censusFor(facilityCensus, hospitalId).todayVisits) : '…'}
+            delta="Encounters opened today"
           />
-          <SadbKpiTile label={t('ui.referralsInOut')} value={`${referralsIn} / ${referralsOut}`} />
+          <SadbKpiTile
+            label="Referrals"
+            value={String(referralsIn + referralsOut)}
+            delta={`${referralsIn} received · ${referralsOut} sent`}
+          />
           <SadbKpiTile
             label={t('dashboard.activeAlerts')}
             value={String(activeAlerts)}
-            delta={activeAlerts > 0 ? 'Needs attention' : undefined}
+            delta={activeAlerts > 0 ? 'Needs attention' : 'No open alerts'}
             deltaTone={activeAlerts > 0 ? 'warn' : undefined}
           />
           {/* '—' when never measured — a red 0% would assert a measurement
@@ -223,7 +237,7 @@ function FacilityOverview() {
           <SadbKpiTile
             label={t('breadcrumb.dataQuality')}
             value={dataQuality === null ? '—' : `${Math.round(dataQuality)}%`}
-            delta={dataQuality !== null && dataQuality < 80 ? 'Below target' : undefined}
+            delta={dataQuality === null ? 'Not yet measured' : dataQuality < 80 ? 'Below the 80% target' : 'Meets the 80% target'}
             deltaTone={dataQuality !== null && dataQuality < 80 ? 'warn' : undefined}
           />
         </div>

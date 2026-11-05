@@ -1245,7 +1245,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   line-height: 1;
 }
 
-.tamam-root :is(.tamam-section-add, .tebra-panel-action) { color: var(--accent-text); }
+.tamam-root :is(.tamam-section-add, .tebra-panel-action) { color: var(--accent-link); }
 .tamam-root :is(.tamam-section-toggle button.is-active, .tamam-activity-filters button.is-active) {
   border-color: var(--accent-primary);
   background: var(--accent-primary);
@@ -3044,7 +3044,7 @@ body .tamam-root .tamam-table.tamam-table--referrals td.tamam-num,
   border-radius: 0;
   background: transparent !important;
   box-shadow: none;
-  color: var(--accent-text);
+  color: var(--accent-link);
   font-size: 14px;
   font-weight: 400;
   line-height: 1.29;
@@ -3064,7 +3064,7 @@ body .tamam-root .tamam-table.tamam-table--referrals td.tamam-num,
 ):hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-slate-400, #8d8d8d) 12%, transparent) !important;
   border-color: transparent;
-  color: var(--accent-hover, var(--accent-text));
+  color: var(--accent-hover, var(--accent-link));
   text-decoration: none;
 }
 
@@ -3097,7 +3097,7 @@ body .tamam-root .tamam-table.tamam-table--referrals td.tamam-num,
 .tamam-root .tamam-header-overflow .tamam-header-actions-btn svg {
   width: 16px;
   height: 16px;
-  color: var(--accent-text) !important;
+  color: var(--accent-link) !important;
   stroke: currentColor !important;
 }
 

@@ -9,7 +9,7 @@
  * five reporting pages).
  *
  * Now the nav lists one row per task area (a hub), and the hub's pages are
- * tabs along the top of each of them (ModuleHubTabs): a small, task-shaped
+ * a dropdown in the top route bar of each of them (ModuleHubTabs): a small, task-shaped
  * top level in the side menu, tabs only for closely related views. Every
  * page is still one click from any page in its hub.
  *
@@ -24,6 +24,11 @@ export interface ModuleHubMember {
   href: string;
   /** The tab's name. */
   label: string;
+  /**
+   * The page switches between the hub's pages itself (Reports' "Area" field
+   * in Choose a report), so the tab strip is not drawn above it.
+   */
+  ownPicker?: true;
 }
 
 export interface ModuleHub {
@@ -68,7 +73,7 @@ export const MODULE_HUBS: readonly ModuleHub[] = [
     members: [
       { href: '/patients', label: 'Patients' },
       { href: '/appointments', label: 'Appointments' },
-      { href: '/inquiries', label: 'Inquiries' },
+      { href: '/inquiries', label: 'Reported issues' },
       { href: '/referrals', label: 'Referrals' },
       { href: '/transfers', label: 'Transfers' },
     ],
@@ -130,7 +135,7 @@ export const MODULE_HUBS: readonly ModuleHub[] = [
     id: 'reports',
     label: 'Reports',
     members: [
-      { href: '/reports', label: 'Reports' },
+      { href: '/reports', label: 'Reports', ownPicker: true },
       { href: '/facility-overview', label: 'Facility statistics' },
       { href: '/data-quality', label: 'Data quality' },
       { href: '/vital-statistics', label: 'Vital statistics' },

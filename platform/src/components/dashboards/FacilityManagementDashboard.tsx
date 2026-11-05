@@ -281,7 +281,7 @@ export default function FacilityManagementDashboard() {
 
   const { users, loading: usersLoading, error: usersError } = useUsers();
   const { patients, loading: patientsLoading } = usePatients();
-  const { availableBeds, loading: wardsLoading } = useWards();
+  const { availableBeds, totalBeds: wardBedTotal, occupancyRate: wardOccupancy, loading: wardsLoading } = useWards();
   const { hospitals } = useHospitals();
   // Real counts — HospitalDoc.patientCount/todayVisits are write-once-zero
   // registry fields nothing recomputes (2026-08 hardcoded-data sweep).
@@ -470,6 +470,26 @@ export default function FacilityManagementDashboard() {
     }
     return { direction: trendBetween(thisWeek, lastWeek), label: `${thisWeek} this week vs ${lastWeek} last` };
   }, []);
+  /* What each figure is made of, on the tile under the number (every
+     management KPI carries one). Derived from the same records as the
+     figures; a figure with nothing honest to add keeps none. */
+  const tileDetails = useMemo<Record<string, string | undefined>>(() => {
+    const num = (v: number | string | undefined) => (typeof v === 'number' ? v : Number.NaN);
+    const staff = num(overview.metrics.find(m => m.key === 'staff-total')?.value);
+    const share = (key: string) => {
+      const n = num(overview.metrics.find(m => m.key === key)?.value);
+      return Number.isFinite(n) && staff > 0 ? `${Math.round((n / staff) * 100)}% of staff` : undefined;
+    };
+    return {
+      'staff-total': `${overview.activeStaff.count} available now`,
+      doctors: share('doctors'),
+      nurses: share('nurses'),
+      patients: `Across ${hospitals.length} ${hospitals.length === 1 ? 'facility' : 'facilities'}`,
+      beds: wardBedTotal > 0 ? `of ${wardBedTotal} · ${wardOccupancy}% occupied` : undefined,
+      'inquiries-open': `${enquiries.length} received in total`,
+    };
+  }, [overview, hospitals.length, wardBedTotal, wardOccupancy, enquiries.length]);
+
   // No trend until its data is in: an empty list read as "0 this week vs 0
   // last", which looks like a real, flat week.
   const tileTrends = useMemo<Record<string, SadbTrendValue | undefined>>(() => ({
@@ -580,12 +600,9 @@ export default function FacilityManagementDashboard() {
   return (
     <SadbPage
       roles={['org_admin', 'hospital_manager', 'super_admin']}
-      /* This is a DASHBOARD, so it keeps the greeting and the role label the
-         console screens gave up — it is where the role lands, and the line
-         naming who you are signed in as belongs on the landing screen rather
-         than on all seventeen screens behind it. */
-      greeting="Facility management"
-      actions={<DashboardCreateActions />}
+      /* No greeting row (removed 2026-11-04 at the user's request): the page
+         opens on its figures, and the create actions sit beside the search of
+         the Facilities list they add to. */
     >
 
       {/* ═══ KPI tiles — census & staffing totals, each opening its full page ═══ */}
@@ -598,7 +615,7 @@ export default function FacilityManagementDashboard() {
               key={m.key}
               label={m.label}
               value={m.value}
-              delta={m.tone === 'warning' || m.tone === 'danger' ? 'Needs attention' : undefined}
+              delta={tileDetails[m.key]}
               deltaTone={m.tone === 'warning' || m.tone === 'danger' ? 'warn' : undefined}
               trend={tileTrends[m.key]}
               // Straight to the page that owns the figure: no preview stop.
@@ -698,6 +715,9 @@ export default function FacilityManagementDashboard() {
               placeholder={t('ui.searchFacilityTypeLocationOr')}
               ariaLabel="Search facilities"
             />
+            {/* The create actions beside the search of the list they add to
+                (the dashboard's greeting row that carried them is gone). */}
+            <DashboardCreateActions variant="ghost" />
           </div>
           <div className="sadb-card-scroll">
             <SadbGridList

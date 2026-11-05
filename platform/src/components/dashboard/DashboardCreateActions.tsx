@@ -22,7 +22,7 @@
  */
 
 import { useState } from 'react';
-import { Building2, Hospital, Users, type LucideIcon } from '@/components/icons/lucide';
+import { Building2, Hospital, Plus, Users, type LucideIcon } from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { canCreateFacilities, canCreateUsers } from '@/lib/people-nav';
 import { TenancyCreateDialogs, type TenancyCreateKind } from '@/modules/tenancy/client';
@@ -58,7 +58,15 @@ export function dashboardCreateActions(role: string | undefined): CreateAction[]
   ];
 }
 
-export default function DashboardCreateActions() {
+export default function DashboardCreateActions({ variant = 'buttons' }: {
+  /**
+   * 'ghost': the O3 opener look (blue label, trailing +, no fill), for a
+   * list's own header next to its search. The dashboards' greeting row that
+   * carried these as filled buttons was removed on 2026-11-04, and each
+   * create action now sits on the list it adds to.
+   */
+  variant?: 'buttons' | 'ghost';
+} = {}) {
   const { currentUser } = useAuth();
   const actions = dashboardCreateActions(currentUser?.role);
   const [open, setOpen] = useState<TenancyCreateKind | null>(null);
@@ -70,15 +78,27 @@ export default function DashboardCreateActions() {
       {actions.map(action => {
         const ActionIcon = action.icon;
         return (
-          <button
-            key={action.key}
-            type="button"
-            className={`btn btn-sm ${action.primary ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setOpen(action.key)}
-            data-action={`dashboard-create-${action.key}`}
-          >
-            <ActionIcon className="w-4 h-4" aria-hidden="true" /> {action.label}
-          </button>
+          variant === 'ghost' ? (
+            <button
+              key={action.key}
+              type="button"
+              className="tm-ghost-btn"
+              onClick={() => setOpen(action.key)}
+              data-action={`dashboard-create-${action.key}`}
+            >
+              {action.label} <Plus className="w-4 h-4" aria-hidden="true" />
+            </button>
+          ) : (
+            <button
+              key={action.key}
+              type="button"
+              className={`btn btn-sm ${action.primary ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setOpen(action.key)}
+              data-action={`dashboard-create-${action.key}`}
+            >
+              <ActionIcon className="w-4 h-4" aria-hidden="true" /> {action.label}
+            </button>
+          )
         );
       })}
       {/* Keyed by kind so a different button always mounts a fresh dialog

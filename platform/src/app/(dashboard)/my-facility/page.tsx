@@ -199,7 +199,6 @@ export default function MyFacilityPage() {
   return (
     <SadbPage
       roles={[...MY_FACILITY_ROLES]}
-      greeting="My facility"
       actions={
         <>
           <button

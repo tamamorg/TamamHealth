@@ -144,9 +144,9 @@ describe('PEOPLE & HR nav section', () => {
 });
 
 describe('buildAddMenuEntries', () => {
-  test('org_admin can add a facility, staff, inquiries, shifts, leave and payroll', () => {
+  test('org_admin can add a facility, staff, shifts, leave and payroll', () => {
     const entries = buildAddMenuEntries({ role: 'org_admin', allowedRoutes: allowedFor('org_admin') });
-    expect(entries.map(e => e.key)).toEqual(['facility', 'staff', 'inquiry', 'shift', 'leave', 'payroll']);
+    expect(entries.map(e => e.key)).toEqual(['facility', 'staff', 'shift', 'leave', 'payroll']);
     expect(entries.find(e => e.key === 'staff')!.href).toBe('/manage?new=user');
   });
 
@@ -178,7 +178,7 @@ describe('buildAddMenuEntries', () => {
   test('a role that cannot administer accounts keeps the entries it can use', () => {
     const entries = buildAddMenuEntries({ role: 'hospital_manager', allowedRoutes: allowedFor('hospital_manager') });
     expect(entries.map(e => e.key)).not.toContain('staff');
-    expect(entries.map(e => e.key)).toEqual(expect.arrayContaining(['shift', 'leave', 'inquiry', 'payroll']));
+    expect(entries.map(e => e.key)).toEqual(expect.arrayContaining(['shift', 'leave', 'payroll']));
   });
 
   test('a clinical role gets nothing, so the Add button hides entirely', () => {

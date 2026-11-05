@@ -19,14 +19,15 @@ import { filterByScope } from '@/lib/services/data-scope';
 import { findByType } from '@/lib/services/db-query';
 import {
   DETAILS_MAX, ISSUE_CATEGORIES, ISSUE_SEVERITIES, ISSUE_STATUSES, SUMMARY_MAX,
-  canTriageIssues, sanitiseIssuePage,
-  type IssueCategory, type IssueSeverity, type IssueStatus,
+  canTriageIssues, deriveIssueStatus, sanitiseIssuePage,
+  type IssueCategory, type IssueHistoryEntry, type IssueSeverity, type IssueStatus,
 } from '@/modules/communication/issue-rules';
 
 export {
   ISSUE_STATUSES, ISSUE_CATEGORIES, ISSUE_SEVERITIES, SUMMARY_MAX, DETAILS_MAX,
   isIssueReport, deriveIssueStatus, isOpenIssue, canTriageIssues, sanitiseIssuePage, summariseIssues,
-  type IssueSummary, type IssueStatus, type IssueCategory, type IssueSeverity,
+  ISSUE_NEXT_STEP, issueStepIndex,
+  type IssueSummary, type IssueStatus, type IssueCategory, type IssueSeverity, type IssueHistoryEntry,
 } from '@/modules/communication/issue-rules';
 
 export interface IssueReporter {
@@ -121,13 +122,21 @@ export async function getMyIssueReports(userId: string): Promise<MessageDoc[]> {
 
 export interface IssueUpdate {
   status?: IssueStatus;
+  /** Kept for callers: sets the response the reporter sees, as a reply. */
   resolutionNote?: string;
   assignedTo?: { id: string; name: string } | null;
+  severity?: IssueSeverity;
+  category?: IssueCategory;
+  /** A reply the reporter sees on their Report a problem page. */
+  reply?: string;
+  /** A note for the staff working the issue only. */
+  note?: string;
 }
 
 /**
  * Move a report through triage. Only a triage role may, and only on a report
  * in its scope; the reporter's own words (summary, details) are never touched.
+ * Every change is appended to the report's activity trail.
  */
 export async function updateIssueReport(
   id: string,
@@ -138,23 +147,53 @@ export async function updateIssueReport(
   if (!canTriageIssues(actor.role)) return null;
   const current = (await getIssueReports(scope)).find(m => m._id === id);
   if (!current) return null;
-  const patch: Partial<MessageDoc> = {
-    issueUpdatedAt: new Date().toISOString(),
-    issueUpdatedByName: actor.name,
-  };
+  const at = new Date().toISOString();
+  const entry = (e: Omit<IssueHistoryEntry, 'at' | 'byId' | 'byName'>): IssueHistoryEntry => ({ at, byId: actor.id, byName: actor.name, ...e });
+  const added: IssueHistoryEntry[] = [];
+  const patch: Partial<MessageDoc> = { issueUpdatedAt: at, issueUpdatedByName: actor.name };
+
   if (update.status) {
     if (!(ISSUE_STATUSES as readonly string[]).includes(update.status)) return null;
-    patch.issueStatus = update.status;
+    if (update.status !== deriveIssueStatus(current)) {
+      patch.issueStatus = update.status;
+      added.push(entry({ kind: 'status', status: update.status }));
+    }
   }
-  if (update.resolutionNote !== undefined) {
-    const note = update.resolutionNote.trim();
+  if (update.severity) {
+    if (!(ISSUE_SEVERITIES as readonly string[]).includes(update.severity)) return null;
+    if (update.severity !== current.issueSeverity) {
+      patch.issueSeverity = update.severity;
+      added.push(entry({ kind: 'triage', note: `severity:${update.severity}` }));
+    }
+  }
+  if (update.category) {
+    if (!(ISSUE_CATEGORIES as readonly string[]).includes(update.category)) return null;
+    if (update.category !== current.issueCategory) {
+      patch.issueCategory = update.category;
+      added.push(entry({ kind: 'triage', note: `category:${update.category}` }));
+    }
+  }
+  const reply = (update.reply ?? update.resolutionNote)?.trim();
+  if (reply !== undefined) {
+    if (reply.length > DETAILS_MAX) return null;
+    // The latest reply is also the report's response, which the reporter's
+    // list shows; the trail keeps every one.
+    patch.issueResolutionNote = reply || undefined;
+    if (reply) added.push(entry({ kind: 'reply', note: reply }));
+  }
+  if (update.note !== undefined) {
+    const note = update.note.trim();
     if (note.length > DETAILS_MAX) return null;
-    patch.issueResolutionNote = note || undefined;
+    if (note) added.push(entry({ kind: 'note', note }));
   }
   if (update.assignedTo !== undefined) {
     patch.issueAssignedToId = update.assignedTo?.id;
     patch.issueAssignedToName = update.assignedTo?.name;
+    if ((update.assignedTo?.id || '') !== (current.issueAssignedToId || '')) {
+      added.push(entry({ kind: 'assign', assignee: update.assignedTo?.name || '' }));
+    }
   }
+  if (added.length) patch.issueHistory = [...(current.issueHistory || []), ...added];
   const { updateMessage } = await import('@/modules/communication/services/message-service');
   return updateMessage(id, patch);
 }

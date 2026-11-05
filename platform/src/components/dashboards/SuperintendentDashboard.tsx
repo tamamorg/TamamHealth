@@ -9,10 +9,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import DashboardGreetingHeader from '@/components/dashboard/DashboardGreetingHeader';
+import { SadbKpiTile } from '@/components/admin/sadb-ui';
 import {
-  Users, Stethoscope, HeartPulse, BedDouble,
-  ClipboardCheck, Activity, AlertTriangle, SendHorizontal,
+  Users, BedDouble,
+  ClipboardCheck, Activity, AlertTriangle,
   ChevronRight, ArrowRight} from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -91,12 +91,6 @@ export default function SuperintendentDashboard() {
     { id: 'alerts', label: t('dashboard.activeAlerts'), value: activeAlerts.length, sub: t('superintendent.alertsSub', { count: pendingReferrals.length }), Icon: AlertTriangle, color: activeAlerts.length > 0 ? 'var(--color-danger-500)' : 'var(--accent-primary)', href: '/surveillance', alarm: activeAlerts.length > 0 },
   ];
 
-  const staffingSummaries = [
-    { id: 'doctors', Icon: Stethoscope, label: t('dashboard.doctors'), value: totalDoctors, href: '/hr' },
-    { id: 'nurses', Icon: HeartPulse, label: t('dataEntry.nurses'), value: totalNurses, href: '/hr' },
-    { id: 'referrals', Icon: SendHorizontal, label: t('dashboard.pendingReferrals'), value: pendingReferrals.length, href: '/referrals' },
-  ];
-
   /* Every card opens the page that owns its figure directly (2026-11-04):
      the preview popup that stood between a number and its page is gone, as
      on the platform and facility dashboards. */
@@ -104,40 +98,20 @@ export default function SuperintendentDashboard() {
   return (
     <>
       <main className="page-container page-enter">
-        <DashboardGreetingHeader module="Facility management" />
-        {/* ═══ KPI ROW ═══ */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+        {/* ═══ KPI ROW — the management KPI band: label, value, what it is made
+            of; a tile that needs a decision is the warning cell. The strip of
+            Doctors / Nurses / Pending referrals that sat under it repeated
+            these tiles' own detail lines and was removed (2026-11-04). ═══ */}
+        <div className="sadb-kpi-row mb-3">
           {kpis.map(k => (
-            <button
+            <SadbKpiTile
               key={k.id}
-              type="button"
+              label={k.label}
+              value={k.value}
+              delta={k.sub}
+              deltaTone={k.alarm ? 'warn' : undefined}
               onClick={() => router.push(k.href)}
-              className="dash-card text-start transition-colors"
-              style={{ padding: '14px 16px', position: 'relative', cursor: 'pointer' }}
-            >
-              {k.alarm && <span className="data-tile__alarm-pulse" aria-hidden="true" />}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <div className="icon-box-sm">
-                  <k.Icon className="w-3.5 h-3.5" style={{ color: k.color }} />
-                </div>
-                <span className="kpi-card-title">{k.label}</span>
-              </div>
-              <div className="stat-value text-3xl" style={{ color: 'var(--text-primary)', lineHeight: 1, fontWeight: 800, letterSpacing: '-0.03em' }}>{k.value}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>{k.sub}</div>
-            </button>
-          ))}
-        </div>
-
-        {/* ═══ STAFF MIX + REFERRALS strip ═══ */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-          {staffingSummaries.map(s => (
-            <button key={s.id} onClick={() => router.push(s.href)} className="dash-card flex items-center gap-3" style={{ padding: '14px 16px', textAlign: 'start' }}>
-              <div className="icon-box-sm">
-                <s.Icon className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-              </div>
-              <span className="text-[13px]" style={{ color: 'var(--text-secondary)', flex: 1 }}>{s.label}</span>
-              <span className="stat-value" style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)' }}>{s.value}</span>
-            </button>
+            />
           ))}
         </div>
 

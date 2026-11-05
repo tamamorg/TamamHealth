@@ -83,7 +83,7 @@
     "message": {
       "fields": [
         "patientName", "patientPhone", "subject", "body", "editHistory[].body",
-        "attachments[].name", "attachments[].base64Data", "smsDelivery.to", "issueResolutionNote"
+        "attachments[].name", "attachments[].base64Data", "smsDelivery.to", "issueResolutionNote", "issueHistory[].note"
       ]
     },
     "conversation": { "fields": ["name", "lastMessagePreview"] },

@@ -26,6 +26,7 @@ import {
   type IssueCategory, type IssueSeverity,
 } from '../issue-rules';
 import { ISSUE_STATUS_TOKENS } from './issue-status-tokens';
+import IssueSteps from './IssueSteps';
 import { FormError } from '@/components/overlay/FormNotices';
 
 // The one form look (globals.css "ONE FORM LOOK") styles these labels and fields.
@@ -201,12 +202,22 @@ export default function ReportIssueScreen() {
                     {t(`issues.status.${status}`)}
                   </span>
                 </div>
-                <p className="text-[13px] mt-2 whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>{report.body}</p>
+                <div className="mt-3"><IssueSteps report={report} compact /></div>
+                <p className="text-[13px] mt-3 whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>{report.body}</p>
+                {/* Every reply staff sent, oldest first; staff notes are not shown. */}
                 <div className="mt-3 rounded-md p-3" style={{ background: 'var(--overlay-subtle)' }}>
-                  <span className="text-[11px] font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>{t('issues.response')}</span>
-                  <p className="text-[13px] mt-0.5 whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
-                    {report.issueResolutionNote || t('issues.awaitingResponse')}
-                  </p>
+                  <span className="text-[13px] font-semibold block" style={{ color: 'var(--text-primary)' }}>{t('issues.response')}</span>
+                  {(() => {
+                    const replies = (report.issueHistory || []).filter(h => h.kind === 'reply' && h.note);
+                    if (replies.length === 0) {
+                      return <p className="text-[13px] mt-0.5 whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>{report.issueResolutionNote || t('issues.awaitingResponse')}</p>;
+                    }
+                    return replies.map((r, i) => (
+                      <p key={`${r.at}-${i}`} className="text-[13px] mt-1 whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>{r.byName} · {formatCompactDateTime(r.at)}: </span>{r.note}
+                      </p>
+                    ));
+                  })()}
                 </div>
               </article>
             );

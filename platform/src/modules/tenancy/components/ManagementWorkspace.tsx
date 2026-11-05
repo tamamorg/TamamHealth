@@ -157,10 +157,25 @@ function OrganizationRegistry() {
         {/* What the platform holds, in total — context for the list, not
             navigation. The tiles used to switch tab; there are no tabs. */}
         <div className="sadb-kpi-row">
-          <SadbKpiTile label={t('management.organizations')} value={organizations.length} />
-          <SadbKpiTile label={t('management.facilities')} value={facilities.length} />
+          <SadbKpiTile
+            label={t('management.organizations')}
+            value={organizations.length}
+            delta={t('management.kpiOrgDetail', {
+              active: organizations.filter(o => o.subscriptionStatus === 'active').length,
+              trial: organizations.filter(o => o.subscriptionStatus === 'trial').length,
+            })}
+          />
+          <SadbKpiTile
+            label={t('management.facilities')}
+            value={facilities.length}
+            delta={t('management.kpiFacilityDetail', { count: facilities.filter(f => f.isActive !== false).length })}
+          />
           {may('person:view') && (
-            <SadbKpiTile label={t('management.people')} value={userStore.users.length} />
+            <SadbKpiTile
+              label={t('management.people')}
+              value={userStore.users.length}
+              delta={t('management.kpiPeopleDetail', { count: userStore.users.filter(u => u.isActive !== false).length })}
+            />
           )}
         </div>
 

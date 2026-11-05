@@ -1516,7 +1516,7 @@ export interface MessageDoc extends BaseDoc {
      The report's summary is `subject` and its details `body`, so both are
      encrypted at rest like any message text. Triage state lives here rather
      than in `status` (delivery) or `enquiryStatus` (patient enquiries). */
-  issueStatus?: 'new' | 'in_progress' | 'resolved' | 'closed';
+  issueStatus?: 'new' | 'acknowledged' | 'in_progress' | 'resolved' | 'closed';
   issueCategory?: 'bug' | 'wrong_data' | 'access' | 'sync' | 'performance' | 'drug_safety' | 'other';
   issueSeverity?: 'low' | 'medium' | 'high' | 'critical';
   /** The app path the reporter was on (ids only — never a query string). */
@@ -1529,6 +1529,9 @@ export interface MessageDoc extends BaseDoc {
   issueResolutionNote?: string;
   issueUpdatedAt?: string;
   issueUpdatedByName?: string;
+  /** Every step, assignment, re-triage, reply and staff note, oldest first.
+   *  `note` is encrypted at rest (phi-field-catalog). */
+  issueHistory?: import('@/modules/communication/issue-rules').IssueHistoryEntry[];
 }
 
 /**
