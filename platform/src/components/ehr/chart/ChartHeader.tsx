@@ -25,6 +25,9 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { originBefore } from '@/lib/navigation/nav-history';
 import { routeLabelKeyFor } from '@/lib/navigation/route-context';
+
+/** A patient's chart (/patients/<id>), not the list or a /patients/new form. */
+const isChartPath = (path: string) => /^\/patients\/(?!new$)[^/]+$/.test(path);
 import { useInlineRouteBack } from '@/components/navigation/RouteContextBar';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import './chart-frame.css';
@@ -171,7 +174,9 @@ export default function ChartHeader({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const origin = closeTo && !searchParams.get('returnTo') ? originBefore(pathname) : null;
+  // Another patient's chart is not where this one was opened from: chart A →
+  // a link to chart B → ✕ returns to the list A came from, not to A.
+  const origin = closeTo && !searchParams.get('returnTo') ? originBefore(pathname, isChartPath) : null;
   const closeHref = origin ?? closeTo?.href ?? '/patients';
   const closeLabelKey = origin ? routeLabelKeyFor(origin) : closeTo?.labelKey;
   const closeLabel = closeLabelKey ? t('chart.closeTo', { place: t(closeLabelKey) }) : t('chart.close');

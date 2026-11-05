@@ -14,15 +14,30 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/context';
-import { hubForPath, visibleMembers } from '@/lib/navigation/module-hubs';
+import { hubForPath } from '@/lib/navigation/module-hubs';
+import { getRoleConfig, isHrefAllowedForRole } from '@/lib/permissions';
+import type { UserRole } from '@/lib/db-types';
 import './module-hub-tabs.css';
+
+/**
+ * The hub tabs for a page, or null. Only for a role whose own nav carries the
+ * hub as a row: a doctor on /patients or a pharmacist on /pharmacy is on a
+ * clinical page that happens to sit in a management hub — no hub tabs there,
+ * and the Back bar (which hub tabs replace) stays.
+ */
+export function hubTabsFor(pathname: string | null, role: UserRole | null | undefined) {
+  const hub = hubForPath(pathname);
+  if (!hub || !role || !getRoleConfig(role).navItems.some(item => item.hub === hub.id)) return null;
+  // The same rule the nav uses for the hub's row, so a tab never offers a page
+  // the role's nav would not.
+  const members = hub.members.filter(m => isHrefAllowedForRole(role, m.href));
+  return members.length > 1 && pathname ? { hub, members, pathname } : null;
+}
 
 export function useModuleHubTabs() {
   const pathname = usePathname();
   const { currentUser } = useAuth();
-  const hub = hubForPath(pathname);
-  const members = hub ? visibleMembers(hub, currentUser?.role) : [];
-  return members.length > 1 && hub ? { hub, members, pathname } : null;
+  return hubTabsFor(pathname, currentUser?.role as UserRole | undefined);
 }
 
 export default function ModuleHubTabs() {

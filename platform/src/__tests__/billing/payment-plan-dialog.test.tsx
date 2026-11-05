@@ -29,7 +29,7 @@ it('uses the selected currency, preserves the selected term after failure and co
   try {
     await clickAsync(button('payments.reviewPlan'));
     await clickAsync(button('payments.createPlan'));
-    expect(mockShowToast).toHaveBeenCalledWith('payments.planFailed', 'error', { title: undefined });
+    expect(mockShowToast).toHaveBeenCalledWith('payments.planFailed', 'error', expect.objectContaining({ sticky: true }));
     expect(props.onComplete).not.toHaveBeenCalled();
     await clickAsync(button('payments.createPlan'));
     expect(createPaymentPlan).toHaveBeenLastCalledWith(expect.objectContaining({ currency: 'USD', totalBalance: 100, termMonths: 3 }));

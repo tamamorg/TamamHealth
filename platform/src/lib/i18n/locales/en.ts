@@ -1514,6 +1514,8 @@ const en: TranslationMap = {
   'acct.pinHint': 'Unlocks this device after it locks.',
   'acct.save': 'Save changes',
   'acct.saving': 'Saving…',
+  'facilityQueue.kpiPending': 'Pending leave',
+  'facilityQueue.kpiAvailable': 'Staff available now',
   'common.cancel': 'Cancel',
   'common.retry': 'Try again',
   'common.done': 'Done',

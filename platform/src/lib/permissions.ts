@@ -130,7 +130,7 @@ function hubNav(role: UserRole, lead: NavItem[], hubIds: string[]): NavItem[] {
 
 /* The nav is derived from the role's own table entry, never from
    isPathAllowed (super_admin's total access would offer every hub). */
-function isHrefAllowedForRole(role: UserRole, href: string): boolean {
+export function isHrefAllowedForRole(role: UserRole, href: string): boolean {
   return ROLE_ROUTE_TABLE[role].allowed.some(route => href === route || href.startsWith(`${route}/`));
 }
 

@@ -470,11 +470,13 @@ export default function FacilityManagementDashboard() {
     }
     return { direction: trendBetween(thisWeek, lastWeek), label: `${thisWeek} this week vs ${lastWeek} last` };
   }, []);
+  // No trend until its data is in: an empty list read as "0 this week vs 0
+  // last", which looks like a real, flat week.
   const tileTrends = useMemo<Record<string, SadbTrendValue | undefined>>(() => ({
-    patients: weekTrend(patients),
+    patients: patientsLoading ? undefined : weekTrend(patients),
     // More inquiries arriving is more work waiting: up is not good news here.
-    'inquiries-open': { ...weekTrend(enquiries), good: 'down' },
-  }), [weekTrend, patients, enquiries]);
+    'inquiries-open': extraLoading ? undefined : { ...weekTrend(enquiries), good: 'down' },
+  }), [weekTrend, patients, enquiries, patientsLoading, extraLoading]);
 
   /* This week, Monday-first, on the CLINICAL calendar: both cards below read
      the same seven days, and a visit at 23:00 in Juba belongs to that day

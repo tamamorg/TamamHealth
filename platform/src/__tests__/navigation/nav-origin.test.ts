@@ -29,3 +29,19 @@ it('has no origin when the chart was the first page of the tab', () => {
   observeLocation();
   expect(originBefore('/patients/p1')).toBeNull();
 });
+
+it('can skip another patient\'s chart, so chart A → chart B closes to the list A came from', () => {
+  go('/patients?view=mine');
+  go('/patients/p1');
+  go('/patients/p2');
+  const isChart = (path: string) => /^\/patients\/(?!new$)[^/]+$/.test(path);
+  expect(originBefore('/patients/p2')).toBe('/patients/p1');
+  expect(originBefore('/patients/p2', isChart)).toBe('/patients?view=mine');
+});
+
+it('does not keep search text (it can be a patient\'s name) with the remembered address', () => {
+  go('/patients?q=Deng%20Mabior&view=mine');
+  go('/patients/p1');
+  expect(originBefore('/patients/p1')).toBe('/patients?view=mine');
+  expect(window.sessionStorage.getItem('tamamhealth.nav-urls') || '').not.toContain('Deng');
+});

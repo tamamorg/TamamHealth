@@ -19,8 +19,34 @@ export default function TextareaAutoResize() {
       }
     }
 
+    // `data-single-line`: a field that is one line of a fixed format (a
+    // death certificate's cause lines) grows to show long text but never
+    // takes a line break — Enter does nothing and a pasted break becomes a
+    // space — so the printed certificate and the DHIS2 export keep one cause
+    // per line.
+    const singleLine = (target: EventTarget | null): target is HTMLTextAreaElement =>
+      target instanceof HTMLTextAreaElement && target.dataset.singleLine !== undefined;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Enter' && singleLine(e.target)) e.preventDefault();
+    }
+    function handlePaste(e: ClipboardEvent) {
+      if (!singleLine(e.target)) return;
+      const text = e.clipboardData?.getData('text/plain') ?? '';
+      if (!/[\r\n]/.test(text)) return;
+      e.preventDefault();
+      // insertText keeps the browser's undo stack and fires the input event
+      // React listens to.
+      document.execCommand('insertText', false, text.replace(/\s*[\r\n]+\s*/g, ' ').trim());
+    }
+
     document.addEventListener('input', handleInput, { passive: true });
-    return () => document.removeEventListener('input', handleInput);
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('paste', handlePaste);
+    return () => {
+      document.removeEventListener('input', handleInput);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('paste', handlePaste);
+    };
   }, []);
 
   return null;
