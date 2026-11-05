@@ -23173,6 +23173,30 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
 .pharm-list-surface { --list-cols: repeat(4, minmax(0, 1fr)) 176px; }
 .lab-list-surface.has-actions { --list-cols: repeat(4, minmax(0, 1fr)) 176px minmax(72px, 0.5fr); }
 
+/* All alerts on the registry card grid: the alert itself takes the widest
+   track (its title and counts), then Source, Type, Reported and Severity. */
+.alerts-list-surface { --list-cols: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr)) 176px; }
+/* The identity plate is the alert's kind, tinted by how bad it is: the same
+   40px plate patients and lab rows draw, never a card of colour. */
+.alerts-list-surface .alerts-row-plate {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-light);
+  color: var(--accent-primary);
+}
+.alerts-list-surface .alerts-row-plate svg { color: inherit !important; stroke: currentColor !important; }
+.alerts-list-surface .alerts-row-plate.is-critical { border-color: var(--semantic-danger-border); background: var(--semantic-danger-bg); color: var(--semantic-danger); }
+.alerts-list-surface .alerts-row-plate.is-warning { border-color: var(--semantic-warning-border); background: var(--semantic-warning-bg); color: var(--semantic-warning); }
+.alerts-list-surface .appointment-status-pill.alerts-pill.is-critical { border-color: var(--semantic-danger-border); background: var(--semantic-danger-bg); color: var(--semantic-danger); }
+.alerts-list-surface .appointment-status-pill.alerts-pill.is-warning { border-color: var(--semantic-warning-border); background: var(--semantic-warning-bg); color: var(--semantic-warning); }
+.alerts-list-surface .appointment-status-pill.alerts-pill.is-info { border-color: var(--ehr-blue); background: var(--ehr-blue-light); color: var(--accent-text); }
+
 /* The technician's configured turnaround target is operational, not merely a
    preference stored by Settings. Mark overdue open orders on the worklist and
    repeat the signal in text so colour is never the only carrier. */
