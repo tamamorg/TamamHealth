@@ -289,7 +289,7 @@ export default function PatientsPage() {
                 <EhrSearchFilter
                   value={localSearch}
                   onChange={setLocalSearch}
-                  placeholder="Search by name or patient ID…"
+                  placeholder={t('ui.searchByNameOrPatient')}
                   activeCount={activeFilterCount}
                   onClear={clearFilters}
                   label={t('patients.filtersTitle')}
@@ -376,14 +376,14 @@ export default function PatientsPage() {
                         when a search matches nothing, so the list never
                         collapses into a bare message. */}
                     <div className="appointment-card-head" aria-hidden="true">
-                    <span>Patient</span>
-                    <span>Registered</span>
-                    <span>Care team</span>
-                    <span>Location</span>
-                    <span>Status</span>
+                    <span>{t('appointments.labelPatient')}</span>
+                    <span>{t('deaths.colRegistered')}</span>
+                    <span>{t('chartMessages.careTeam')}</span>
+                    <span>{t('deaths.location')}</span>
+                    <span>{t('billing.activityColumn.status')}</span>
                     </div>
                     {patientsLoading && (
-                      <div className="appointment-card-empty">Loading patients…</div>
+                      <div className="appointment-card-empty">{t('ui.loadingPatients')}</div>
                     )}
                     {!patientsLoading && visible.length === 0 && (
                       <div className="appointment-card-empty">

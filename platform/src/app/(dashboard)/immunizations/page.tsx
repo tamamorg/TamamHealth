@@ -403,7 +403,7 @@ export default function ImmunizationsPage() {
           <button onClick={() => setActiveTab('by_vaccine')}
             className={`px-4 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'by_vaccine' ? 'tab-active' : ''}`}
             style={{ color: activeTab === 'by_vaccine' ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
-            By Vaccine
+            {t('ui.byVaccine')}
           </button>
         )}
         <button onClick={() => setActiveTab('defaulters')}
@@ -422,7 +422,7 @@ export default function ImmunizationsPage() {
         {activeTab === 'by_vaccine' && canViewCoverage && (
           <div className="space-y-4">
             <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
-              Population-level vaccine coverage. Use this view to identify children needing doses and plan outreach.
+              {t('ui.populationLevelVaccineCoverageUse')}
             </p>
             {VACCINES.map(vaccine => {
               const given = immunizations.filter(i => i.vaccine === vaccine && i.status === 'completed');
@@ -459,7 +459,7 @@ export default function ImmunizationsPage() {
                       {given.length > 0 && (
                         <div className="px-4 py-3">
                           <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--color-success-text)' }}>
-                            Completed ({given.length})
+                            {t('ui.completed')}{given.length})
                           </p>
                           <div className="space-y-1.5">
                             {given.slice(0, 20).map(i => {
@@ -494,7 +494,7 @@ export default function ImmunizationsPage() {
                       {overdueItems.length > 0 && (
                         <div className="px-4 py-3" style={{ borderTop: given.length > 0 ? '1px solid var(--border-light)' : undefined }}>
                           <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--color-danger-text)' }}>
-                            Overdue ({overdueItems.length})
+                            {t('ui.overdue')}{overdueItems.length})
                           </p>
                           <div className="space-y-1.5">
                             {overdueItems.slice(0, 20).map(d => {
@@ -507,7 +507,7 @@ export default function ImmunizationsPage() {
                                     {d.patientName || 'Unknown'}
                                   </span>
                                   <div className="flex items-center gap-3">
-                                    <span style={{ color: 'var(--text-muted)' }}>Due: {new Date(d.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                    <span style={{ color: 'var(--text-muted)' }}>{t('ui.due')} {new Date(d.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
                                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--color-danger) 12%, transparent)', color: 'var(--color-danger-text)' }}>
                                       {overdueLabel}
                                     </span>
@@ -524,7 +524,7 @@ export default function ImmunizationsPage() {
 
                       {given.length === 0 && overdueItems.length === 0 && (
                         <div className="px-4 py-6 text-center">
-                          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No records for {vaccine} yet.</p>
+                          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('ui.noRecordsFor')} {vaccine} {t('ui.yet')}</p>
                         </div>
                       )}
                     </div>
@@ -648,7 +648,7 @@ export default function ImmunizationsPage() {
                       disabled={bulkSendingRecall}
                       className="btn btn-secondary btn-sm"
                       style={{ gap: 6 }}
-                      title="Send a recall SMS to every caregiver with a phone on file in the current view"
+                      title={t('ui.sendARecallSmsTo')}
                     >
                       <Send className="w-3.5 h-3.5" />
                       {bulkSendingRecall ? 'Sending…' : 'Remind all'}
@@ -681,7 +681,7 @@ export default function ImmunizationsPage() {
                     <th>{t('immun.colDaysOverdue')}</th>
                     <th>{t('immun.colFacility')}</th>
                     <th>{t('immun.colUrgency')}</th>
-                    <th className="text-end">Recall</th>
+                    <th className="text-end">{t('rxFlow.actionRecall')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -743,17 +743,17 @@ export default function ImmunizationsPage() {
               value={childStatusFilter}
               onChange={e => setChildStatusFilter(e.target.value as 'all' | 'up_to_date' | 'has_overdue')}
               className="listpage-status-select"
-              aria-label="Filter children by immunization status"
+              aria-label={t('ui.filterChildrenByImmunizationStatus')}
             >
-              <option value="all">All children</option>
-              <option value="up_to_date">Up to date</option>
-              <option value="has_overdue">Has overdue doses</option>
+              <option value="all">{t('ui.allChildren')}</option>
+              <option value="up_to_date">{t('ui.upToDate')}</option>
+              <option value="has_overdue">{t('ui.hasOverdueDoses')}</option>
             </Select>
             <button
               type="button"
               onClick={handleDownloadCsv}
-              aria-label="Download"
-              title="Download"
+              aria-label={t('patientQrCode.download')}
+              title={t('patientQrCode.download')}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: 38, height: 38, padding: 0, flexShrink: 0,
@@ -785,7 +785,7 @@ export default function ImmunizationsPage() {
                   <div className="flex-1 text-start min-w-0">
                     <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{child.patientName}</p>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                      {child.gender} · DOB: {child.dateOfBirth} · {child.facilityName}
+                      {child.gender} {t('ui.dob')} {child.dateOfBirth} · {child.facilityName}
                     </p>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">

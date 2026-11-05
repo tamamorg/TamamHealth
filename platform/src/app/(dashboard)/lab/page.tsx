@@ -475,12 +475,12 @@ export default function LabPage() {
           {/* Import from Analyzer Modal */}
           {showImportModal && (
             <FormSlider
-              title="Import from analyzer"
+              title={t('ui.importFromAnalyzer')}
               onClose={resetImport}
             >
               <div className="space-y-4">
                 <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
-                  Paste a raw instrument result message (LIS-2A / ASTM or HL7 ORU^R01). Parsed results are shown for review — nothing is saved automatically.
+                  {t('ui.pasteARawInstrumentResult')}
                 </p>
                 <textarea
                   rows={6}
@@ -492,14 +492,14 @@ export default function LabPage() {
                 />
                 <div className="flex items-center gap-2 mt-3">
                   <button onClick={handleParseImport} className="btn btn-primary btn-sm" disabled={!importRaw.trim()} style={{ opacity: importRaw.trim() ? 1 : 0.5 }}>
-                    Parse payload
+                    {t('ui.parsePayload')}
                   </button>
                   {importProtocol && (
                     <span className="text-[11px] font-mono px-2 py-1 rounded" style={{
                       background: importProtocol === 'unknown' ? 'rgba(224, 49, 39,0.1)' : 'var(--accent-light)',
                       color: importProtocol === 'unknown' ? 'var(--color-danger-text)' : 'var(--accent-primary)',
                     }}>
-                      protocol: {importProtocol}
+                      {t('ui.protocol')} {importProtocol}
                     </span>
                   )}
                 </div>
@@ -519,11 +519,11 @@ export default function LabPage() {
                       <TableCols widths={[1.9, 0.8, 0.7, 1, 0.7, 0.6]} />
                       <thead>
                         <tr>
-                          <th>Test</th>
-                          <th>Value</th>
-                          <th>Unit</th>
-                          <th>Ref</th>
-                          <th>Flag</th>
+                          <th>{t('lab.testName')}</th>
+                          <th>{t('lab.value')}</th>
+                          <th>{t('lab.unit')}</th>
+                          <th>{t('frontDesk.requestRef')}</th>
+                          <th>{t('lab.flag')}</th>
                           <th></th>
                         </tr>
                       </thead>
@@ -539,7 +539,7 @@ export default function LabPage() {
                               <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>{p.referenceRange || '—'}</td>
                               <td>
                                 {crit.isCriticalValue ? (
-                                  <Badge tone="danger" uppercase>CRITICAL</Badge>
+                                  <Badge tone="danger" uppercase>{t('lab.critical')}</Badge>
                                 ) : p.abnormalFlag && p.abnormalFlag.toUpperCase() !== 'N' ? (
                                   <Badge tone="warning">{p.abnormalFlag}</Badge>
                                 ) : (
@@ -549,7 +549,7 @@ export default function LabPage() {
                               <td>
                                 <button className="btn btn-secondary btn-sm" style={{ padding: '4px 10px', fontSize: '0.7rem' }}
                                   onClick={() => openAnalyzerResult(p)}>
-                                  Review &amp; enter
+                                  {t('ui.reviewEnter')}
                                 </button>
                               </td>
                             </tr>
@@ -562,7 +562,7 @@ export default function LabPage() {
                 )}
 
                 {importParsed && importParsed.length === 0 && importProtocol !== 'unknown' && (
-                  <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>No results found in the payload.</p>
+                  <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>{t('ui.noResultsFoundInThe')}</p>
                 )}
               </div>
             </FormSlider>

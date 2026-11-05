@@ -13,6 +13,7 @@
 import type { ReactNode } from 'react';
 import { ChevronDown, ChevronLeft, ChevronRight, MapPin, Phone } from '@/components/icons/lucide';
 import { dayParts, monogram, to12Hour } from '@/lib/booking/public-client';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 // ── Card shell ─────────────────────────────────────────────────────────────
 
@@ -25,18 +26,19 @@ export function BookingCard({
   children: ReactNode;
   headless?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <section className="booking-card">
       {!headless && title && (
         <header className="booking-card-head">
           {onBack && (
-            <button type="button" className="booking-card-back" onClick={onBack} aria-label="Back">
+            <button type="button" className="booking-card-back" onClick={onBack} aria-label={t('action.back')}>
               <ChevronLeft size={20} />
             </button>
           )}
           <span>{title}</span>
           {onClose && (
-            <button type="button" className="booking-card-close" onClick={onClose} aria-label="Close">
+            <button type="button" className="booking-card-close" onClick={onClose} aria-label={t('billing.activityClose')}>
               <span aria-hidden style={{ fontSize: 20, lineHeight: 1 }}>×</span>
             </button>
           )}
@@ -64,6 +66,7 @@ export function PatientClassToggle({
   variant?: 'segmented' | 'checkbox';
   disabled?: boolean;
 }) {
+  const { t } = useTranslation();
   if (variant === 'checkbox') {
     return (
       <label className="booking-check">
@@ -73,12 +76,12 @@ export function PatientClassToggle({
           disabled={disabled}
           onChange={e => onChange(e.target.checked ? 'new' : 'returning')}
         />
-        <span>I&rsquo;m a new patient at this practice</span>
+        <span>{t('ui.iMANewPatient')}</span>
       </label>
     );
   }
   return (
-    <div className="booking-segmented" role="group" aria-label="New or returning patient">
+    <div className="booking-segmented" role="group" aria-label={t('ui.newOrReturningPatient')}>
       {(['new', 'returning'] as const).map(k => (
         <button
           key={k}
@@ -156,12 +159,13 @@ export function DayNavigator({
   canGoBack: boolean;
   canGoForward: boolean;
 }) {
+  const { t } = useTranslation();
   const { weekday, label } = dayParts(date);
   return (
     <div className="booking-daynav">
       <button
         type="button" className="booking-round-btn" onClick={onPrev}
-        disabled={!canGoBack} aria-label="Previous day"
+        disabled={!canGoBack} aria-label={t('ui.previousDay')}
       >
         <ChevronLeft size={20} />
       </button>
@@ -171,7 +175,7 @@ export function DayNavigator({
       </div>
       <button
         type="button" className="booking-round-btn" onClick={onNext}
-        disabled={!canGoForward} aria-label="Next day"
+        disabled={!canGoForward} aria-label={t('ui.nextDay')}
       >
         <ChevronRight size={20} />
       </button>
@@ -239,13 +243,14 @@ export function StepDots({ count, active }: { count: number; active: number }) {
 // ── Call-now card (S1) ─────────────────────────────────────────────────────
 
 export function CallNowCard({ practiceName, phone }: { practiceName: string; phone?: string }) {
+  const { t } = useTranslation();
   if (!phone) return null;
   return (
     <section className="booking-card" style={{ marginTop: 16 }}>
       <div className="booking-card-body">
-        <b style={{ fontSize: 16 }}>Got questions for {practiceName}?</b>
+        <b style={{ fontSize: 16 }}>{t('ui.gotQuestionsFor')} {practiceName}?</b>
         <a className="booking-btn" href={`tel:${phone.replace(/\s+/g, '')}`}>
-          <Phone size={16} aria-hidden /> Call now
+          <Phone size={16} aria-hidden /> {t('ui.callNow')}
         </a>
       </div>
     </section>

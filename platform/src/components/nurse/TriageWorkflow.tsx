@@ -94,7 +94,7 @@ export default function TriageWorkflow(props: TriageWorkflowProps) {
         )}
         <div className={lockedPatientId ? 'patient-registration-card-body' : 'p-4 space-y-4 flex-1 overflow-y-auto'}>
           <div className={lockedPatientId ? 'tamam-reg-section' : 'space-y-4'}>
-            {lockedPatientId && <div className="tamam-reg-sectionhead"><h2>ETAT assessment</h2><p>Record the patient identity, immediate risk, observations, and handoff context.</p></div>}
+            {lockedPatientId && <div className="tamam-reg-sectionhead"><h2>{t('ui.etatAssessment')}</h2><p>{t('ui.recordThePatientIdentityImmediate')}</p></div>}
             <div className={lockedPatientId ? 'tamam-reg-fields space-y-4' : 'space-y-4'}>
           {draftRestoredNotice && (
             <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-border, rgba(33,145,208,0.25))' }}>

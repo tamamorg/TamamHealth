@@ -160,10 +160,10 @@ export default function AssetsPage() {
         {/* Headline counts as the management KPI band, above the register. */}
         {summary && (
           <FacilityKpiBand tiles={[
-            { key: 'operational', label: t('equipment.kpiOperational'), value: summary.operational, detail: `Of ${summary.total} registered assets` },
-            { key: 'service', label: t('equipment.kpiNeedsService'), value: summary.needsService, detail: summary.needsService ? 'Marked as needing service' : 'None waiting for service', warn: summary.needsService > 0 },
-            { key: 'repair', label: t('equipment.kpiUnderRepair'), value: summary.underRepair, detail: summary.underRepair ? 'Out of use until repaired' : 'Nothing out for repair' },
-            { key: 'due', label: t('equipment.kpiServiceDueSoon'), value: summary.serviceDueSoon, detail: 'Service falls due within 30 days', warn: summary.serviceDueSoon > 0 },
+            { key: 'operational', label: t('equipment.kpiOperational'), value: summary.operational, detail: t('equipment.kpiOperationalDetail', { total: summary.total }) },
+            { key: 'service', label: t('equipment.kpiNeedsService'), value: summary.needsService, detail: summary.needsService ? t('equipment.kpiNeedsServiceDetail') : t('equipment.kpiNoneNeedService'), warn: summary.needsService > 0 },
+            { key: 'repair', label: t('equipment.kpiUnderRepair'), value: summary.underRepair, detail: summary.underRepair ? t('equipment.kpiUnderRepairDetail') : t('equipment.kpiNoneUnderRepair') },
+            { key: 'due', label: t('equipment.kpiServiceDueSoon'), value: summary.serviceDueSoon, detail: t('equipment.kpiServiceDueDetail'), warn: summary.serviceDueSoon > 0 },
           ]} />
         )}
         <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="equipment-list">
@@ -254,7 +254,7 @@ export default function AssetsPage() {
                 </div>
                 <div>
                   <label className="field-required text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelAssetTag')}</label>
-                  <input value={form.assetTag} onChange={e => setForm({ ...form, assetTag: e.target.value })} placeholder="JTH-US-001" />
+                  <input value={form.assetTag} onChange={e => setForm({ ...form, assetTag: e.target.value })} placeholder={t('ui.jthUs001')} />
                 </div>
                 <div>
                   <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelCategory')}</label>

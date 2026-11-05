@@ -193,7 +193,7 @@ export default function MyFacilityPage() {
       <SadbPage roles={[...MY_FACILITY_ROLES]}>
         <p className="sadb-empty" aria-live="polite">
           <Loader2 className="w-4 h-4 inline-block me-2 animate-spin" style={{ verticalAlign: -3 }} />
-          Loading facility data…
+          {t('ui.loadingFacilityData')}
         </p>
       </SadbPage>
     );
@@ -300,7 +300,7 @@ export default function MyFacilityPage() {
       {/* Ministry of Health reporting — facility-level review gate. Data is
           reviewed and explicitly submitted here rather than syncing to the
           Ministry automatically. */}
-      <SadbCard title="Ministry of Health reporting">
+      <SadbCard title={t('ui.ministryOfHealthReporting')}>
         <div className="p-4 space-y-3">
           {(() => {
             const submission = hospital?.mohSubmission;
@@ -310,29 +310,29 @@ export default function MyFacilityPage() {
             return (
               <>
                 <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  Review the facility profile above, then submit it to the Ministry of Health.
-                  Facility data is not sent automatically. It is only reported once you submit it here.
+                  {t('ui.reviewTheFacilityProfileAbove')}
                 </p>
 
                 <div>
                   {!submittedAt ? (
-                    <SadbChip tone="neutral">Not yet submitted</SadbChip>
+                    <SadbChip tone="neutral">{t('ui.notYetSubmitted')}</SadbChip>
                   ) : hasPendingChanges ? (
                     <SadbChip tone="yellow">
-                      <Clock className="w-3 h-3" style={{ marginInlineEnd: 4 }} /> Changes pending submission
+                      <Clock className="w-3 h-3" style={{ marginInlineEnd: 4 }} /> {t('ui.changesPendingSubmission')}
                     </SadbChip>
                   ) : (
                     <SadbChip tone="green">
-                      <CheckCircle className="w-3 h-3" style={{ marginInlineEnd: 4 }} /> Submitted to Ministry of Health
+                      <CheckCircle className="w-3 h-3" style={{ marginInlineEnd: 4 }} /> {t('ui.submittedToMinistryOfHealth')}
                     </SadbChip>
                   )}
                 </div>
 
                 {submittedAt && (
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    Last submitted {new Date(submittedAt).toLocaleString()}
-                    {submission?.submittedByName ? ` by ${submission.submittedByName}` : ''}.
-                    {hasPendingChanges ? ' The profile has been edited since. Submit again to report the latest data.' : ''}
+                    {submission?.submittedByName
+                      ? t('facilityOverview.lastSubmittedBy', { when: new Date(submittedAt).toLocaleString(), name: submission.submittedByName })
+                      : t('facilityOverview.lastSubmittedOn', { when: new Date(submittedAt).toLocaleString() })}
+                    {hasPendingChanges ? ` ${t('myFacility.editedSince')}` : ''}
                   </p>
                 )}
 
@@ -345,7 +345,7 @@ export default function MyFacilityPage() {
                     className="btn btn-primary btn-sm"
                   >
                     {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                    {submittedAt && !hasPendingChanges ? 'Submitted' : 'Submit to Ministry of Health'}
+                    {submittedAt && !hasPendingChanges ? t('dhis2.statusSubmitted') : t('facilityOverview.submitToMoh')}
                   </button>
                   {submitError && (
                     <FormError message={submitError} />
@@ -353,7 +353,7 @@ export default function MyFacilityPage() {
                 </div>
 
                 <p className="text-xs flex items-center gap-1.5 pt-1" style={{ color: 'var(--text-muted)' }}>
-                  <AlertTriangle className="w-3 h-3" /> Save your changes before submitting so the Ministry receives the latest data.
+                  <AlertTriangle className="w-3 h-3" /> {t('ui.saveYourChangesBeforeSubmitting')}
                 </p>
               </>
             );

@@ -181,7 +181,7 @@ export default function EpidemicIntelligencePage() {
   const weekTrend = (f: 'cases' | 'deaths'): SadbTrendValue | undefined => {
     if (!prevWeek) return undefined;
     const now = weekSum(lastWeek, f); const before = weekSum(prevWeek, f);
-    return { direction: trendBetween(now, before), label: `vs ${before.toLocaleString()} last week`, good: 'down' };
+    return { direction: trendBetween(now, before), label: t('epidemic.vsLastWeek', { count: before.toLocaleString() }), good: 'down' };
   };
   const rtTrend = summary.highestRt
     ? rtEstimates.find(r => r.disease === summary.highestRt?.disease)
@@ -245,46 +245,46 @@ export default function EpidemicIntelligencePage() {
           picture; each tile says what it is made of. */}
       <div className="sadb-kpi-row mb-4">
         <SadbKpiTile
-          label="Overall risk"
+          label={t('epidemic.kpiOverallRisk')}
           value={<span className="capitalize">{summary.overallRiskLevel}</span>}
-          delta={`${summary.statesWithEmergency.length.toLocaleString()} ${summary.statesWithEmergency.length === 1 ? 'state' : 'states'} at emergency level`}
+          delta={t(summary.statesWithEmergency.length === 1 ? 'epidemic.kpiEmergencyDetailOne' : 'epidemic.kpiEmergencyDetailMany', { n: summary.statesWithEmergency.length.toLocaleString() })}
           deltaTone={riskTone === 'red' ? 'warn' : undefined}
         />
         <SadbKpiTile
-          label={pluralLabel(summary.totalActiveDiseases, 'Active disease', t('epidemic.kpiActiveDiseases'))}
+          label={pluralLabel(summary.totalActiveDiseases, t('epidemic.kpiActiveDiseaseOne'), t('epidemic.kpiActiveDiseases'))}
           value={summary.totalActiveDiseases.toLocaleString()}
-          delta="Diseases with cases on file this week"
+          delta={t('epidemic.kpiDiseasesDetail')}
         />
         <SadbKpiTile
-          label={pluralLabel(summary.totalCasesThisWeek, 'Case this week', t('epidemic.kpiCasesThisWeek'))}
+          label={pluralLabel(summary.totalCasesThisWeek, t('epidemic.kpiCaseOne'), t('epidemic.kpiCasesThisWeek'))}
           value={summary.totalCasesThisWeek.toLocaleString()}
-          delta={`Reported in IDSR week ${idsrReport.reportingWeek}`}
+          delta={t('epidemic.kpiCasesDetail', { week: idsrReport.reportingWeek })}
           trend={weekTrend('cases')}
         />
         <SadbKpiTile
-          label={pluralLabel(summary.totalDeathsThisWeek, 'Death this week', t('epidemic.kpiDeathsThisWeek'))}
+          label={pluralLabel(summary.totalDeathsThisWeek, t('epidemic.kpiDeathOne'), t('epidemic.kpiDeathsThisWeek'))}
           value={summary.totalDeathsThisWeek.toLocaleString()}
-          delta="Deaths among the cases reported this week"
+          delta={t('epidemic.kpiDeathsDetail')}
           trend={weekTrend('deaths')}
         />
         <SadbKpiTile
           label={t('epidemic.kpiHighestRt')}
           value={summary.highestRt ? summary.highestRt.value.toFixed(2) : t('epidemic.notAvailable')}
-          delta={summary.highestRt ? `${summary.highestRt.disease}, above 1.0 means growing` : 'Not enough weekly data to estimate'}
-          trend={rtTrend && rtTrend.trend !== 'insufficient_data' ? { direction: trendBetween(rtTrend.weeklyChange, 0), label: `${rtTrend.weeklyChange > 0 ? '+' : ''}${rtTrend.weeklyChange}% on last week`, good: 'down' } : undefined}
+          delta={summary.highestRt ? t('epidemic.kpiRtDetail', { disease: summary.highestRt.disease }) : t('epidemic.kpiRtNone')}
+          trend={rtTrend && rtTrend.trend !== 'insufficient_data' ? { direction: trendBetween(rtTrend.weeklyChange, 0), label: t('epidemic.rtWeekChange', { change: `${rtTrend.weeklyChange > 0 ? '+' : ''}${rtTrend.weeklyChange}` }), good: 'down' } : undefined}
         />
         <SadbKpiTile
-          label={pluralLabel(ewarsAlerts.length, 'EWARS alert', t('epidemic.kpiEwarsAlerts'))}
+          label={pluralLabel(ewarsAlerts.length, t('epidemic.kpiEwarsAlertOne'), t('epidemic.kpiEwarsAlerts'))}
           value={ewarsAlerts.length.toLocaleString()}
-          delta="Early warning (EWARS) alerts open now"
+          delta={t('epidemic.kpiEwarsDetail')}
           onClick={() => setActiveTabAndUrl('alerts')}
         />
       </div>
 
       {/* The views are one choice from a set, so they are a field. */}
       <div className="mb-4">
-        <FieldRow end={<span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>South Sudan · IDSR week {idsrReport.reportingWeek} · computed live from facility reports</span>}>
-          <Field label="View">
+        <FieldRow end={<span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{t('epidemic.hubSubtitle', { week: idsrReport.reportingWeek })}</span>}>
+          <Field label={t('epidemic.fieldView')}>
             <Select value={activeTab} onChange={e => setActiveTabAndUrl(e.target.value as TabView)} data-action="epi-view" data-tour="epi-view">
               {tabs.map(tab => <option key={tab.key} value={tab.key}>{tab.label}</option>)}
             </Select>
@@ -331,7 +331,7 @@ export default function EpidemicIntelligencePage() {
 
           {/* Active EWARS Alerts */}
           <section className="gov-panel flex flex-col" style={{ maxHeight: 480 }}>
-            <PanelHead title={t('epidemic.activeEwarsAlerts')} meta={`${ewarsAlerts.length.toLocaleString()} active`} />
+            <PanelHead title={t('epidemic.activeEwarsAlerts')} meta={t('epidemic.activeCount', { n: ewarsAlerts.length.toLocaleString() })} />
             {overviewAlerts.length === 0 ? (
               <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>{t('epidemic.noActiveDiseaseAlerts')}</p>
             ) : (
@@ -341,7 +341,7 @@ export default function EpidemicIntelligencePage() {
             )}
             {moreAlertsCount > 0 && (
               <button type="button" className="epi-alert-more" onClick={() => setActiveTabAndUrl('alerts')}>
-                See all {ewarsAlerts.length.toLocaleString()} alerts
+                {t('epidemic.seeAllAlerts', { n: ewarsAlerts.length.toLocaleString() })}
                 <ChevronRight className="w-3 h-3" />
               </button>
             )}
@@ -354,7 +354,7 @@ export default function EpidemicIntelligencePage() {
         <div className="space-y-4">
           {/* Disease filter */}
           <FieldRow>
-            <Field label="Disease">
+            <Field label={t('epidemic.colDisease')}>
               <Select value={selectedDisease ?? ''} onChange={e => setSelectedDisease(e.target.value || null)} data-action="epi-disease">
                 <option value="">{t('epidemic.allDiseases')}</option>
                 {diseases.map(d => <option key={d} value={d}>{d}</option>)}
@@ -366,7 +366,7 @@ export default function EpidemicIntelligencePage() {
           <section data-tour="epi-curve-panel" className="gov-panel">
             <PanelHead
               title={t('epidemic.epidemicCurveTitle', { disease: selectedDisease || t('epidemic.allDiseases') })}
-              meta={curveChartCapped ? `${t('epidemic.weeklyCaseCounts')} · top ${curveChartDiseases.length} of ${diseases.length} by volume` : t('epidemic.weeklyCaseCounts')}
+              meta={curveChartCapped ? `${t('epidemic.weeklyCaseCounts')} · ${t('epidemic.curveCapped', { shown: curveChartDiseases.length, total: diseases.length })}` : t('epidemic.weeklyCaseCounts')}
             />
             <div className="gov-chart-body">
               {diseases.length === 0 ? (
@@ -574,8 +574,8 @@ export default function EpidemicIntelligencePage() {
       {activeTab === 'idsr' && (
         <div className="space-y-4">
           <div className="sadb-kpi-row">
-            <SadbKpiTile label={t('epidemic.reportingWeek')} value={idsrReport.reportingWeek} delta="Latest IDSR reporting week on file" />
-            <SadbKpiTile label={t('epidemic.facilitiesReportingLabel')} value={idsrReport.totalFacilitiesReporting.toLocaleString()} delta="Facilities that sent a weekly IDSR report" />
+            <SadbKpiTile label={t('epidemic.reportingWeek')} value={idsrReport.reportingWeek} delta={t('epidemic.idsrWeekDetail')} />
+            <SadbKpiTile label={t('epidemic.facilitiesReportingLabel')} value={idsrReport.totalFacilitiesReporting.toLocaleString()} delta={t('epidemic.idsrFacilitiesDetail')} />
             <SadbKpiTile
               label={t('epidemic.completeness')}
               value={`${idsrReport.completeness}%`}
@@ -644,18 +644,18 @@ export default function EpidemicIntelligencePage() {
       {activeTab === 'alerts' && (
         <div className="space-y-4">
           <FieldRow>
-            <Field label="Severity">
+            <Field label={t('epidemic.colSeverity')}>
               <Select value={severity} onChange={e => setSeverity(e.target.value)} data-action="epi-severity">
-                <option value="">All</option>
+                <option value="">{t('epidemic.sevAll')}</option>
                 {(['critical', 'high', 'medium', 'low'] as const).map(sev => (
-                  <option key={sev} value={sev}>{`${sev[0].toUpperCase()}${sev.slice(1)} (${ewarsAlerts.filter(a => a.severity === sev).length})`}</option>
+                  <option key={sev} value={sev}>{`${t(`epidemic.sev_${sev}`)} (${ewarsAlerts.filter(a => a.severity === sev).length})`}</option>
                 ))}
               </Select>
             </Field>
           </FieldRow>
 
           <section className="gov-panel">
-            <PanelHead title={t('epidemic.tabAlerts')} meta={`${ewarsAlerts.filter(a => !severity || a.severity === severity).length.toLocaleString()} of ${ewarsAlerts.length.toLocaleString()}`} />
+            <PanelHead title={t('epidemic.tabAlerts')} meta={t('epidemic.alertsMeta', { shown: ewarsAlerts.filter(a => !severity || a.severity === severity).length.toLocaleString(), total: ewarsAlerts.length.toLocaleString() })} />
             {ewarsAlerts.length === 0 ? (
               <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>{t('epidemic.noActiveDiseaseAlerts')}</p>
             ) : (

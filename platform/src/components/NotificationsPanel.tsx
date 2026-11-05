@@ -140,7 +140,7 @@ export default function NotificationsPanel({
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, maxHeight: 'inherit', overflow: 'hidden' }}>
         <div className="notifications-popover-header" style={{ borderColor: 'var(--border-light)' }}>
           <div className="notifications-popover-heading">
-            <h2 id="notifications-popover-title" className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>Notifications</h2>
+            <h2 id="notifications-popover-title" className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{t('common.notifications')}</h2>
             {unreadCount > 0 && (
               <span className="notifications-popover-count" style={{ background: 'var(--accent-light)', color: 'var(--accent-text)' }}>{unreadCount} new</span>
             )}
@@ -149,8 +149,8 @@ export default function NotificationsPanel({
             {unreadCount > 0 && (
               <button
                 onClick={markAllRead}
-                title="Mark everything as read"
-                aria-label="Mark all read"
+                title={t('ui.markEverythingAsRead')}
+                aria-label={t('ui.markAllRead')}
                 className="notifications-popover-action flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold"
                 style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)' }}
               >
@@ -171,17 +171,17 @@ export default function NotificationsPanel({
                 ? <Bell className="w-4 h-4" style={{ stroke: 'currentColor' }} />
                 : <BellOff className="w-4 h-4" style={{ stroke: 'currentColor' }} />}
             </button>
-            <button onClick={onClose} aria-label="Close" className="notifications-popover-action p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
+            <button onClick={onClose} aria-label={t('billing.activityClose')} className="notifications-popover-action p-1.5 rounded-lg" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)' }}><X className="w-4 h-4" /></button>
           </div>
         </div>
 
         <div className="notifications-popover-scroll">
           {loading ? (
-            <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</div>
+            <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('admin.loading')}</div>
           ) : items.length === 0 ? (
             <div className="p-10 text-center" style={{ color: 'var(--text-muted)' }}>
               <Bell className="w-10 h-10 mx-auto mb-2" style={{ opacity: 0.35 }} />
-              <p className="text-sm">You&apos;re all caught up — no notifications.</p>
+              <p className="text-sm">{t('ui.youReAllCaughtUp')}</p>
             </div>
           ) : groups.map(group => (
             <section key={group.bucket} aria-label={t(BUCKET_LABEL_KEY[group.bucket])}>

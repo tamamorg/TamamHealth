@@ -12,6 +12,7 @@ import type { MobileDashboardArchetype, MobileLane, MobileDashboardData } from '
 import type { AppointmentDoc, LabResultDoc, PrescriptionDoc } from '@/lib/db-types';
 import MobileLaneBoard from './MobileLaneBoard';
 import MobileOutstandingList from './MobileOutstandingList';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface MobileDashboardViewProps {
   archetype: MobileDashboardArchetype;
@@ -78,6 +79,7 @@ function GenericArchetypeDashboard({
   data: MobileDashboardData;
   renderItem: (item: never) => React.ReactNode;
 }) {
+  const { t } = useTranslation();
   const shell = useMobileShellState();
 
   if (data.loading) {
@@ -96,7 +98,7 @@ function GenericArchetypeDashboard({
         activeLane={shell.lane}
         onLaneChange={(key) => shell.setLane(key as typeof shell.lane)}
         renderItem={renderItem}
-        emptyLabel="Nothing in this lane"
+        emptyLabel={t('ui.nothingInThisLane')}
       />
       <MobileOutstandingList items={data.outstanding} />
     </div>
@@ -137,6 +139,7 @@ function FrontDeskDashboard() {
 }
 
 function ClinicalDashboard() {
+  const { t } = useTranslation();
   const shell = useMobileShellState();
   const data = useClinicalDashboardData();
 
@@ -160,7 +163,7 @@ function ClinicalDashboard() {
         activeLane={shell.lane}
         onLaneChange={(key) => shell.setLane(key as typeof shell.lane)}
         renderItem={(appt) => <AppointmentCard appt={appt} onOpen={() => shell.openChart(appt.patientId)} />}
-        emptyLabel="Nothing in this lane"
+        emptyLabel={t('ui.nothingInThisLane')}
       />
       <MobileOutstandingList items={data.outstanding} />
     </div>

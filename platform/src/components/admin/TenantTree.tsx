@@ -15,6 +15,7 @@ import { SadbChip } from '@/components/admin/sadb-ui';
 import { abbreviateProviderName } from '@/lib/patient-utils';
 import { getRoleConfig } from '@/lib/permissions';
 import type { HospitalDoc, UserDoc } from '@/lib/db-types';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /* Same six-column template the tenant registry on /admin/organizations draws,
    so the two lists of the same thing read as one surface — and the one
@@ -57,6 +58,7 @@ export function OrgFacilities({ facilities, usersByFacility, loading, onOpen }: 
   loading: boolean;
   onOpen: (hospitalId: string) => void;
 }) {
+  const { t } = useTranslation();
   /* A set, not one id: comparing who staffs two sites is a reason to open
      both, the same argument the tenant rows above make. */
   const [openUsers, setOpenUsers] = useState<Set<string>>(new Set());
@@ -67,7 +69,7 @@ export function OrgFacilities({ facilities, usersByFacility, loading, onOpen }: 
   });
 
   if (facilities.length === 0) {
-    return <p className="sadb-subrow-empty" style={{ ['--depth' as string]: 1 }}>No facilities registered for this organization yet.</p>;
+    return <p className="sadb-subrow-empty" style={{ ['--depth' as string]: 1 }}>{t('ui.noFacilitiesRegisteredForThis')}</p>;
   }
 
   return (
@@ -135,6 +137,7 @@ export function OrgFacilities({ facilities, usersByFacility, loading, onOpen }: 
  * so they are text, not controls.
  */
 export function FacilityUserList({ id, users, facilityId }: { id: string; users: UserDoc[]; facilityId: string }) {
+  const { t } = useTranslation();
   const rows = useMemo(() => [...users].sort((a, b) => {
     const home = Number(b.hospitalId === facilityId) - Number(a.hospitalId === facilityId);
     return home || a.name.localeCompare(b.name);
@@ -143,7 +146,7 @@ export function FacilityUserList({ id, users, facilityId }: { id: string; users:
   if (rows.length === 0) {
     return (
       <p className="sadb-subrow-empty" id={id} style={{ ['--depth' as string]: 2 }}>
-        No accounts are attached to this facility yet.
+        {t('ui.noAccountsAreAttachedTo')}
       </p>
     );
   }

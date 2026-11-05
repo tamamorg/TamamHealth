@@ -235,7 +235,7 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
     >
         <div className="space-y-3">
           <div>
-            <label>Medication</label>
+            <label>{t('hospitals.colMedication')}</label>
             <input
               type="text"
               value={medication}
@@ -263,11 +263,11 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label>Dose</label>
-              <input type="text" value={dose} onChange={e => setDose(e.target.value)} placeholder="e.g. 500 mg" />
+              <label>{t('consultation.rxDose')}</label>
+              <input type="text" value={dose} onChange={e => setDose(e.target.value)} placeholder={t('ui.eG500Mg')} />
             </div>
             <div>
-              <label>Route</label>
+              <label>{t('consultation.rxRoute')}</label>
               <Select value={route} onChange={e => setRoute(e.target.value)}>
                 {routeOptions.map(r => <option key={r} value={r}>{r}</option>)}
               </Select>
@@ -275,27 +275,27 @@ export function PrescribeModal({ isOpen, onClose, patient, currentUser }: BaseMo
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label>Frequency</label>
+              <label>{t('consultation.rxFrequency')}</label>
               <Select value={frequency} onChange={e => setFrequency(e.target.value)}>
-                <option value="">Select frequency…</option>
+                <option value="">{t('ui.selectFrequency')}</option>
                 {frequencyOptions.map(f => <option key={f} value={f}>{f}</option>)}
               </Select>
             </div>
             <div>
-              <label>Duration</label>
-              <input type="text" value={duration} onChange={e => setDuration(e.target.value)} placeholder="e.g. 5 days" />
+              <label>{t('appointments.labelDuration')}</label>
+              <input type="text" value={duration} onChange={e => setDuration(e.target.value)} placeholder={t('ui.eG5Days')} />
             </div>
           </div>
           <div>
             <label>{t('referrals.urgency')}</label>
             <Select value={urgency} onChange={e => setUrgency(e.target.value as 'immediate' | 'definitive')}>
-              <option value="definitive">Definitive</option>
-              <option value="immediate">Immediate (stat)</option>
+              <option value="definitive">{t('rxFlow.urgencyDefinitive')}</option>
+              <option value="immediate">{t('ui.immediateStat')}</option>
             </Select>
           </div>
           <div>
-            <label>Instructions</label>
-            <textarea rows={2} value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="e.g. Take after meals" />
+            <label>{t('consultation.rxInstructions')}</label>
+            <textarea rows={2} value={instructions} onChange={e => setInstructions(e.target.value)} placeholder={t('ui.eGTakeAfterMeals')} />
           </div>
           {hasAdvisory && (
             <div className="rounded-lg p-3 text-sm" style={{ border: '2px solid var(--color-danger, #D92B20)', background: 'var(--color-danger-bg, #FAE6E4)' }} role="alert">

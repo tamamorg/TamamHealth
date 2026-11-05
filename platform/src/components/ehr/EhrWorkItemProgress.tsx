@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslation } from '@/lib/i18n/useTranslation';
+
 /** Shared operational context shown in appointment and queue detail drawers. */
 export default function EhrWorkItemProgress({
   status,
@@ -14,6 +16,7 @@ export default function EhrWorkItemProgress({
   timeLabel?: string;
   nextAction?: string;
 }) {
+  const { t } = useTranslation();
   const stages = ['Registration', 'Triage', 'Consultation', 'Orders', 'Follow-up'];
   const normalizedStatus = (status || '').toLowerCase();
   const currentStage = normalizedStatus.includes('follow') || normalizedStatus.includes('complete')
@@ -34,8 +37,8 @@ export default function EhrWorkItemProgress({
   if (items.length === 0) return null;
 
   return (
-    <section className="ehr-work-item-progress" aria-label="Care progress">
-      <div className="ehr-work-item-progress__title">Care progress</div>
+    <section className="ehr-work-item-progress" aria-label={t('ui.careProgress')}>
+      <div className="ehr-work-item-progress__title">{t('ui.careProgress')}</div>
       <div className="ehr-work-item-progress__stages" aria-label={`Current stage: ${stages[currentStage]}`}>
         {stages.map((stage, index) => (
           <div key={stage} className={`ehr-work-item-progress__stage ${index < currentStage ? 'is-complete' : ''} ${index === currentStage ? 'is-current' : ''}`}>

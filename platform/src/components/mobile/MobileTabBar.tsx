@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Calendar, LayoutDashboard, MessageSquare, Plus, Users } from '@/components/icons/lucide';
 import { isHrefAllowed } from '@/components/ehr/ehr-navigation';
 import type { MobileShellTab } from '@/lib/mobile-shell/use-mobile-shell-state';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface MobileTabBarProps {
   activeTab: MobileShellTab;
@@ -13,6 +14,7 @@ interface MobileTabBarProps {
 }
 
 export default function MobileTabBar({ activeTab, homeHref, allowedRoutes, onOpenCreate }: MobileTabBarProps) {
+  const { t } = useTranslation();
   const router = useRouter();
 
   const tabs: { key: MobileShellTab; href: string; label: string; icon: typeof LayoutDashboard }[] = [
@@ -42,9 +44,9 @@ export default function MobileTabBar({ activeTab, homeHref, allowedRoutes, onOpe
   };
 
   return (
-    <nav className="mobile-shell-tabbar" aria-label="Primary navigation">
+    <nav className="mobile-shell-tabbar" aria-label={t('featureCatalog.capability.primary-navigation')}>
       {tabs.map(renderTab)}
-      <button type="button" className="mobile-shell-tabbar-fab" aria-label="Quick create" onClick={onOpenCreate}>
+      <button type="button" className="mobile-shell-tabbar-fab" aria-label={t('ui.quickCreate')} onClick={onOpenCreate}>
         <Plus className="w-6 h-6" />
       </button>
       {trailingTabs.map(renderTab)}

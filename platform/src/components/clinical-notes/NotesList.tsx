@@ -174,15 +174,15 @@ export default function NotesList({
 
   return (
     <ChartSection
-      title="Notes"
+      title={t('postConsult.link.notes')}
       addLabel="Create note"
       onAdd={canCreate && !creating ? () => void handleCreate() : undefined}
       searchValue={search}
-      searchPlaceholder="Search notes…"
+      searchPlaceholder={t('ui.searchNotes')}
       onSearchChange={value => { setSearch(value); setPage(1); }}
       pagination={{ page, pageSize: PAGE_SIZE, total: filtered.length, onPageChange: setPage }}
     >
-      {loading && <div className="cn-empty">Loading notes…</div>}
+      {loading && <div className="cn-empty">{t('ui.loadingNotes')}</div>}
 
       {/* One column per fact, Status then the row's ⋮ like every other
           clinical table. The row itself still opens the note. Column widths live in the stylesheet
@@ -214,7 +214,7 @@ export default function NotesList({
                   ) : (
                     <OmrsEmptyState
                       itemLabel="notes"
-                      actionLabel="Create clinical note"
+                      actionLabel={t('noteEditor.createNote')}
                       onAction={canCreate && !creating ? () => void handleCreate() : undefined}
                     />
                   )}

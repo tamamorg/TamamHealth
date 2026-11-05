@@ -3,7 +3,7 @@
 /**
  * Schedule a shift. Shared by /hr/schedule and the "Add" menu, which opens it
  * in place wherever the user is and routes to /hr/schedule only once the shift
- * exists — see AddInquiryDialog for the reasoning.
+ * exists — see CreateRecordPage for the reasoning.
  */
 
 import { useMemo, useState } from 'react';

@@ -77,14 +77,14 @@ export default function ReferralFilterFields({
         <DepartmentInput type="text" value={filters.department} onChange={e => setFilter('department', e.target.value)} placeholder={t('referrals.department')} className="w-full text-sm py-2 px-3" style={fieldStyle} />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Urgency</span>
+        <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('consultation.urgency')}</span>
         <Select value={filters.urgency} onChange={e => setFilter('urgency', e.target.value)} className="w-full text-sm py-2 px-3" style={fieldStyle}>
           <option value="">{t('patients.all')}</option>
           {urgencyOptions.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
         </Select>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Status</span>
+        <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('billing.activityColumn.status')}</span>
         <Select value={filters.status} onChange={e => setFilter('status', e.target.value)} className="w-full text-sm py-2 px-3" style={fieldStyle}>
           <option value="">{t('patients.all')}</option>
           {statusOptions.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}

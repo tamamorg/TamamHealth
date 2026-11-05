@@ -111,7 +111,7 @@ function FacilityOverview() {
       <SadbPage roles={FACILITY_OVERVIEW_ROLES}>
         <p className="sadb-empty" aria-live="polite">
           <Loader2 className="w-4 h-4 inline-block me-2 animate-spin" style={{ verticalAlign: -3 }} />
-          Loading facility data…
+          {t('ui.loadingFacilityData')}
         </p>
       </SadbPage>
     );
@@ -157,14 +157,14 @@ function FacilityOverview() {
   const submittedAt = submission?.submittedAt;
   const hasPendingChanges = !!submittedAt && !!hospital?.updatedAt && hospital.updatedAt > submittedAt;
   const mohTone: ChipTone = !submittedAt ? 'neutral' : hasPendingChanges ? 'yellow' : 'green';
-  const mohLabel = !submittedAt ? 'Not yet submitted' : hasPendingChanges ? 'Changes pending submission' : 'Submitted to Ministry of Health';
+  const mohLabel = !submittedAt ? t('facilityOverview.mohNotSubmitted') : hasPendingChanges ? t('facilityOverview.mohPending') : t('facilityOverview.mohSubmitted');
 
   return (
     <SadbPage roles={FACILITY_OVERVIEW_ROLES}>
 
       {/* ═══ MINISTRY OF HEALTH SUBMISSION GATE ═══ */}
       <SadbCard
-        title="Ministry of Health reporting"
+        title={t('ui.ministryOfHealthReporting')}
         action={
           <button
             type="button"
@@ -173,22 +173,22 @@ function FacilityOverview() {
             className="btn btn-primary btn-sm inline-flex items-center gap-1.5"
           >
             {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-            {submittedAt && !hasPendingChanges ? 'Submitted' : 'Submit to Ministry of Health'}
+            {submittedAt && !hasPendingChanges ? t('dhis2.statusSubmitted') : t('facilityOverview.submitToMoh')}
           </button>
         }
       >
         <div className="p-4 flex flex-col gap-2.5">
           <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-            Review your facility&apos;s data below, then submit it to the Ministry of Health. Data is reported
-            only when you submit it here. It is not sent automatically.
+            {t('ui.reviewYourFacilitySData')}
           </p>
           <div>
             <SadbChip tone={mohTone}>{mohLabel}</SadbChip>
           </div>
           {submittedAt && (
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Last submitted {new Date(submittedAt).toLocaleString()}
-              {submission?.submittedByName ? ` by ${submission.submittedByName}` : ''}.
+              {submission?.submittedByName
+                ? t('facilityOverview.lastSubmittedBy', { when: new Date(submittedAt).toLocaleString(), name: submission.submittedByName })
+                : t('facilityOverview.lastSubmittedOn', { when: new Date(submittedAt).toLocaleString() })}
             </p>
           )}
           {submitError && (
@@ -201,76 +201,76 @@ function FacilityOverview() {
       <div data-tour="facility-overview-metrics" className="flex flex-col gap-3.5">
         <div className="sadb-kpi-row">
           <SadbKpiTile
-            label="Patients"
+            label={t('admin.dbPatients')}
             value={facilityCensus && hospitalId ? String(censusFor(facilityCensus, hospitalId).patients) : '…'}
-            delta="Registered at this facility"
+            delta={t('facilityOverview.patientsDetail')}
           />
           <SadbKpiTile
-            label="Beds"
+            label={t('dashboard.beds')}
             value={String(hospital?.totalBeds ?? 0)}
-            delta={`${hospital?.icuBeds ?? 0} ICU · ${hospital?.maternityBeds ?? 0} maternity`}
+            delta={t('facilityOverview.bedsDetail', { icu: hospital?.icuBeds ?? 0, maternity: hospital?.maternityBeds ?? 0 })}
           />
           <SadbKpiTile
-            label="Clinical staff"
+            label={t('facilityOverview.clinicalStaff')}
             value={String(staff)}
-            delta={`${hospital?.doctors ?? 0} doctors · ${hospital?.nurses ?? 0} nurses · ${hospital?.clinicalOfficers ?? 0} COs`}
+            delta={t('facilityOverview.staffDetail', { doctors: hospital?.doctors ?? 0, nurses: hospital?.nurses ?? 0, cos: hospital?.clinicalOfficers ?? 0 })}
           />
           <SadbKpiTile
-            label="Today's visits"
+            label={t('boma.todaysVisits')}
             value={facilityCensus && hospitalId ? String(censusFor(facilityCensus, hospitalId).todayVisits) : '…'}
-            delta="Encounters opened today"
+            delta={t('facilityOverview.visitsDetail')}
           />
           <SadbKpiTile
-            label="Referrals"
+            label={t('boma.kpiReferrals')}
             value={String(referralsIn + referralsOut)}
-            delta={`${referralsIn} received · ${referralsOut} sent`}
-            trend={weekOverWeek(referrals.filter(r => r.fromHospitalId === hospitalId || r.toHospitalId === hospitalId), r => r.createdAt, 'made')}
+            delta={t('facilityOverview.referralsDetail', { received: referralsIn, sent: referralsOut })}
+            trend={weekOverWeek(referrals.filter(r => r.fromHospitalId === hospitalId || r.toHospitalId === hospitalId), r => r.createdAt, t('facilityOverview.trendMade'), 'up', t)}
           />
           <SadbKpiTile
-            label="Active alerts"
+            label={t('dashboard.activeAlerts')}
             value={String(activeAlerts)}
-            delta={activeAlerts > 0 ? `${emergencyAlerts} emergency · ${warningAlerts} warning` : 'No open alerts'}
+            delta={activeAlerts > 0 ? t('facilityOverview.alertsDetail', { emergency: emergencyAlerts, warning: warningAlerts }) : t('facilityOverview.noOpenAlerts')}
             deltaTone={activeAlerts > 0 ? 'warn' : undefined}
           />
           {/* '—' when never measured — a red 0% would assert a measurement
               that was never taken. */}
           <SadbKpiTile
-            label="Data quality"
+            label={t('breadcrumb.dataQuality')}
             value={dataQuality === null ? '—' : `${Math.round(dataQuality)}%`}
-            delta={dataQuality === null ? 'Not yet measured' : dataQuality < 80 ? 'Below the 80% target' : 'Meets the 80% target'}
+            delta={dataQuality === null ? t('facilityOverview.notMeasured') : dataQuality < 80 ? t('facilityOverview.belowTarget') : t('facilityOverview.meetsTarget')}
             deltaTone={dataQuality !== null && dataQuality < 80 ? 'warn' : undefined}
           />
         </div>
 
-        <SadbCard title="Vital events and care programs">
-          <SadbKvRow label="Births registered" value={String(births.length)} />
-          <SadbKvRow label="Deaths registered" value={String(deaths.length)} />
-          <SadbKvRow label="ANC visits" value={String(ancVisits.length)} />
-          <SadbKvRow label="Immunizations" value={String(immunizations.length)} />
+        <SadbCard title={t('ui.vitalEventsCarePrograms')}>
+          <SadbKvRow label={t('ui.birthsRegistered')} value={String(births.length)} />
+          <SadbKvRow label={t('ui.deathsRegistered')} value={String(deaths.length)} />
+          <SadbKvRow label={t('dhis2.summaryAncVisits')} value={String(ancVisits.length)} />
+          <SadbKvRow label={t('admin.dbImmunizations')} value={String(immunizations.length)} />
         </SadbCard>
       </div>
 
       {/* ═══ PERFORMANCE GAUGES ═══ */}
       <SadbCard
-        title="Facility performance"
+        title={t('ui.facilityPerformance')}
         meta={<SadbChip tone={OP_STATUS_TONE[opStatus] ?? 'neutral'}>{opStatusLabel[opStatus] ?? opStatus}</SadbChip>}
       >
         {perf ? (
           <div className="grid grid-cols-3 gap-4 p-4">
-            <Gauge label="Reporting" value={perf.reportingCompleteness ?? 0} />
-            <Gauge label="Service readiness" value={perf.serviceReadinessScore ?? 0} />
-            <Gauge label="Immunization coverage" value={perf.immunizationCoverage ?? 0} />
+            <Gauge label={t('facilityAssessments.colReporting')} value={perf.reportingCompleteness ?? 0} />
+            <Gauge label={t('ui.serviceReadiness')} value={perf.serviceReadinessScore ?? 0} />
+            <Gauge label={t('ui.immunizationCoverage')} value={perf.immunizationCoverage ?? 0} />
           </div>
         ) : (
-          <p className="sadb-empty">No performance data recorded for this facility yet.</p>
+          <p className="sadb-empty">{t('ui.noPerformanceDataRecordedFor')}</p>
         )}
       </SadbCard>
 
       {/* ═══ HEALTH VISITS TREND ═══ */}
-      <SadbCard title="Health visits trend" meta="Monthly">
+      <SadbCard title={t('ui.healthVisitsTrend')} meta={t('reports.periodMonthly')}>
         <div className="px-3 pt-3 pb-1">
           {trend.length === 0 ? (
-            <p className="sadb-empty">No monthly trend data recorded for this facility yet.</p>
+            <p className="sadb-empty">{t('ui.noMonthlyTrendDataRecorded')}</p>
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <AreaChart data={trend} margin={{ top: 8, right: 16, left: -8, bottom: 0 }}>
@@ -284,9 +284,9 @@ function FacilityOverview() {
                 <YAxis tick={axisTick} />
                 <Tooltip {...chartTooltipStyle} />
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '0.75rem', paddingTop: '4px' }} />
-                <Area type="monotone" dataKey="OPD Visits" stroke="var(--accent-primary)" fill="url(#gOpd)" strokeWidth={2} />
-                <Area type="monotone" dataKey="ANC Visits" stroke="var(--chart-2)" fill="url(#gAnc)" strokeWidth={2} />
-                <Area type="monotone" dataKey="Immunizations" stroke="var(--color-success)" fill="url(#gImm)" strokeWidth={2} />
+                <Area type="monotone" dataKey="OPD Visits" name={t('dataEntry.opdVisits')} stroke="var(--accent-primary)" fill="url(#gOpd)" strokeWidth={2} />
+                <Area type="monotone" dataKey="ANC Visits" name={t('government.ancVisits')} stroke="var(--chart-2)" fill="url(#gAnc)" strokeWidth={2} />
+                <Area type="monotone" dataKey="Immunizations" name={t('admin.dbImmunizations')} stroke="var(--color-success)" fill="url(#gImm)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           )}

@@ -66,50 +66,50 @@ export default function MCHAnalyticsPage() {
           <SadbKpiTile
             label={t('mch.kpiOverallGrade')}
             value={summary.overallGrade}
-            delta="Scored out of 100 on ANC4+, deaths, immunization and facility births"
+            delta={t('mchx.gradeDetail')}
           />
           <SadbKpiTile
             label={t('mch.kpiMothersTracked')}
             value={summary.totalMothersTracked.toLocaleString()}
-            delta="Pregnancies with an antenatal record"
+            delta={t('mchx.mothersDetail')}
             onClick={() => router.push('/anc')}
           />
           <SadbKpiTile
             label={t('mch.kpiAnc4Rate')}
             value={`${summary.anc4PlusCoverage}%`}
-            delta="Mothers with 4 or more visits, target 50%"
+            delta={t('mchx.anc4Detail')}
             onClick={() => router.push('/anc')}
           />
           <SadbKpiTile
             label={t('mch.kpiMmr')}
             value={summary.maternalMortalityRatio.toLocaleString()}
-            delta="Maternal deaths per 100,000 live births"
+            delta={t('mchx.mmrDetail')}
             deltaTone={summary.maternalMortalityRatio > 500 ? 'warn' : undefined}
             onClick={() => setActiveTab('mortality')}
           />
           <SadbKpiTile
             label={t('mch.kpiNmr')}
             value={summary.neonatalMortalityRate.toLocaleString()}
-            delta="Deaths in the first 28 days per 1,000 live births"
+            delta={t('mchx.nmrDetail')}
             deltaTone={summary.neonatalMortalityRate > 30 ? 'warn' : undefined}
             onClick={() => setActiveTab('mortality')}
           />
           <SadbKpiTile
             label={t('mch.kpiImmunization')}
             value={`${summary.immunizationCoverage}%`}
-            delta="Average coverage across tracked vaccines, target 80%"
+            delta={t('mchx.immDetail')}
             onClick={() => router.push('/immunizations')}
           />
           <SadbKpiTile
             label={t('mch.kpiFacilityBirths')}
             value={`${summary.facilityDeliveryRate}%`}
-            delta="Births that took place in a facility"
+            delta={t('mchx.facilityBirthsDetail')}
             onClick={() => router.push('/births')}
           />
           <SadbKpiTile
             label={t('mch.kpiHighRisk')}
             value={summary.highRiskCount.toLocaleString()}
-            delta="Pregnancies flagged high risk"
+            delta={t('mchx.highRiskDetail')}
             deltaTone={summary.highRiskCount > 0 ? 'warn' : undefined}
             onClick={() => setActiveTab('high-risk')}
           />

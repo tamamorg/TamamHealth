@@ -72,6 +72,7 @@ export interface BillingOverviewCardsProps {
 export default function BillingOverviewCards({
   payments, claims, bills, collectedToday, todayByMethod, outstandingPatients, unbilledEncounters, showClaims,
 }: BillingOverviewCardsProps) {
+  const { t } = useTranslation();
   const cash = useMemo(() => {
     let received = 0;
     let pending = 0;
@@ -97,7 +98,6 @@ export default function BillingOverviewCards({
     };
   }, [bills, claims]);
 
-  const { t } = useTranslation();
   const [chartType, setChartType] = useState<ChartType>('line');
   const [period, setPeriod] = useState<ChartPeriod>('month');
 

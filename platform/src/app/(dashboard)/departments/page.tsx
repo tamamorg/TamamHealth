@@ -73,10 +73,10 @@ export default function DepartmentsPage() {
       <div className="sadb-page">
         {departments.length > 0 && (
           <FacilityKpiBand tiles={[
-            { key: 'departments', label: t('departments.title'), value: departments.length, detail: `${departments.filter(d => d.location).length} with a location set` },
-            { key: 'today', label: t('departments.today'), value: bookedToday, detail: 'Appointments booked for today across departments' },
-            { key: 'waiting', label: t('departments.waiting'), value: waitingNow, detail: bookedToday ? `${bookedToday - waitingNow} of ${bookedToday} already done or closed` : 'Nothing booked today', warn: waitingNow > 0 },
-            { key: 'busiest', label: 'Busiest today', value: busiest && busiest.today ? busiest.today : 0, detail: busiest && busiest.today ? busiest.department.name : 'No bookings today' },
+            { key: 'departments', label: t('departments.title'), value: departments.length, detail: t('departments.kpiWithLocation', { count: departments.filter(d => d.location).length }) },
+            { key: 'today', label: t('departments.today'), value: bookedToday, detail: t('departments.kpiTodayDetail') },
+            { key: 'waiting', label: t('departments.waiting'), value: waitingNow, detail: bookedToday ? t('departments.kpiWaitingDone', { done: bookedToday - waitingNow, total: bookedToday }) : t('departments.kpiNothingToday'), warn: waitingNow > 0 },
+            { key: 'busiest', label: t('departments.kpiBusiest'), value: busiest && busiest.today ? busiest.today : 0, detail: busiest && busiest.today ? busiest.department.name : t('departments.kpiNoBookingsToday') },
           ]} />
         )}
 

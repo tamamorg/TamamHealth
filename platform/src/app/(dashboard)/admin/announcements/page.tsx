@@ -94,12 +94,12 @@ export default function AdminAnnouncementsPage() {
   return (
     <SadbPage>
       <SadbPanelHeader
-        title="Announcements"
-        note="Messages broadcast to tenant staff, newest first."
+        title={t('topbar.announcements')}
+        note={t('adminMgmt.announcementsNote')}
       />
       <SadbCard
-        title="Posted"
-        meta={announcementsLoading ? undefined : `${announcements.length} visible`}
+        title={t('adminMgmt.posted')}
+        meta={announcementsLoading ? undefined : t('adminMgmt.nVisible', { count: announcements.length })}
         action={currentUser && canPostAnnouncements(currentUser.role) && !composing ? (
           <button type="button" className="tm-ghost-btn" onClick={() => setComposing(true)}>
             {t('adminConsole.postAnnouncement')} <Plus className="w-4 h-4" aria-hidden="true" />
@@ -107,9 +107,9 @@ export default function AdminAnnouncementsPage() {
         ) : undefined}
       >
         {announcementsLoading ? (
-          <p className="sadb-empty">Loading announcements…</p>
+          <p className="sadb-empty">{t('ui.loadingAnnouncements')}</p>
         ) : announcements.length === 0 ? (
-          <p className="sadb-empty">No announcements are currently visible.</p>
+          <p className="sadb-empty">{t('ui.noAnnouncementsAreCurrentlyVisible')}</p>
         ) : (
           announcements.slice(0, 10).map(a => (
             <SadbQueueRow
@@ -124,23 +124,23 @@ export default function AdminAnnouncementsPage() {
       </SadbCard>
 
       {currentUser && canPostAnnouncements(currentUser.role) && composing && (
-        <SadbSettingGroup title="Post an announcement" meta="Organization audience">
+        <SadbSettingGroup title={t('ui.postAnAnnouncement')} meta={t('adminMgmt.orgAudience')}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px' }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span className="sadb-setting-label" style={{ fontSize: 11.5 }}>Title</span>
+              <span className="sadb-setting-label" style={{ fontSize: 11.5 }}>{t('ui.title')}</span>
               <input
                 type="text"
                 className="sadb-modal-input"
-                placeholder="Announcement title"
+                placeholder={t('ui.announcementTitle')}
                 value={annTitle}
                 onChange={e => setAnnTitle(e.target.value)}
               />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span className="sadb-setting-label" style={{ fontSize: 11.5 }}>Message</span>
+              <span className="sadb-setting-label" style={{ fontSize: 11.5 }}>{t('lab.message')}</span>
               <textarea
                 className="sadb-modal-input"
-                placeholder="Message"
+                placeholder={t('lab.message')}
                 rows={3}
                 value={annBody}
                 onChange={e => setAnnBody(e.target.value)}
@@ -148,7 +148,7 @@ export default function AdminAnnouncementsPage() {
             </label>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 200px' }}>
-                <span className="sadb-setting-label" style={{ fontSize: 11.5 }}>Organization</span>
+                <span className="sadb-setting-label" style={{ fontSize: 11.5 }}>{t('adminBilling.colOrganization')}</span>
                 <Select
                   className="sadb-modal-input"
                   value={annOrgId}
@@ -158,27 +158,27 @@ export default function AdminAnnouncementsPage() {
                 </Select>
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '0 0 160px' }}>
-                <span className="sadb-setting-label" style={{ fontSize: 11.5 }}>Priority</span>
+                <span className="sadb-setting-label" style={{ fontSize: 11.5 }}>{t('appointments.labelPriority')}</span>
                 <Select
                   className="sadb-modal-input"
                   value={annPriority}
                   onChange={e => setAnnPriority(e.target.value as AnnouncementPriority)}
                 >
-                  <option value="normal">Normal</option>
-                  <option value="important">Important</option>
-                  <option value="urgent">Urgent</option>
+                  <option value="normal">{t('births.optNormal')}</option>
+                  <option value="important">{t('ui.important')}</option>
+                  <option value="urgent">{t('appointments.priorityUrgent')}</option>
                 </Select>
               </label>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setComposing(false)} disabled={annPosting}>Cancel</button>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setComposing(false)} disabled={annPosting}>{t('common.cancel')}</button>
               <button
                 type="button"
                 className="btn btn-primary btn-sm"
                 onClick={handlePostAnnouncement}
                 disabled={annPosting || !annTitle.trim() || !annBody.trim() || !annOrgId}
               >
-                <Send className="w-3.5 h-3.5" /> {annPosting ? 'Posting…' : 'Post announcement'}
+                <Send className="w-3.5 h-3.5" /> {annPosting ? t('adminMgmt.posting') : t('adminConsole.postAnnouncement')}
               </button>
             </div>
           </div>

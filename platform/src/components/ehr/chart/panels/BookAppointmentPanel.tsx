@@ -31,10 +31,9 @@ import { createBookingSeries, SERIES_DEFAULT, SERIES_MAX, SERIES_MIN } from '@/l
 import { describeError } from '@/lib/user-facing-error';
 import { jubaDate, jubaTime } from '@/lib/time-juba';
 import { formatDate } from '@/lib/format-utils';
-import InlineBanner from '@/components/overlay/InlineBanner';
+import NoticeToast from '@/components/overlay/NoticeToast';
 import type { AppointmentType, FacilityLevel, PatientDoc } from '@/lib/db-types';
 import './book-appointment-panel.css';
-import FormNotices from '@/components/overlay/FormNotices';
 import Select from '@/components/Select';
 import { APPOINTMENT_TYPE_OPTIONS } from '@/lib/visits/visit-details';
 import NumberInput from '@/components/forms/NumberInput';
@@ -363,11 +362,11 @@ export default function BookAppointmentPanel({ patient, patientName, onClose, on
         </section>
 
         {timeInPast && (
-          <InlineBanner tone="warning" title={t('bookPanel.pastTitle')}>{t('bookPanel.pastBody')}</InlineBanner>
+          <NoticeToast tone="warning" title={t('bookPanel.pastTitle')}>{t('bookPanel.pastBody')}</NoticeToast>
         )}
 
         {shownClash && (
-          <InlineBanner tone="danger" title={t('bookPanel.clashTitle')}>{shownClash}</InlineBanner>
+          <NoticeToast tone="danger" title={t('bookPanel.clashTitle')}>{shownClash}</NoticeToast>
         )}
 
         <section className="bap-section">
@@ -392,7 +391,6 @@ export default function BookAppointmentPanel({ patient, patientName, onClose, on
         <p className="bap-desk-note">{t('bookPanel.deskConfirms')}</p>
       </div>
 
-      <FormNotices />
       <div className="tm-action-bar">
         <button type="button" className="tm-action-bar__btn tm-action-bar__btn--secondary" onClick={onClose} disabled={saving}>
           {t('bookPanel.discard')}

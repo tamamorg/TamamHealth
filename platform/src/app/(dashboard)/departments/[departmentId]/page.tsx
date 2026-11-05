@@ -58,12 +58,12 @@ export default function DepartmentDetailPage() {
         </div>
 
         <FacilityKpiBand tiles={[
-          { key: 'total', label: t('departments.report.total'), value: report.total, detail: `${todayRows.length} of them today` },
-          { key: 'waiting', label: t('departments.report.waiting'), value: report.waiting, detail: 'Booked and not yet seen', warn: report.waiting > 0 },
-          { key: 'progress', label: t('departments.report.inProgress'), value: report.inProgress, detail: 'With a clinician now' },
-          { key: 'completed', label: t('departments.report.completed'), value: report.completed, detail: report.total ? `${Math.round((report.completed / report.total) * 100)}% of all bookings` : 'No bookings yet' },
-          { key: 'urgent', label: t('departments.report.urgent'), value: report.urgent, detail: 'Booked as urgent', warn: report.urgent > 0 },
-          { key: 'noshow', label: t('departments.report.noShows'), value: report.noShows, detail: report.total ? `${Math.round((report.noShows / report.total) * 100)}% of all bookings` : 'No bookings yet' },
+          { key: 'total', label: t('departments.report.total'), value: report.total, detail: t('departments.kpiOfThemToday', { count: todayRows.length }) },
+          { key: 'waiting', label: t('departments.report.waiting'), value: report.waiting, detail: t('departments.kpiBookedNotSeen'), warn: report.waiting > 0 },
+          { key: 'progress', label: t('departments.report.inProgress'), value: report.inProgress, detail: t('departments.kpiWithClinician') },
+          { key: 'completed', label: t('departments.report.completed'), value: report.completed, detail: report.total ? t('departments.kpiPercentBookings', { percent: Math.round((report.completed / report.total) * 100) }) : t('departments.kpiNoBookingsYet') },
+          { key: 'urgent', label: t('departments.report.urgent'), value: report.urgent, detail: t('departments.kpiBookedUrgent'), warn: report.urgent > 0 },
+          { key: 'noshow', label: t('departments.report.noShows'), value: report.noShows, detail: report.total ? t('departments.kpiPercentBookings', { percent: Math.round((report.noShows / report.total) * 100) }) : t('departments.kpiNoBookingsYet') },
         ]} />
 
         <SadbCard title={t('departments.todayWorklist')}>

@@ -17,6 +17,7 @@ import Select from '@/components/Select';
 import { SadbCard, SadbChip, SadbKpiTile, SadbSearch, type ChipTone } from '@/components/admin/sadb-ui';
 import { Field, weeklyTrend } from '@/components/oversight/OversightKit';
 import type { DiseaseAlertDoc } from '@/lib/db-types';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const LEVEL_TONE: Record<string, ChipTone> = {
   emergency: 'red',
@@ -34,6 +35,7 @@ function TrendIcon({ trend }: { trend: string }) {
 }
 
 export default function PriorityAlertsPage() {
+  const { t } = useTranslation();
   const { alerts, loading } = useSurveillance();
   const [search, setSearch] = useState('');
   const [level, setLevel] = useState('');
@@ -73,7 +75,8 @@ export default function PriorityAlertsPage() {
     return Array.from(byCounty.values()).sort((a, b) => b.cases - a.cases).slice(0, 3);
   }, [activeAlerts]);
 
-  const LEVEL_LABEL: Record<string, string> = { emergency: 'Emergency', warning: 'Warning', watch: 'Watch' };
+  const LEVEL_LABEL: Record<string, string> = { emergency: t('govAlerts.levelEmergency'), warning: t('govAlerts.levelWarning'), watch: t('govAlerts.levelWatch') };
+  const KPI_LABEL: Record<string, string> = { emergency: t('govAlerts.kpiEmergency'), warning: t('govAlerts.kpiWarning'), watch: t('govAlerts.kpiWatch') };
 
   return (
     <main className="page-container page-enter sadb-scope">
@@ -82,51 +85,51 @@ export default function PriorityAlertsPage() {
           {byLevel.map(({ level: l, rows, week }) => (
             <SadbKpiTile
               key={l}
-              label={`${LEVEL_LABEL[l]} alerts`}
+              label={KPI_LABEL[l]}
               value={rows.length.toLocaleString()}
-              delta={`${rows.reduce((n, a) => n + (a.cases || 0), 0).toLocaleString()} cases and ${rows.reduce((n, a) => n + (a.deaths || 0), 0).toLocaleString()} deaths on these alerts`}
-              trend={week ? { ...week.trend, label: `${week.current.toLocaleString()} reported this week, ${week.previous.toLocaleString()} last week` } : undefined}
+              delta={t('govAlerts.kpiDetail', { cases: rows.reduce((n, a) => n + (a.cases || 0), 0).toLocaleString(), deaths: rows.reduce((n, a) => n + (a.deaths || 0), 0).toLocaleString() })}
+              trend={week ? { ...week.trend, label: t('govAlerts.kpiTrend', { current: week.current.toLocaleString(), previous: week.previous.toLocaleString() }) } : undefined}
             />
           ))}
         </div>
 
         <div data-tour="gov-alerts-list">
-          <SadbCard title="Priority alerts" meta={`${filtered.length.toLocaleString()} of ${activeAlerts.length.toLocaleString()} active · National`}>
+          <SadbCard title={t('ui.priorityAlerts')} meta={t('govAlerts.listMeta', { shown: filtered.length.toLocaleString(), total: activeAlerts.length.toLocaleString() })}>
             <div className="ov-fields" style={{ border: 0, borderBottom: '1px solid var(--border-light)', borderRadius: 0 }}>
-              <Field label="Search" group>
-                <SadbSearch value={search} onChange={setSearch} placeholder="Disease, state or county" ariaLabel="Search alerts" />
+              <Field label={t('govAlerts.search')} group>
+                <SadbSearch value={search} onChange={setSearch} placeholder={t('govAlerts.searchPlaceholder')} ariaLabel={t('govAlerts.searchAria')} />
               </Field>
-              <Field label="Level">
+              <Field label={t('ui.level')}>
                 <Select value={level} onChange={e => setLevel(e.target.value)} data-action="gov-alert-level">
-                  <option value="">All levels</option>
-                  <option value="emergency">Emergency</option>
-                  <option value="warning">Warning</option>
-                  <option value="watch">Watch</option>
+                  <option value="">{t('govAlerts.allLevels')}</option>
+                  <option value="emergency">{LEVEL_LABEL.emergency}</option>
+                  <option value="warning">{LEVEL_LABEL.warning}</option>
+                  <option value="watch">{LEVEL_LABEL.watch}</option>
                 </Select>
               </Field>
             </div>
 
             {loading ? (
-              <p className="sadb-empty">Loading alerts…</p>
+              <p className="sadb-empty">{t('ui.loadingSurveillanceAlerts')}</p>
             ) : (
               <div className="show-scrollbar" style={{ overflowX: 'auto' }}>
                 <table className="w-full ov-table" style={{ minWidth: 760 }}>
                   <thead>
                     <tr>
-                      <th className="text-start">Disease</th>
-                      <th className="text-start">Location</th>
-                      <th className="text-start">Cases</th>
-                      <th className="text-start">Deaths</th>
-                      <th className="text-start">Level</th>
-                      <th className="text-start">Trend</th>
-                      <th className="text-start">Reported</th>
+                      <th className="text-start">{t('epidemic.colDisease')}</th>
+                      <th className="text-start">{t('deaths.location')}</th>
+                      <th className="text-start">{t('epidemic.colCases')}</th>
+                      <th className="text-start">{t('admin.dbDeaths')}</th>
+                      <th className="text-start">{t('ui.level')}</th>
+                      <th className="text-start">{t('epidemic.colTrend')}</th>
+                      <th className="text-start">{t('issues.colReported')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {activeAlerts.length === 0 ? (
-                      <tr><td colSpan={7} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No active disease alerts. Every reporting facility is at normal level.</td></tr>
+                      <tr><td colSpan={7} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('govAlerts.noAlerts')}</td></tr>
                     ) : filtered.length === 0 ? (
-                      <tr><td colSpan={7} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No alerts match these filters. Clear the search or choose another level.</td></tr>
+                      <tr><td colSpan={7} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('govAlerts.noMatch')}</td></tr>
                     ) : filtered.map((a: DiseaseAlertDoc) => (
                       <tr key={a._id}>
                         <td>
@@ -151,17 +154,17 @@ export default function PriorityAlertsPage() {
           </SadbCard>
         </div>
 
-        <SadbCard title="Where to respond first" meta="Top counties by active cases">
+        <SadbCard title={t('govAlerts.respondTitle')} meta={t('govAlerts.respondMeta')}>
           <div className="px-4 py-3">
             {topCounties.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)' }}>No active alerts to prioritise.</p>
+              <p style={{ color: 'var(--text-muted)' }}>{t('govAlerts.respondNone')}</p>
             ) : (
               <ol className="space-y-1.5">
                 {topCounties.map((c, i) => (
                   <li key={`${c.county}-${c.state}`} className="flex items-center gap-2" style={{ fontSize: 14 }}>
                     <span className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)', fontSize: 12, fontWeight: 600 }}>{i + 1}</span>
                     <span style={{ fontWeight: 600 }}>{c.county}, {c.state}</span>
-                    <span style={{ color: 'var(--text-muted)' }}>{c.cases.toLocaleString()} active cases across {c.alerts} alert{c.alerts === 1 ? '' : 's'}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>{t(c.alerts === 1 ? 'govAlerts.respondRowOne' : 'govAlerts.respondRowMany', { cases: c.cases.toLocaleString(), n: c.alerts })}</span>
                   </li>
                 ))}
               </ol>

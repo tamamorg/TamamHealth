@@ -9,7 +9,6 @@ import type { MedicalRecordDoc } from '@/lib/db-types';
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock('@/lib/i18n/useTranslation', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 jest.mock('@/components/Toast', () => ({ useToast: () => ({ showToast: jest.fn() }) }));
-jest.mock('@/components/overlay/FormNotices', () => ({ __esModule: true, default: () => null }));
 jest.mock('@/lib/services/medical-record-service', () => ({ recordNursingVitals: jest.fn() }));
 
 const record = {

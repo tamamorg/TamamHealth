@@ -111,14 +111,14 @@ export default function HrLeavePage() {
   return (
     <HrPageShell>
       <FacilityKpiBand tiles={[
-        { key: 'pending', label: 'Pending', value: pending.length, detail: pending.length ? `${pending.reduce((n, r) => n + r.days, 0)} days awaiting a decision` : 'Nothing waiting for a decision', warn: pending.length > 0, trend: weekOverWeek(leave, r => r.requestedAt, 'requested') },
-        { key: 'approved', label: 'Approved', value: approved.length, detail: `${leave.filter(r => r.status === 'taken').length} already taken` },
-        { key: 'rejected', label: 'Rejected', value: leave.filter(r => r.status === 'rejected').length, detail: `Out of ${leave.length} requests` },
-        { key: 'away', label: 'Away today', value: awayToday.length, detail: awayToday.length ? awayToday.map(r => r.userName).slice(0, 2).join(', ') + (awayToday.length > 2 ? ` and ${awayToday.length - 2} more` : '') : 'No approved leave covers today' },
+        { key: 'pending', label: t('hr.kpiLeavePending'), value: pending.length, detail: pending.length ? t('hr.kpiLeavePendingDetail', { days: pending.reduce((n, r) => n + r.days, 0) }) : t('hr.kpiLeaveNonePending'), warn: pending.length > 0, trend: weekOverWeek(leave, r => r.requestedAt, t('hr.kpiLeaveRequested'), 'up', t) },
+        { key: 'approved', label: t('hr.kpiLeaveApproved'), value: approved.length, detail: t('hr.kpiLeaveTaken', { count: leave.filter(r => r.status === 'taken').length }) },
+        { key: 'rejected', label: t('hr.kpiLeaveRejected'), value: leave.filter(r => r.status === 'rejected').length, detail: t('hr.kpiLeaveOutOf', { count: leave.length }) },
+        { key: 'away', label: t('hr.kpiLeaveAway'), value: awayToday.length, detail: awayToday.length ? (awayToday.length > 2 ? t('hr.kpiLeaveAwayMore', { names: awayToday.map(r => r.userName).slice(0, 2).join(', '), count: awayToday.length - 2 }) : awayToday.map(r => r.userName).join(', ')) : t('hr.kpiLeaveNoneAway') },
       ]} />
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="hr-leave-list">
         <EhrListHeader
-          title="Leave requests"
+          title={t('ui.leaveRequests')}
           count={leave.length}
           search={{ value: search, onChange: setSearch, placeholder: 'Search leave requests…', ariaLabel: 'Search leave requests' }}
           actions={
@@ -140,8 +140,8 @@ export default function HrLeavePage() {
             <div className="appointment-card-head" aria-hidden="true">
               <span>{t('hr.colStaff')}</span>
               <span>{t('hr.labelType')}</span>
-              <span>Dates</span>
-              <span>Decision</span>
+              <span>{t('facilityQueue.detailDates')}</span>
+              <span>{t('ui.decision')}</span>
               <span>{t('hr.colStatus')}</span>
             </div>
             {visibleLeave.length === 0 && (
@@ -219,7 +219,7 @@ export default function HrLeavePage() {
                       ] : []}
                       onSelect={next => decide(r._id, next as 'approved' | 'rejected')}
                     />
-                    <small>Requested {formatHrDate(r.requestedAt, { month: 'short', day: 'numeric' })}</small>
+                    <small>{t('appointments.statusRequested')} {formatHrDate(r.requestedAt, { month: 'short', day: 'numeric' })}</small>
                   </div>
                 </div>
               );

@@ -11,6 +11,7 @@
  */
 import { useState } from 'react';
 import { Plus, Save, X } from '@/components/icons/lucide';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /** Toggle a key in/out of a list. */
 export function toggleKey<K extends string>(list: K[], key: K, set: (v: K[]) => void) {
@@ -101,6 +102,7 @@ export function TagListEditor({ label, placeholder, values, onChange }: {
   values: string[];
   onChange: (v: string[]) => void;
 }) {
+  const { t } = useTranslation();
   const [entry, setEntry] = useState('');
   const add = () => {
     const v = entry.trim();
@@ -120,7 +122,7 @@ export function TagListEditor({ label, placeholder, values, onChange }: {
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
         />
         <button type="button" onClick={add} className="btn btn-secondary inline-flex items-center gap-1.5 whitespace-nowrap">
-          <Plus className="w-4 h-4" /> Add
+          <Plus className="w-4 h-4" /> {t('consultation.add')}
         </button>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -142,7 +144,7 @@ export function TagListEditor({ label, placeholder, values, onChange }: {
           </span>
         ))}
         {values.length === 0 && (
-          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>None added yet.</span>
+          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('ui.noneAddedYet')}</span>
         )}
       </div>
     </div>

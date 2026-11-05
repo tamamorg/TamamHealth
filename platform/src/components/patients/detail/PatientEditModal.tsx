@@ -40,7 +40,7 @@ export default function PatientEditModal({ editSubmitting, setShowEditModal, edi
       busy={editSubmitting}
       onClose={() => setShowEditModal(false)}
       footer={<>
-        <button type="button" onClick={() => setShowEditModal(false)} className="btn btn-secondary" disabled={editSubmitting}>Cancel</button>
+        <button type="button" onClick={() => setShowEditModal(false)} className="btn btn-secondary" disabled={editSubmitting}>{t('action.cancel')}</button>
         <button type="button" onClick={handleEditSubmit} className="btn btn-primary" disabled={editSubmitting}>
           {editSubmitting ? 'Saving…' : 'Save changes'}
         </button>
@@ -57,7 +57,7 @@ export default function PatientEditModal({ editSubmitting, setShowEditModal, edi
                   <input id="edit-middle-name" type="text" value={editForm.middleName} onChange={e => setEditForm({ ...editForm, middleName: e.target.value })} />
                 </div>
                 <div>
-                  <label htmlFor="edit-surname" className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Surname</label>
+                  <label htmlFor="edit-surname" className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('deaths.surname')}</label>
                   <input id="edit-surname" type="text" value={editForm.surname} onChange={e => setEditForm({ ...editForm, surname: e.target.value })} />
                 </div>
               </div>
@@ -69,10 +69,10 @@ export default function PatientEditModal({ editSubmitting, setShowEditModal, edi
                   <input id="edit-dob" type="date" max={toIsoDate(new Date())} value={editForm.dateOfBirth} onChange={e => setEditForm({ ...editForm, dateOfBirth: e.target.value })} />
                 </div>
                 <div>
-                  <label htmlFor="edit-gender" className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Gender</label>
+                  <label htmlFor="edit-gender" className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('deaths.gender')}</label>
                   <Select id="edit-gender" value={editForm.gender} onChange={e => setEditForm({ ...editForm, gender: e.target.value as 'Male' | 'Female' })}>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
+                    <option value="Male">{t('deaths.male')}</option>
+                    <option value="Female">{t('deaths.female')}</option>
                     <option value="Other">{t('patient.other')}</option>
                     <option value="Unknown">{t('patient.unknown')}</option>
                   </Select>
@@ -80,7 +80,7 @@ export default function PatientEditModal({ editSubmitting, setShowEditModal, edi
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="edit-phone" className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Phone</label>
+                  <label htmlFor="edit-phone" className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('noteEditor.type.phone')}</label>
                   <input id="edit-phone" type="tel" value={editForm.phone} onChange={e => { setEditForm({ ...editForm, phone: e.target.value }); if (editErrors.phone) setEditErrors({}); }} aria-invalid={!!editErrors.phone} />
                   {editErrors.phone && <p className="text-[11px] mt-1" role="alert" style={{ color: 'var(--color-danger-text)' }}>{editErrors.phone}</p>}
                 </div>
@@ -132,7 +132,7 @@ export default function PatientEditModal({ editSubmitting, setShowEditModal, edi
               {listed ? (<>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="edit-state" className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>State</label>
+                  <label htmlFor="edit-state" className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('births.colState')}</label>
                   <Select
                     id="edit-state"
                     value={editForm.state}
@@ -140,15 +140,15 @@ export default function PatientEditModal({ editSubmitting, setShowEditModal, edi
                     searchPlaceholder={t('patientNew.searchLocations')}
                     onChange={e => setEditForm({ ...editForm, state: e.target.value, county: '', payam: '', boma: '' })}
                   >
-                    <option value="">Select state…</option>
+                    <option value="">{t('ui.selectState')}</option>
                     {editForm.state && !SOUTH_SUDAN_STATES.includes(editForm.state) && (
-                      <option value={editForm.state}>{editForm.state} (on record)</option>
+                      <option value={editForm.state}>{editForm.state} {t('ui.onRecord')}</option>
                     )}
                     {SOUTH_SUDAN_STATES.map(s => <option key={s} value={s}>{locationLabel(s)}</option>)}
                   </Select>
                 </div>
                 <div>
-                  <label htmlFor="edit-county" className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>County</label>
+                  <label htmlFor="edit-county" className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('births.county')}</label>
                   <Select
                     id="edit-county"
                     value={editForm.county}
@@ -159,7 +159,7 @@ export default function PatientEditModal({ editSubmitting, setShowEditModal, edi
                   >
                     <option value="">{editForm.state ? 'Select county…' : 'Select a state first'}</option>
                     {editForm.county && !editCounties.includes(editForm.county) && (
-                      <option value={editForm.county}>{editForm.county} (on record)</option>
+                      <option value={editForm.county}>{editForm.county} {t('ui.onRecord')}</option>
                     )}
                     {editCounties.map(c => <option key={c} value={c}>{locationLabel(c)}</option>)}
                   </Select>

@@ -32,6 +32,7 @@ import { isoWeek } from '@/lib/format-utils';
 import { CHART_SERIES, CHART_SERIES_HEX, DISEASE_COLOR } from '@/lib/chart-colors';
 import { toIsoDate } from '@/lib/date-utils';
 import { ChartLoadingState } from '@/components/ChartCard';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 // recharts (~80-100KB) is deferred behind dynamic boundaries so it's fetched
 // only when a chart actually renders — same pattern as
@@ -79,11 +80,11 @@ const STATE_TILES: { name: string; abbr: string }[] = [
 
 type MapLayer = 'alerts' | 'completeness' | 'immunization' | 'facilities';
 
-const MAP_LAYERS: { key: MapLayer; label: string; legend: string }[] = [
-  { key: 'alerts', label: 'Alert cases', legend: 'Active surveillance alert cases' },
-  { key: 'completeness', label: 'Reporting', legend: 'Avg reporting completeness (facility assessments)' },
-  { key: 'immunization', label: 'Immunization', legend: 'Immunization records on file' },
-  { key: 'facilities', label: 'Facilities', legend: 'Registered facilities' },
+const MAP_LAYERS: { key: MapLayer; labelKey: string; legendKey: string }[] = [
+  { key: 'alerts', labelKey: 'govHome.layerAlerts', legendKey: 'govHome.legendAlerts' },
+  { key: 'completeness', labelKey: 'govHome.layerReporting', legendKey: 'govHome.legendReporting' },
+  { key: 'immunization', labelKey: 'govHome.layerImmunization', legendKey: 'govHome.legendImmunization' },
+  { key: 'facilities', labelKey: 'govHome.layerFacilities', legendKey: 'govHome.legendFacilities' },
 ];
 
 // Chart-label wrapper around the shared ISO-week calculator: the week number
@@ -171,15 +172,16 @@ const DISEASE_FALLBACK = [...CHART_SERIES];
 // Facility-type donut palette + labels (matches the hospital registry vocab).
 // PHCU was slate (#5D728B) — it read as gray and was near-indistinguishable
 // from the referral blue; the warm orange step validates against every neighbor.
-const FACILITY_TYPE_META: Record<string, { label: string; color: string }> = {
-  national_referral: { label: 'National Referral', color: 'var(--chart-1)' },
-  state_hospital: { label: 'State Hospital', color: 'var(--chart-3)' },
-  county_hospital: { label: 'County Hospital', color: 'var(--color-success-text)' },
-  phcc: { label: 'PHCC', color: 'var(--color-warning-text)' },
-  phcu: { label: 'PHCU', color: CHART_SERIES[5] },
+const FACILITY_TYPE_META: Record<string, { labelKey: string; color: string }> = {
+  national_referral: { labelKey: 'govHome.typeNationalReferral', color: 'var(--chart-1)' },
+  state_hospital: { labelKey: 'govHome.typeStateHospital', color: 'var(--chart-3)' },
+  county_hospital: { labelKey: 'govHome.typeCountyHospital', color: 'var(--color-success-text)' },
+  phcc: { labelKey: 'govHome.typePhcc', color: 'var(--color-warning-text)' },
+  phcu: { labelKey: 'govHome.typePhcu', color: CHART_SERIES[5] },
 };
 
 export default function GovernmentNationalDashboard() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { alerts } = useSurveillance();
   const { hospitals } = useHospitals();
@@ -249,11 +251,11 @@ export default function GovernmentNationalDashboard() {
       .map(([key, value]) => ({
         key,
         value,
-        label: FACILITY_TYPE_META[key]?.label || key,
+        label: FACILITY_TYPE_META[key] ? t(FACILITY_TYPE_META[key].labelKey) : key,
         color: FACILITY_TYPE_META[key]?.color || 'var(--text-muted)',
       }))
       .sort((a, b) => b.value - a.value);
-  }, [hospitals]);
+  }, [hospitals, t]);
 
   const isPercentLayer = layer === 'completeness';
 
@@ -356,13 +358,13 @@ export default function GovernmentNationalDashboard() {
   // Disease filter for the weekly-trend card header: a multi-select field.
   const diseaseSelector = diseaseList.length > 0 ? (
     <MultiField
-      label="Diseases"
-      summary={selectedDiseases === null ? 'All diseases' : `${shownDiseases.length} of ${diseaseList.length}`}
+      label={t('govHome.diseases')}
+      summary={selectedDiseases === null ? t('ui.allDiseases') : t('govHome.diseasesSummary', { n: shownDiseases.length, total: diseaseList.length })}
       options={diseaseList.map(d => ({ key: d, label: d, color: diseaseColorMap.get(d) }))}
       selected={selectedDiseases}
       onToggle={toggleDisease}
       onAll={() => setSelectedDiseases(null)}
-      allLabel="All diseases"
+      allLabel={t('ui.allDiseases')}
     />
   ) : null;
 
@@ -380,37 +382,37 @@ export default function GovernmentNationalDashboard() {
           figures; each tile opens the page that owns the number. */}
       <div className="sadb-kpi-row gov-kpi-band">
         <SadbKpiTile
-          label="Alert cases this week"
+          label={t('govHome.kpiAlertCases')}
           value={(caseTrend?.current ?? 0).toLocaleString()}
-          delta={`Cases on active alerts reported in the last 7 days (${activeAlertRows.length.toLocaleString()} active alerts)`}
+          delta={t('govHome.kpiAlertCasesDetail', { n: activeAlertRows.length.toLocaleString() })}
           trend={caseTrend?.trend}
           onClick={() => router.push('/government/alerts')}
         />
         <SadbKpiTile
-          label="Emergency alerts"
+          label={t('govHome.kpiEmergency')}
           value={emergencyRows.length.toLocaleString()}
-          delta={`Alerts at emergency level out of ${activeAlertRows.length.toLocaleString()} active`}
+          delta={t('govHome.kpiEmergencyDetail', { n: activeAlertRows.length.toLocaleString() })}
           deltaTone={emergencyRows.length > 0 ? 'warn' : undefined}
-          trend={emergencyTrend?.trend ? { ...emergencyTrend.trend, label: `vs ${emergencyTrend.previous.toLocaleString()} last week` } : undefined}
+          trend={emergencyTrend?.trend ? { ...emergencyTrend.trend, label: t('govHome.vsLastWeek', { n: emergencyTrend.previous.toLocaleString() }) } : undefined}
           onClick={() => router.push('/government/alerts')}
         />
         <SadbKpiTile
-          label="Facilities assessed"
-          value={dq ? `${dq.facilitiesReporting.toLocaleString()} of ${dq.totalFacilities.toLocaleString()}` : '—'}
-          delta="Registered facilities with a facility assessment on file"
+          label={t('govHome.kpiAssessed')}
+          value={dq ? t('govHome.kpiAssessedValue', { n: dq.facilitiesReporting.toLocaleString(), total: dq.totalFacilities.toLocaleString() }) : '—'}
+          delta={t('govHome.kpiAssessedDetail')}
           onClick={() => router.push('/facility-assessments')}
         />
         <SadbKpiTile
-          label="Reporting completeness"
+          label={t('govEquity.colCompleteness')}
           value={dq ? `${dq.avgCompleteness}%` : '—'}
-          delta="Average of assessed facilities, target 80%"
+          delta={t('govHome.kpiCompletenessDetail')}
           deltaTone={dq && dq.facilitiesReporting > 0 && dq.avgCompleteness < 80 ? 'warn' : undefined}
           onClick={() => router.push('/facility-assessments')}
         />
         <SadbKpiTile
-          label="Children fully immunized"
+          label={t('govHome.kpiImmunized')}
           value={imm ? `${imm.coverageRate}%` : '—'}
-          delta={imm ? `BCG, Penta 3 and Measles 1 done, ${imm.totalChildren.toLocaleString()} children on record` : 'No immunization records on file'}
+          delta={imm ? t('govHome.kpiImmunizedDetail', { n: imm.totalChildren.toLocaleString() }) : t('govHome.kpiImmunizedNone')}
           onClick={() => router.push('/immunizations')}
         />
       </div>
@@ -421,12 +423,12 @@ export default function GovernmentNationalDashboard() {
       <div className="gov-grid">
         <section className="gov-panel gov-span-4 gov-map-panel">
           <PanelHead
-            title="By state"
-            meta="ranked · National"
+            title={t('ui.byState')}
+            meta={t('govHome.rankedNational')}
             action={(
-              <Field label="Show" inline>
+              <Field label={t('govHome.show')} inline>
                 <Select value={layer} onChange={e => setLayer(e.target.value as MapLayer)} data-action="gov-map-layer">
-                  {MAP_LAYERS.map(l => <option key={l.key} value={l.key}>{l.label}</option>)}
+                  {MAP_LAYERS.map(l => <option key={l.key} value={l.key}>{t(l.labelKey)}</option>)}
                 </Select>
               </Field>
             )}
@@ -469,7 +471,7 @@ export default function GovernmentNationalDashboard() {
                             style={{ cursor: 'pointer' }}
                             onClick={() => setSelectedState(cur => (cur === s.name ? null : s.name))}
                           >
-                            <title>{`${s.name}: ${value === null ? 'No data' : isPercentLayer ? `${value}%` : value.toLocaleString()}`}</title>
+                            <title>{`${s.name}: ${value === null ? t('govHome.noData') : isPercentLayer ? `${value}%` : value.toLocaleString()}`}</title>
                           </path>
                         ));
                       })}
@@ -496,11 +498,11 @@ export default function GovernmentNationalDashboard() {
                   {/* Explanation rail: what the shading means + selected-state drill-down. */}
                   <div className="gov-map-rail">
                     <div className="gov-map-legend">
-                      <p className="gov-legend-title">{layerMeta?.label} shading</p>
-                      <p className="gov-legend-note">{layerMeta?.legend}.</p>
+                      <p className="gov-legend-title">{layerMeta ? t('govHome.shading', { layer: t(layerMeta.labelKey) }) : ''}</p>
+                      <p className="gov-legend-note">{layerMeta ? t(layerMeta.legendKey) : ''}.</p>
                       {isPercentLayer ? (
                         <div className="flex flex-col gap-1">
-                          {[{ c: GREEN, t: '80%+ on target' }, { c: AMBER, t: '60–79% needs follow-up' }, { c: RED, t: 'Below 60% critical' }].map(row => (
+                          {[{ c: GREEN, t: t('govHome.legendOnTarget') }, { c: AMBER, t: t('govHome.legendFollowUp') }, { c: RED, t: t('govHome.legendCritical') }].map(row => (
                             <span key={row.t} className="flex items-center gap-1.5 text-[11px]">
                               <i className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: row.c, opacity: 0.75 }} />
                               {row.t}
@@ -520,23 +522,23 @@ export default function GovernmentNationalDashboard() {
                           <span className="text-[10px] tabular-nums">{maxValue.toLocaleString()}</span>
                         </div>
                       )}
-                      <p className="gov-legend-foot">Neutral states have no data on file.</p>
+                      <p className="gov-legend-foot">{t('ui.neutralStatesHaveNoData')}</p>
                     </div>
 
                     {selected && selectedState ? (
                       <div className="gov-map-selected">
                         <b>{selectedState}</b>
-                        <span>{selected.facilities} facilities</span>
-                        <span style={{ color: selected.alertCases > 0 ? RED : 'inherit' }}>{selected.alertCases.toLocaleString()} alert cases</span>
-                        <span>{selected.immRecords.toLocaleString()} immunization records</span>
-                        <span>{selected.completenessN > 0 ? `${Math.round(selected.completenessSum / selected.completenessN)}% reporting completeness` : 'No assessment on file'}</span>
+                        <span>{t('govHome.facilitiesCount', { n: selected.facilities })}</span>
+                        <span style={{ color: selected.alertCases > 0 ? RED : 'inherit' }}>{selected.alertCases.toLocaleString()} {t('ui.alertCases')}</span>
+                        <span>{selected.immRecords.toLocaleString()} {t('ui.immunizationRecords')}</span>
+                        <span>{selected.completenessN > 0 ? t('govEquity.tipCompleteness', { n: Math.round(selected.completenessSum / selected.completenessN) }) : t('govHome.noAssessment')}</span>
                         <button type="button" className="gov-open-link" onClick={() => router.push('/manage')}>
-                          Open facilities <ChevronRight className="w-3 h-3 inline" />
+                          {t('ui.openFacilities')} <ChevronRight className="w-3 h-3 inline" />
                         </button>
                       </div>
                     ) : (
                       <div className="gov-map-hint">
-                        Select a state on the map to see its facilities, alert cases, immunization records, and reporting completeness here.
+                        {t('ui.selectAStateOnThe')}
                       </div>
                     )}
                   </div>
@@ -548,9 +550,9 @@ export default function GovernmentNationalDashboard() {
 
         {/* Facility-type mix — the design's 104px donut with a count legend. */}
         <section className="gov-panel gov-span-2">
-          <PanelHead title="Facility types" meta={`${hospitals.length.toLocaleString()} registered`} />
+          <PanelHead title={t('ui.facilityTypes')} meta={t('govHome.registered', { n: hospitals.length.toLocaleString() })} />
           {facilityMix.length === 0 ? (
-            <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>No facilities on file.</p>
+            <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>{t('ui.noFacilitiesOnFile')}</p>
           ) : (
             <div className="gov-donut-body">
               <div className="gov-donut-ring">
@@ -574,10 +576,10 @@ export default function GovernmentNationalDashboard() {
         {/* Weekly reported cases — the design's paired-bar panel; series stay
             per-disease with the entity-stable palette and the selector. */}
         <section className="gov-panel gov-span-2 gov-fill-panel">
-          <PanelHead title="Weekly reported cases" meta="Last 12 weeks · National" action={diseaseSelector} />
+          <PanelHead title={t('ui.weeklyReportedCases')} meta={t('govHome.last12Weeks')} action={diseaseSelector} />
           <div className="gov-chart-body gov-chart-fill" style={{ height: 208 }}>
             {weeklyByDisease.length === 0 || diseaseList.length === 0 ? (
-              <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>No surveillance reports on file.</p>
+              <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>{t('ui.noSurveillanceReportsOnFile')}</p>
             ) : (
               <WeeklyCasesChart data={weeklyByDisease} diseases={shownDiseases} colorMap={diseaseColorMap} />
             )}

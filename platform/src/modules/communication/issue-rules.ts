@@ -8,8 +8,41 @@
 import type { MessageDoc } from '@/lib/db-types';
 import { isPathAllowed } from '@/lib/role-routes';
 
-export const ISSUE_STATUSES = ['new', 'in_progress', 'resolved', 'closed'] as const;
+/**
+ * The steps a report moves through, in order: reported, acknowledged (someone
+ * has read it and owns the triage), being worked on, resolved (the fix is in
+ * and the reporter has been told), closed (nothing more to do).
+ */
+export const ISSUE_STATUSES = ['new', 'acknowledged', 'in_progress', 'resolved', 'closed'] as const;
 export type IssueStatus = (typeof ISSUE_STATUSES)[number];
+
+/** The forward move from each step, and the action label that makes it. */
+export const ISSUE_NEXT_STEP: Record<IssueStatus, { to: IssueStatus; actionKey: string } | null> = {
+  new: { to: 'acknowledged', actionKey: 'issues.action.acknowledge' },
+  acknowledged: { to: 'in_progress', actionKey: 'issues.action.startWork' },
+  in_progress: { to: 'resolved', actionKey: 'issues.action.resolve' },
+  resolved: { to: 'closed', actionKey: 'issues.action.close' },
+  closed: null,
+};
+
+/** Where in the five steps a status sits (0-based). */
+export function issueStepIndex(status: IssueStatus): number {
+  return ISSUE_STATUSES.indexOf(status);
+}
+
+/** One entry in a report's activity trail. `note` is encrypted at rest. */
+export interface IssueHistoryEntry {
+  at: string;
+  byId: string;
+  byName: string;
+  kind: 'status' | 'assign' | 'triage' | 'reply' | 'note';
+  /** For `status`: the step moved to. */
+  status?: IssueStatus;
+  /** For `assign`: who now owns it (empty when unassigned). */
+  assignee?: string;
+  /** For `reply` (seen by the reporter), `note` (staff only) and `triage` (what changed). */
+  note?: string;
+}
 
 export const ISSUE_CATEGORIES = ['bug', 'wrong_data', 'access', 'sync', 'performance', 'drug_safety', 'other'] as const;
 export type IssueCategory = (typeof ISSUE_CATEGORIES)[number];
@@ -17,7 +50,7 @@ export type IssueCategory = (typeof ISSUE_CATEGORIES)[number];
 export const ISSUE_SEVERITIES = ['low', 'medium', 'high', 'critical'] as const;
 export type IssueSeverity = (typeof ISSUE_SEVERITIES)[number];
 
-const OPEN_STATUSES: ReadonlySet<IssueStatus> = new Set<IssueStatus>(['new', 'in_progress']);
+const OPEN_STATUSES: ReadonlySet<IssueStatus> = new Set<IssueStatus>(['new', 'acknowledged', 'in_progress']);
 
 export const SUMMARY_MAX = 140;
 export const DETAILS_MAX = 4000;
@@ -68,7 +101,7 @@ export interface IssueSummary {
 }
 
 export function summariseIssues(messages: MessageDoc[]): IssueSummary {
-  const byStatus: Record<IssueStatus, number> = { new: 0, in_progress: 0, resolved: 0, closed: 0 };
+  const byStatus: Record<IssueStatus, number> = { new: 0, acknowledged: 0, in_progress: 0, resolved: 0, closed: 0 };
   let open = 0;
   for (const m of messages) {
     const status = deriveIssueStatus(m);

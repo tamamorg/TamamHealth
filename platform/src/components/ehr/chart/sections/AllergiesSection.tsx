@@ -228,14 +228,14 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
         checked={showInactive}
         onChange={e => setShowInactive(e.target.checked)}
       />
-      Show inactive ({inactive.length})
+      {t('ui.showInactive')}{inactive.length})
     </label>
   ) : undefined;
 
   return (
     <>
       <ChartSection
-        title="Allergies"
+        title={t('noteEditor.section.allergies')}
         addLabel="Add"
         onAdd={canRecordAllergies ? () => setAdding(true) : undefined}
         filterSlot={filterSlot}
@@ -248,7 +248,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
           // was none — and a prescriber deciding on an antibiotic needs to
           // know which of the two they are looking at.
           <p className="tamam-attestation">
-            <strong>No known drug allergies.</strong> Recorded at a medication review.
+            <strong>{t('ui.noKnownDrugAllergies2')}</strong> {t('ui.recordedAtAMedicationReview')}
           </p>
         ) : (
           <table className="tamam-table tamam-table--fixed tamam-table--interactive tamam-table--allergies">
@@ -257,11 +257,11 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
             </colgroup>
             <thead>
               <tr>
-                <th>Allergen</th>
-                <th>Severity</th>
-                <th>Reaction</th>
-                <th>Comments</th>
-                <th>Status</th>
+                <th>{t('ui.allergen')}</th>
+                <th>{t('epidemic.colSeverity')}</th>
+                <th>{t('ui.reaction')}</th>
+                <th>{t('labOrder.comments')}</th>
+                <th>{t('billing.activityColumn.status')}</th>
                 <th>{t('chart.actions')}</th>
               </tr>
             </thead>
@@ -271,7 +271,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
                   <td colSpan={6} style={{ cursor: 'default', background: 'transparent' }}>
                     <OmrsEmptyState
                       itemLabel="allergies"
-                      actionLabel="Record allergies"
+                      actionLabel={t('ui.recordAllergies')}
                       onAction={canRecordAllergies ? () => setAdding(true) : undefined}
                       disabledReason={canRecordAllergies ? undefined : 'Requires clinical-editing permission'}
                     />
@@ -297,10 +297,10 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
                     <td>
                       <span className="tamam-cell-cap">
                         {a.status !== 'active' && a.removalReason
-                          ? <span className="tamam-cell-note">Retired: {a.removalReason}</span>
+                          ? <span className="tamam-cell-note">{t('ui.retired')} {a.removalReason}</span>
                           : a.classification || '—'}
                       </span>
-                      {a.onsetDate && <div className="tamam-cell-sub">Onset {formatDate(a.onsetDate)}</div>}
+                      {a.onsetDate && <div className="tamam-cell-sub">{t('ui.onset')} {formatDate(a.onsetDate)}</div>}
                     </td>
                     <td>
                       <span className={STATUS_BADGE[a.status] || STATUS_BADGE.inactive}>
@@ -345,13 +345,13 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
 
       {editing && (
         <FormSlider
-          title="Edit allergy"
+          title={t('ui.editAllergy2')}
           className="tamam-dialog"
           width={480}
           onClose={() => !busy && setEditing(null)}
           busy={busy}
           footer={<>
-              <button className="btn btn-secondary" disabled={busy} onClick={() => setEditing(null)}>Cancel</button>
+              <button className="btn btn-secondary" disabled={busy} onClick={() => setEditing(null)}>{t('action.cancel')}</button>
               <button className="btn btn-primary" disabled={busy || !editForm.substance.trim()} onClick={saveEdit}>
                 {busy ? 'Saving…' : 'Save changes'}
               </button>
@@ -359,25 +359,25 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
         >
           <div className="space-y-4">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="allergy-substance" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Allergen</label>
+              <label htmlFor="allergy-substance" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('ui.allergen')}</label>
               <input id="allergy-substance" value={editForm.substance} onChange={e => setEditForm({ ...editForm, substance: e.target.value })} className={fieldCls} style={fieldStyle} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="allergy-class" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Classification</label>
+                <label htmlFor="allergy-class" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('nutrition.classification')}</label>
                 <Select id="allergy-class" value={editForm.classification} onChange={e => setEditForm({ ...editForm, classification: e.target.value as AllergyEntry['classification'] })}>
                   {CLASSIFICATIONS.map(c => <option key={c} value={c}>{c}</option>)}
                 </Select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="allergy-crit" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Severity</label>
+                <label htmlFor="allergy-crit" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('epidemic.colSeverity')}</label>
                 <Select id="allergy-crit" value={editForm.criticality} onChange={e => setEditForm({ ...editForm, criticality: e.target.value as NonNullable<AllergyEntry['criticality']> })}>
                   {CRITICALITIES.map(c => <option key={c} value={c}>{SEVERITY_LABEL[c]}</option>)}
                 </Select>
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="allergy-reaction" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Reaction</label>
+              <label htmlFor="allergy-reaction" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('ui.reaction')}</label>
               <input id="allergy-reaction" value={editForm.reaction} onChange={e => setEditForm({ ...editForm, reaction: e.target.value })} className={fieldCls} style={fieldStyle} />
             </div>
           </div>
@@ -387,35 +387,34 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
       {retiring && (
         <Modal variant="slider" className="tamam-dialog" onClose={() => !busy && setRetiring(null)} width={560} labelledBy="retire-allergy-title">
           <DialogFrame busy={busy}>
-            <DialogHeader titleId="retire-allergy-title" title="Retire allergy" onClose={() => !busy && setRetiring(null)} />
+            <DialogHeader titleId="retire-allergy-title" title={t('ui.retireAllergy')} onClose={() => !busy && setRetiring(null)} />
             <DialogBody className="space-y-4">
             <p className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>
-              Take <strong>{retiring.substance}</strong> off the active allergy list. The entry is kept with its
-              reason — allergies are never deleted outright.
+              {t('ui.take')} <strong>{retiring.substance}</strong> {t('ui.offTheActiveAllergyList')}
             </p>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="retire-status" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Why</label>
+              <label htmlFor="retire-status" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('ui.why')}</label>
               <Select id="retire-status" value={retireStatus} onChange={e => setRetireStatus(e.target.value as typeof retireStatus)}>
-                <option value="inactive">No longer active</option>
-                <option value="resolved">Resolved — retested and tolerated</option>
-                <option value="entered_in_error">Entered in error</option>
+                <option value="inactive">{t('ui.noLongerActive')}</option>
+                <option value="resolved">{t('ui.resolvedRetestedAndTolerated')}</option>
+                <option value="entered_in_error">{t('chart.enteredInError')}</option>
               </Select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="retire-reason" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Reason (required)</label>
+              <label htmlFor="retire-reason" className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('ui.reasonRequired')}</label>
               <textarea rows={1}
                 id="retire-reason"
                 autoFocus
                 value={retireReason}
                 onChange={e => setRetireReason(e.target.value)}
-                placeholder="e.g. Negative challenge test on 12 Aug"
+                placeholder={t('ui.eGNegativeChallengeTest')}
                 className={fieldCls}
                 style={fieldStyle}
               />
             </div>
             </DialogBody>
             <DialogFooter>
-              <button className="btn btn-secondary" disabled={busy} onClick={() => setRetiring(null)}>Cancel</button>
+              <button className="btn btn-secondary" disabled={busy} onClick={() => setRetiring(null)}>{t('action.cancel')}</button>
               <button className="btn btn-primary" disabled={busy || !retireReason.trim()} onClick={confirmRetire}>
                 {busy ? 'Saving…' : 'Retire allergy'}
               </button>

@@ -28,7 +28,6 @@ import { catalogFor, searchCatalog, toOrderedTest } from '@/components/lab/order
 import { stockPositionFor } from '@/lib/pharmacy-stock-position';
 import type { PatientDoc, PharmacyInventoryDoc } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import FormNotices from '@/components/overlay/FormNotices';
 import { describeError } from '@/lib/user-facing-error';
 import type { ChartPanelUser } from './types';
 import {
@@ -412,7 +411,6 @@ export default function OrderBasketPanel({
           order above goes to the pharmacy or the bench now. Cancel closes the
           panel and keeps the unsigned orders for later. A failed signing
           is reported just above it, not in the corner. */}
-      <FormNotices />
       <div className="obk-footer">
         <button type="button" className="obk-footer-btn obk-footer-btn--secondary" onClick={onClose} disabled={signing}>{t('common.cancel')}</button>
         <button

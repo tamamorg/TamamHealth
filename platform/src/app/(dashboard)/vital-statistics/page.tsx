@@ -52,7 +52,7 @@ export default function VitalStatisticsPage() {
     <main className="page-container page-enter sadb-scope">
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <aside style={{ width: 224, flexShrink: 0 }}>
-          <nav className="ehr-set-nav" aria-label="Vital statistics sections" data-tour="vs-section-nav">
+          <nav className="ehr-set-nav" aria-label={t('ui.vitalStatisticsSections')} data-tour="vs-section-nav">
             {sections.map(item => {
               const Icon = item.icon;
               return (
@@ -70,15 +70,15 @@ export default function VitalStatisticsPage() {
           {section === 'births' && (
             <>
               <div className="sadb-kpi-row">
-                <SadbKpiTile label={t('vitalStats.totalBirths')} value={birthStats.total.toLocaleString()} delta="Births registered on record" onClick={() => router.push('/births')} />
-                <SadbKpiTile label={t('births.statThisMonth')} value={birthStats.thisMonth.toLocaleString()} delta="Births registered this calendar month" onClick={() => router.push('/births')} />
-                <SadbKpiTile label={t('vitalStats.maleBirths')} value={birthStats.byGender.male.toLocaleString()} delta={`${pct(birthStats.byGender.male, birthStats.total)}% of registered births`} />
-                <SadbKpiTile label={t('vitalStats.femaleBirths')} value={birthStats.byGender.female.toLocaleString()} delta={`${pct(birthStats.byGender.female, birthStats.total)}% of registered births`} />
-                <SadbKpiTile label={t('births.statCaesareanRate')} value={`${pct(birthStats.byDeliveryType.caesarean, birthStats.total)}%`} delta={`${birthStats.byDeliveryType.caesarean.toLocaleString()} caesarean of ${birthStats.total.toLocaleString()} births`} />
+                <SadbKpiTile label={t('vitalStats.totalBirths')} value={birthStats.total.toLocaleString()} delta={t('vitalStats.detailBirthsTotal')} onClick={() => router.push('/births')} />
+                <SadbKpiTile label={t('births.statThisMonth')} value={birthStats.thisMonth.toLocaleString()} delta={t('vitalStats.detailBirthsMonth')} onClick={() => router.push('/births')} />
+                <SadbKpiTile label={t('vitalStats.maleBirths')} value={birthStats.byGender.male.toLocaleString()} delta={t('vitalStats.detailShareOfBirths', { pct: pct(birthStats.byGender.male, birthStats.total) })} />
+                <SadbKpiTile label={t('vitalStats.femaleBirths')} value={birthStats.byGender.female.toLocaleString()} delta={t('vitalStats.detailShareOfBirths', { pct: pct(birthStats.byGender.female, birthStats.total) })} />
+                <SadbKpiTile label={t('births.statCaesareanRate')} value={`${pct(birthStats.byDeliveryType.caesarean, birthStats.total)}%`} delta={t('vitalStats.detailCaesarean', { n: birthStats.byDeliveryType.caesarean.toLocaleString(), total: birthStats.total.toLocaleString() })} />
               </div>
 
               {Object.keys(birthStats.byState).length > 0 && (
-                <SadbCard title={t('vitalStats.birthsByState')} meta="Registered births">
+                <SadbCard title={t('vitalStats.birthsByState')} meta={t('vitalStats.metaRegisteredBirths')}>
                   <div className="p-4 space-y-2">
                     {Object.entries(birthStats.byState).sort(([, a], [, b]) => b - a).map(([state, count]) => (
                       <div key={state} className="flex items-center gap-3">
@@ -98,14 +98,14 @@ export default function VitalStatisticsPage() {
           {section === 'mortality' && (
             <>
               <div className="sadb-kpi-row">
-                <SadbKpiTile label={t('deaths.statTotalDeaths')} value={deathStats.total.toLocaleString()} delta="Deaths registered on record" onClick={() => router.push('/deaths')} />
-                <SadbKpiTile label={t('deaths.statMaternalDeaths')} value={deathStats.maternalDeaths.toLocaleString()} delta="Deaths of women during or after pregnancy" deltaTone={deathStats.maternalDeaths > 0 ? 'warn' : undefined} onClick={() => router.push('/deaths')} />
-                <SadbKpiTile label={t('deaths.statUnder5Deaths')} value={deathStats.under5Deaths.toLocaleString()} delta="Deaths of children under 5 years" onClick={() => router.push('/deaths')} />
-                <SadbKpiTile label={t('vitalStats.neonatalDeaths')} value={deathStats.neonatalDeaths.toLocaleString()} delta="Deaths in the first 28 days of life" onClick={() => router.push('/deaths')} />
-                <SadbKpiTile label={t('vitalStats.icd11Coded')} value={`${pct(deathStats.withICD11Code, deathStats.total)}%`} delta={`${deathStats.withICD11Code.toLocaleString()} of ${deathStats.total.toLocaleString()} deaths have an ICD-11 cause code`} />
+                <SadbKpiTile label={t('deaths.statTotalDeaths')} value={deathStats.total.toLocaleString()} delta={t('vitalStats.detailDeathsTotal')} onClick={() => router.push('/deaths')} />
+                <SadbKpiTile label={t('deaths.statMaternalDeaths')} value={deathStats.maternalDeaths.toLocaleString()} delta={t('vitalStats.detailMaternal')} deltaTone={deathStats.maternalDeaths > 0 ? 'warn' : undefined} onClick={() => router.push('/deaths')} />
+                <SadbKpiTile label={t('deaths.statUnder5Deaths')} value={deathStats.under5Deaths.toLocaleString()} delta={t('vitalStats.detailUnder5')} onClick={() => router.push('/deaths')} />
+                <SadbKpiTile label={t('vitalStats.neonatalDeaths')} value={deathStats.neonatalDeaths.toLocaleString()} delta={t('vitalStats.detailNeonatal')} onClick={() => router.push('/deaths')} />
+                <SadbKpiTile label={t('vitalStats.icd11Coded')} value={`${pct(deathStats.withICD11Code, deathStats.total)}%`} delta={t('vitalStats.detailIcd', { n: deathStats.withICD11Code.toLocaleString(), total: deathStats.total.toLocaleString() })} />
               </div>
 
-              <SadbCard title={t('vitalStats.topCausesOfDeath')} meta="Most common recorded causes">
+              <SadbCard title={t('vitalStats.topCausesOfDeath')} meta={t('vitalStats.metaCauses')}>
                 <div className="p-4 space-y-2">
                   {deathStats.topCauses.slice(0, 5).map((c, i) => (
                     <div key={c.code} className="flex items-center gap-3" style={{ fontSize: 14 }}>
@@ -121,7 +121,7 @@ export default function VitalStatisticsPage() {
           )}
 
           {section === 'crvs' && (
-            <SadbCard title={t('vitalStats.crvsRegistrationGaps')} meta={`${deathStats.total.toLocaleString()} deaths on record`}>
+            <SadbCard title={t('vitalStats.crvsRegistrationGaps')} meta={t('vitalStats.metaDeathsOnRecord', { n: deathStats.total.toLocaleString() })}>
               <div className="p-4 space-y-4">
                 <RateBar label={t('vitalStats.deathNotificationRate')} pct={pct(deathStats.notified, deathStats.total)} color="var(--color-warning)" />
                 <RateBar label={t('vitalStats.deathRegistrationRate')} pct={pct(deathStats.registered, deathStats.total)} color="var(--color-danger)" />

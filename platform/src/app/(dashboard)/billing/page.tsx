@@ -154,7 +154,7 @@ export default function BillingHomePage() {
       </div>
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
         <EhrListHeader
-          title="Billing"
+          title={t('admin.linkBilling')}
           count={bills.length}
           search={{
             value: search,
@@ -165,7 +165,7 @@ export default function BillingHomePage() {
           actions={
             <Select
               value={filter}
-              aria-label="Filter bills by status"
+              aria-label={t('ui.filterBillsByStatus')}
               onChange={e => { setFilter(e.target.value as FilterKey); setVisibleCount(PAGE_SIZE); }}
             >
               {FILTERS.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
@@ -191,7 +191,7 @@ export default function BillingHomePage() {
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={BILL_COLS.length} className="text-sm p-4" style={{ color: 'var(--text-muted)' }}>Loading bills…</td></tr>
+                <tr><td colSpan={BILL_COLS.length} className="text-sm p-4" style={{ color: 'var(--text-muted)' }}>{t('ui.loadingBills')}</td></tr>
               )}
               {!loading && visible.length === 0 && (
                 <tr>
@@ -233,9 +233,9 @@ export default function BillingHomePage() {
         </div>
         {!loading && filtered.length > visible.length && (
           <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid var(--border-light)' }}>
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Showing {visible.length} of {filtered.length} bills</span>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('ui.showing')} {visible.length} of {filtered.length} bills</span>
             <button type="button" className="btn btn-secondary" style={{ height: 34 }} onClick={() => setVisibleCount(c => c + PAGE_SIZE)}>
-              Load more
+              {t('patients.loadMore')}
             </button>
           </div>
         )}

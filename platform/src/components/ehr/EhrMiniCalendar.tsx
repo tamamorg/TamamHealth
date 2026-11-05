@@ -7,6 +7,7 @@ import { Calendar, ChevronLeft, ChevronRight } from '@/components/icons/lucide';
 // existing importers keep working; new code should import from the lib module.
 export { toIsoDate, parseIsoDate } from '@/lib/date-utils';
 import { toIsoDate, parseIsoDate } from '@/lib/date-utils';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export function startOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -45,6 +46,7 @@ export default function EhrMiniCalendar({
   onMonthChange: (month: Date) => void;
   onDateSelect: (date: string) => void;
 }) {
+  const { t } = useTranslation();
   const eventDateCounts = eventDates.reduce<Map<string, number>>((counts, date) => {
     counts.set(date, (counts.get(date) || 0) + 1);
     return counts;
@@ -76,14 +78,14 @@ export default function EhrMiniCalendar({
           onMonthChange(startOfMonth(parseIsoDate(today)));
         }}
       >
-        <Calendar className="w-4 h-4" /> Go to today
+        <Calendar className="w-4 h-4" /> {t('ui.goToToday')}
       </button>
       <div className="ehr-mini-calendar-title">
-        <button type="button" onClick={() => onMonthChange(addMonths(month, -1))} aria-label="Previous month">
+        <button type="button" onClick={() => onMonthChange(addMonths(month, -1))} aria-label={t('ui.previousMonth')}>
           <ChevronLeft className="w-4 h-4" />
         </button>
         <span>{formatMonthTitle(month)}</span>
-        <button type="button" onClick={() => onMonthChange(addMonths(month, 1))} aria-label="Next month">
+        <button type="button" onClick={() => onMonthChange(addMonths(month, 1))} aria-label={t('ui.nextMonth')}>
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>

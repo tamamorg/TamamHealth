@@ -42,7 +42,7 @@ export default function PatientMessageModal({ messageSending, setShowMessageModa
           width={500}
           onClose={() => !messageSending && setShowMessageModal(false)}
           footer={<>
-              <button type="button" onClick={() => setShowMessageModal(false)} className="btn btn-secondary" disabled={messageSending}>Close</button>
+              <button type="button" onClick={() => setShowMessageModal(false)} className="btn btn-secondary" disabled={messageSending}>{t('billing.activityClose')}</button>
               <button type="button" onClick={sendPatientMessage} className="btn btn-primary" disabled={messageSending || !messageBody.trim()}>
                 <MessageSquare className="w-3.5 h-3.5" /> {messageSending ? 'Sending…' : 'Send message'}
               </button>
@@ -51,7 +51,7 @@ export default function PatientMessageModal({ messageSending, setShowMessageModa
           <div className="space-y-4">
             <div className="space-y-3">
               <div>
-                <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Channel</label>
+                <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('feedback.channel')}</label>
                 <div className="grid grid-cols-3 gap-2">
                   {(['app', 'sms', 'both'] as const).map(channel => (
                     <button
@@ -85,7 +85,7 @@ export default function PatientMessageModal({ messageSending, setShowMessageModa
                 )}
               </div>
               <div>
-                <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Subject</label>
+                <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('message.subject')}</label>
                 <input
                   value={messageSubject}
                   onChange={e => { setMessageSubject(e.target.value); setMessageSent(false); }}
@@ -94,13 +94,13 @@ export default function PatientMessageModal({ messageSending, setShowMessageModa
                 />
               </div>
               <div>
-                <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>Message</label>
+                <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('lab.message')}</label>
                 <textarea
                   autoFocus
                   value={messageBody}
                   onChange={e => { setMessageBody(e.target.value); setMessageError(''); setMessageSent(false); }}
                   rows={4}
-                  placeholder="Write a clear patient instruction or follow-up message."
+                  placeholder={t('ui.writeAClearPatientInstruction')}
                   className="w-full p-2.5 rounded-md text-[13px]"
                   style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
                 />

@@ -17,12 +17,13 @@ import { useANC } from '@/lib/hooks/useANC';
 import { useDataQuality } from '@/lib/hooks/useDataQuality';
 import { SOUTH_SUDAN_STATES } from '@/lib/geographic-data';
 import { AlertTriangle } from '@/components/icons/lucide';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 type View = 'comparison' | 'burden' | 'access';
-const VIEWS: { key: View; label: string }[] = [
-  { key: 'comparison', label: 'State comparison' },
-  { key: 'burden', label: 'Burden and reporting' },
-  { key: 'access', label: 'Facility access' },
+const VIEW_KEYS: { key: View; labelKey: string }[] = [
+  { key: 'comparison', labelKey: 'govEquity.viewComparison' },
+  { key: 'burden', labelKey: 'govEquity.viewBurden' },
+  { key: 'access', labelKey: 'govEquity.viewAccess' },
 ];
 
 function MiniBar({ value, max, color }: { value: number; max: number; color: string }) {
@@ -47,6 +48,7 @@ interface StateRow {
 }
 
 export default function EquityPlanningPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const viewParam = searchParams?.get('view');
@@ -128,67 +130,67 @@ export default function EquityPlanningPage() {
       <div className="sadb-page" data-tour="gov-equity-header">
         <div className="sadb-kpi-row">
           <SadbKpiTile
-            label="States with an access gap"
-            value={`${accessGapCount} of ${rows.length}`}
-            delta="States with one facility or none registered"
+            label={t('govEquity.kpiGap')}
+            value={t('govEquity.kpiGapValue', { n: accessGapCount, total: rows.length })}
+            delta={t('govEquity.kpiGapDetail')}
             deltaTone={accessGapCount > 0 ? 'warn' : undefined}
             onClick={() => router.push('/manage')}
           />
           <SadbKpiTile
-            label="Priority states"
+            label={t('govEquity.kpiPriority')}
             value={priorityStates.length}
-            delta="More active cases and lower reporting completeness than the median state"
+            delta={t('govEquity.kpiPriorityDetail')}
             onClick={() => setView('burden')}
           />
           <SadbKpiTile
-            label="Active alert cases"
+            label={t('ui.activeAlertCases')}
             value={activeAlertRows.reduce((n, a) => n + (a.cases || 0), 0).toLocaleString()}
-            delta={`Cases on ${activeAlertRows.length.toLocaleString()} active alerts across all states`}
+            delta={t('govEquity.kpiCasesDetail', { n: activeAlertRows.length.toLocaleString() })}
             trend={caseTrend?.trend}
             onClick={() => router.push('/government/alerts')}
           />
           <SadbKpiTile
-            label="Registered facilities"
+            label={t('govEquity.kpiFacilities')}
             value={totalFacilities.toLocaleString()}
-            delta={`Spread over ${rows.filter(r => r.facilities > 0).length} of ${rows.length} states`}
+            delta={t('govEquity.kpiFacilitiesDetail', { n: rows.filter(r => r.facilities > 0).length, total: rows.length })}
             onClick={() => router.push('/manage')}
           />
         </div>
 
         <FieldRow>
-          <Field label="View">
+          <Field label={t('govEquity.view')}>
             <Select value={view} onChange={e => setView(e.target.value as View)} data-action="gov-equity-view">
-              {VIEWS.map(v => <option key={v.key} value={v.key}>{v.label}</option>)}
+              {VIEW_KEYS.map(v => <option key={v.key} value={v.key}>{t(v.labelKey)}</option>)}
             </Select>
           </Field>
           {view === 'comparison' && (
-            <Field label="Search" group>
-              <SadbSearch value={search} onChange={setSearch} placeholder="State name" ariaLabel="Search states" />
+            <Field label={t('govEquity.search')} group>
+              <SadbSearch value={search} onChange={setSearch} placeholder={t('govEquity.searchPlaceholder')} ariaLabel={t('govEquity.searchAria')} />
             </Field>
           )}
         </FieldRow>
 
         {loading ? (
-          <SadbCard><p className="sadb-empty">Loading state comparisons…</p></SadbCard>
+          <SadbCard><p className="sadb-empty">{t('ui.loadingStateComparisons')}</p></SadbCard>
         ) : (
           <>
             {view === 'comparison' && (
-              <SadbCard title="State comparison" meta={`${sortedRows.length} of ${rows.length} states`}>
+              <SadbCard title={t('govEquity.viewComparison')} meta={t('govEquity.comparisonMeta', { shown: sortedRows.length, total: rows.length })}>
                 <div className="show-scrollbar" style={{ overflowX: 'auto' }}>
                   <table className="w-full ov-table" style={{ minWidth: 860 }}>
                     <thead>
                       <tr>
-                        <th className="text-start">State</th>
-                        <th className="text-start">Facilities</th>
-                        <th className="text-start">Active alert cases</th>
-                        <th className="text-start">Immunization records</th>
-                        <th className="text-start">Antenatal visits</th>
-                        <th className="text-start">Reporting completeness</th>
+                        <th className="text-start">{t('births.colState')}</th>
+                        <th className="text-start">{t('government.colFacilities')}</th>
+                        <th className="text-start">{t('ui.activeAlertCases')}</th>
+                        <th className="text-start">{t('ui.immunizationRecords2')}</th>
+                        <th className="text-start">{t('govEquity.colAnc')}</th>
+                        <th className="text-start">{t('govEquity.colCompleteness')}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {sortedRows.length === 0 && (
-                        <tr><td colSpan={6} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>No state matches this search. Clear it to see all states.</td></tr>
+                        <tr><td colSpan={6} className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('govEquity.noState')}</td></tr>
                       )}
                       {sortedRows.map(r => (
                         <tr key={r.state}>
@@ -198,7 +200,7 @@ export default function EquityPlanningPage() {
                           <td><MiniBar value={r.immRecords} max={maxImm} color="var(--color-success-text)" /></td>
                           <td><MiniBar value={r.ancVisits} max={maxAnc} color="var(--color-warning-text)" /></td>
                           <td style={{ color: r.avgCompleteness === null ? 'var(--text-muted)' : undefined }}>
-                            {r.avgCompleteness === null ? 'Not assessed' : `${r.avgCompleteness}%`}
+                            {r.avgCompleteness === null ? t('govEquity.notAssessed') : `${r.avgCompleteness}%`}
                           </td>
                         </tr>
                       ))}
@@ -209,27 +211,27 @@ export default function EquityPlanningPage() {
             )}
 
             {view === 'burden' && (
-              <SadbCard title="Active case burden against reporting completeness" meta="States without an assessment are left out">
+              <SadbCard title={t('govEquity.burdenTitle')} meta={t('govEquity.burdenMeta')}>
                 <p className="px-4 pt-3" style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                  Reporting completeness stands in for how well a state can see its own burden. It does not measure service coverage.
+                  {t('govEquity.burdenNote')}
                 </p>
                 <div className="px-4 py-4" style={{ height: 380 }}>
                   {scatterRows.length === 0 ? (
-                    <div className="flex items-center justify-center h-full" style={{ color: 'var(--text-muted)' }}>No facility assessments on file. Record an assessment to plot a state.</div>
+                    <div className="flex items-center justify-center h-full" style={{ color: 'var(--text-muted)' }}>{t('govEquity.burdenNone')}</div>
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
                       <ScatterChart margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" vertical={false} />
-                        <XAxis type="number" dataKey="activeCases" name="Active alert cases" tick={axisTick} axisLine={{ stroke: 'var(--border-light)' }} tickLine={false} label={{ value: 'Active alert cases (burden)', position: 'insideBottom', offset: -5, fontSize: 12, fill: 'var(--text-muted)' }} />
-                        <YAxis type="number" dataKey="avgCompleteness" name="Avg. completeness" domain={[0, 100]} tick={axisTick} axisLine={{ stroke: 'var(--border-light)' }} tickLine={false} label={{ value: 'Reporting completeness %', angle: -90, position: 'insideLeft', fontSize: 12, fill: 'var(--text-muted)' }} />
+                        <XAxis type="number" dataKey="activeCases" name={t('ui.activeAlertCases')} tick={axisTick} axisLine={{ stroke: 'var(--border-light)' }} tickLine={false} label={{ value: t('govEquity.axisBurden'), position: 'insideBottom', offset: -5, fontSize: 12, fill: 'var(--text-muted)' }} />
+                        <YAxis type="number" dataKey="avgCompleteness" name={t('govEquity.colCompleteness')} domain={[0, 100]} tick={axisTick} axisLine={{ stroke: 'var(--border-light)' }} tickLine={false} label={{ value: t('govEquity.axisCompleteness'), angle: -90, position: 'insideLeft', fontSize: 12, fill: 'var(--text-muted)' }} />
                         <Tooltip cursor={tooltipStyle.cursor} content={({ active, payload }) => {
                           if (!active || !payload?.length) return null;
                           const p = payload[0].payload as StateRow;
                           return (
                             <div style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)', borderRadius: 4, padding: '8px 10px', fontSize: 12 }}>
                               <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.state}</div>
-                              <div style={{ color: 'var(--text-secondary)' }}>{p.activeCases.toLocaleString()} active cases</div>
-                              <div style={{ color: 'var(--text-secondary)' }}>{p.avgCompleteness}% reporting completeness</div>
+                              <div style={{ color: 'var(--text-secondary)' }}>{t('govEquity.tipCases', { n: p.activeCases.toLocaleString() })}</div>
+                              <div style={{ color: 'var(--text-secondary)' }}>{t('govEquity.tipCompleteness', { n: p.avgCompleteness ?? 0 })}</div>
                             </div>
                           );
                         }} />
@@ -245,15 +247,15 @@ export default function EquityPlanningPage() {
                   )}
                 </div>
                 <div className="px-4 pb-4">
-                  <p className="mb-2" style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-warning-text)' }}>High burden, low visibility: priority states</p>
+                  <p className="mb-2" style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-warning-text)' }}>{t('govEquity.priorityHeading')}</p>
                   {priorityStates.length === 0 ? (
-                    <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>No state is in the high-burden, low-visibility quadrant.</p>
+                    <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>{t('govEquity.priorityNone')}</p>
                   ) : (
                     <ul className="space-y-1">
                       {priorityStates.map((r, i) => (
                         <li key={r.state} style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
                           <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{i + 1}. {r.state}</span>
-                          {': '}{r.activeCases.toLocaleString()} active cases, {r.avgCompleteness}% reporting completeness
+                          {': '}{t('govEquity.priorityRow', { cases: r.activeCases.toLocaleString(), pct: r.avgCompleteness ?? 0 })}
                         </li>
                       ))}
                     </ul>
@@ -263,19 +265,19 @@ export default function EquityPlanningPage() {
             )}
 
             {view === 'access' && (
-              <SadbCard title="Facility access" meta="Per active alert case, not per head of population">
+              <SadbCard title={t('govEquity.viewAccess')} meta={t('govEquity.accessMeta')}>
                 <p className="px-4 pt-3" style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                  Population figures are not on file, so density is measured against active alert cases.
+                  {t('govEquity.accessNote')}
                 </p>
                 <div className="show-scrollbar" style={{ overflowX: 'auto' }}>
                   <table className="w-full ov-table" style={{ minWidth: 720 }}>
                     <thead>
                       <tr>
-                        <th className="text-start">State</th>
-                        <th className="text-start">Facilities</th>
-                        <th className="text-start">Active alert cases</th>
-                        <th className="text-start">Facilities per 100 cases</th>
-                        <th className="text-start">Flag</th>
+                        <th className="text-start">{t('births.colState')}</th>
+                        <th className="text-start">{t('government.colFacilities')}</th>
+                        <th className="text-start">{t('ui.activeAlertCases')}</th>
+                        <th className="text-start">{t('govEquity.colPer100')}</th>
+                        <th className="text-start">{t('lab.flag')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -287,7 +289,7 @@ export default function EquityPlanningPage() {
                           <td>{r.ratePer100Cases === null ? '—' : r.ratePer100Cases}</td>
                           <td>
                             {r.accessGap && (
-                              <SadbChip tone="yellow"><AlertTriangle className="w-3 h-3" /> Access gap</SadbChip>
+                              <SadbChip tone="yellow"><AlertTriangle className="w-3 h-3" /> {t('ui.accessGap')}</SadbChip>
                             )}
                           </td>
                         </tr>

@@ -66,13 +66,13 @@ export default function AdminSystemPage() {
   return (
     <SadbPage>
       <SadbCard
-        title="System health"
-        meta={dbStatsLoading ? '…' : `${dbStats.length} data sets · ${totalDocs.toLocaleString()} records`}
+        title={t('system.systemHealth')}
+        meta={dbStatsLoading ? '…' : t('adminMgmt.sysMeta', { stores: dbStats.length, docs: totalDocs.toLocaleString() })}
       >
         <SadbGridList
           template={GRID_TEMPLATE}
           minWidth={480}
-          head={[t('system.database'), t('system.totalDocuments'), 'Status']}
+          head={[t('system.database'), t('system.totalDocuments'), t('admin.colStatus')]}
           empty={dbStatsLoading ? t('system.loadingStats') : undefined}
         >
           {dbStats.map(db => (
@@ -85,7 +85,7 @@ export default function AdminSystemPage() {
                 {db.docCount.toLocaleString()}
               </span>
               <span>
-                <SadbChip tone={db.docCount > 0 ? 'green' : 'neutral'}>{db.docCount > 0 ? 'Populated' : 'Empty'}</SadbChip>
+                <SadbChip tone={db.docCount > 0 ? 'green' : 'neutral'}>{db.docCount > 0 ? t('adminMgmt.sysPopulated') : t('adminMgmt.sysEmpty')}</SadbChip>
               </span>
             </SadbGridRow>
           ))}
@@ -100,7 +100,7 @@ export default function AdminSystemPage() {
         <SadbKvRow label={t('system.platform')} value="Next.js (App Router)" />
         <SadbKvRow label={t('system.uiFramework')} value="Tailwind CSS" />
         <SadbKvRow label={t('system.auth')} value="JWT (Client-side)" />
-        <SadbKvRow label="Build version" value={process.env.NEXT_PUBLIC_APP_VERSION || '—'} />
+        <SadbKvRow label={t('ui.buildVersion')} value={process.env.NEXT_PUBLIC_APP_VERSION || '—'} />
       </SadbCard>
     </SadbPage>
   );

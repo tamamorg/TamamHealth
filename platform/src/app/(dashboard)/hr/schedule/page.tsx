@@ -109,14 +109,14 @@ export default function HrSchedulePage() {
   return (
     <HrPageShell>
       <FacilityKpiBand tiles={[
-        { key: 'shifts', label: 'Shifts', value: schedules.length, detail: SHIFT_TYPES.map(type => `${shiftCount(type)} ${t(`hr.shiftType_${type}`).toLowerCase()}`).join(' · ') },
-        { key: 'confirmed', label: 'Confirmed', value: schedules.filter(s => s.status === 'confirmed' || s.status === 'completed').length, detail: `Out of ${schedules.length} on ${date}` },
-        { key: 'oncall', label: 'On call', value: schedules.filter(s => s.isOnCall).length, detail: 'Staff covering on call' },
-        { key: 'gap', label: 'Short staffed', value: shortBy, detail: staffingGaps.length ? `Below minimum on ${staffingGaps.length} of ${SHIFT_TYPES.length} shift types` : 'Every shift type meets its minimum', warn: staffingGaps.length > 0 },
+        { key: 'shifts', label: t('hr.kpiShifts'), value: schedules.length, detail: SHIFT_TYPES.map(type => t('hr.kpiShiftCount', { count: shiftCount(type), type: t(`hr.shiftType_${type}`).toLowerCase() })).join(' · ') },
+        { key: 'confirmed', label: t('hr.kpiConfirmed'), value: schedules.filter(s => s.status === 'confirmed' || s.status === 'completed').length, detail: t('hr.kpiConfirmedDetail', { count: schedules.length, date }) },
+        { key: 'oncall', label: t('hr.kpiOnCall'), value: schedules.filter(s => s.isOnCall).length, detail: t('hr.kpiOnCallDetail') },
+        { key: 'gap', label: t('hr.kpiShortStaffed'), value: shortBy, detail: staffingGaps.length ? t('hr.kpiShortStaffedDetail', { gaps: staffingGaps.length, total: SHIFT_TYPES.length }) : t('hr.kpiShortStaffedNone'), warn: staffingGaps.length > 0 },
       ]} />
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="hr-schedule-list">
         <EhrListHeader
-          title="Shift schedule"
+          title={t('ui.shiftSchedule')}
           count={schedules.length}
           actions={
             <>
@@ -139,15 +139,15 @@ export default function HrSchedulePage() {
             (this data model has no unassigned-shift record). */}
         {staffingGaps.length > 0 && (
           <div ref={gapsRef} className="mx-4 mt-3 mb-1" style={gapsParam ? { outline: '2px solid var(--color-danger-500)', outlineOffset: 2 } : undefined}>
-            <InlineBanner tone="warning" title="Staffing shortfall">
-              {staffingGaps.map(g => { const name = t(`hr.shiftType_${g.shift}`); return `${name.charAt(0).toUpperCase()}${name.slice(1)} ${g.currentStaff} of ${g.requiredStaff} (short by ${g.gap})`; }).join(' · ')}
+            <InlineBanner tone="warning" title={t('ui.staffingShortfall')}>
+              {staffingGaps.map(g => { const name = t(`hr.shiftType_${g.shift}`); return t('hr.staffingGapLine', { shift: `${name.charAt(0).toUpperCase()}${name.slice(1)}`, current: g.currentStaff, required: g.requiredStaff, gap: g.gap }); }).join(' · ')}
             </InlineBanner>
           </div>
         )}
         {staffingGaps.length === 0 && gapsParam && (
           <div ref={gapsRef} className="mx-4 mt-3 mb-1">
             <InlineBanner tone="success">
-              Fully staffed. Every shift type meets its minimum for {date}.
+              {t('hr.fullyStaffedMinimum', { date })}
             </InlineBanner>
           </div>
         )}
@@ -164,14 +164,14 @@ export default function HrSchedulePage() {
             <div className="appointment-card-head" aria-hidden="true">
               <span>{t('hr.colStaff')}</span>
               <span>{t('hr.labelShift')}</span>
-              <span>Time</span>
+              <span>{t('noteEditor.time')}</span>
               <span>{t('hr.labelDepartment')}</span>
               <span>{t('hr.colStatus')}</span>
             </div>
             {schedules.length === 0 && (
               <EmptyState
                 icon={CalendarClock}
-                title="No shifts scheduled"
+                title={t('ui.noShiftsScheduled')}
                 message={`${t('hr.noShiftsScheduled', { date })} ${t('hr.scheduleShift')} ${t('hr.aboveToAddOne')}`}
                 action={{ label: 'Create shift', onClick: () => setOpen(true) }}
               />

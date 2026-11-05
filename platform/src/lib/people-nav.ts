@@ -113,7 +113,6 @@ export function buildAddMenuEntries({ role, allowedRoutes }: PeopleNavContext): 
     ...(usersHref && canCreateUsers(role)
       ? [{ key: 'staff', label: 'Add staff member', href: withNew(usersHref, 'user') } as AddMenuEntry]
       : []),
-    { key: 'inquiry', label: 'Add patient inquiry', href: '/inquiries?new=1' },
     { key: 'shift', label: 'Create shift', href: '/hr/schedule?new=1' },
     { key: 'leave', label: 'Request leave', href: '/hr/leave?new=1' },
     { key: 'payroll', label: 'Add payroll entry', href: '/hr/payroll?new=1' },

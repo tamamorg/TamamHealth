@@ -26,6 +26,7 @@ import { AlertTriangle } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { useAuth } from '@/lib/context';
 import { canAssignStaffAtFacility } from '@/lib/care-team-permissions';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export interface AppointmentDetailFieldValues {
   recurrence: '' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly';
@@ -71,6 +72,7 @@ export default function AppointmentDetailFields({
   onAssignStaff?: () => void;
   staffAssignDisabled?: boolean;
 }) {
+  const { t } = useTranslation();
   const { users } = useUsers();
   const { currentUser } = useAuth();
   const currentHospitalId = currentUser?.hospitalId;
@@ -124,22 +126,22 @@ export default function AppointmentDetailFields({
 
       <>
         <div>
-          <label>Room</label>
+          <label>{t('ui.room')}</label>
           <Select value={values.room} onChange={e => onChange({ room: e.target.value })}>
-            <option value="">No room</option>
+            <option value="">{t('ui.noRoom')}</option>
             {rooms.map(room => <option key={room} value={room}>{room}</option>)}
           </Select>
         </div>
       </>
 
       <div>
-        <label>Recurrence</label>
+        <label>{t('ui.recurrence')}</label>
         <Select value={values.recurrence} onChange={e => onChange({ recurrence: e.target.value as AppointmentDetailFieldValues['recurrence'] })}>
-          <option value="">Does not repeat</option>
-          <option value="weekly">Weekly</option>
-          <option value="biweekly">Every 2 weeks</option>
-          <option value="monthly">Monthly</option>
-          <option value="quarterly">Quarterly</option>
+          <option value="">{t('ui.doesNotRepeat')}</option>
+          <option value="weekly">{t('appointments.recurrenceWeekly')}</option>
+          <option value="biweekly">{t('ui.every2Weeks')}</option>
+          <option value="monthly">{t('appointments.recurrenceMonthly')}</option>
+          <option value="quarterly">{t('appointments.recurrenceQuarterly')}</option>
         </Select>
       </div>
       </>)}
@@ -147,7 +149,7 @@ export default function AppointmentDetailFields({
       {showProvider && (<>
       {/* ── Who else is on it ─────────────────────────────────────────── */}
         <div>
-          <label>Staff</label>
+          <label>{t('frontDesk.requestSourceStaff')}</label>
           <span className="appt-assign-field">
 <Select
             value={values.staffId}
@@ -156,7 +158,7 @@ export default function AppointmentDetailFields({
               onChange({ staffId: e.target.value, staffName: person?.name || person?.username || '' });
             }}
           >
-            <option value="">None</option>
+            <option value="">{t('births.optNone')}</option>
             {values.staffId && !staffOptions.some(person => person._id === values.staffId) && (
               <option value={values.staffId}>{values.staffName || 'Current staff'}</option>
             )}
@@ -168,7 +170,7 @@ export default function AppointmentDetailFields({
             ))}
           </Select>
             {onAssignStaff && (
-              <button type="button" className="appt-assign-btn" onClick={onAssignStaff} disabled={staffAssignDisabled}>Assign</button>
+              <button type="button" className="appt-assign-btn" onClick={onAssignStaff} disabled={staffAssignDisabled}>{t('frontDesk.assign')}</button>
             )}
           </span>
         </div>
@@ -180,7 +182,7 @@ export default function AppointmentDetailFields({
           style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--color-danger-text)' }}
         >
           <AlertTriangle className="w-3.5 h-3.5" />
-          {providerName || 'This provider'} already has {conflict.patientName} at {conflict.appointmentTime} — conflicts with another appointment.
+          {providerName || 'This provider'} {t('ui.alreadyHas')} {conflict.patientName} at {conflict.appointmentTime} {t('ui.conflictsWithAnotherAppointment')}
         </p>
       )}
 
@@ -188,16 +190,16 @@ export default function AppointmentDetailFields({
 
       {showBilling && (
       <div className="appointment-billing-panel">
-          <div><dt>Balance</dt><dd>{balance ? formatMoney(balance) : 'Nothing due'}</dd></div>
+          <div><dt>{t('financialReview.due')}</dt><dd>{balance ? formatMoney(balance) : 'Nothing due'}</dd></div>
           {primaryPolicy ? (
             <>
-              <div><dt>Insurer</dt><dd>{primaryPolicy.payerName}</dd></div>
-              <div><dt>Cover from</dt><dd>{primaryPolicy.effectiveDate ? formatDate(primaryPolicy.effectiveDate) : 'Not specified'}</dd></div>
-              <div><dt>Co-pay</dt><dd>{typeof primaryPolicy.copayAmount === 'number' ? formatMoney(primaryPolicy.copayAmount) : '—'}</dd></div>
-              <div><dt>Cover status</dt><dd>{primaryPolicy.isActive ? 'Active' : 'Lapsed — patient pays'}</dd></div>
+              <div><dt>{t('ui.insurer')}</dt><dd>{primaryPolicy.payerName}</dd></div>
+              <div><dt>{t('ui.coverFrom')}</dt><dd>{primaryPolicy.effectiveDate ? formatDate(primaryPolicy.effectiveDate) : 'Not specified'}</dd></div>
+              <div><dt>{t('ui.coPay')}</dt><dd>{typeof primaryPolicy.copayAmount === 'number' ? formatMoney(primaryPolicy.copayAmount) : '—'}</dd></div>
+              <div><dt>{t('ui.coverStatus')}</dt><dd>{primaryPolicy.isActive ? 'Active' : 'Lapsed — patient pays'}</dd></div>
             </>
           ) : (
-            <div><dt>Insurer</dt><dd>None — patient pays</dd></div>
+            <div><dt>{t('ui.insurer')}</dt><dd>{t('ui.nonePatientPays')}</dd></div>
           )}
       </div>
       )}

@@ -186,18 +186,18 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
 
   return (
     <>
-      <ChartSection title="Procedures" addLabel="Add" onAdd={canConsult ? () => setAdding(true) : undefined} searchValue={search} onSearchChange={setSearch}>
+      <ChartSection title={t('postConsult.link.procedures')} addLabel="Add" onAdd={canConsult ? () => setAdding(true) : undefined} searchValue={search} onSearchChange={setSearch}>
         <table className="tamam-table tamam-table--fixed">
             <colgroup>
               <col /><col /><col /><col /><col /><col />
             </colgroup>
             <thead>
               <tr>
-                <th>Procedure</th>
-                <th>Date</th>
-                <th>Performed by</th>
-                <th>Outcome</th>
-                <th>Status</th>
+                <th>{t('noteEditor.type.procedure')}</th>
+                <th>{t('billing.activityColumn.date')}</th>
+                <th>{t('imgFlow.acquiredBy')}</th>
+                <th>{t('feedback.outcome')}</th>
+                <th>{t('billing.activityColumn.status')}</th>
                 <th>{t('chart.actions')}</th>
               </tr>
             </thead>
@@ -207,7 +207,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
                   <td colSpan={6} style={{ cursor: 'default', background: 'transparent' }}>
                     <OmrsEmptyState
                       itemLabel="procedures"
-                      actionLabel="Record procedures"
+                      actionLabel={t('ui.recordProcedures')}
                       onAction={canConsult ? () => setAdding(true) : undefined}
                       disabledReason={canConsult ? undefined : 'Requires consultation permission'}
                     />
@@ -282,12 +282,12 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
         >
           <div className="space-y-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Procedure</label>
+              <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('noteEditor.type.procedure')}</label>
               <input
                 type="text"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="e.g. Incision and drainage of abscess"
+                placeholder={t('ui.eGIncisionAndDrainage')}
                 autoFocus
                 className="w-full p-2.5 rounded-md text-[13px]"
                 style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
@@ -308,7 +308,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
             )}
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Code (optional)</label>
+                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('ui.codeOptional')}</label>
                 <input
                   type="text"
                   value={code}
@@ -318,7 +318,7 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Date</label>
+                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('billing.activityColumn.date')}</label>
                 <input
                   type="date"
                   value={date}
@@ -330,30 +330,30 @@ export default function ProceduresSection({ patientId, patientName, canConsult }
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Body site (optional)</label>
+                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('ui.bodySiteOptional')}</label>
                 <input
                   type="text"
                   value={bodySite}
                   onChange={e => setBodySite(e.target.value)}
-                  placeholder="e.g. left forearm"
+                  placeholder={t('ui.eGLeftForearm')}
                   className="w-full p-2.5 rounded-md text-[13px]"
                   style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Outcome (optional)</label>
+                <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('ui.outcomeOptional')}</label>
                 <input
                   type="text"
                   value={outcome}
                   onChange={e => setOutcome(e.target.value)}
-                  placeholder="e.g. successful, no complications"
+                  placeholder={t('ui.eGSuccessfulNoComplications')}
                   className="w-full p-2.5 rounded-md text-[13px]"
                   style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
                 />
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>Notes (optional)</label>
+              <label className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('nurse.notesOptional')}</label>
               <textarea
                 rows={2}
                 value={notes}

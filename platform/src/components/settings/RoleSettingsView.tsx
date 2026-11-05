@@ -67,7 +67,7 @@ import DataManagementPanel from './DataManagementPanel';
  * every role downloads to change their own password.
  */
 const embedded = (load: () => Promise<{ default: React.ComponentType }>) =>
-  dynamic(load, { ssr: false, loading: () => <p className="ehr-set-embed-loading">Loading…</p> });
+  dynamic(load, { ssr: false, loading: () => <p className="ehr-set-embed-loading">{localizeText('Loading…')}</p> });
 
 const AdminSystemPage = embedded(() => import('@/app/(dashboard)/admin/system/page'));
 const AdminSyncPage = embedded(() => import('@/app/(dashboard)/admin/sync/page'));
@@ -106,6 +106,7 @@ import {
 import Select from '@/components/Select';
 import { describeApiError, describeError } from '@/lib/user-facing-error';
 import { usePasswordPolicy } from '@/modules/identity/client';
+import { localizeText } from '@/lib/i18n';
 const SECTION_ICONS: Record<string, LucideIcon> = {
   user: User, bell: Bell, shield: Shield, steth: Stethoscope, pill: Pill,
   flask: FlaskConical, card: CreditCard, bed: BedDouble, clock: Clock,
@@ -672,8 +673,8 @@ export default function RoleSettingsView() {
     // describes an enforcement that does not exist.
     if ((row.kind === 'toggle' || row.kind === 'select') && row.pending) {
       return (
-        <span className="ehr-set-locked" title="Not available in this version">
-          <Lock /> Not available yet
+        <span className="ehr-set-locked" title={t('ui.notAvailableInThisVersion')}>
+          <Lock /> {t('ui.notAvailableYet')}
         </span>
       );
     }
@@ -837,8 +838,8 @@ export default function RoleSettingsView() {
           <div className="ehr-set-section-head">
             <span><RefreshCw /></span>
             <div style={{ minWidth: 0, flex: '1 1 auto' }}>
-              <h3>Integrations &amp; offline sync</h3>
-              <small>Live status on this device &middot; {sync.lastSyncedLabel}</small>
+              <h3>{t('ui.integrationsOfflineSync')}</h3>
+              <small>{t('ui.liveStatusOnThisDevice')} {sync.lastSyncedLabel}</small>
             </div>
             {/* The push is an action on this section, not a card of its own.
                 As a card it repeated the heading, the DHIS2 status and the
@@ -853,7 +854,7 @@ export default function RoleSettingsView() {
               mechanism. */}
           <div className="ehr-set-row">
             <div className="ehr-set-row-label">
-              <b>Keep this device syncing</b>
+              <b>{t('ui.keepThisDeviceSyncing')}</b>
               <span>
                 {syncPaused
                   ? 'Paused for this session — records save locally and reach the server after sync resumes. Sync turns back on at the next sign-in regardless.'
@@ -865,7 +866,7 @@ export default function RoleSettingsView() {
               className={`ehr-set-toggle ${syncPaused ? '' : 'is-on'}`.trim()}
               role="switch"
               aria-checked={!syncPaused}
-              aria-label="Keep this device syncing"
+              aria-label={t('ui.keepThisDeviceSyncing')}
               onClick={toggleOnline}
             >
               <b>{syncPaused ? 'Off' : 'On'}</b>
@@ -895,8 +896,8 @@ export default function RoleSettingsView() {
       <div className="ehr-set-section-head">
         <span><AlertTriangle /></span>
         <div style={{ minWidth: 0, flex: '1 1 auto' }}>
-          <h3>Restricted actions</h3>
-          <small>Audited — changes here affect the whole facility</small>
+          <h3>{t('ui.restrictedActions')}</h3>
+          <small>{t('ui.auditedChangesHereAffectThe')}</small>
         </div>
       </div>
       {[
@@ -1018,7 +1019,7 @@ export default function RoleSettingsView() {
                 <small>{currentUser.username}</small>
               </div>
               <button type="button" className="ehr-set-account-edit" onClick={openAccountEditor}>
-                <Settings /> Update account
+                <Settings /> {t('ui.updateAccount')}
               </button>
             </div>
             <div className="ehr-set-account-rows">
@@ -1070,7 +1071,7 @@ export default function RoleSettingsView() {
               <ArrowLeft className="w-4 h-4" />
             </button>
           )}
-          <h1>Settings</h1>
+          <h1>{t('breadcrumb.settings')}</h1>
           {/* Scope, on the title line: "Settings" alone never said whose. Only
               at the top level — once you are inside a panel the crumb is the
               more useful thing for the same few centimetres. */}
@@ -1091,7 +1092,7 @@ export default function RoleSettingsView() {
           {dirty && (
             <>
               <button type="button" className="ehr-set-btn" disabled={saving} onClick={handleDiscard}>
-                Discard
+                {t('consultation.discard')}
               </button>
               <button type="button" className="ehr-set-btn primary" disabled={saving} onClick={() => void handleSave()}>
                 <Check /> {saving ? 'Saving…' : 'Save changes'}
@@ -1104,7 +1105,7 @@ export default function RoleSettingsView() {
       <section className="ehr-set-grid">
         {/* ── Left rail: grouped nav only — identity lives in My account ── */}
         <aside className="ehr-set-rail">
-          <nav className="ehr-set-nav" aria-label="Settings sections">
+          <nav className="ehr-set-nav" aria-label={t('ui.settingsSections')}>
             {navGroups.map((group, groupIndex) => (
               <div key={group.title ?? `group-${groupIndex}`} className="ehr-set-nav-group">
                 {group.title && <span className="ehr-set-nav-group-title">{group.title}</span>}
@@ -1268,12 +1269,12 @@ export default function RoleSettingsView() {
               <div className="ehr-handoff-head-title">
                 <KeyRound />
                 <div>
-                  <h2 id="pw-modal-title">Change password</h2>
+                  <h2 id="pw-modal-title">{t('ui.changePassword')}</h2>
                   <p>{currentUser.name}</p>
                 </div>
               </div>
               <div className="ehr-handoff-head-actions">
-                <button type="button" className="ehr-handoff-close" aria-label="Close" onClick={() => setPwOpen(false)}>✕</button>
+                <button type="button" className="ehr-handoff-close" aria-label={t('billing.activityClose')} onClick={() => setPwOpen(false)}>✕</button>
               </div>
             </div>
             <div className="ehr-handoff-body">
@@ -1296,17 +1297,17 @@ export default function RoleSettingsView() {
                 value={currentUser.username}
               />
               <div>
-                <label className="ehr-handoff-label">Current password</label>
+                <label className="ehr-handoff-label">{t('ui.currentPassword')}</label>
                 <input type="password" className="ehr-handoff-input" autoComplete="current-password"
                   value={pwForm.current} onChange={e => setPwForm(p => ({ ...p, current: e.target.value }))} />
               </div>
               <div>
-                <label className="ehr-handoff-label">New password</label>
+                <label className="ehr-handoff-label">{t('ui.newPassword')}</label>
                 <input type="password" className="ehr-handoff-input" autoComplete="new-password"
                   value={pwForm.next} onChange={e => setPwForm(p => ({ ...p, next: e.target.value }))} />
               </div>
               <div>
-                <label className="ehr-handoff-label">Confirm new password</label>
+                <label className="ehr-handoff-label">{t('ui.confirmNewPassword')}</label>
                 <input type="password" className="ehr-handoff-input" autoComplete="new-password"
                   value={pwForm.confirm} onChange={e => setPwForm(p => ({ ...p, confirm: e.target.value }))} />
               </div>
@@ -1327,7 +1328,7 @@ export default function RoleSettingsView() {
               <div className="ehr-handoff-head-title">
                 <Lock />
                 <div>
-                  <h2 id="pin-modal-title">Screen-lock PIN</h2>
+                  <h2 id="pin-modal-title">{t('ui.screenLockPin')}</h2>
                   <p>{pinIsSet ? 'PIN is active on this device' : 'Quick unlock on this shared device'}</p>
                 </div>
               </div>
@@ -1338,20 +1339,20 @@ export default function RoleSettingsView() {
                     className="ehr-handoff-btn sm"
                     onClick={() => { clearLockPin(currentUser._id); setPinIsSet(false); setPinForm({ next: '', confirm: '' }); showToast(t('msg.screenLockPinRemoved'), 'success'); }}
                   >
-                    <Trash2 /> Remove
+                    <Trash2 /> {t('action.remove')}
                   </button>
                 )}
-                <button type="button" className="ehr-handoff-close" aria-label="Close" onClick={() => setPinOpen(false)}>✕</button>
+                <button type="button" className="ehr-handoff-close" aria-label={t('billing.activityClose')} onClick={() => setPinOpen(false)}>✕</button>
               </div>
             </div>
             <div className="ehr-handoff-body">
               <div>
-                <label className="ehr-handoff-label">{pinIsSet ? 'New PIN' : 'PIN'} (4–6 digits)</label>
+                <label className="ehr-handoff-label">{pinIsSet ? 'New PIN' : 'PIN'} {t('ui.n46Digits')}</label>
                 <input type="password" inputMode="numeric" maxLength={6} className="ehr-handoff-input" autoComplete="off"
                   value={pinForm.next} onChange={e => setPinForm(p => ({ ...p, next: e.target.value.replace(/\D/g, '') }))} />
               </div>
               <div>
-                <label className="ehr-handoff-label">Confirm PIN</label>
+                <label className="ehr-handoff-label">{t('lock.confirmPin')}</label>
                 <input type="password" inputMode="numeric" maxLength={6} className="ehr-handoff-input" autoComplete="off"
                   value={pinForm.confirm} onChange={e => setPinForm(p => ({ ...p, confirm: e.target.value.replace(/\D/g, '') }))} />
               </div>

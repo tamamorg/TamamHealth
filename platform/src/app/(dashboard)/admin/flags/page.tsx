@@ -170,26 +170,26 @@ export default function AdminFlagsPage() {
     <SadbPage>
 
       <SadbSettingGroup
-        title="Platform gates"
-        meta={<SadbHeadLink onClick={() => router.push('/admin/config')}>Configuration</SadbHeadLink>}
+        title={t('ui.platformGates')}
+        meta={<SadbHeadLink onClick={() => router.push('/admin/config')}>{t('routeContext.configuration')}</SadbHeadLink>}
       >
         {configLoading || !config ? (
-          <p className="sadb-empty">Loading…</p>
+          <p className="sadb-empty">{t('admin.loading')}</p>
         ) : (
           <>
             <SadbSettingRow
-              label="New signups enabled (platform-wide)"
+              label={t('ui.newSignupsEnabledPlatformWide')}
               sub="Controls whether new organizations can self-register across the entire platform."
             >
               <SadbToggle
                 checked={config.globalFeatureFlags.signupsEnabled}
                 onChange={toggleSignups}
-                label="New signups enabled (platform-wide)"
+                label={t('ui.newSignupsEnabledPlatformWide')}
                 disabled={savingKey === 'signupsEnabled'}
               />
             </SadbSettingRow>
             <SadbKvRow
-              label="Maintenance mode (platform-wide)"
+              label={t('ui.maintenanceModePlatformWide')}
               chip={config.maintenanceMode ? 'ON' : 'OFF'}
               chipTone={config.maintenanceMode ? 'yellow' : 'neutral'}
             />
@@ -283,15 +283,15 @@ export default function AdminFlagsPage() {
           for this specific card. */}
       <div className="sadb-card" data-tour="admin-flags-matrix">
         <div className="sadb-card-head" style={{ padding: '12px 16px' }}>
-          <h3 className="sadb-card-title">Per-tenant feature matrix</h3>
+          <h3 className="sadb-card-title">{t('ui.perTenantFeatureMatrix')}</h3>
           <div className="sadb-legend">
-            <span><i style={{ background: 'var(--text-muted)' }} />Orgs total ({orgsLoading ? '…' : organizations.length})</span>
-            <span><i style={{ background: orgsWithAllFlagsOff > 0 ? 'var(--color-warning-600)' : 'var(--text-muted)' }} />All flags off ({orgsLoading ? '…' : orgsWithAllFlagsOff})</span>
+            <span><i style={{ background: 'var(--text-muted)' }} />{t('ui.orgsTotal')}{orgsLoading ? '…' : organizations.length})</span>
+            <span><i style={{ background: orgsWithAllFlagsOff > 0 ? 'var(--color-warning-600)' : 'var(--text-muted)' }} />{t('ui.allFlagsOff')}{orgsLoading ? '…' : orgsWithAllFlagsOff})</span>
             <span><i style={{ background: 'var(--color-success-800)' }} />{mostEnabledFlag ? `Most enabled: ${mostEnabledFlag.label}` : 'Most enabled'} ({mostEnabledFlag ? mostEnabledFlag.count : '—'})</span>
           </div>
         </div>
         <div className="sadb-search-row">
-          <SadbSearch value={matrixSearch} onChange={setMatrixSearch} placeholder="Search organizations…" ariaLabel="Search organizations" />
+          <SadbSearch value={matrixSearch} onChange={setMatrixSearch} placeholder={t('ui.searchOrganizations')} ariaLabel="Search organizations" />
         </div>
         <SaTable
           /* The tenant name is a name; every other column is a toggle. */
@@ -326,7 +326,7 @@ export default function AdminFlagsPage() {
           ))}
         </SaTable>
         <p className="sadb-card-meta" style={{ padding: '10px 14px', margin: 0, borderTop: '1px solid var(--border-light)' }}>
-          Changes apply on the tenant&apos;s next sync.
+          {t('ui.changesApplyOnTheTenant')}
         </p>
       </div>
 

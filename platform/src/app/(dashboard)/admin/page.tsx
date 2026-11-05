@@ -45,6 +45,7 @@ import { useNow } from '@/lib/hooks/useNow';
 import type {
   AuditLogDoc, EncounterDoc, HospitalDoc, RiskResolutionDoc, SyncEventDoc, UserDoc,
 } from '@/lib/db-types';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 type Tone = 'ok' | 'warn' | 'danger' | 'muted';
 
@@ -96,6 +97,7 @@ function KvRow({ label, value, valueClass, chip, chipClass }: {
 
 
 export default function AdminDashboardPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { currentUser } = useAuth();
   const scope = useDataScope();
@@ -330,42 +332,42 @@ export default function AdminDashboardPage() {
   const kpis: Array<{ key: string; label: string; value: string; delta: string; deltaClass?: string; href?: string; trend?: SadbTrendValue }> = [
     {
       key: 'organizations',
-      label: 'Organizations',
+      label: t('admin.dbOrganizations'),
       value: String(organizations.length),
-      delta: newOrgsQuarter > 0 ? `+${newOrgsQuarter} this quarter` : `${activeOrgs.length} active · ${trialOrgs.length} trial`,
-      trend: { direction: trendBetween(newOrgsQuarter, prevOrgsQuarter), label: `vs ${prevOrgsQuarter} last quarter` },
+      delta: newOrgsQuarter > 0 ? t('adminMgmt.dashPlusQuarter', { count: newOrgsQuarter }) : t('adminMgmt.dashActiveTrial', { active: activeOrgs.length, trial: trialOrgs.length }),
+      trend: { direction: trendBetween(newOrgsQuarter, prevOrgsQuarter), label: t('adminMgmt.dashVsLastQuarter', { count: prevOrgsQuarter }) },
       href: '/admin/organizations',
     },
     {
       key: 'facilities',
-      label: 'Facilities',
+      label: t('nav.hospitals'),
       value: String(hospitals.length),
-      delta: newFacilitiesQuarter > 0 ? `+${newFacilitiesQuarter} this quarter` : `across ${organizations.length} organizations`,
-      trend: { direction: trendBetween(newFacilitiesQuarter, prevFacilitiesQuarter), label: `vs ${prevFacilitiesQuarter} last quarter` },
+      delta: newFacilitiesQuarter > 0 ? t('adminMgmt.dashPlusQuarter', { count: newFacilitiesQuarter }) : t('adminMgmt.dashAcrossOrgs', { count: organizations.length }),
+      trend: { direction: trendBetween(newFacilitiesQuarter, prevFacilitiesQuarter), label: t('adminMgmt.dashVsLastQuarter', { count: prevFacilitiesQuarter }) },
       href: '/admin/organizations',
     },
     {
       key: 'users',
-      label: 'Users',
+      label: t('admin.dbUsers'),
       value: loading ? '…' : tenantUsers.toLocaleString(),
-      delta: `Tenant accounts, excludes ${platformOperators} platform operator${platformOperators === 1 ? '' : 's'}`,
-      trend: loading ? undefined : { direction: trendBetween(newUsersWeek, newUsersPrevWeek), label: `vs ${newUsersPrevWeek} last week` },
+      delta: t(platformOperators === 1 ? 'adminMgmt.dashTenantAccountsOne' : 'adminMgmt.dashTenantAccounts', { count: platformOperators }),
+      trend: loading ? undefined : { direction: trendBetween(newUsersWeek, newUsersPrevWeek), label: t('adminMgmt.dashVsLastWeek', { count: newUsersPrevWeek }) },
       href: '/admin/users',
     },
     {
       key: 'patients',
-      label: 'Patients',
+      label: t('admin.dbPatients'),
       value: loading ? '…' : patientAgg.total.toLocaleString(),
-      delta: patientAgg.newThisWeek > 0 ? `+${patientAgg.newThisWeek} this week` : 'Tenant-scoped registry',
-      trend: loading ? undefined : { direction: trendBetween(patientAgg.newThisWeek, patientAgg.newLastWeek), label: `vs ${patientAgg.newLastWeek} last week` },
+      delta: patientAgg.newThisWeek > 0 ? t('adminMgmt.dashPlusWeek', { count: patientAgg.newThisWeek }) : t('adminMgmt.dashTenantRegistry'),
+      trend: loading ? undefined : { direction: trendBetween(patientAgg.newThisWeek, patientAgg.newLastWeek), label: t('adminMgmt.dashVsLastWeek', { count: patientAgg.newLastWeek }) },
       // No platform-level patient registry to open — the registry is tenant-scoped.
     },
     {
       key: 'encounters',
-      label: 'Encounters today',
+      label: t('adminMgmt.dashEncountersToday'),
       value: loading ? '…' : encountersToday.toLocaleString(),
-      delta: encounterPeak ? `peak ${String(encounterPeak.hour).padStart(2, '0')}:00 · ${encounterPeak.perHour}/h` : 'None recorded yet',
-      trend: loading ? undefined : { direction: trendBetween(encountersToday, encountersYesterday), label: `vs ${encountersYesterday} yesterday` },
+      delta: encounterPeak ? t('adminMgmt.dashPeak', { hour: String(encounterPeak.hour).padStart(2, '0'), count: encounterPeak.perHour }) : t('adminMgmt.dashNoneRecorded'),
+      trend: loading ? undefined : { direction: trendBetween(encountersToday, encountersYesterday), label: t('adminMgmt.dashVsYesterday', { count: encountersYesterday }) },
       href: '/admin/analytics',
     },
   ];
@@ -415,13 +417,13 @@ export default function AdminDashboardPage() {
           {/* Platform readiness — donut + the two signals that move it */}
           <div className="sadb-card">
             <div className="sadb-card-head">
-              <h3 className="sadb-card-title">Platform readiness</h3>
+              <h3 className="sadb-card-title">{t('ui.platformReadiness')}</h3>
               <span className={`sadb-chip ${TONE_CHIP[readinessTone]}`}>
-                {readinessTone === 'ok' ? 'Steady' : 'Attention required'}
+                {readinessTone === 'ok' ? t('adminMgmt.dashSteady') : t('adminMgmt.dashAttention')}
               </span>
             </div>
             <div className="sadb-readiness-body">
-              <svg width={124} height={124} viewBox="0 0 124 124" className="flex-shrink-0" role="img" aria-label={`Platform readiness ${readiness}%`}>
+              <svg width={124} height={124} viewBox="0 0 124 124" className="flex-shrink-0" role="img" aria-label={t('adminMgmt.dashReadinessAria', { value: readiness })}>
                 <circle cx={62} cy={62} r={50} fill="none" stroke="var(--ehr-row-rule, #F1F3F5)" strokeWidth={11} />
                 {readiness > 0 && (
                   <circle
@@ -434,21 +436,21 @@ export default function AdminDashboardPage() {
                 <text x={62} y={59} textAnchor="middle" fontFamily="var(--font-condensed)" fontSize={28} fontWeight={700} fill="var(--text-primary)">
                   {loading ? '…' : `${readiness}%`}
                 </text>
-                <text x={62} y={77} textAnchor="middle" fontSize={9.5} letterSpacing={1.2} fill="var(--text-muted)">READINESS</text>
+                <text x={62} y={77} textAnchor="middle" fontSize={9.5} letterSpacing={1.2} fill="var(--text-muted)">{t('ui.readiness')}</text>
               </svg>
               <div className="sadb-readiness-signals">
                 <button type="button" className={`sadb-signal ${TONE_SIGNAL[openRiskTone]}`} onClick={() => router.push('/admin/risk')}>
-                  <b>{openRisks.length ? `${openRisks.length} open risk${openRisks.length === 1 ? '' : 's'}` : 'No open risks'}</b>
+                  <b>{openRisks.length ? t(openRisks.length === 1 ? 'adminMgmt.dashOpenRiskOne' : 'adminMgmt.dashOpenRisks', { count: openRisks.length }) : t('adminMgmt.dashNoOpenRisks')}</b>
                   {/* When the conflict feed didn't load the count is understated,
                       so say so rather than present it as a clean platform. */}
                   <span>
-                    {failedAudits.length} audit failure{failedAudits.length === 1 ? '' : 's'} · last 7 days
-                    {conflictStatus === 'error' ? ' · conflict data unavailable' : ''}
+                    {t(failedAudits.length === 1 ? 'adminMgmt.dashAuditFailureOne' : 'adminMgmt.dashAuditFailures', { count: failedAudits.length })}
+                    {conflictStatus === 'error' ? t('adminMgmt.dashConflictUnavailable') : ''}
                   </span>
                 </button>
                 <div className={`sadb-signal ${TONE_SIGNAL[syncTone]}`}>
-                  <b>Sync health {syncRate}%</b>
-                  <span>{syncStats.pending} pending · {syncStats.failed} failed · {syncStats.total.toLocaleString()} events</span>
+                  <b>{t('ui.syncHealth')} {syncRate}%</b>
+                  <span>{t('adminMgmt.dashSyncLine', { pending: syncStats.pending, failed: syncStats.failed, total: syncStats.total.toLocaleString() })}</span>
                 </div>
               </div>
             </div>
@@ -456,30 +458,30 @@ export default function AdminDashboardPage() {
 
           {/* Business snapshot */}
           <div className="sadb-card">
-            <CardHead title="Business snapshot" />
-            <KvRow label="Active subscriptions" value={organizations.filter(o => o.subscriptionStatus === 'active').length} />
-            <KvRow label="Trials" value={trialOrgs.length} />
-            <KvRow label="Suspended / cancelled" value={suspendedOrgs.length} valueClass={suspendedOrgs.length > 0 ? 'is-warn' : undefined} />
-            <KvRow label="Seats in use" value={loading ? '…' : `${users.length} / ${licensedSeats}`} />
+            <CardHead title={t('ui.businessSnapshot')} />
+            <KvRow label={t('ui.activeSubscriptions')} value={organizations.filter(o => o.subscriptionStatus === 'active').length} />
+            <KvRow label={t('ui.trials')} value={trialOrgs.length} />
+            <KvRow label={t('ui.suspendedCancelled')} value={suspendedOrgs.length} valueClass={suspendedOrgs.length > 0 ? 'is-warn' : undefined} />
+            <KvRow label={t('ui.seatsInUse')} value={loading ? '…' : `${users.length} / ${licensedSeats}`} />
           </div>
 
           {/* Sync & interoperability — replication posture at a glance; the
               queue, job runners, and DHIS2 controls live on /admin/sync. */}
           <div className="sadb-card">
             <CardHead
-              title="Sync & interoperability"
-              action={<button type="button" className="sadb-head-link" onClick={() => router.push('/admin/sync')}>Open ›</button>}
+              title={t('ui.syncInteroperability')}
+              action={<button type="button" className="sadb-head-link" onClick={() => router.push('/admin/sync')}>{t('ui.open')}</button>}
             />
             <KvRow
-              label="Replication"
-              chip={syncStats.failed > 0 ? 'Failing' : syncStats.pending > 0 ? 'Backlog' : 'Healthy'}
+              label={t('ui.replication')}
+              chip={syncStats.failed > 0 ? t('adminMgmt.dashFailing') : syncStats.pending > 0 ? t('adminMgmt.dashBacklog') : t('admin.healthHealthy')}
               chipClass={TONE_CHIP[syncTone]}
             />
-            <KvRow label="Pending events" value={syncStats.pending} />
-            <KvRow label="Failed events" value={syncStats.failed} valueClass={syncStats.failed > 0 ? 'is-warn' : undefined} />
+            <KvRow label={t('ui.pendingEvents')} value={syncStats.pending} />
+            <KvRow label={t('ui.failedEvents')} value={syncStats.failed} valueClass={syncStats.failed > 0 ? 'is-warn' : undefined} />
             <KvRow
-              label="Last DHIS2 push"
-              chip={dhis2.configured ? (dhis2.lastPush ? formatWhen(dhis2.lastPush) : 'Never') : 'Not configured'}
+              label={t('ui.lastDhis2Push')}
+              chip={dhis2.configured ? (dhis2.lastPush ? formatWhen(dhis2.lastPush) : t('dhis2.statNever')) : t('dhis2.statNotConfigured')}
               chipClass={dhis2.configured && dhis2.lastPush ? 'sadb-chip--green' : 'sadb-chip--neutral'}
             />
           </div>
@@ -492,8 +494,8 @@ export default function AdminDashboardPage() {
             the one the console could not answer without leaving the page. */}
         <div className="sadb-card" style={{ flex: '1 1 auto', minHeight: 200 }}>
           <CardHead
-            title="Organizations"
-            meta={loading ? undefined : `${activeOrgs.length} active · ${trialOrgs.length} trial · ${suspendedOrgs.length} suspended`}
+            title={t('admin.dbOrganizations')}
+            meta={loading ? undefined : t('adminMgmt.dashOrgsMeta', { active: activeOrgs.length, trial: trialOrgs.length, suspended: suspendedOrgs.length })}
             action={
               /* The create actions (organization, facility, staff member) as
                  O3 openers on the list they add to. */
@@ -504,9 +506,9 @@ export default function AdminDashboardPage() {
             <SadbGridList
               template={ORG_GRID_TEMPLATE}
               minWidth={880}
-              head={['Organization', 'Plan', 'Facilities', 'Users', 'Patients', 'Status']}
+              head={[t('adminBilling.colOrganization'), t('admin.colPlan'), t('nav.hospitals'), t('admin.dbUsers'), t('admin.dbPatients'), t('admin.colStatus')]}
               alignEndLast
-              empty={loading ? 'Loading tenants…' : 'No organizations on this platform yet.'}
+              empty={loading ? t('adminMgmt.dashLoadingTenants') : t('adminMgmt.dashNoOrgs')}
             >
               {orgRows.map(org => {
                 const facilities = facilitiesByOrg.get(org._id) || [];
@@ -525,7 +527,7 @@ export default function AdminDashboardPage() {
                             {org.name}
                           </span>
                           <span className="sadb-tenant-sub truncate">
-                            {org.orgType === 'public' ? 'Public' : 'Private'}{onboardedLabel ? ` · onboarded ${onboardedLabel}` : ''}
+                            {org.orgType === 'public' ? t('hospitals.ownershipPublic') : t('hospitals.ownershipPrivate')}{onboardedLabel ? t('adminMgmt.dashOnboarded', { when: onboardedLabel }) : ''}
                           </span>
                         </span>
                       </span>

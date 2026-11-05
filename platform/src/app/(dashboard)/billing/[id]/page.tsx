@@ -314,20 +314,20 @@ export default function BillDetailPage() {
       <tr><td>${escapeHtml(formatPrintedAt(new Date(p.receivedAt)))}</td><td>${escapeHtml(PAYMENT_METHOD_LABELS[p.method] || p.method)}</td>
       <td>${escapeHtml(p.reference || '—')}</td><td>${escapeHtml(p.receivedByName)}</td><td class="num">${escapeHtml(money(p.amount))}</td></tr>`).join('');
     const reversal = bill.chargeReversedAt
-      ? `<p class="notice"><strong>Charge reversed</strong> on ${escapeHtml(printDate(bill.chargeReversedAt))}: ${escapeHtml(bill.chargeReversalReason || '')}. ${escapeHtml(money(bill.amountPaid))} collected against this invoice is a credit on the patient's account until refunded.</p>`
+      ? `<p class="notice"><strong>${t('ui.chargeReversed')}</strong> on ${escapeHtml(printDate(bill.chargeReversedAt))}: ${escapeHtml(bill.chargeReversalReason || '')}. ${escapeHtml(money(bill.amountPaid))} collected against this invoice is a credit on the patient's account until refunded.</p>`
       : '';
     const body = `${reversal}
-      <section class="section"><h2 class="section-title">Line Items</h2>
-        <table><thead><tr><th>#</th><th>Item</th><th>Category</th><th class="num">Qty</th><th class="num">Unit Price</th><th class="num">Total</th></tr></thead><tbody>${rows}</tbody></table>
+      <section class="section"><h2 class="section-title">${t('ui.lineItems')}</h2>
+        <table><thead><tr><th>#</th><th>${t('ui.item')}</th><th>${t('equipment.colCategory')}</th><th class="num">${t('ui.qty')}</th><th class="num">${t('ui.unitPrice2')}</th><th class="num">${t('dashboard.total')}</th></tr></thead><tbody>${rows}</tbody></table>
       </section>
-      ${bill.payments.length ? `<section class="section"><h2 class="section-title">Payments</h2><table><thead><tr><th>Date</th><th>Method</th><th>Reference</th><th>Received By</th><th class="num">Amount</th></tr></thead><tbody>${payRows}</tbody></table></section>` : '<p class="notice">No payments have been recorded against this invoice.</p>'}
+      ${bill.payments.length ? `<section class="section"><h2 class="section-title">${t('billing.activityPayments')}</h2><table><thead><tr><th>${t('billing.activityColumn.date')}</th><th>${t('payments.methodFallback')}</th><th>${t('patientPortal.reference')}</th><th>${t('labFlow.receivedBy')}</th><th class="num">${t('billing.amount')}</th></tr></thead><tbody>${payRows}</tbody></table></section>` : '<p class="notice">No payments have been recorded against this invoice.</p>'}
       <div class="totals">
-        <div class="total-row"><span>Subtotal</span><strong>${escapeHtml(money(bill.subtotal))}</strong></div>
-        <div class="total-row"><span>Discount</span><strong>− ${escapeHtml(money(bill.discount))}</strong></div>
+        <div class="total-row"><span>${t('ui.subtotal2')}</span><strong>${escapeHtml(money(bill.subtotal))}</strong></div>
+        <div class="total-row"><span>${t('ui.discount2')}</span><strong>− ${escapeHtml(money(bill.discount))}</strong></div>
         ${bill.taxAmount ? `<div class="total-row"><span>Tax (${escapeHtml(bill.taxRate)}%)</span><strong>${escapeHtml(money(bill.taxAmount))}</strong></div>` : ''}
-        <div class="total-row"><span>Invoice Total</span><strong>${escapeHtml(money(bill.totalAmount))}</strong></div>
-        <div class="total-row"><span>Paid</span><strong>− ${escapeHtml(money(bill.amountPaid))}</strong></div>
-        <div class="total-row grand"><strong>Amount Due</strong><strong>${escapeHtml(money(bill.balanceDue))}</strong></div>
+        <div class="total-row"><span>${t('ui.invoiceTotal')}</span><strong>${escapeHtml(money(bill.totalAmount))}</strong></div>
+        <div class="total-row"><span>${t('claims.colPaid')}</span><strong>− ${escapeHtml(money(bill.amountPaid))}</strong></div>
+        <div class="total-row grand"><strong>${t('ui.amountDue')}</strong><strong>${escapeHtml(money(bill.balanceDue))}</strong></div>
       </div>`;
     const html = buildClinicalPrintDocument({
       title: bill.invoiceNumber,
@@ -352,7 +352,7 @@ export default function BillDetailPage() {
   if (loading) {
     return (
       <main className="page-container page-enter">
-        <div className="bl-root"><div className="bl-loading"><Activity size={30} style={{ animation: 'spin 1s linear infinite' }} /><span>Loading bill…</span></div></div>
+        <div className="bl-root"><div className="bl-loading"><Activity size={30} style={{ animation: 'spin 1s linear infinite' }} /><span>{t('ui.loadingBill')}</span></div></div>
       </main>
     );
   }
@@ -364,10 +364,10 @@ export default function BillDetailPage() {
           <div className="bl-card">
             <div className="bl-empty">
               <Receipt size={34} />
-              <h3>Bill not found</h3>
-              <p>This bill may have been removed or you may not have access to it.</p>
+              <h3>{t('ui.billNotFound')}</h3>
+              <p>{t('ui.thisBillMayHaveBeen')}</p>
               <button type="button" className="bl-btn bl-btn--outline" onClick={() => router.push('/billing')}>
-                <ChevronLeft size={15} /> Back to bill list
+                <ChevronLeft size={15} /> {t('ui.backToBillList')}
               </button>
             </div>
           </div>
@@ -409,7 +409,7 @@ export default function BillDetailPage() {
                 <span>{formatDobOmrs(patient.dateOfBirth)}</span>
                 <span>·</span>
               </>}
-              <span className="bl-id-tag">Facility ID: <strong>{bill.hospitalNumber || patient?.hospitalNumber || patient?.geocodeId || '—'}</strong></span>
+              <span className="bl-id-tag">{t('ui.facilityId')} <strong>{bill.hospitalNumber || patient?.hospitalNumber || patient?.geocodeId || '—'}</strong></span>
               <span className="bl-id-tag">{bill.facilityName}</span>
             </div>
           </div>
@@ -420,26 +420,26 @@ export default function BillDetailPage() {
           <div className="bl-actions-row no-print" data-tour="bill-actions">
             {(bill.status === 'pending' || bill.status === 'partial') && (
               <button type="button" className="bl-btn bl-btn--outline" onClick={() => setDiscountOpen(true)} disabled={busy}>
-                Request discount
+                {t('ui.requestDiscount')}
               </button>
             )}
             {editable && (
               <button type="button" className="bl-btn bl-btn--link" onClick={openAddItems} disabled={busy}>
-                Add items to bill <Plus size={15} />
+                {t('ui.addItemsToBill')} <Plus size={15} />
               </button>
             )}
             {(editable || (underReview && canCollectPayments)) && (
               <button type="button" className="bl-btn bl-btn--danger-link" onClick={() => setConfirmDelete(true)} disabled={busy}>
-                Delete bill
+                {t('ui.deleteBill')}
               </button>
             )}
             {!finalized && (bill.status === 'pending' || underReview) && (
               <button type="button" className="bl-btn bl-btn--primary" onClick={() => setConfirmFinalize(true)} disabled={busy}>
-                Finalize bill
+                {t('ui.finalizeBill')}
               </button>
             )}
             <button type="button" className="bl-btn bl-btn--primary" onClick={handlePrint}>
-              Print bill <Printer size={15} />
+              {t('ui.printBill')} <Printer size={15} />
             </button>
           </div>
         )}
@@ -452,26 +452,26 @@ export default function BillDetailPage() {
 
         {bill.chargeReversedAt && (
           <p role="status" style={{ margin: '0 0 12px', padding: '10px 14px', border: '1px solid var(--color-warning-border)', borderRadius: 6, background: 'var(--color-warning-bg)', color: 'var(--color-warning-text)', fontSize: 13 }}>
-            <strong>Charge reversed</strong> on {formatBillDate(bill.chargeReversedAt)}{bill.chargeReversedBy ? ` by ${bill.chargeReversedBy}` : ''}: {bill.chargeReversalReason}.
-            {' '}{money(bill.amountPaid)} was collected against this invoice and is a credit on the patient&apos;s account until refunded.
+            <strong>{t('ui.chargeReversed')}</strong> on {formatBillDate(bill.chargeReversedAt)}{bill.chargeReversedBy ? ` by ${bill.chargeReversedBy}` : ''}: {bill.chargeReversalReason}.
+            {' '}{money(bill.amountPaid)} {t('ui.wasCollectedAgainstThisInvoice')}
           </p>
         )}
 
         {/* ── Summary strip ── */}
         <div className="bl-summary-strip">
-          <div><p className="bl-summary-label">Date bill created</p><p className="bl-summary-value" style={{ fontSize: 16 }}>{formatBillDate(bill.createdAt)}</p></div>
-          <div><p className="bl-summary-label">Total amount</p><p className="bl-summary-value">{money(bill.totalAmount)}</p></div>
-          <div><p className="bl-summary-label">Amount tendered</p><p className="bl-summary-value">{money(bill.amountPaid)}</p></div>
-          <div><p className="bl-summary-label">Amount due</p><p className="bl-summary-value">{money(bill.balanceDue)}</p></div>
-          <div><p className="bl-summary-label">Invoice number</p><p className="bl-summary-value" style={{ fontSize: 16 }}>{bill.invoiceNumber}</p></div>
-          <div><p className="bl-summary-label">Invoice status</p><p className="bl-summary-value" style={{ fontSize: 16 }}>{invoiceStatusLabel(bill)}</p></div>
+          <div><p className="bl-summary-label">{t('ui.dateBillCreated')}</p><p className="bl-summary-value" style={{ fontSize: 16 }}>{formatBillDate(bill.createdAt)}</p></div>
+          <div><p className="bl-summary-label">{t('ui.totalAmount')}</p><p className="bl-summary-value">{money(bill.totalAmount)}</p></div>
+          <div><p className="bl-summary-label">{t('ui.amountTendered')}</p><p className="bl-summary-value">{money(bill.amountPaid)}</p></div>
+          <div><p className="bl-summary-label">{t('ui.amountDue')}</p><p className="bl-summary-value">{money(bill.balanceDue)}</p></div>
+          <div><p className="bl-summary-label">{t('ui.invoiceNumber')}</p><p className="bl-summary-value" style={{ fontSize: 16 }}>{bill.invoiceNumber}</p></div>
+          <div><p className="bl-summary-label">{t('ui.invoiceStatus')}</p><p className="bl-summary-value" style={{ fontSize: 16 }}>{invoiceStatusLabel(bill)}</p></div>
         </div>
 
         {/* ── Line items ── */}
         <div className="bl-card">
           <div className="bl-card-head">
-            <h2 className="bl-card-title">Line items</h2>
-            <p className="bl-card-sub">Items to be billed</p>
+            <h2 className="bl-card-title">{t('ui.lineItems')}</h2>
+            <p className="bl-card-sub">{t('ui.itemsToBeBilled')}</p>
             <span className="bl-underline" />
           </div>
           <div className="bl-search">
@@ -480,27 +480,27 @@ export default function BillDetailPage() {
               type="text"
               value={itemSearch}
               onChange={e => setItemSearch(e.target.value)}
-              placeholder="Search this table"
-              aria-label="Search line items"
+              placeholder={t('ui.searchThisTable')}
+              aria-label={t('ui.searchLineItems')}
             />
           </div>
           <div className="bl-table-wrap">
             <table className="bl-table">
               <thead>
                 <tr>
-                  <th>Number</th>
-                  <th>Bill item</th>
-                  <th>Category</th>
-                  <th>Service status</th>
-                  <th className="bl-right">Quantity</th>
-                  <th className="bl-right">Price</th>
-                  <th className="bl-right">Total</th>
-                  {editable && <th aria-label="Row actions" />}
+                  <th>{t('ui.number')}</th>
+                  <th>{t('ui.billItem')}</th>
+                  <th>{t('equipment.colCategory')}</th>
+                  <th>{t('ui.serviceStatus')}</th>
+                  <th className="bl-right">{t('pharmacy.quantity')}</th>
+                  <th className="bl-right">{t('ui.price')}</th>
+                  <th className="bl-right">{t('dashboard.total')}</th>
+                  {editable && <th aria-label={t('ui.rowActions')} />}
                 </tr>
               </thead>
               <tbody>
                 {visibleItems.length === 0 ? (
-                  <tr><td colSpan={editable ? 8 : 7} className="bl-muted" style={{ textAlign: 'center', padding: 24 }}>No line items match your search.</td></tr>
+                  <tr><td colSpan={editable ? 8 : 7} className="bl-muted" style={{ textAlign: 'center', padding: 24 }}>{t('ui.noLineItemsMatchYour')}</td></tr>
                 ) : visibleItems.map((item, idx) => (
                   <tr key={item.id}>
                     <td className="bl-num">{idx + 1}</td>
@@ -530,8 +530,8 @@ export default function BillDetailPage() {
                         <RowActionsMenu
                           ariaLabel={`Actions for ${item.description}`}
                           actions={[
-                            { key: 'qty', label: 'Edit quantity', onClick: () => { setEditingItemId(item.id); setQtyDraft(String(item.quantity)); } },
-                            { key: 'remove', label: 'Remove item', tone: 'danger', onClick: () => handleRemoveItem(item) },
+                            { key: 'qty', label: t('ui.editQuantity'), onClick: () => { setEditingItemId(item.id); setQtyDraft(String(item.quantity)); } },
+                            { key: 'remove', label: t('ui.removeItem'), tone: 'danger', onClick: () => handleRemoveItem(item) },
                           ]}
                         />
                       </td>
@@ -547,16 +547,16 @@ export default function BillDetailPage() {
         <div className="bl-card">
           <div className="bl-pay-layout">
             <div className="bl-pay-main">
-              <h2 className="bl-card-title">Payments</h2>
+              <h2 className="bl-card-title">{t('billing.activityPayments')}</h2>
               <span className="bl-underline" />
 
               {!finalized && (bill.status === 'pending' || underReview) ? (
                 <div className="bl-empty">
-                  <h3>Bill not finalized</h3>
-                  <p>Finalize this bill before recording a payment.</p>
+                  <h3>{t('ui.billNotFinalized')}</h3>
+                  <p>{t('ui.finalizeThisBillBeforeRecording')}</p>
                   {canCollectPayments && (
                     <button type="button" className="bl-btn bl-btn--primary" onClick={() => setConfirmFinalize(true)} disabled={busy}>
-                      Finalize bill
+                      {t('ui.finalizeBill')}
                     </button>
                   )}
                 </div>
@@ -565,13 +565,13 @@ export default function BillDetailPage() {
                   {payable && (
                     <div className="bl-form-grid" style={{ marginTop: 14 }}>
                       <div className="bl-field">
-                        <label htmlFor="bl-pay-method">Payment method</label>
+                        <label htmlFor="bl-pay-method">{t('ui.paymentMethod')}</label>
                         <Select id="bl-pay-method" value={payMethod} onChange={e => setPayMethod(e.target.value as PaymentMethod)}>
                           {PAYMENT_METHODS.map(m => <option key={m} value={m}>{PAYMENT_METHOD_LABELS[m]}</option>)}
                         </Select>
                       </div>
                       <div className="bl-field">
-                        <label htmlFor="bl-pay-amount">Amount tendered</label>
+                        <label htmlFor="bl-pay-amount">{t('ui.amountTendered')}</label>
                         <NumberInput
                           id="bl-pay-amount"
                           min={0}
@@ -582,13 +582,13 @@ export default function BillDetailPage() {
                         />
                       </div>
                       <div className="bl-field">
-                        <label htmlFor="bl-pay-ref">Reference (optional)</label>
+                        <label htmlFor="bl-pay-ref">{t('ui.referenceOptional')}</label>
                         <input
                           id="bl-pay-ref"
                           type="text"
                           value={payReference}
                           onChange={e => setPayReference(e.target.value)}
-                          placeholder="Receipt / transaction no."
+                          placeholder={t('ui.receiptTransactionNo')}
                         />
                       </div>
                       <div className="bl-field" style={{ justifyContent: 'flex-end' }}>
@@ -602,7 +602,7 @@ export default function BillDetailPage() {
                   <div className="bl-table-wrap">
                     <table className="bl-table">
                       <thead>
-                        <tr><th>Date</th><th>Method</th><th>Reference</th><th>Received by</th><th className="bl-right">Amount</th></tr>
+                        <tr><th>{t('billing.activityColumn.date')}</th><th>{t('payments.methodFallback')}</th><th>{t('patientPortal.reference')}</th><th>{t('labFlow.receivedBy')}</th><th className="bl-right">{t('billing.amount')}</th></tr>
                       </thead>
                       <tbody>
                         {bill.payments.length === 0 ? (
@@ -629,19 +629,19 @@ export default function BillDetailPage() {
 
             <aside className="bl-pay-aside">
               <dl className="bl-totals">
-                <div className="bl-totals-row"><dt>Total amount:</dt><dd>{money(bill.totalAmount)}</dd></div>
-                <div className="bl-totals-row"><dt>Total tendered:</dt><dd>{money(bill.amountPaid)}</dd></div>
-                <div className="bl-totals-row"><dt>Discount:</dt><dd>- {money(bill.discount)}</dd></div>
-                <div className="bl-totals-row"><dt>Refunds:</dt><dd>- {money(0)}</dd></div>
+                <div className="bl-totals-row"><dt>{t('ui.totalAmount2')}</dt><dd>{money(bill.totalAmount)}</dd></div>
+                <div className="bl-totals-row"><dt>{t('ui.totalTendered')}</dt><dd>{money(bill.amountPaid)}</dd></div>
+                <div className="bl-totals-row"><dt>{t('ui.discount')}</dt><dd>- {money(bill.discount)}</dd></div>
+                <div className="bl-totals-row"><dt>{t('ui.refunds')}</dt><dd>- {money(0)}</dd></div>
                 <hr className="bl-totals-rule" />
-                <div className="bl-totals-row bl-totals-row--due"><dt>Amount due:</dt><dd>{money(bill.balanceDue)}</dd></div>
+                <div className="bl-totals-row bl-totals-row--due"><dt>{t('ui.amountDue2')}</dt><dd>{money(bill.balanceDue)}</dd></div>
               </dl>
               <button
                 type="button"
                 className="bl-btn bl-btn--dark"
                 onClick={() => { setPayAmount(''); setPayReference(''); router.push('/billing'); }}
               >
-                Discard
+                {t('consultation.discard')}
               </button>
             </aside>
           </div>
@@ -651,25 +651,25 @@ export default function BillDetailPage() {
       {/* ── Request discount modal ── */}
       {discountOpen && (
         <FormSlider
-          title="Request discount"
-          subtitle={<>Applies to invoice {bill.invoiceNumber} — subtotal {money(bill.subtotal)}.</>}
+          title={t('ui.requestDiscount')}
+          subtitle={<>{t('ui.appliesToInvoice')} {bill.invoiceNumber} {t('ui.subtotal')} {money(bill.subtotal)}.</>}
           width={440}
           onClose={() => setDiscountOpen(false)}
           footer={<>
-              <button type="button" className="btn btn-secondary" onClick={() => setDiscountOpen(false)}>Cancel</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setDiscountOpen(false)}>{t('action.cancel')}</button>
               <button type="button" className="btn btn-primary" onClick={handleApplyDiscount} disabled={busy || !discountAmount || !discountReason.trim()}>
-                Apply discount
+                {t('ui.applyDiscount')}
               </button>
           </>}
         >
           <div className="bl-root">
             <div className="bl-field">
-              <label htmlFor="bl-disc-amount">Discount amount ({currency})</label>
+              <label htmlFor="bl-disc-amount">{t('ui.discountAmount')}{currency})</label>
               <NumberInput id="bl-disc-amount" min={0} step="0.01" value={discountAmount} onChange={e => setDiscountAmount(e.target.value)} autoFocus />
             </div>
             <div className="bl-field">
-              <label htmlFor="bl-disc-reason">Reason</label>
-              <textarea id="bl-disc-reason" rows={2} value={discountReason} onChange={e => setDiscountReason(e.target.value)} placeholder="e.g. Indigent patient — approved by supervisor" />
+              <label htmlFor="bl-disc-reason">{t('appointments.labelReason')}</label>
+              <textarea id="bl-disc-reason" rows={2} value={discountReason} onChange={e => setDiscountReason(e.target.value)} placeholder={t('ui.eGIndigentPatientApproved')} />
             </div>
           </div>
         </FormSlider>
@@ -678,32 +678,32 @@ export default function BillDetailPage() {
       {/* ── Add items modal ── */}
       {addItemsOpen && (
         <FormSlider
-          title="Add items to bill"
-          subtitle="Pick from the fee schedule or add a custom charge."
+          title={t('ui.addItemsToBill')}
+          subtitle={t('ui.pickFromTheFeeSchedule')}
           width={560}
           onClose={() => setAddItemsOpen(false)}
           footer={<>
-              <button type="button" className="btn btn-secondary" onClick={() => setAddItemsOpen(false)}>Cancel</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setAddItemsOpen(false)}>{t('action.cancel')}</button>
               <button type="button" className="btn btn-primary" onClick={handleSaveNewItems} disabled={busy || pendingItems.length === 0}>
-                Save {pendingItems.length > 0 ? `${pendingItems.length} item${pendingItems.length === 1 ? '' : 's'}` : 'items'}
+                {t('action.save')} {pendingItems.length > 0 ? `${pendingItems.length} item${pendingItems.length === 1 ? '' : 's'}` : 'items'}
               </button>
           </>}
         >
           <div className="bl-root">
             <div className="bl-field">
-              <label htmlFor="bl-fee-search">Search fee schedule</label>
-              <input id="bl-fee-search" type="text" value={feeSearch} onChange={e => setFeeSearch(e.target.value)} placeholder="Service name or category" />
+              <label htmlFor="bl-fee-search">{t('ui.searchFeeSchedule')}</label>
+              <input id="bl-fee-search" type="text" value={feeSearch} onChange={e => setFeeSearch(e.target.value)} placeholder={t('ui.serviceNameOrCategory')} />
             </div>
             <div className="bl-fee-list">
               {feesLoading ? (
-                <div className="bl-fee-row bl-muted">Loading fee schedule…</div>
+                <div className="bl-fee-row bl-muted">{t('ui.loadingFeeSchedule')}</div>
               ) : (
                 (() => {
                   const q = feeSearch.trim().toLowerCase();
                   const list = fees.filter(f => !q
                     || f.serviceName.toLowerCase().includes(q)
                     || CATEGORY_LABELS[f.category]?.toLowerCase().includes(q)).slice(0, 30);
-                  if (list.length === 0) return <div className="bl-fee-row bl-muted">No matching services{fees.length === 0 ? ' — the fee schedule is empty; add a custom charge below' : ''}.</div>;
+                  if (list.length === 0) return <div className="bl-fee-row bl-muted">{t('ui.noMatchingServices')}{fees.length === 0 ? ' — the fee schedule is empty; add a custom charge below' : ''}.</div>;
                   return list.map(fee => (
                     <div className="bl-fee-row" key={fee._id}>
                       <div>
@@ -711,7 +711,7 @@ export default function BillDetailPage() {
                         <div className="bl-fee-cat">{CATEGORY_LABELS[fee.category] || fee.category}</div>
                       </div>
                       <span className="bl-fee-price">{formatMoney(fee.unitPrice, { currency: fee.currency, decimals: 2 })}</span>
-                      <button type="button" className="bl-fee-add" onClick={() => addFeeToPending(fee)}>Add</button>
+                      <button type="button" className="bl-fee-add" onClick={() => addFeeToPending(fee)}>{t('consultation.add')}</button>
                     </div>
                   ));
                 })()
@@ -720,22 +720,22 @@ export default function BillDetailPage() {
 
             <div className="bl-form-grid">
               <div className="bl-field" style={{ gridColumn: '1 / -1' }}>
-                <label htmlFor="bl-custom-desc">Custom charge</label>
-                <input id="bl-custom-desc" type="text" value={customDesc} onChange={e => setCustomDesc(e.target.value)} placeholder="Description" />
+                <label htmlFor="bl-custom-desc">{t('ui.customCharge')}</label>
+                <input id="bl-custom-desc" type="text" value={customDesc} onChange={e => setCustomDesc(e.target.value)} placeholder={t('ui.description')} />
               </div>
               <div className="bl-field">
-                <label htmlFor="bl-custom-cat">Category</label>
+                <label htmlFor="bl-custom-cat">{t('equipment.colCategory')}</label>
                 <Select id="bl-custom-cat" value={customCategory} onChange={e => setCustomCategory(e.target.value as ChargeCategory)}>
                   {CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
                 </Select>
               </div>
               <div className="bl-field">
-                <label htmlFor="bl-custom-price">Unit price ({currency})</label>
+                <label htmlFor="bl-custom-price">{t('ui.unitPrice')}{currency})</label>
                 <NumberInput id="bl-custom-price" min={0} step="0.01" value={customPrice} onChange={e => setCustomPrice(e.target.value)} />
               </div>
               <div className="bl-field" style={{ justifyContent: 'flex-end' }}>
                 <button type="button" className="bl-btn bl-btn--outline" onClick={addCustomToPending} disabled={!customDesc.trim() || !customPrice}>
-                  Add custom
+                  {t('ui.addCustom')}
                 </button>
               </div>
             </div>
@@ -760,7 +760,7 @@ export default function BillDetailPage() {
                       style={{ font: 'inherit', border: '1px solid var(--ehr-border, #E2E6EB)', borderRadius: 5 }}
                     />
                     <span className="bl-fee-price">{money(item.totalPrice)}</span>
-                    <button type="button" className="bl-fee-add" onClick={() => setPendingItems(prev => prev.filter(p => p.id !== item.id))}>Remove</button>
+                    <button type="button" className="bl-fee-add" onClick={() => setPendingItems(prev => prev.filter(p => p.id !== item.id))}>{t('action.remove')}</button>
                   </div>
                 ))}
               </div>
@@ -773,9 +773,9 @@ export default function BillDetailPage() {
       {confirmFinalize && (
         <Modal onClose={() => setConfirmFinalize(false)} width={420} labelledBy="bl-finalize-title">
           <DialogFrame>
-            <DialogHeader titleId="bl-finalize-title" title={<>Finalize bill {bill.invoiceNumber}?</>} description="Once finalized, line items and the bill itself can no longer be changed or deleted — only payments and discounts can be applied." onClose={() => setConfirmFinalize(false)} />
+            <DialogHeader titleId="bl-finalize-title" title={<>{t('ui.finalizeBill')} {bill.invoiceNumber}?</>} description={t('ui.onceFinalizedLineItemsAnd')} onClose={() => setConfirmFinalize(false)} />
             <DialogFooter>
-              <button type="button" className="btn btn-secondary" onClick={() => setConfirmFinalize(false)}>Cancel</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setConfirmFinalize(false)}>{t('action.cancel')}</button>
               <button type="button" className="btn btn-primary" onClick={handleFinalize} disabled={busy}>
                 {busy ? 'Finalizing…' : 'Finalize bill'}
               </button>
@@ -788,9 +788,9 @@ export default function BillDetailPage() {
       {confirmDelete && (
         <Modal onClose={() => setConfirmDelete(false)} width={420} labelledBy="bl-delete-title">
           <DialogFrame>
-            <DialogHeader titleId="bl-delete-title" title={<>Delete bill {bill.invoiceNumber}?</>} description={<>The bill will be cancelled and the {money(bill.totalAmount)} charge reversed from {bill.patientName}&rsquo;s balance. This cannot be undone.</>} onClose={() => setConfirmDelete(false)} />
+            <DialogHeader titleId="bl-delete-title" title={<>{t('ui.deleteBill')} {bill.invoiceNumber}?</>} description={<>{t('ui.theBillWillBeCancelled')} {money(bill.totalAmount)} {t('ui.chargeReversedFrom')} {bill.patientName}{t('ui.sBalanceThisCannotBe')}</>} onClose={() => setConfirmDelete(false)} />
             <DialogFooter>
-              <button type="button" className="btn btn-secondary" onClick={() => setConfirmDelete(false)}>Cancel</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setConfirmDelete(false)}>{t('action.cancel')}</button>
               <button type="button" className="btn btn-primary" style={{ background: 'var(--color-danger, #D92B20)' }} onClick={handleDelete} disabled={busy}>
                 {busy ? 'Deleting…' : 'Delete bill'}
               </button>

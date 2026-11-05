@@ -26,7 +26,6 @@ import { addPatientDocument } from '@/lib/services/patient-document-service';
 import { patientFullName } from '@/lib/patient-utils';
 import { formatDate } from '@/lib/format-utils';
 import { describeError } from '@/lib/user-facing-error';
-import FormNotices from '@/components/overlay/FormNotices';
 import type { LabResultDoc, PatientDoc } from '@/lib/db-types';
 import type { ChartPanelUser } from './types';
 import './start-visit-panel.css';
@@ -252,7 +251,6 @@ export default function ImagingReportPanel({ patient, currentUser, onClose, focu
               };
             }),
         }]}
-        notice={<FormNotices />}
         onCancel={onClose}
         cancelLabel={focusedOpen ? t('action.cancel') : t('imagingForm.close')}
         onSave={focusedOpen ? () => void saveFocused() : undefined}

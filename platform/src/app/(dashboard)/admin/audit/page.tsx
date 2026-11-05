@@ -38,6 +38,13 @@ type RiskFilter = 'all' | SaSeverity;
 
 const SEVERITIES: SaSeverity[] = ['critical', 'high', 'medium', 'low'];
 
+const SEVERITY_KEY: Record<SaSeverity, string> = {
+  critical: 'admin.healthCritical',
+  high: 'epidemic.severityHigh',
+  medium: 'syncConflicts.riskFilter_medium',
+  low: 'epidemic.severityLow',
+};
+
 const RANGE_MS: Record<Exclude<RangeFilter, 'all'>, number> = {
   '24h': 24 * 3600 * 1000,
   '7d': 7 * 24 * 3600 * 1000,
@@ -141,9 +148,9 @@ export default function AuditLogsPage() {
     return (orgId ? orgNameById.get(orgId) : undefined)
       || user?.orgName
       || (user?.role === 'super_admin' || log.username === 'superadmin'
-        ? 'Platform administration'
-        : 'Organization unavailable');
-  }, [orgNameById, userForLog]);
+        ? t('adminMgmt.platformAdministration')
+        : t('adminMgmt.orgUnavailable'));
+  }, [orgNameById, userForLog, t]);
 
   const withRisk = useMemo(
     () => logs.map(log => ({ log, risk: classifyAuditRisk(log.action, log.success) })),
@@ -222,60 +229,60 @@ export default function AuditLogsPage() {
   return (
     <SadbPage>
       <SadbCard
-        title="Audit logs"
-        meta={`${filtered.length} of ${inRange.length} events`}
+        title={t('ui.auditLogs')}
+        meta={t('adminMgmt.nOfMEvents', { shown: filtered.length, total: inRange.length })}
         action={
           <div className="sadb-legend">
-            <span><i style={{ background: stats.failures ? 'var(--color-danger-500)' : 'var(--text-muted)' }} />Failures ({stats.failures})</span>
-            <span><i style={{ background: stats.highRisk ? 'var(--color-danger-500)' : 'var(--color-warning-600)' }} />High-risk ({stats.highRisk})</span>
-            <span><i style={{ background: 'var(--text-muted)' }} />Distinct users ({stats.users})</span>
+            <span><i style={{ background: stats.failures ? 'var(--color-danger-500)' : 'var(--text-muted)' }} />{t('ui.failures')}{stats.failures})</span>
+            <span><i style={{ background: stats.highRisk ? 'var(--color-danger-500)' : 'var(--color-warning-600)' }} />{t('ui.highRisk')}{stats.highRisk})</span>
+            <span><i style={{ background: 'var(--text-muted)' }} />{t('ui.distinctUsers')}{stats.users})</span>
           </div>
         }
       >
         <div className="sadb-search-row sadb-search-row--table-aligned">
           <SadbSearch
             value={search} onChange={setSearch}
-            placeholder="Search action, user, or details…" ariaLabel="Search audit log"
+            placeholder={t('ui.searchActionUserOrDetails')} ariaLabel={t('adminMgmt.searchAuditLog')}
             filters={{
               activeCount: activeFilterCount,
               onClear: () => { setSuccessFilter('all'); setRiskFilter('all'); setOrgFilter('all'); setRange('7d'); setUserScope(null); },
               children: (
                 <>
                 <FilterSelect
-                  label="Result"
+                  label={t('lab.result')}
                   value={successFilter}
                   onChange={value => setSuccessFilter(value as SuccessFilter)}
                   neutralValue="all"
                   size="sm"
-                  options={[{ value: 'all', label: 'All results' }, { value: 'success', label: 'Success' }, { value: 'failure', label: 'Failure' }]}
+                  options={[{ value: 'all', label: t('adminMgmt.allResults') }, { value: 'success', label: t('admin.statusSuccess') }, { value: 'failure', label: t('ui.failure') }]}
                 />
                 <FilterSelect
-                  label="Risk"
+                  label={t('routeContext.risk')}
                   value={riskFilter}
                   onChange={value => setRiskFilter(value as RiskFilter)}
                   neutralValue="all"
                   size="sm"
-                  options={[{ value: 'all', label: 'All risk' }, ...SEVERITIES.map(s => ({ value: s, label: s[0].toUpperCase() + s.slice(1) }))]}
+                  options={[{ value: 'all', label: t('adminMgmt.allRisk') }, ...SEVERITIES.map(s => ({ value: s, label: t(SEVERITY_KEY[s]) }))]}
                 />
                 <FilterSelect
-                  label="Organization"
+                  label={t('adminBilling.colOrganization')}
                   value={orgFilter}
                   onChange={setOrgFilter}
                   neutralValue="all"
                   size="sm"
-                  options={[{ value: 'all', label: 'All organizations' }, ...organizations.map(org => ({ value: org._id, label: org.name }))]}
+                  options={[{ value: 'all', label: t('management.allOrganizations') }, ...organizations.map(org => ({ value: org._id, label: org.name }))]}
                 />
                 <FilterSelect
-                  label="Date range"
+                  label={t('ui.dateRange')}
                   value={range}
                   onChange={value => setRange(value as RangeFilter)}
                   neutralValue="7d"
                   size="sm"
                   options={[
-                    { value: '24h', label: 'Last 24h' },
-                    { value: '7d', label: 'Last 7 days' },
-                    { value: '30d', label: 'Last 30 days' },
-                    { value: 'all', label: 'All time' },
+                    { value: '24h', label: t('adminMgmt.last24h') },
+                    { value: '7d', label: t('adminMgmt.last7d') },
+                    { value: '30d', label: t('analytics.last30Days') },
+                    { value: 'all', label: t('adminMgmt.allTime') },
                   ]}
                 />
                 </>
@@ -290,34 +297,35 @@ export default function AuditLogsPage() {
               type="button"
               className="btn btn-secondary btn-sm flex-shrink-0"
               onClick={() => setUserScope(null)}
-              title="Show every user again"
+              title={t('ui.showEveryUserAgain')}
             >
-              Activity: {userScope.name || userScope.id} <X className="w-3.5 h-3.5" />
+              {t('ui.activity')} {userScope.name || userScope.id} <X className="w-3.5 h-3.5" />
             </button>
           )}
-          <button type="button" className="tm-ghost-btn flex-shrink-0" onClick={exportCsv}>Export as CSV</button>
+          <button type="button" className="tm-ghost-btn flex-shrink-0" onClick={exportCsv}>{t('adminMgmt.exportCsv')}</button>
         </div>
         {/* No pager: every matching event lives in one scroll area, and the
             head's "Showing X of Y" meta states the count. */}
         <div className="sadb-edge-aligned-table" style={{ maxHeight: 620, overflowY: 'auto' }}>
           <SaTable
             columns={[
-              'User', 'When', 'Org', 'Action', 'Detail', 'Result', 'Risk', 'Resolve',
+              t('admin.colUser'), t('transfers.when'), t('adminMgmt.colOrg'), t('admin.colAction'),
+              t('adminUsers.activityDetail'), t('lab.result'), t('routeContext.risk'), t('issues.action.resolve'),
             ]}
-            empty={loading ? 'Loading audit logs…' : 'No audit events match these filters.'}
+            empty={loading ? t('adminMgmt.loadingAuditLogs') : t('adminMgmt.noAuditMatch')}
           >
             {filtered.map(({ log, risk }) => (
               <tr
                 key={log._id}
                 tabIndex={0}
-                aria-label={`Open audit entry: ${log.action}`}
+                aria-label={t('adminMgmt.openAuditEntry', { action: log.action })}
                 style={{ cursor: 'pointer' }}
                 onClick={() => setSelected({ log, risk })}
                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected({ log, risk }); } }}
               >
                 <td>
                   <span className="min-w-0">
-                    <span className="sadb-tenant-name truncate">{log.username || log.userId || 'System'}</span>
+                    <span className="sadb-tenant-name truncate">{log.username || log.userId || t('admin.systemUser')}</span>
                     <span className="sadb-tenant-sub truncate">{orgNameForLog(log)}</span>
                   </span>
                 </td>
@@ -325,11 +333,11 @@ export default function AuditLogsPage() {
                 <td>{orgNameForLog(log)}</td>
                 <td>{log.action}</td>
                 <td>{log.details || '—'}</td>
-                <td><SadbChip tone={log.success ? 'green' : 'red'}>{log.success ? 'Success' : 'Failure'}</SadbChip></td>
-                <td><SadbChip tone={SEVERITY_CHIP[risk]}>{risk[0].toUpperCase() + risk.slice(1)}</SadbChip></td>
+                <td><SadbChip tone={log.success ? 'green' : 'red'}>{log.success ? t('admin.statusSuccess') : t('ui.failure')}</SadbChip></td>
+                <td><SadbChip tone={SEVERITY_CHIP[risk]}>{t(SEVERITY_KEY[risk])}</SadbChip></td>
                 <td>
                   {log.success ? (
-                    <span className="sadb-table-action-state">Not needed</span>
+                    <span className="sadb-table-action-state">{t('ui.notNeeded')}</span>
                   ) : (
                     <button
                       type="button"
@@ -339,9 +347,9 @@ export default function AuditLogsPage() {
                         setSelected({ log, risk });
                       }}
                       onKeyDown={event => event.stopPropagation()}
-                      aria-label={`${resolutionIndex.has(`audit-${log._id}`) ? 'Review resolved' : 'Resolve'} audit risk: ${log.action}`}
+                      aria-label={t(resolutionIndex.has(`audit-${log._id}`) ? 'adminMgmt.reviewResolvedAuditRisk' : 'adminMgmt.resolveAuditRisk', { action: log.action })}
                     >
-                      {resolutionIndex.has(`audit-${log._id}`) ? 'Resolved' : 'Resolve'}
+                      {resolutionIndex.has(`audit-${log._id}`) ? t('ui.resolved') : t('issues.action.resolve')}
                     </button>
                   )}
                 </td>
@@ -452,6 +460,7 @@ function AuditEntryDialog({
   onReopen: () => void | Promise<void>;
   onCopyJson: () => void;
 }) {
+  const { t } = useTranslation();
   const [noteDraft, setNoteDraft] = useState('');
   const when = log.createdAt
     ? `${new Date(log.createdAt).toLocaleString()} (${formatWhen(log.createdAt)})`
@@ -465,15 +474,15 @@ function AuditEntryDialog({
         <DialogHeader titleId="audit-entry-title" title={log.action} description={when} onClose={onClose} />
         <DialogBody>
         <div className="flex items-center flex-wrap gap-2" style={{ margin: '0 0 16px' }}>
-          {log.success ? <SadbChip tone="green">Success</SadbChip> : <SadbChip tone="red">Failure</SadbChip>}
-          <SadbChip tone={SEVERITY_CHIP[risk]}>{risk[0].toUpperCase() + risk.slice(1)} risk</SadbChip>
-          {resolution && <SadbChip tone="green">Resolved</SadbChip>}
+          {log.success ? <SadbChip tone="green">{t('admin.statusSuccess')}</SadbChip> : <SadbChip tone="red">{t('ui.failure')}</SadbChip>}
+          <SadbChip tone={SEVERITY_CHIP[risk]}>{t('adminMgmt.riskChip', { level: t(SEVERITY_KEY[risk]) })}</SadbChip>
+          {resolution && <SadbChip tone="green">{t('ui.resolved')}</SadbChip>}
         </div>
 
         {resolution && (
           <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: '0 0 16px' }}>
-            Resolved {formatWhen(resolution.resolvedAt)}
-            {resolution.resolvedByName ? ` by ${resolution.resolvedByName}` : ''}
+            {t('conflicts.actionResolved')} {formatWhen(resolution.resolvedAt)}
+            {resolution.resolvedByName ? t('adminMgmt.resolvedByName', { name: resolution.resolvedByName }) : ''}
             {resolution.note ? ` — ${resolution.note}` : ''}
           </p>
         )}
@@ -486,19 +495,19 @@ function AuditEntryDialog({
         )}
 
         <div style={{ border: '1px solid var(--border-light)', borderRadius: 8, marginBottom: 16 }}>
-          <EntryKv label="User" value={log.username || log.userId || 'System'} />
-          <EntryKv label="User id" value={log.userId} mono />
-          <EntryKv label="Role" value={log.role} />
-          <EntryKv label="Organization" value={orgName || log.orgId} />
-          <EntryKv label="Facility" value={log.hospitalId} mono />
-          <EntryKv label="IP address" value={log.ip} mono />
-          <EntryKv label="Route" value={log.route} mono />
-          <EntryKv label="Resource type" value={log.resourceType} />
-          <EntryKv label="Resource id" value={log.resourceId} mono />
-          <EntryKv label="Patient" value={log.patientId} mono />
-          <EntryKv label="Search query" value={log.query} mono />
-          <EntryKv label="Records returned" value={log.resultCount} />
-          <EntryKv label="Entry id" value={log._id} mono />
+          <EntryKv label={t('admin.colUser')} value={log.username || log.userId || t('admin.systemUser')} />
+          <EntryKv label={t('ui.userId')} value={log.userId} mono />
+          <EntryKv label={t('adminUsers.colRole')} value={log.role} />
+          <EntryKv label={t('adminBilling.colOrganization')} value={orgName || log.orgId} />
+          <EntryKv label={t('births.colFacility')} value={log.hospitalId} mono />
+          <EntryKv label={t('ui.ipAddress')} value={log.ip} mono />
+          <EntryKv label={t('consultation.rxRoute')} value={log.route} mono />
+          <EntryKv label={t('ui.resourceType')} value={log.resourceType} />
+          <EntryKv label={t('ui.resourceId')} value={log.resourceId} mono />
+          <EntryKv label={t('appointments.labelPatient')} value={log.patientId} mono />
+          <EntryKv label={t('ui.searchQuery')} value={log.query} mono />
+          <EntryKv label={t('ui.recordsReturned')} value={log.resultCount} />
+          <EntryKv label={t('ui.entryId')} value={log._id} mono />
         </div>
 
         {/* An optional line on what was done, written before resolving. It
@@ -507,14 +516,14 @@ function AuditEntryDialog({
         {!log.success && !resolution && (
           <div style={{ marginBottom: 14 }}>
             <label htmlFor="audit-resolve-note" style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
-              What was done about it (optional)
+              {t('ui.whatWasDoneAboutIt')}
             </label>
             <textarea rows={1}
               id="audit-resolve-note"
               className="sadb-modal-input"
               value={noteDraft}
               onChange={e => setNoteDraft(e.target.value)}
-              placeholder="e.g. Reset the account and confirmed the next login succeeded"
+              placeholder={t('ui.eGResetTheAccount')}
             />
           </div>
         )}
@@ -526,20 +535,20 @@ function AuditEntryDialog({
         <DialogFooter
           start={(
             <div className="flex flex-wrap gap-2">
-              <button type="button" className="btn btn-ghost btn-sm" onClick={onFilterUser}>Show this user&apos;s activity</button>
-              {onOpenUser && <button type="button" className="btn btn-ghost btn-sm" onClick={onOpenUser}>View user account</button>}
-              {onOpenPatient && <button type="button" className="btn btn-ghost btn-sm" onClick={onOpenPatient}>Open patient chart</button>}
-              <button type="button" className="btn btn-ghost btn-sm" onClick={onCopyJson}>Copy entry JSON</button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={onFilterUser}>{t('ui.showThisUserSActivity')}</button>
+              {onOpenUser && <button type="button" className="btn btn-ghost btn-sm" onClick={onOpenUser}>{t('adminMgmt.viewUserAccount')}</button>}
+              {onOpenPatient && <button type="button" className="btn btn-ghost btn-sm" onClick={onOpenPatient}>{t('referrals.openPatientChart')}</button>}
+              <button type="button" className="btn btn-ghost btn-sm" onClick={onCopyJson}>{t('ui.copyEntryJson')}</button>
             </div>
           )}
         >
-          <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>{t('action.close')}</button>
           {/* Only failures reach the Risk Center, so only failures can be
               resolved from here — offering it on a successful entry would
               imply a queue row that does not exist. */}
           {!log.success && (resolution
-            ? <button type="button" className="btn btn-primary" onClick={() => onReopen()}>Reopen risk</button>
-            : <button type="button" className="btn btn-primary" onClick={() => onResolve(noteDraft)}>Mark resolved</button>
+            ? <button type="button" className="btn btn-primary" onClick={() => onReopen()}>{t('ui.reopenRisk')}</button>
+            : <button type="button" className="btn btn-primary" onClick={() => onResolve(noteDraft)}>{t('issues.action.resolve')}</button>
           )}
         </DialogFooter>
       </DialogFrame>

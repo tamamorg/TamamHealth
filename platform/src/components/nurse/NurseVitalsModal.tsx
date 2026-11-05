@@ -31,9 +31,8 @@ import type { MedicalRecordDoc } from '@/lib/db-types';
 import { describeError } from '@/lib/user-facing-error';
 import { isAnyModalOpen } from '@/components/Modal';
 import './nurse-vitals-panel.css';
-import FormNotices from '@/components/overlay/FormNotices';
-import InlineBanner from '@/components/overlay/InlineBanner';
 import NumberInput from '@/components/forms/NumberInput';
+import NoticeToast from '@/components/overlay/NoticeToast';
 
 type NurseVitals = VitalsInput & { height?: string };
 type FieldKey = Exclude<keyof NurseVitals, 'notes'>;
@@ -223,9 +222,9 @@ export default function NurseVitalsModal({
   const form = (
     <div className="nv-form">
       {readOnly && (
-        <InlineBanner compact title={t('chart.locked')}>
+        <NoticeToast title={t('chart.locked')}>
           {onEdit ? t('vitalsPanel.lockedHint') : null}
-        </InlineBanner>
+        </NoticeToast>
       )}
       <section className="nv-section" aria-labelledby="nv-vitals-heading">
         <h3 id="nv-vitals-heading" className="nv-section-title">{t('vitalsPanel.sectionVitals')}</h3>
@@ -306,7 +305,6 @@ export default function NurseVitalsModal({
     </div>
   ) : (
     <>
-    <FormNotices />
     <div className="nv-footer">
       <button type="button" className="nv-btn nv-btn--ghost" onClick={close} disabled={saving}>{t('vitalsPanel.cancel')}</button>
       <button type="button" className="nv-btn nv-btn--primary" onClick={() => void save()} disabled={saving}>

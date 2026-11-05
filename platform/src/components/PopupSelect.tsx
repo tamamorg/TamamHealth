@@ -4,6 +4,7 @@ import { useId, useMemo, useState } from 'react';
 import Modal from '@/components/Modal';
 import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { Check, ChevronDown, ChevronRight, Search } from '@/components/icons/lucide';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export type PopupSelectOption = { value: string; label: string };
 export type PopupSelectGroup = { label: string; options: PopupSelectOption[] };
@@ -40,6 +41,7 @@ export default function PopupSelect({
   compact?: boolean;
   triggerStyle?: React.CSSProperties;
 }) {
+  const { t } = useTranslation();
   const titleId = useId();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -94,7 +96,7 @@ export default function PopupSelect({
               titleId={titleId}
               title={activeGroup ? activeGroup.label : label}
               description={stepCount > 1
-                ? <>Step {stepIndex} of {stepCount} · {stepIndex === 1 ? 'Choose a category' : 'Choose an option'}</>
+                ? <>{t('ui.step')} {stepIndex} of {stepCount} · {stepIndex === 1 ? 'Choose a category' : 'Choose an option'}</>
                 : undefined}
               onBack={activeGroup ? () => { setActiveGroup(null); setQuery(''); } : undefined}
               onClose={close}
@@ -107,7 +109,7 @@ export default function PopupSelect({
                   autoFocus
                   type="search"
                   value={query}
-                  placeholder="Search…"
+                  placeholder={t('ui.search')}
                   onChange={e => setQuery(e.target.value)}
                 />
               </div>
@@ -136,7 +138,7 @@ export default function PopupSelect({
                 </button>
               ))}
               {visibleGroups.length === 0 && visibleOptions.length === 0 && (
-                <p className="popup-select-empty">No matches.</p>
+                <p className="popup-select-empty">{t('hospitals.noMatches')}</p>
               )}
             </div>
             </DialogBody>

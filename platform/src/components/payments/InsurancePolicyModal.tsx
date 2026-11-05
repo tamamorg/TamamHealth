@@ -141,7 +141,7 @@ export default function InsurancePolicyModal({
           <label className="text-[13px] font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>
             {t('billing.payerName') || 'Payer / plan name'}
           </label>
-          <input type="text" value={form.payerName} onChange={e => set('payerName', e.target.value)} placeholder="e.g. AAR Insurance" />
+          <input type="text" value={form.payerName} onChange={e => set('payerName', e.target.value)} placeholder={t('ui.eGAarInsurance')} />
         </div>
 
         <div className="grid grid-cols-2 gap-3">

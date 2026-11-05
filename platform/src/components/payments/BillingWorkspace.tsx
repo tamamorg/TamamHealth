@@ -813,7 +813,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
               </div>
               <EhrRailMenu
                 variant="primary"
-                label="Actions"
+                label={t('adminBilling.colActions')}
                 ariaLabel="Billing actions"
                 align="right"
                 items={actionItems}

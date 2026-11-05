@@ -358,11 +358,11 @@ export default function PatientPortalPage() {
                   <table className="bl-table">
                     <thead>
                       <tr>
-                        <th>Bill</th>
-                        <th>Date</th>
-                        <th className="bl-right">Amount</th>
-                        <th>Status</th>
-                        <th aria-label="Pay" />
+                        <th>{t('ui.bill')}</th>
+                        <th>{t('billing.activityColumn.date')}</th>
+                        <th className="bl-right">{t('billing.activityColumn.amount')}</th>
+                        <th>{t('billing.activityColumn.status')}</th>
+                        <th aria-label={t('portal.pay')} />
                       </tr>
                     </thead>
                     <tbody>

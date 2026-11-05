@@ -46,6 +46,7 @@ import {
 } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { roleLabel } from '@/lib/role-display';
+import { localizeText } from '@/lib/i18n';
 
 export type SystemAdminSectionId =
   | 'apps' | 'extensions' | 'privileges' | 'patientActions' | 'metadata' | 'properties';
@@ -372,6 +373,7 @@ function AppExtActions({ id, label, status, route, enabled, kind, data, embedded
   id: string; label: string; status: SystemAppDefinition['status']; route?: string;
   enabled: boolean; kind: 'app' | 'extension'; data: SystemAdminConfigData; embedded?: boolean;
 }) {
+  const { t } = useTranslation();
   const isConfigurable = status === 'configurable';
   const hasRealSettingsRoute = !!route && REAL_SETTINGS_ROUTES.has(route) && data.canOpen(route);
   const openAllowed = data.canOpen(route);
@@ -380,7 +382,7 @@ function AppExtActions({ id, label, status, route, enabled, kind, data, embedded
   // Extension switches have no runtime loader yet. Showing a live toggle here
   // previously stored an override that no extension point consulted.
   if (kind === 'extension') {
-    return <span className="sysadm-pill" style={{ background: 'var(--semantic-inactive-bg)', color: 'var(--semantic-inactive)' }}>Not available</span>;
+    return <span className="sysadm-pill" style={{ background: 'var(--semantic-inactive-bg)', color: 'var(--semantic-inactive)' }}>{t('ui.notAvailable')}</span>;
   }
 
   return (
@@ -403,14 +405,14 @@ function AppExtActions({ id, label, status, route, enabled, kind, data, embedded
               description: 'Configuration stays inside Settings. Add a local setup note here, or open the standalone System Administration console for cross-module navigation.',
               value: data.propertyOverrides[id] ?? '',
             })}>
-              <Settings className="w-3 h-3" /> Configure
+              <Settings className="w-3 h-3" /> {t('ui.configure')}
             </button>
           ) : (
             <Link href={route!} className="sysadm-action-btn">
-              <Settings className="w-3 h-3" /> Configure
+              <Settings className="w-3 h-3" /> {t('ui.configure')}
             </Link>
           )
-        ) : <span className="sysadm-pill" style={{ background: 'var(--semantic-inactive-bg)', color: 'var(--semantic-inactive)' }}>Not available</span>
+        ) : <span className="sysadm-pill" style={{ background: 'var(--semantic-inactive-bg)', color: 'var(--semantic-inactive)' }}>{t('ui.notAvailable')}</span>
       ) : (
         <>
           <Toggle
@@ -423,7 +425,7 @@ function AppExtActions({ id, label, status, route, enabled, kind, data, embedded
           />
           {openAllowed && !embedded && (
             <Link href={route!} className="sysadm-open-link">
-              Open <ChevronRight className="w-3 h-3" />
+              {t('dashboard.open')} <ChevronRight className="w-3 h-3" />
             </Link>
           )}
         </>
@@ -494,9 +496,9 @@ function renderPrivileges(list: typeof SYSTEM_PRIVILEGE_DEFINITIONS) {
   return (
     <div className="sysadm-table">
       <div className="sysadm-table-head">
-        <span>Privilege</span>
-        <span>Roles</span>
-        <span>Risk</span>
+        <span>{localizeText('Privilege')}</span>
+        <span>{localizeText('Roles')}</span>
+        <span>{localizeText('Risk')}</span>
       </div>
       {list.length === 0 && <EmptyRow text="No privileges match your search." />}
       {list.map(privilege => (
@@ -528,7 +530,7 @@ function renderMetadata(list: typeof SYSTEM_METADATA_DEFINITIONS, data: SystemAd
             <div className="sysadm-row-actions">
               {data.canOpen(m.route) && !embedded && (
                 <Link href={m.route!} className="sysadm-action-btn">
-                  Open <ChevronRight className="w-3 h-3" />
+                  {localizeText('Open')} <ChevronRight className="w-3 h-3" />
                 </Link>
               )}
             </div>
@@ -557,12 +559,12 @@ function renderProperties(list: typeof SYSTEM_GLOBAL_PROPERTY_DEFINITIONS, data:
             actions={
               <div className="sysadm-row-actions">
                 {p.route && p.route !== '/system-admin' && data.canOpen(p.route) && !embedded && (
-                  <Link href={p.route} className="sysadm-open-link" title="Related settings">
-                    Related <ChevronRight className="w-3 h-3" />
+                  <Link href={p.route} className="sysadm-open-link" title={localizeText('Related settings')}>
+                    {localizeText('Related')} <ChevronRight className="w-3 h-3" />
                   </Link>
                 )}
                 <span className="sysadm-pill" style={{ background: 'var(--semantic-inactive-bg)', color: 'var(--semantic-inactive)' }}>
-                  Recorded only
+                  {localizeText('Recorded only')}
                 </span>
               </div>
             }
@@ -586,11 +588,12 @@ export function SystemAdminSectionContent({ sectionId, data, filter, showLocalFi
   filter?: string;
   showLocalFilter?: boolean;
 }) {
+  const { t } = useTranslation();
   const [localFilter, setLocalFilter] = useState('');
   const q = (filter ?? localFilter).trim();
 
   if (data.loading) {
-    return <div className="sysadm-empty">Loading…</div>;
+    return <div className="sysadm-empty">{t('admin.loading')}</div>;
   }
 
   let body: ReactNode;
@@ -626,11 +629,11 @@ export function SystemAdminSectionContent({ sectionId, data, filter, showLocalFi
           <input
             value={localFilter}
             onChange={e => setLocalFilter(e.target.value)}
-            placeholder="Filter this list…"
+            placeholder={t('ui.filterThisList')}
             aria-label={`Filter ${sectionId}`}
           />
           {localFilter && (
-            <button type="button" onClick={() => setLocalFilter('')} aria-label="Clear filter">
+            <button type="button" onClick={() => setLocalFilter('')} aria-label={t('immun.clearFilter')}>
               <X className="w-3.5 h-3.5" />
             </button>
           )}
@@ -647,6 +650,7 @@ export function SystemAdminSectionContent({ sectionId, data, filter, showLocalFi
  *  centred popup as Settings' Update account / Change password / PIN popups, so
  *  every popup Settings opens has one look. */
 export function SystemAdminEditorModal({ data }: { data: SystemAdminConfigData }) {
+  const { t } = useTranslation();
   if (!data.editing) return null;
   const close = () => { if (!data.saving) data.closeEditor(); };
   return (
@@ -667,7 +671,7 @@ export function SystemAdminEditorModal({ data }: { data: SystemAdminConfigData }
 
         <div className="ehr-handoff-body ehr-set-acct-body">
           <div className="ehr-set-acct-field">
-            <label htmlFor="sysadm-edit-value">Current value</label>
+            <label htmlFor="sysadm-edit-value">{t('ui.currentValue')}</label>
             <textarea
               id="sysadm-edit-value"
               className="ehr-handoff-input"
@@ -680,7 +684,7 @@ export function SystemAdminEditorModal({ data }: { data: SystemAdminConfigData }
         </div>
 
         <div className="ehr-set-acct-foot">
-          <button type="button" className="ehr-handoff-btn" onClick={data.closeEditor} disabled={data.saving}>Cancel</button>
+          <button type="button" className="ehr-handoff-btn" onClick={data.closeEditor} disabled={data.saving}>{t('action.cancel')}</button>
           <button type="button" className="ehr-handoff-btn primary" onClick={data.saveEditor} disabled={data.saving}>{data.saving ? 'Saving…' : 'Save'}</button>
         </div>
       </div>

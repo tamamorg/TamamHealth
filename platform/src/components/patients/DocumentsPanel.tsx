@@ -380,7 +380,7 @@ export default function DocumentsPanel({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
         {view === 'documents' ? (
           <label className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-            File under
+            {t('ui.fileUnder')}
             <Select value={category} onChange={e => setCategory(e.target.value as PatientDocumentCategory)}
               className="w-full p-2 rounded-md text-[12px] mt-0.5" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}>
               {GENERAL_CATEGORY_OPTIONS.map(c => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
@@ -388,22 +388,22 @@ export default function DocumentsPanel({
           </label>
         ) : (
           <p className="text-[11px] self-end pb-2" style={{ color: 'var(--text-muted)' }}>
-            Filed under <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>{CATEGORY_LABELS[uploadCategory]}</span>
+            {t('ui.filedUnder')} <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>{CATEGORY_LABELS[uploadCategory]}</span>
           </p>
         )}
         <label className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-          Note (optional)
+          {t('ui.noteOptional')}
           <textarea rows={1} value={note} onChange={e => setNote(e.target.value)} placeholder={view === 'education' ? 'e.g. Went through it with the mother' : 'e.g. Contacted patient, all well'}
             className="w-full p-2 rounded-md text-[12px] mt-0.5" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }} />
         </label>
       </div>
       <FileUpload attachments={[]} onAdd={onAdd} onRemove={() => {}} uploaderName={currentUser?.name || 'Staff'} />
-      {busy && <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>Saving…</p>}
+      {busy && <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>{t('noteEditor.saving')}</p>}
     </>
   );
 
   const subTabs = (
-    <div className="ehr-chart-subtabs" role="tablist" aria-label="Documents view">
+    <div className="ehr-chart-subtabs" role="tablist" aria-label={t('ui.documentsView')}>
       {(['documents', 'referrals', 'education'] as DocView[]).map(v => (
         <button
           key={v}
@@ -428,7 +428,7 @@ export default function DocumentsPanel({
     >
       {view === 'documents' && (
         <>
-          <p className="text-[11px] mb-2" style={{ color: 'var(--text-muted)' }}>Scans, films, letters &amp; IDs</p>
+          <p className="text-[11px] mb-2" style={{ color: 'var(--text-muted)' }}>{t('ui.scansFilmsLettersIds')}</p>
 
           {generalDocs.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-4 mb-2">
@@ -446,23 +446,23 @@ export default function DocumentsPanel({
             </div>
           )}
 
-          {listTable(shownGeneral.map(docRow), 'No documents filed yet.')}
+          {listTable(shownGeneral.map(docRow), t('ui.noDocumentsFiledYet'))}
         </>
       )}
 
       {view === 'referrals' && (
         <>
           <div className="flex items-center justify-between gap-2 mb-2">
-            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Referrals sent and received, and any referral letters filed</p>
+            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{t('ui.referralsSentAndReceivedAnd')}</p>
             <div className="flex items-center gap-3 flex-shrink-0">
               {onNewReferral && (
                 <button type="button" onClick={onNewReferral} className="text-[11px] font-semibold flex items-center gap-1" style={{ color: 'var(--accent-primary)' }}>
-                  <ArrowRightLeft className="w-3.5 h-3.5" /> New referral
+                  <ArrowRightLeft className="w-3.5 h-3.5" /> {t('ui.newReferral')}
                 </button>
               )}
               {onOpenAllReferrals && (
                 <button type="button" onClick={onOpenAllReferrals} className="text-[11px] font-semibold flex items-center gap-0.5" style={{ color: 'var(--accent-primary)' }}>
-                  All referrals <ChevronRight className="w-3.5 h-3.5" />
+                  {t('ptDetail.allReferrals')} <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
@@ -486,7 +486,7 @@ export default function DocumentsPanel({
                   {canViewClinical ? (
                     ref.reason && <div className="tamam-cell-clamp" title={ref.reason}>{ref.reason}</div>
                   ) : (
-                    <span className="italic" style={{ color: 'var(--text-muted)' }}>Clinical reason restricted</span>
+                    <span className="italic" style={{ color: 'var(--text-muted)' }}>{t('ptDetail.reasonRestricted')}</span>
                   )}
                   {/* referringDoctor is stored with its own title ("Dr. …"), so no prefix here. */}
                   {ref.referringDoctor && <div className="tamam-cell-sub">{ref.referringDoctor}</div>}
@@ -501,7 +501,7 @@ export default function DocumentsPanel({
               </tr>
             )),
             ...referralDocs.map(docRow),
-          ], 'No referrals or referral letters on this chart.')}
+          ], t('ui.noReferralsOrReferralLetters'))}
           {referralSlider}
         </>
       )}
@@ -509,10 +509,10 @@ export default function DocumentsPanel({
       {view === 'education' && (
         <>
           <div className="flex items-center justify-between gap-2 mb-2">
-            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Handouts filed on the chart, and education sent to the patient</p>
+            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{t('ui.handoutsFiledOnTheChart')}</p>
             {onSendEducation && (
               <button type="button" onClick={onSendEducation} className="text-[11px] font-semibold flex items-center gap-1 flex-shrink-0" style={{ color: 'var(--accent-primary)' }}>
-                <Send className="w-3.5 h-3.5" /> Send education
+                <Send className="w-3.5 h-3.5" /> {t('ui.sendEducation')}
               </button>
             )}
           </div>
@@ -537,7 +537,7 @@ export default function DocumentsPanel({
                 </td>
               </tr>
             )),
-          ], 'Nothing yet. File a handout, or send education to the patient.')}
+          ], t('ui.nothingYetFileAHandout'))}
         </>
       )}
 
@@ -588,7 +588,7 @@ export default function DocumentsPanel({
               <div className="flex items-center gap-2">
                 {/* Always reachable, whatever the type previews as. */}
                 <a href={preview.url} download={preview.fileName} className="text-[11px] font-semibold px-2 py-1 rounded" style={{ background: 'var(--accent-light)', color: 'var(--accent-primary)' }}>
-                  Download
+                  {t('patientQrCode.download')}
                 </a>
                 <button onClick={closePreview} className="p-1 rounded" style={{ background: 'var(--overlay-subtle)' }}><X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /></button>
               </div>
@@ -597,7 +597,7 @@ export default function DocumentsPanel({
               {preview.mimeType === 'application/pdf' ? (
                 <iframe src={preview.url} className="w-full rounded" style={{ height: '70vh' }} title={preview.title} />
               ) : (
-                <div className="text-center py-12"><FileText className="w-16 h-16 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} /><p className="text-sm" style={{ color: 'var(--text-muted)' }}>Preview not available.</p></div>
+                <div className="text-center py-12"><FileText className="w-16 h-16 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} /><p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('ui.previewNotAvailable')}</p></div>
               )}
             </div>
           </div>

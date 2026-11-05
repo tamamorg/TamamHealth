@@ -835,7 +835,7 @@ export default function PatientDetailPage() {
       background: 'rgba(242, 109, 100, 0.12)', color: 'var(--color-danger-500)', border: '1px solid rgba(242, 109, 100, 0.32)', letterSpacing: 0.2,
     }}>
       <DuotoneInfoIcon name="pregnant" size={11} color="var(--color-danger-500)" accent="var(--color-danger-500)" />
-      Pregnant{activeANC?.gestationalAge ? ` · ${activeANC.gestationalAge} wk` : ''}
+      {t('storyboard.pregnant')}{activeANC?.gestationalAge ? ` · ${activeANC.gestationalAge} wk` : ''}
     </span>
   ) : null;
 

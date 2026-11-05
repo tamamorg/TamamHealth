@@ -1,6 +1,5 @@
 'use client';
 
-import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Children, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useDashboardRailDock } from '@/lib/hooks/useDashboardRailDock';
@@ -33,6 +32,7 @@ import { toIsoDate as visitIsoDate } from '@/components/ehr/EhrMiniCalendar';
 import type { AppointmentStatus } from '@/lib/db-types';
 import { readCareDashboardUrl, updateCareDashboardSearch } from '@/lib/navigation/care-dashboard-url';
 import { stopsClickPropagation } from '@/lib/a11y';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const EHR_CARE_PREVIEW_HISTORY_KEY = '__tamamEhrCarePreview';
 /** Marks a visit-status pick on a locked row's picker, whose own options are
@@ -398,6 +398,7 @@ export default function EhrCareDashboard({
   autoOpenRowId?: string | null;
   children?: ReactNode;
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   // Sliders dock over the right panel on a dashboard (see the hook).
   const rightRailRef = useRef<HTMLElement>(null);
@@ -684,7 +685,6 @@ export default function EhrCareDashboard({
   // top-left slot as the Clinical Officer-style "+" CTA; every other action
   // renders in the right-hand header row (wrapping when needed) — including
   // panel toggles that swap what occupies the center.
-  const { t } = useTranslation();
   const primaryAction = actions[0];
   const headerTitle = greetingName ? `Welcome, ${abbreviateProviderName(greetingName)}` : title;
   // Role, then module — the two halves of the eyebrow under the greeting. The
@@ -869,7 +869,7 @@ export default function EhrCareDashboard({
                   <button
                     type="button"
                     className="ehr-queue-search-clear"
-                    aria-label="Clear search"
+                    aria-label={t('ui.clearSearch')}
                     onClick={() => onSearchChange('')}
                   >
                     <X className="w-3.5 h-3.5" />
@@ -910,7 +910,7 @@ export default function EhrCareDashboard({
                       empty day or a filter that matches nothing, so the table
                       never collapses into a bare message. */}
                   <div className="appointment-card-head" aria-hidden="true">
-                    {(columnLabels ?? [t('careBoard.colPatient'), t('careBoard.colTime'), t('careBoard.colCareTeam'), t('careBoard.colContext'), t('careBoard.colStatus')])
+                    {(columnLabels ?? [t('appointments.labelPatient'), t('noteEditor.time'), t('chartMessages.careTeam'), t('ui.context'), t('billing.activityColumn.status')])
                       .map(label => <span key={label}>{label}</span>)}
                   </div>
                   {visibleRows.length === 0 && (

@@ -452,25 +452,25 @@ export default function PrescribeModal({
       ? warnings.map(warning => `<li><strong>${e(warning.severity.toUpperCase())}</strong> — ${e(warning.text)}</li>`).join('')
       : '<li>No interaction or formulary warning was surfaced by the current check.</li>';
     const body = `
-      <p class="notice status-alert"><strong>DRAFT — NOT YET ISSUED.</strong> This paper does not replace the saved and signed medication order.</p>
+      <p class="notice status-alert"><strong>DRAFT — NOT YET ISSUED.</strong> ${t('ui.thisPaperDoesNotReplace')}</p>
       <section class="section keep"><h2 class="section-title">Medication Order</h2>
         ${printFields([
-          { label: 'Medication', value: draft.drug.name },
+          { label: t('hospitals.colMedication'), value: draft.drug.name },
           { label: 'Dose / Form', value: `${doseFrom(draft.drug.name)}${draft.drug.form ? ` · ${draft.drug.form}` : ''}` },
           { label: 'Directions for Patient', value: draft.instructions.trim() },
-          { label: 'Quantity', value: quantity || '1' },
+          { label: t('pharmacy.quantity'), value: quantity || '1' },
           { label: 'Days Supply', value: draft.daysSupply ? `${draft.daysSupply} days` : 'Not specified' },
-          { label: 'Refills', value: draft.refills || '0' },
+          { label: t('ui.refills'), value: draft.refills || '0' },
           { label: 'Effective Date', value: draft.effectiveOn || '—' },
-          { label: 'Substitution', value: draft.allowSubstitution ? 'Permitted' : 'Do not substitute' },
-          { label: 'Indication', value: draft.reason },
+          { label: t('ui.substitution'), value: draft.allowSubstitution ? 'Permitted' : 'Do not substitute' },
+          { label: t('ui.indication'), value: draft.reason },
           { label: 'Pharmacy Instructions', value: draft.pharmacyNote.trim() },
         ])}
       </section>
       <section class="section"><h2 class="section-title">Safety Context</h2>
-        <p><strong>Recorded allergies:</strong> ${e(allergyNames.join(', ') || 'None recorded')}</p><ul>${safetyRows}</ul>
+        <p><strong>${t('ui.recordedAllergies')}</strong> ${e(allergyNames.join(', ') || 'None recorded')}</p><ul>${safetyRows}</ul>
       </section>
-      <div class="signatures"><div><div class="signature"></div><div class="signature-label">Prescriber signature · ${e(userName)}</div></div><div><div class="signature"></div><div class="signature-label">Date and time issued</div></div></div>`;
+      <div class="signatures"><div><div class="signature"></div><div class="signature-label">Prescriber signature · ${e(userName)}</div></div><div><div class="signature"></div><div class="signature-label">${t('ui.dateAndTimeIssued')}</div></div></div>`;
     const html = buildClinicalPrintDocument({
       title: patientName,
       documentLabel: 'Prescription Draft',
@@ -493,7 +493,7 @@ export default function PrescribeModal({
   const body = (
         <div className="cn-meds-body">
           <div className="cn-meds-left">
-            <CollapsibleSection title="Drug Info" open={openDrug} onToggle={() => setOpenDrug(v => !v)}>
+            <CollapsibleSection title={t('ui.drugInfo')} open={openDrug} onToggle={() => setOpenDrug(v => !v)}>
               <DrugInfoSection
                 draft={{ ...draft, quantity }}
                 onChange={patch}
@@ -517,7 +517,7 @@ export default function PrescribeModal({
               />
             </CollapsibleSection>
 
-            <CollapsibleSection title="Pharmacy Info" open={openPharmacy} onToggle={() => setOpenPharmacy(v => !v)}>
+            <CollapsibleSection title={t('ui.pharmacyInfo')} open={openPharmacy} onToggle={() => setOpenPharmacy(v => !v)}>
               <PharmacyInfoSection
                 draft={draft}
                 onChange={patch}
@@ -530,7 +530,7 @@ export default function PrescribeModal({
               />
             </CollapsibleSection>
 
-            <CollapsibleSection title="Patient Cost" open={openCost} onToggle={() => setOpenCost(v => !v)}>
+            <CollapsibleSection title={t('ui.patientCost')} open={openCost} onToggle={() => setOpenCost(v => !v)}>
               <PatientCostSection patient={patient} balance={balance} />
             </CollapsibleSection>
 
@@ -555,16 +555,16 @@ export default function PrescribeModal({
           Book appointment, Order basket): pinned under both columns, the
           dismissive choices dark, the one that sends blue. */}
       <div className="tm-action-bar cn-meds-actions">
-          <button type="button" className="tm-action-bar__btn tm-action-bar__btn--secondary" onClick={requestClose}>Cancel</button>
-          <button type="button" className="tm-action-bar__btn tm-action-bar__btn--secondary" onClick={handlePrintDraft}>Print draft</button>
-          <button type="button" className="tm-action-bar__btn tm-action-bar__btn--secondary" onClick={handleAddRx} disabled={busy}>Add Rx</button>
+          <button type="button" className="tm-action-bar__btn tm-action-bar__btn--secondary" onClick={requestClose}>{t('action.cancel')}</button>
+          <button type="button" className="tm-action-bar__btn tm-action-bar__btn--secondary" onClick={handlePrintDraft}>{t('ui.printDraft')}</button>
+          <button type="button" className="tm-action-bar__btn tm-action-bar__btn--secondary" onClick={handleAddRx} disabled={busy}>{t('ui.addRx')}</button>
           {external ? (
             <button type="button" className="tm-action-bar__btn tm-action-bar__btn--primary" onClick={handleIssue} disabled={busy}>
-              Issue to patient
+              {t('ui.issueToPatient')}
             </button>
           ) : (
             <button type="button" className="tm-action-bar__btn tm-action-bar__btn--primary" onClick={handleSend} disabled={busy}>
-              Send Medication
+              {t('ui.sendMedication')}
             </button>
           )}
       </div>
@@ -573,30 +573,30 @@ export default function PrescribeModal({
     <DialogFrame busy={busy}>
       <DialogHeader
         titleId="cn-rx-title"
-        title="Prescribe Medications"
+        title={t('ui.prescribeMedications')}
         onExpand={() => {
           if (!finish()) return;
           const query = encounterId ? `?encounter=${encodeURIComponent(encounterId)}` : '';
           router.push(expandHref(`/patients/${encodeURIComponent(patientId)}/prescriptions/new${query}`));
         }}
-        expandLabel="Open full page"
+        expandLabel={t('facilityQueue.openFullPage')}
         onClose={requestClose}
-        closeLabel="Close prescribe medications"
+        closeLabel={t('ui.closePrescribeMedications')}
       />
       <DialogBody flush>
         {body}
       </DialogBody>
       <DialogFooter>
-          <button type="button" className="btn btn-secondary" onClick={requestClose}>Cancel</button>
-          <button type="button" className="btn btn-secondary" onClick={handlePrintDraft}>Print draft</button>
-          <button type="button" className="btn btn-secondary" onClick={handleAddRx} disabled={busy}>Add Rx</button>
+          <button type="button" className="btn btn-secondary" onClick={requestClose}>{t('action.cancel')}</button>
+          <button type="button" className="btn btn-secondary" onClick={handlePrintDraft}>{t('ui.printDraft')}</button>
+          <button type="button" className="btn btn-secondary" onClick={handleAddRx} disabled={busy}>{t('ui.addRx')}</button>
           {external ? (
             <button type="button" className="btn btn-primary" onClick={handleIssue} disabled={busy}>
-              Issue to patient
+              {t('ui.issueToPatient')}
             </button>
           ) : (
             <button type="button" className="btn btn-primary" onClick={handleSend} disabled={busy}>
-              Send Medication
+              {t('ui.sendMedication')}
             </button>
           )}
       </DialogFooter>

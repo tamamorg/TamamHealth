@@ -362,25 +362,25 @@ export default function SurveillancePage() {
               <SadbKpiTile
                 label={t('surveillance.totalCasesThisWeek')}
                 value={cases.toLocaleString()}
-                delta={`${idsrSummary.length} diseases reported in ${reportingWeek}`}
-                trend={hasPrev ? { direction: trendBetween(cases, casesPrev), label: `vs ${casesPrev.toLocaleString()} last week`, good: 'down' } : undefined}
+                delta={t('surveillance.kpiDiseasesReported', { n: idsrSummary.length, week: reportingWeek })}
+                trend={hasPrev ? { direction: trendBetween(cases, casesPrev), label: t('epidemic.vsLastWeek', { count: casesPrev.toLocaleString() }), good: 'down' } : undefined}
               />
               <SadbKpiTile
                 label={t('surveillance.totalDeaths')}
                 value={deaths.toLocaleString()}
-                delta="Deaths on the cases reported this week"
-                trend={hasPrev ? { direction: trendBetween(deaths, deathsPrev), label: `vs ${deathsPrev.toLocaleString()} last week`, good: 'down' } : undefined}
+                delta={t('surveillance.kpiDeathsDetail')}
+                trend={hasPrev ? { direction: trendBetween(deaths, deathsPrev), label: t('epidemic.vsLastWeek', { count: deathsPrev.toLocaleString() }), good: 'down' } : undefined}
               />
               <SadbKpiTile
                 label={t('surveillance.reportingFacilities')}
-                value={`${reportingFacilities.reporting.toLocaleString()} of ${reportingFacilities.total.toLocaleString()}`}
-                delta="Registered facilities that have sent an alert report"
+                value={t('surveillance.kpiFacilitiesValue', { n: reportingFacilities.reporting.toLocaleString(), total: reportingFacilities.total.toLocaleString() })}
+                delta={t('surveillance.kpiFacilitiesDetail')}
                 onClick={() => router.push('/manage')}
               />
               <SadbKpiTile
                 label={t('surveillance.cfrCholera')}
                 value={`${choleraCFR}%`}
-                delta="Cholera deaths divided by cholera cases on alerts"
+                delta={t('surveillance.kpiCfrDetail')}
                 deltaTone={choleraCFR >= 5 ? 'warn' : undefined}
               />
             </div>
@@ -450,7 +450,7 @@ export default function SurveillancePage() {
                     fill="none" stroke="var(--accent-primary)" strokeWidth="2" strokeLinecap="round" />
                   <text x={surveillanceProjector.project(7.5, 31.1).x + 8} y={surveillanceProjector.project(7.5, 31.1).y} fontSize="9"
                     fill="var(--text-muted)" fontStyle="italic">
-                    White Nile
+                    {t('ui.whiteNile')}
                   </text>
 
                   {/* Heat layer: blurred alert-coloured intensity under the dots,
@@ -520,7 +520,7 @@ export default function SurveillancePage() {
                               fill="var(--border-medium)">{h.state}</text>
                             <text x={pos.x} y={pos.y - 15} textAnchor="middle" fontSize="9"
                               fill={dotColor} fontWeight="500">
-                              {levelLabel(alertLevel)} · {censusFor(census, h._id).patients.toLocaleString()} patients
+                              {levelLabel(alertLevel)} · {t('surveillance.mapPatients', { n: censusFor(census, h._id).patients.toLocaleString() })}
                             </text>
                           </g>
                         )}
@@ -538,14 +538,14 @@ export default function SurveillancePage() {
                 <span className="gov-meta">{t('surveillance.sourceIdsrReports')}</span>
               </div>
               <FieldRow>
-                <Field label="Chart" inline>
+                <Field label={t('surveillance.fieldChart')} inline>
                   <Select value={chartType} onChange={e => setChartType(e.target.value as ChartType)} data-action="surv-chart-type">
-                    <option value="line">Line</option>
-                    <option value="area">Area</option>
-                    <option value="bar">Bar</option>
+                    <option value="line">{t('surveillance.chartLine')}</option>
+                    <option value="area">{t('surveillance.chartArea')}</option>
+                    <option value="bar">{t('surveillance.chartBar')}</option>
                   </Select>
                 </Field>
-                <Field label="Period" inline>
+                <Field label={t('surveillance.fieldPeriod')} inline>
                   <Select value={String(trendWeeks)} onChange={e => setTrendWeeks(Number(e.target.value) as TrendWindow)} data-action="surv-trend-window">
                     {TREND_WINDOWS.map(w => (
                       <option key={w.weeks} value={w.weeks}>{t(w.key)}</option>
@@ -571,7 +571,7 @@ export default function SurveillancePage() {
               <div className="gov-panel-head">
                 <h3>{t('surveillance.activeAlertsTitle')}</h3>
                 <div className="flex items-center gap-3">
-                  <span className="gov-meta">{totalAlerts.toLocaleString()} {totalAlerts === 1 ? 'alert' : 'alerts'}</span>
+                  <span className="gov-meta">{t(totalAlerts === 1 ? 'surveillance.alertCountOne' : 'surveillance.alertCountMany', { n: totalAlerts.toLocaleString() })}</span>
                   {canReportAlert && (
                     <button type="button" className="tm-ghost-btn" onClick={() => setShowNewAlert(true)}>
                       {t('surveillance.reportAlert')} <Plus aria-hidden="true" />
@@ -584,8 +584,8 @@ export default function SurveillancePage() {
                   <div className="p-4">
                     <EmptyState
                       icon={Shield}
-                      title="No active alerts"
-                      message="Disease surveillance alerts will appear here as they're reported."
+                      title={t('ui.noActiveAlerts')}
+                      message={t('surveillance.noAlertsMessage')}
                     />
                   </div>
                 )}
@@ -596,7 +596,7 @@ export default function SurveillancePage() {
                         <th className="text-start">{t('surveillance.colDisease')}</th>
                         <th className="text-start">{t('surveillance.colCases')}</th>
                         <th className="text-start">{t('surveillance.colDeaths')}</th>
-                        <th className="text-start">Level</th>
+                        <th className="text-start">{t('ui.level')}</th>
                       </tr>
                     </thead>
                     <tbody>

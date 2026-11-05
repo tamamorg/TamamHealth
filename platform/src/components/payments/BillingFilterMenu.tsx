@@ -17,10 +17,11 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Filter } from '@/components/icons/lucide';
+import { Filter, X } from '@/components/icons/lucide';
 
 import Select from '@/components/Select';
 import type { FilterOption } from '@/components/filters';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export interface FilterField {
   key: string;
@@ -35,6 +36,7 @@ export interface FilterField {
 const PANEL_WIDTH = 250;
 
 export default function BillingFilterMenu({ fields }: { fields: FilterField[] }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -101,46 +103,40 @@ export default function BillingFilterMenu({ fields }: { fields: FilterField[] })
           ref={panelRef}
           id={panelId}
           role="dialog"
-          aria-label="Filters"
-          className="bl-root"
-          style={{
-            position: 'fixed', top: coords.top, left: coords.left, width: PANEL_WIDTH,
-            display: 'flex', flexDirection: 'column', gap: 12,
-            padding: 14, borderRadius: 10, zIndex: 1250,
-            background: 'var(--ehr-panel, #fff)',
-            border: '1px solid var(--ehr-border, #E2E6EB)',
-            boxShadow: '0 14px 30px rgba(0, 29, 63, 0.16)',
-          }}
+          aria-label={t('government.filters')}
+          // The shared filter panel's look (globals.css "FILTER PANELS").
+          className="bl-root ehr-list-filters-panel"
+          style={{ top: coords.top, left: coords.left, width: PANEL_WIDTH }}
         >
-          {fields.map(field => (
-            <div className="bl-field" key={field.key}>
-              <label htmlFor={`${panelId}-${field.key}`}>{field.label}</label>
-              <Select
-                id={`${panelId}-${field.key}`}
-                value={field.value}
-                onChange={e => field.onChange(e.target.value)}
-              >
-                {field.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </Select>
-            </div>
-          ))}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-            <button
-              type="button"
-              className="bl-btn bl-btn--ghost"
-              style={{ padding: '5px 10px', fontSize: 12 }}
-              disabled={activeCount === 0}
-              onClick={clearAll}
-            >
-              Clear
+          <div className="ehr-list-filters-head">
+            <span>{t('government.filters')}</span>
+            <button type="button" className="ehr-list-filters-close" aria-label={t('billing.activityClose')}
+              onClick={() => { setOpen(false); btnRef.current?.focus(); }}>
+              <X className="w-4 h-4" />
             </button>
-            <button
-              type="button"
-              className="bl-btn bl-btn--primary"
-              style={{ padding: '5px 12px', fontSize: 12 }}
-              onClick={() => { setOpen(false); btnRef.current?.focus(); }}
-            >
-              Done
+          </div>
+          <div className="ehr-list-filters-body">
+            {fields.map(field => (
+              <label className="tm-filter-select" key={field.key} htmlFor={`${panelId}-${field.key}`}>
+                <span className="tm-filter-select__label">{field.label}</span>
+                <Select
+                  id={`${panelId}-${field.key}`}
+                  className="tm-filter-select__control"
+                  value={field.value}
+                  onChange={e => field.onChange(e.target.value)}
+                >
+                  {field.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </Select>
+              </label>
+            ))}
+          </div>
+          <div className="ehr-list-filters-foot tm-action-bar">
+            <button type="button" className="tm-action-bar__btn tm-action-bar__btn--secondary" disabled={activeCount === 0} onClick={clearAll}>
+              {t('action.clear')}
+            </button>
+            <button type="button" className="tm-action-bar__btn tm-action-bar__btn--primary"
+              onClick={() => { setOpen(false); btnRef.current?.focus(); }}>
+              {t('common.done')}
             </button>
           </div>
         </div>,

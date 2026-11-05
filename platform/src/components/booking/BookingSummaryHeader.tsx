@@ -13,6 +13,7 @@
 import { MapPin } from '@/components/icons/lucide';
 import { initials } from '@/lib/patient-utils';
 import { to12Hour } from './SlotPicker';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /** "2026-08-10" + "09:00" → "Monday, August 10, 9:00 AM". */
 export function formatSlotMoment(date: string, startTime: string): string {
@@ -42,6 +43,7 @@ export default function BookingSummaryHeader({
   /** Jump back to the slot step. Omit to render the header as plain text. */
   onChange?: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div
       style={{
@@ -89,7 +91,7 @@ export default function BookingSummaryHeader({
             color: 'var(--accent-primary)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
           }}
         >
-          Change
+          {t('consultation.change')}
         </button>
       )}
     </div>

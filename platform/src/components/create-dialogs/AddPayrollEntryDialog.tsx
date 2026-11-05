@@ -3,7 +3,7 @@
 /**
  * Add a payroll entry. Shared by /hr/payroll and the "Add" menu, which opens
  * it in place wherever the user is and routes to /hr/payroll only once the
- * entry exists — see AddInquiryDialog for the reasoning.
+ * entry exists — see CreateRecordPage for the reasoning.
  */
 
 import { defaultCurrency, offeredCurrencies } from '@/lib/country/country-pack';

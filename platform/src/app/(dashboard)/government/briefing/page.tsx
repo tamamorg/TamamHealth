@@ -12,6 +12,7 @@ import { useDataQuality } from '@/lib/hooks/useDataQuality';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { Printer } from '@/components/icons/lucide';
 import { printElementById } from '@/lib/safe-html';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 function Section({ heading, children }: { heading: string; children: React.ReactNode }) {
   return (
@@ -34,6 +35,7 @@ function Bullets({ items }: { items: string[] }) {
 }
 
 export default function ExecutiveBriefingPage() {
+  const { t } = useTranslation();
   const { alerts, loading: alertsLoading } = useSurveillance();
   const { stats: immStats, loading: immLoading } = useImmunizations();
   const { stats: ancStats, loading: ancLoading } = useANC();
@@ -86,7 +88,7 @@ export default function ExecutiveBriefingPage() {
   if (loading) {
     return (
       <main className="page-container page-enter sadb-scope">
-        <SadbCard><p className="sadb-empty">Compiling briefing…</p></SadbCard>
+        <SadbCard><p className="sadb-empty">{t('ui.compilingBriefing')}</p></SadbCard>
       </main>
     );
   }
@@ -99,77 +101,77 @@ export default function ExecutiveBriefingPage() {
           end={(
             <button
               type="button"
-              onClick={() => printElementById('executive-briefing-print', { label: 'Executive Briefing', issuer: 'Ministry of Health', fieldsTitle: 'Report Scope', fields: [{ label: 'Coverage', value: 'National' }] })}
+              onClick={() => printElementById('executive-briefing-print', { label: t('ui.executiveBriefing'), issuer: t('brief.issuer'), fieldsTitle: t('brief.reportScope'), fields: [{ label: t('brief.coverage'), value: t('brief.national') }] })}
               className="tm-ghost-btn print-visible"
             >
-              Print briefing <Printer className="w-4 h-4" aria-hidden="true" />
+              {t('ui.printBriefing')} <Printer className="w-4 h-4" aria-hidden="true" />
             </button>
           )}
         >
-          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>As of {today} · National</p>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{t('brief.asOf', { date: today })}</p>
         </FieldRow>
       </div>
 
-      <Section heading="Situation overview">
+      <Section heading={t('ui.situationOverview')}>
         <Bullets items={[
           activeAlerts.length > 0
-            ? `${activeAlerts.length} active disease alert${activeAlerts.length === 1 ? '' : 's'} on file: ${emergencyCount} emergency, ${warningCount} warning, ${watchCount} watch.`
-            : 'No active disease alerts on file. Every reporting facility is at normal level.',
+            ? t(activeAlerts.length === 1 ? 'brief.alertsOne' : 'brief.alertsMany', { n: activeAlerts.length, emergency: emergencyCount, warning: warningCount, watch: watchCount })
+            : t('brief.alertsNone'),
           topDisease
-            ? `Highest case load: ${topDisease[0]} (${topDisease[1].toLocaleString()} active cases).`
-            : 'No disease with an active case load to report.',
+            ? t('brief.topDisease', { disease: topDisease[0], n: topDisease[1].toLocaleString() })
+            : t('brief.topDiseaseNone'),
           statesAffected > 0
-            ? `${statesAffected} state${statesAffected === 1 ? '' : 's'} carrying at least one active alert.`
-            : 'No states currently carrying an active alert.',
+            ? t(statesAffected === 1 ? 'brief.statesOne' : 'brief.statesMany', { n: statesAffected })
+            : t('brief.statesNone'),
         ]} />
       </Section>
 
-      <Section heading="Service delivery">
+      <Section heading={t('ui.serviceDelivery')}>
         <Bullets items={[
           immStats
-            ? `Immunization coverage: ${immStats.coverageRate}% fully immunized (${immStats.fullyImmunized.toLocaleString()} of ${immStats.totalChildren.toLocaleString()} children on record).`
-            : 'No data on file for immunization coverage.',
+            ? t('brief.immCoverage', { rate: immStats.coverageRate, n: immStats.fullyImmunized.toLocaleString(), total: immStats.totalChildren.toLocaleString() })
+            : t('brief.immNone'),
           ancStats
-            ? `ANC4+ coverage: ${ancStats.anc4PlusRate}% (${ancStats.anc4Plus.toLocaleString()} of ${ancStats.totalMothers.toLocaleString()} mothers on record with 4+ visits).`
-            : 'No data on file for antenatal care coverage.',
+            ? t('brief.ancCoverage', { rate: ancStats.anc4PlusRate, n: ancStats.anc4Plus.toLocaleString(), total: ancStats.totalMothers.toLocaleString() })
+            : t('brief.ancNone'),
         ]} />
       </Section>
 
-      <Section heading="Vital events">
+      <Section heading={t('ui.vitalEvents')}>
         <Bullets items={[
           birthStats
-            ? `Births registered: ${birthStats.total.toLocaleString()} total on record, ${birthStats.thisMonth.toLocaleString()} this month.`
-            : 'No data on file for birth registrations.',
+            ? t('brief.births', { total: birthStats.total.toLocaleString(), month: birthStats.thisMonth.toLocaleString() })
+            : t('brief.birthsNone'),
           deathStats
-            ? `Deaths registered: ${deathStats.total.toLocaleString()} total on record, ${deathStats.thisMonth.toLocaleString()} this month.`
-            : 'No data on file for death registrations.',
+            ? t('brief.deaths', { total: deathStats.total.toLocaleString(), month: deathStats.thisMonth.toLocaleString() })
+            : t('brief.deathsNone'),
         ]} />
       </Section>
 
-      <Section heading="Data quality">
+      <Section heading={t('dataMgmt.dataQuality')}>
         <Bullets items={[
           dq
-            ? `Average reporting completeness ${dq.avgCompleteness}%, timeliness ${dq.avgTimeliness}%, across ${dq.facilitiesReporting} of ${dq.totalFacilities} facilities assessed.`
-            : 'No data on file for facility reporting quality.',
+            ? t('brief.dqAverage', { completeness: dq.avgCompleteness, timeliness: dq.avgTimeliness, n: dq.facilitiesReporting, total: dq.totalFacilities })
+            : t('brief.dqNone'),
           worstFacilities.length > 0
-            ? `Lowest data-quality scores: ${worstFacilities.map(f => `${f.facilityName} (${f.state}) ${f.dataQualityScore}%`).join('; ')}.`
-            : 'No facility assessments on file to rank by data-quality score.',
+            ? t('brief.dqLowest', { list: worstFacilities.map(f => `${f.facilityName} (${f.state}) ${f.dataQualityScore}%`).join('; ') })
+            : t('brief.dqRankNone'),
         ]} />
       </Section>
 
-      <Section heading="Recommended actions">
+      <Section heading={t('ui.recommendedActions')}>
         <Bullets items={[
           emergencyCount > 0
-            ? `Verify ${emergencyCount} emergency alert${emergencyCount === 1 ? '' : 's'} at source before dispatch of response teams.`
-            : 'No emergency alerts require verification at this time.',
+            ? t(emergencyCount === 1 ? 'brief.verifyOne' : 'brief.verifyMany', { n: emergencyCount })
+            : t('brief.verifyNone'),
           belowCompletenessCount > 0
-            ? `Follow up ${belowCompletenessCount} facilit${belowCompletenessCount === 1 ? 'y' : 'ies'} reporting below 80% completeness.`
-            : (dq && dq.facilitiesReporting > 0 ? 'All assessed facilities are reporting at or above 80% completeness.' : 'No facility assessments on file to evaluate completeness.'),
+            ? t(belowCompletenessCount === 1 ? 'brief.followUpOne' : 'brief.followUpMany', { n: belowCompletenessCount })
+            : (dq && dq.facilitiesReporting > 0 ? t('brief.allComplete') : t('brief.completeNone')),
           defaulterStats
             ? (defaulterStats.totalDefaulters > 0
-              ? `${defaulterStats.totalDefaulters.toLocaleString()} immunization defaulter${defaulterStats.totalDefaulters === 1 ? '' : 's'} (${defaulterStats.uniqueChildren.toLocaleString()} children, ${defaulterStats.critical} critical) need tracing.`
-              : 'No immunization defaulters currently need tracing.')
-            : 'No data on file for immunization defaulters.',
+              ? t(defaulterStats.totalDefaulters === 1 ? 'brief.defaultersOne' : 'brief.defaultersMany', { n: defaulterStats.totalDefaulters.toLocaleString(), children: defaulterStats.uniqueChildren.toLocaleString(), critical: defaulterStats.critical })
+              : t('brief.defaultersNone'))
+            : t('brief.defaultersNoData'),
         ]} />
       </Section>
       </div>

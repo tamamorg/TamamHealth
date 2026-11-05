@@ -54,6 +54,7 @@ export function weekOverWeek<T>(
   dateOf: (item: T) => string | undefined,
   label: string,
   good: 'up' | 'down' = 'up',
+  t?: (key: string, vars?: Record<string, string | number>) => string,
 ): SadbTrendValue {
   const nowMs = Date.now();
   let thisWeek = 0;
@@ -64,5 +65,5 @@ export function weekOverWeek<T>(
     if (at >= nowMs - 7 * 86400000 && at <= nowMs + 86400000) thisWeek++;
     else if (at >= nowMs - 14 * 86400000 && at < nowMs - 7 * 86400000) lastWeek++;
   }
-  return { direction: trendBetween(thisWeek, lastWeek), label: `${thisWeek} ${label} this week vs ${lastWeek} last`, good };
+  return { direction: trendBetween(thisWeek, lastWeek), label: t ? t('kpi.weekVsLast', { thisWeek, lastWeek, label }) : `${thisWeek} ${label} this week vs ${lastWeek} last`, good };
 }

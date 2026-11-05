@@ -76,6 +76,7 @@ import {
 } from '@/lib/facility-work-queue';
 import type { MessageDoc, UserDoc, PatientDoc, StaffScheduleDoc, HospitalDoc } from '@/lib/db-types';
 import type { LeaveRequestDoc } from '@/lib/db-types-hr';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 // recharts (~80–100 KB) is deferred behind a dynamic boundary so it is fetched
 // only when this chart renders (KAN-66). ssr:false because recharts measures
@@ -254,6 +255,11 @@ export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOve
   };
 }
 
+const METRIC_LABEL_KEY: Record<string, string> = {
+  'staff-total': 'facilityMgmt.totalStaff', doctors: 'facilityMgmt.totalDoctors', nurses: 'facilityMgmt.totalNurses',
+  patients: 'facilityMgmt.totalPatients', beds: 'facilityMgmt.availableBeds',
+};
+
 type ExtraKey = 'billing' | 'flow' | 'enquiries' | 'availability' | 'leave' | 'schedule' | 'gaps';
 
 /* The facility matrix uses equal tracks from the first field through Status.
@@ -274,6 +280,7 @@ const TIER_CLASS: Record<string, string> = {
 };
 
 export default function FacilityManagementDashboard() {
+  const { t } = useTranslation();
   const { currentUser } = useAuth();
   const router = useRouter();
   const scope = useDataScope();
@@ -482,8 +489,8 @@ export default function FacilityManagementDashboard() {
       if (at >= nowMs - 7 * 86400000) thisWeek++;
       else if (at >= nowMs - 14 * 86400000) lastWeek++;
     }
-    return { direction: trendBetween(thisWeek, lastWeek), label: `${thisWeek} this week vs ${lastWeek} last` };
-  }, []);
+    return { direction: trendBetween(thisWeek, lastWeek), label: t('facilityMgmt.trendWeek', { thisWeek, lastWeek }) };
+  }, [t]);
   /* What each figure is made of, on the tile under the number (every
      management KPI carries one). Derived from the same records as the
      figures; a figure with nothing honest to add keeps none. */
@@ -492,17 +499,17 @@ export default function FacilityManagementDashboard() {
     const staff = num(overview.metrics.find(m => m.key === 'staff-total')?.value);
     const share = (key: string) => {
       const n = num(overview.metrics.find(m => m.key === key)?.value);
-      return Number.isFinite(n) && staff > 0 ? `${Math.round((n / staff) * 100)}% of staff` : undefined;
+      return Number.isFinite(n) && staff > 0 ? t('facilityMgmt.shareOfStaff', { percent: Math.round((n / staff) * 100) }) : undefined;
     };
     return {
-      'staff-total': `${overview.activeStaff.count} available now`,
+      'staff-total': t('facilityMgmt.availableNow', { count: overview.activeStaff.count }),
       doctors: share('doctors'),
       nurses: share('nurses'),
-      patients: `Across ${hospitals.length} ${hospitals.length === 1 ? 'facility' : 'facilities'}`,
-      beds: wardBedTotal > 0 ? `of ${wardBedTotal} · ${wardOccupancy}% occupied` : undefined,
-      issues: `${issueSummary.total} reported in total`,
+      patients: t(hospitals.length === 1 ? 'facilityMgmt.acrossFacilitiesOne' : 'facilityMgmt.acrossFacilities', { count: hospitals.length }),
+      beds: wardBedTotal > 0 ? t('facilityMgmt.bedsDetail', { total: wardBedTotal, occupied: wardOccupancy }) : undefined,
+      issues: t('facilityMgmt.issuesTotal', { count: issueSummary.total }),
     };
-  }, [overview, hospitals.length, wardBedTotal, wardOccupancy, issueSummary.total]);
+  }, [overview, hospitals.length, wardBedTotal, wardOccupancy, issueSummary.total, t]);
 
   const tileTrends = useMemo<Record<string, SadbTrendValue | undefined>>(() => ({
     patients: weekTrend(patients),
@@ -533,9 +540,9 @@ export default function FacilityManagementDashboard() {
   );
 
   const flowSeries = useMemo(() => [
-    { key: 'inpatient', name: 'Inpatient', color: FLOW_INPATIENT },
-    { key: 'outpatient', name: 'Outpatient', color: FLOW_OUTPATIENT },
-  ], []);
+    { key: 'inpatient', name: t('encounters.inpatient'), color: FLOW_INPATIENT },
+    { key: 'outpatient', name: t('encounters.outpatient'), color: FLOW_OUTPATIENT },
+  ], [t]);
 
   /* The week's money as one total and its two parts — what the ring and its
      two figures are drawn from. Seven columns of two stacked bars said less
@@ -555,9 +562,9 @@ export default function FacilityManagementDashboard() {
   /* A ring of nothing is a grey ring, not two zero-width slices — the donut
      draws its own empty state when every slice is filtered out. */
   const cashSlices = useMemo(() => [
-    { name: 'Received', value: cashWeek.received, color: CASH_RECEIVED },
-    { name: 'Pending', value: cashWeek.pending, color: CASH_PENDING },
-  ].filter(slice => slice.value > 0), [cashWeek]);
+    { name: t('billing.ovReceived'), value: cashWeek.received, color: CASH_RECEIVED },
+    { name: t('billing.ovPending'), value: cashWeek.pending, color: CASH_PENDING },
+  ].filter(slice => slice.value > 0), [cashWeek, t]);
 
   const initialLoading = usersLoading || patientsLoading || wardsLoading || extraLoading;
 
@@ -567,19 +574,31 @@ export default function FacilityManagementDashboard() {
      (shifts, unfilled, pending leave) read in the Today's Operations card so
      the tile row is one line, not two. */
   const TILE_KEYS = ['staff-total', 'doctors', 'nurses', 'patients', 'beds'];
-  const issuesTile = { key: 'issues', label: 'Open issues', href: '/inquiries' };
+  const issuesTile = { key: 'issues', label: t('facilityMgmt.openIssues'), href: '/inquiries' };
 
   const unfilledShifts = metricByKey('shifts-unfilled')?.value ?? 0;
   // The unfiltered count — this page no longer carries the queue's search box.
   const pendingLeaveCount = metricByKey('leave-pending')?.value ?? 0;
 
   // Written-out facility tier ("National Referral", "Phcc" stays "PHCC").
-  const facilityLabel = useCallback((ft: string) =>
-    ft === 'phcc' || ft === 'phcu' ? ft.toUpperCase() : titleCase(ft.replace(/_/g, ' ')), []);
+  const facilityLabel = useCallback((ft: string) => {
+    const keys: Record<string, string> = {
+      national_referral: 'hospitals.typeNationalReferral', state_hospital: 'hospitals.typeStateHospital',
+      county_hospital: 'hospitals.typeCountyHospital', phcc: 'hospitals.typePhcc', phcu: 'hospitals.typePhcu',
+    };
+    return keys[ft] ? t(keys[ft]) : titleCase(ft.replace(/_/g, ' '));
+  }, [t]);
 
   const facilityStatus = useCallback((hospital: HospitalDoc) => hospital.isActive === false
-    ? 'Retired'
-    : titleCase((hospital.operationalStatus ?? 'functional').replace(/_/g, ' ')), []);
+    ? t('facilityMgmt.retired')
+    : (() => {
+        const st = hospital.operationalStatus ?? 'functional';
+        const keys: Record<string, string> = {
+          functional: 'myFacility.statusFunctional', partially_functional: 'myFacility.statusPartiallyFunctional',
+          non_functional: 'myFacility.statusNonFunctional', closed: 'myFacility.statusClosed',
+        };
+        return keys[st] ? t(keys[st]) : titleCase(st.replace(/_/g, ' '));
+      })(), [t]);
 
   const visibleFacilities = useMemo(() => {
     const terms = facilitySearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -605,7 +624,7 @@ export default function FacilityManagementDashboard() {
       <SadbPage roles={['org_admin', 'hospital_manager', 'super_admin']}>
         <p className="sadb-empty" aria-live="polite">
           <Loader2 className="w-4 h-4 inline-block me-2 animate-spin" style={{ verticalAlign: -3 }} />
-          Loading facility data…
+          {t('ui.loadingFacilityData')}
         </p>
       </SadbPage>
     );
@@ -627,7 +646,7 @@ export default function FacilityManagementDashboard() {
           return (
             <SadbKpiTile
               key={m.key}
-              label={m.label}
+              label={t(METRIC_LABEL_KEY[m.key] ?? m.key)}
               value={m.value}
               delta={tileDetails[m.key]}
               deltaTone={m.tone === 'warning' || m.tone === 'danger' ? 'warn' : undefined}
@@ -657,7 +676,7 @@ export default function FacilityManagementDashboard() {
         {/* The week's arrivals: how many came, and how many stayed. Admissions
             and outpatient encounters are the two ends of the same day's work,
             and nothing on this page said either until now. */}
-        <SadbCard title="Patient flow" tabletTitle="Patients" meta="This week">
+        <SadbCard title={t('ui.patientFlow')} tabletTitle={t('facilityMgmt.tabletPatients')} meta={t('facilityMgmt.thisWeek')}>
           <div className="px-3 pt-3 pb-1">
             <WeeklyActivityChart data={weeklyFlow} chartType="bar" series={flowSeries} />
           </div>
@@ -669,46 +688,46 @@ export default function FacilityManagementDashboard() {
             the card, here it shares a row with a 208px chart, so it has
             height to spend and centres itself in it rather than sitting in
             the card's top corner. */}
-        <SadbCard title="Cash flow" tabletTitle="Cash" meta={`${cash.currency} · this week`}>
+        <SadbCard title={t('ui.cashFlow')} tabletTitle={t('facilityMgmt.tabletCash')} meta={t('facilityMgmt.currencyThisWeek', { currency: cash.currency })}>
           <div className="sadb-readiness-body fmcash-body">
             <div className="fmcash-ring">
               <CashFlowDonut data={cashSlices} />
               <div className="fmcash-center">
                 <b>{formatMoney(cashWeek.total, { currency: cash.currency })}</b>
-                <span>Billed</span>
+                <span>{t('claims.colBilled')}</span>
               </div>
             </div>
             <div className="sadb-readiness-signals fmcash-signals">
               <div className="sadb-signal sadb-signal--green">
                 <b>{formatMoney(cashWeek.received, { currency: cash.currency })}</b>
-                <span>Received</span>
+                <span>{t('facilityQueue.detailReceived')}</span>
               </div>
               <div className="sadb-signal sadb-signal--yellow">
                 <b>{formatMoney(cashWeek.pending, { currency: cash.currency })}</b>
-                <span>Pending</span>
+                <span>{t('postConsult.status.pending')}</span>
               </div>
             </div>
           </div>
         </SadbCard>
 
         <SadbCard
-          title="Today's operations"
-          tabletTitle="Operations"
-          action={<SadbHeadLink onClick={() => router.push(`/hr/schedule?date=${today}`)}>Schedule</SadbHeadLink>}
+          title={t('ui.todaySOperations')}
+          tabletTitle={t('facilityMgmt.tabletOperations')}
+          action={<SadbHeadLink onClick={() => router.push(`/hr/schedule?date=${today}`)}>{t('boma.schedule')}</SadbHeadLink>}
         >
           <div className="sadb-kv-fill">
-            <SadbKvRow label="Today's shifts" value={String(metricByKey('shifts-today')?.value ?? 0)} />
+            <SadbKvRow label={t('ui.todaySShifts')} value={String(metricByKey('shifts-today')?.value ?? 0)} />
             <SadbKvRow
-              label="Unfilled shifts"
+              label={t('ui.unfilledShifts')}
               chip={String(unfilledShifts)}
               chipTone={typeof unfilledShifts === 'number' && unfilledShifts > 0 ? 'red' : 'green'}
             />
             <SadbKvRow
-              label="Pending leave"
+              label={t('facilityQueue.kpiPending')}
               chip={String(pendingLeaveCount)}
               chipTone={typeof pendingLeaveCount === 'number' && pendingLeaveCount > 0 ? 'yellow' : 'neutral'}
             />
-            <SadbKvRow label="Staff available now" value={String(overview.activeStaff.count)} valueTone={overview.activeStaff.unavailable ? 'warn' : undefined} />
+            <SadbKvRow label={t('facilityQueue.kpiAvailable')} value={String(overview.activeStaff.count)} valueTone={overview.activeStaff.unavailable ? 'warn' : undefined} />
           </div>
         </SadbCard>
       </div>
@@ -728,15 +747,15 @@ export default function FacilityManagementDashboard() {
       <div className="sadb-lower-row">
         <SadbCard
           className="is-wide"
-          title="Facilities"
+          title={t('government.colFacilities')}
           meta={`${hospitals.length}`}
         >
           <div className="sadb-search-row sadb-search-row--table-aligned">
             <SadbSearch
               value={facilitySearch}
               onChange={setFacilitySearch}
-              placeholder="Search facility, type, location, or status…"
-              ariaLabel="Search facilities"
+              placeholder={t('ui.searchFacilityTypeLocationOr')}
+              ariaLabel={t('facilityMgmt.searchFacilities')}
             />
             {/* The create actions beside the search of the list they add to
                 (the dashboard's greeting row that carried them is gone). */}
@@ -746,11 +765,11 @@ export default function FacilityManagementDashboard() {
             <SadbGridList
               template={FAC_GRID}
               minWidth={840}
-              head={['Facility', 'Type', 'Location', 'Beds', 'Patients', 'Status']}
+              head={[t('hospitals.colFacility'), t('hospitals.colType'), t('hospitals.colLocation'), t('dashboard.beds'), t('government.colPatients'), t('hospitals.colStatus')]}
               alignEndLast
               empty={facilitySearch
-                ? 'No facilities match this search.'
-                : 'No facilities registered yet. Use “Add facility” to register the first one.'}
+                ? t('facilityMgmt.noMatch')
+                : t('facilityMgmt.noneYet')}
             >
               {visibleFacilities.map((h: HospitalDoc) => (
                 <SadbGridRow key={h._id} template={FAC_GRID} onClick={() => router.push(`/admin/facilities/${h._id}`)}>

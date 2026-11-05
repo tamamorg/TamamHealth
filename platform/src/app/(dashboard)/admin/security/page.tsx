@@ -36,6 +36,13 @@ import {
 } from '@/components/admin/sadb-ui';
 import { describeError } from '@/lib/user-facing-error';
 
+const SEVERITY_KEY: Record<SaSeverity, string> = {
+  critical: 'admin.healthCritical',
+  high: 'epidemic.severityHigh',
+  medium: 'syncConflicts.riskFilter_medium',
+  low: 'epidemic.severityLow',
+};
+
 type Policy = NonNullable<PlatformConfigDoc['superAdminPolicies']>;
 
 /**
@@ -62,6 +69,7 @@ interface SettingField {
   enforcement?: Enforcement;
   /** What enforces it, named so the claim is checkable. */
   enforcedBy?: string;
+  /** Translation keys, resolved with t() where the row is drawn. */
   label: string;
   sub: string;
   /** Appended straight after the value, e.g. "15m", "6y", " characters". */
@@ -70,51 +78,50 @@ interface SettingField {
 
 const ACCESS_FIELDS: SettingField[] = [
   {
-    kind: 'number', key: 'passwordMinLength', label: 'Password minimum',
-    sub: 'Minimum password length, characters. Applies wherever a password is set or reset.',
+    kind: 'number', key: 'passwordMinLength', label: 'adminMgmt.secPasswordMin', sub: 'adminMgmt.secPasswordMinSub',
     unit: ' characters', enforcement: 'enforced', enforcedBy: 'lib/password-policy.ts',
   },
   {
-    kind: 'number', key: 'sessionTimeoutMinutes', label: 'Session timeout',
-    sub: 'Idle timeout ceiling, minutes. A facility may lock sooner, never later.',
+    kind: 'number', key: 'sessionTimeoutMinutes', label: 'ui.sessionTimeout', sub: 'adminMgmt.secSessionTimeoutSub',
     unit: 'm', enforcement: 'enforced', enforcedBy: 'lib/hooks/useAutoLock.ts',
   },
   {
-    kind: 'toggle', key: 'screenLockRequired', label: 'Screen lock mandatory',
-    sub: 'Locks every session at the timeout above. Off, each person may switch their own screen lock off in Settings.',
+    kind: 'toggle', key: 'screenLockRequired', label: 'adminSecurity.screenLockMandatory', sub: 'adminSecurity.screenLockMandatorySub',
     enforcement: 'enforced', enforcedBy: 'lib/hooks/useAutoLock.ts',
   },
-  { kind: 'toggle', key: 'ssoEnabled', label: 'Single sign-on', sub: 'Offer single sign-on settings to each organization.' },
+  { kind: 'toggle', key: 'ssoEnabled', label: 'adminMgmt.singleSignOn', sub: 'adminMgmt.secSsoSub' },
 ];
 
 const PHI_FIELDS: SettingField[] = [
-  { kind: 'toggle', key: 'phiExportRequiresReason', label: 'Reason required to export patient data', sub: 'Exports must include purpose and requester.' },
-  { kind: 'toggle', key: 'dataDeletionRequiresApproval', label: 'Approval before deletion', sub: 'Hard deletion and tenant data removal need approval.' },
-  { kind: 'number', key: 'auditRetentionYears', label: 'Audit retention', sub: 'Audit documentation retention window, years.', unit: 'y' },
-  { kind: 'toggle', key: 'apiKeysEnabled', label: 'API keys', sub: 'Enable tenant API key issuance and rotation.' },
+  { kind: 'toggle', key: 'phiExportRequiresReason', label: 'adminMgmt.secPhiExport', sub: 'adminMgmt.secPhiExportSub' },
+  { kind: 'toggle', key: 'dataDeletionRequiresApproval', label: 'adminMgmt.secDeletionApproval', sub: 'adminMgmt.secDeletionApprovalSub' },
+  { kind: 'number', key: 'auditRetentionYears', label: 'ui.auditRetention', sub: 'adminMgmt.secAuditRetentionSub', unit: 'y' },
+  { kind: 'toggle', key: 'apiKeysEnabled', label: 'adminMgmt.apiKeys', sub: 'adminMgmt.secApiKeysSub' },
 ];
 
 const BREAKGLASS_FIELDS: SettingField[] = [
-  { kind: 'toggle', key: 'emergencyAccessEnabled', label: 'Emergency access', sub: 'Allow emergency access with follow-up review.' },
-  { kind: 'number', key: 'emergencyAccessReviewHours', label: 'Emergency review window', sub: 'Hours to review emergency access after use.', unit: 'h' },
+  { kind: 'toggle', key: 'emergencyAccessEnabled', label: 'adminMgmt.secEmergencyAccess', sub: 'adminMgmt.secEmergencyAccessSub' },
+  { kind: 'number', key: 'emergencyAccessReviewHours', label: 'adminMgmt.secEmergencyReview', sub: 'adminMgmt.secEmergencyReviewSub', unit: 'h' },
   {
-    kind: 'toggle', key: 'impersonationEnabled', label: 'Sign in as another role',
-    sub: 'Allow a platform operator to sign in as another role. Every session is audited.',
+    kind: 'toggle', key: 'impersonationEnabled', label: 'adminMgmt.secImpersonate',
+    sub: 'adminMgmt.secImpersonateSub',
     enforcement: 'enforced', enforcedBy: 'lib/login-session.ts',
   },
   {
-    kind: 'number', key: 'impersonationMaxMinutes', label: 'Longest sign-in as another role',
-    sub: 'An impersonated session expires after this long, whatever the normal session length is.',
+    kind: 'number', key: 'impersonationMaxMinutes', label: 'adminMgmt.secImpersonateMax',
+    sub: 'adminMgmt.secImpersonateMaxSub',
     unit: 'm', enforcement: 'enforced', enforcedBy: 'lib/login-session.ts',
   },
-  { kind: 'toggle', key: 'supportAccessRequiresTicket', label: 'Require support ticket', sub: 'Support access must carry a ticket or incident reference.' },
-  { kind: 'toggle', key: 'dualApprovalForHighRisk', label: 'Dual approval', sub: 'Require a second approver for destructive or privileged actions.' },
+  { kind: 'toggle', key: 'supportAccessRequiresTicket', label: 'adminMgmt.secSupportTicket', sub: 'adminMgmt.secSupportTicketSub' },
+  { kind: 'toggle', key: 'dualApprovalForHighRisk', label: 'adminMgmt.secDualApproval', sub: 'adminMgmt.secDualApprovalSub' },
 ];
 
 const CONTINUITY_FIELDS: SettingField[] = [
-  { kind: 'number', key: 'backupRpoHours', label: 'Data loss limit', sub: 'Maximum acceptable data loss window, hours.', unit: 'h' },
-  { kind: 'number', key: 'backupRtoHours', label: 'Restore time limit', sub: 'Maximum acceptable restore time, hours.', unit: 'h' },
+  { kind: 'number', key: 'backupRpoHours', label: 'adminMgmt.secDataLossLimit', sub: 'adminMgmt.secDataLossLimitSub', unit: 'h' },
+  { kind: 'number', key: 'backupRtoHours', label: 'adminMgmt.secRestoreLimit', sub: 'adminMgmt.secRestoreLimitSub', unit: 'h' },
 ];
+
+type Translate = (key: string, vars?: Record<string, string | number>) => string;
 
 /**
  * The row's description, with what the platform will actually do about it.
@@ -122,27 +129,25 @@ const CONTINUITY_FIELDS: SettingField[] = [
  * Appended rather than shown as a chip so it survives every surface that reads
  * `sub` — including /admin/config, which lists the same policy values.
  */
-function enforcementSub(f: SettingField): string {
-  return f.enforcement === 'enforced'
-    ? `${f.sub} · Enforced by the platform.`
-    : `${f.sub} · Recorded policy — the platform does not enforce this.`;
+function enforcementSub(f: SettingField, t: Translate): string {
+  return t(f.enforcement === 'enforced' ? 'adminMgmt.secEnforced' : 'adminMgmt.secRecorded', { sub: t(f.sub) });
 }
 
 function formatValue(f: SettingField, value: number): string {
   return `${value}${f.unit ?? ''}`;
 }
 
-function renderField(f: SettingField, draft: Policy, onToggle: (key: keyof Policy, value: boolean) => void, onEditNumber: (f: SettingField) => void) {
+function renderField(f: SettingField, draft: Policy, onToggle: (key: keyof Policy, value: boolean) => void, onEditNumber: (f: SettingField) => void, t: Translate) {
   if (f.kind === 'toggle') {
     return (
-      <SadbSettingRow key={f.key} label={f.label} sub={enforcementSub(f)}>
-        <SadbToggle checked={Boolean(draft[f.key])} onChange={v => onToggle(f.key, v)} label={f.label} />
+      <SadbSettingRow key={f.key} label={t(f.label)} sub={enforcementSub(f, t)}>
+        <SadbToggle checked={Boolean(draft[f.key])} onChange={v => onToggle(f.key, v)} label={t(f.label)} />
       </SadbSettingRow>
     );
   }
   return (
-    <SadbSettingRow key={f.key} label={f.label} sub={enforcementSub(f)}>
-      <SadbValueButton value={formatValue(f, draft[f.key] as number)} onClick={() => onEditNumber(f)} title={`Edit ${f.label.toLowerCase()}`} />
+    <SadbSettingRow key={f.key} label={t(f.label)} sub={enforcementSub(f, t)}>
+      <SadbValueButton value={formatValue(f, draft[f.key] as number)} onClick={() => onEditNumber(f)} title={t('adminMgmt.secEditField', { label: t(f.label).toLowerCase() })} />
     </SadbSettingRow>
   );
 }
@@ -159,14 +164,6 @@ export default function SecurityCompliancePage() {
   const [auditLoading, setAuditLoading] = useState(true);
 
   const [activeSection, setActiveSection] = useSadbTab('access');
-
-  const accessFields = ACCESS_FIELDS.map(field => field.key === 'screenLockRequired'
-    ? {
-      ...field,
-      label: t('adminSecurity.screenLockMandatory'),
-      sub: t('adminSecurity.screenLockMandatorySub'),
-    }
-    : field);
 
   // Single source (KAN-117) — this used to read a localStorage key nothing
   // wrote, so "backupWithinRpo" was permanently false and reported as if
@@ -291,27 +288,27 @@ export default function SecurityCompliancePage() {
     // A stated policy, not a measurement: nothing reads this number. Audit
     // entries are in fact never pruned on the server, so the trail is kept
     // regardless — the chip says which of the two this row is reporting.
-    { label: 'Audit retention of 6 years or more', tone: (persisted.auditRetentionYears >= 6 ? 'ok' : 'warn') as Tone, chip: `${persisted.auditRetentionYears}y · recorded policy` },
-    { label: 'Reason required to export patient data', tone: (persisted.phiExportRequiresReason ? 'ok' : 'warn') as Tone, chip: persisted.phiExportRequiresReason ? 'On' : 'Off' },
-    { label: 'Deletion approval', tone: (persisted.dataDeletionRequiresApproval ? 'ok' : 'warn') as Tone, chip: persisted.dataDeletionRequiresApproval ? 'On' : 'Off' },
+    { label: t('adminMgmt.secPostureRetention'), tone: (persisted.auditRetentionYears >= 6 ? 'ok' : 'warn') as Tone, chip: t('adminMgmt.secRecordedPolicyChip', { count: persisted.auditRetentionYears }) },
+    { label: t('adminMgmt.secPhiExport'), tone: (persisted.phiExportRequiresReason ? 'ok' : 'warn') as Tone, chip: persisted.phiExportRequiresReason ? t('basket.on') : t('basket.off') },
+    { label: t('adminMgmt.secPostureDeletion'), tone: (persisted.dataDeletionRequiresApproval ? 'ok' : 'warn') as Tone, chip: persisted.dataDeletionRequiresApproval ? t('basket.on') : t('basket.off') },
     // Three states, not two: "unknown" claimed "At risk" before, which is a
     // finding this screen had not established.
-    { label: 'Backup within recovery target', tone: (backupUnknown ? 'muted' : backupWithinRpo ? 'ok' : 'warn') as Tone, chip: backupUnknown ? 'Unknown' : backupWithinRpo ? 'Within target' : 'At risk' },
-    { label: 'Emergency access review window set', tone: (persisted.emergencyAccessReviewHours > 0 ? 'ok' : 'warn') as Tone, chip: persisted.emergencyAccessReviewHours > 0 ? `${persisted.emergencyAccessReviewHours}h` : 'Not set' },
-  ], [persisted, backupUnknown, backupWithinRpo]);
+    { label: t('adminMgmt.secPostureBackup'), tone: (backupUnknown ? 'muted' : backupWithinRpo ? 'ok' : 'warn') as Tone, chip: backupUnknown ? t('admin.healthUnknown') : backupWithinRpo ? t('adminMgmt.secWithinTarget') : t('billing.agingAtRisk') },
+    { label: t('adminMgmt.secPostureEmergency'), tone: (persisted.emergencyAccessReviewHours > 0 ? 'ok' : 'warn') as Tone, chip: persisted.emergencyAccessReviewHours > 0 ? `${persisted.emergencyAccessReviewHours}h` : t('system.backupNotSet') },
+  ], [persisted, backupUnknown, backupWithinRpo, t]);
 
   /* ── Rail (counts derived from the rows each section actually renders) */
 
   const railGroups = [{
-    title: 'Security',
+    title: t('routeContext.security'),
     items: [
-      { id: 'access', label: 'Sign-in and access', icon: Lock, count: ACCESS_FIELDS.length },
-      { id: 'phi', label: 'Patient data', icon: FileText, count: PHI_FIELDS.length },
-      { id: 'breakglass', label: 'Emergency access', icon: AlertTriangle, count: BREAKGLASS_FIELDS.length },
+      { id: 'access', label: t('adminMgmt.secAccessTitle'), icon: Lock, count: ACCESS_FIELDS.length },
+      { id: 'phi', label: t('adminMgmt.secPhiTitle'), icon: FileText, count: PHI_FIELDS.length },
+      { id: 'breakglass', label: t('adminMgmt.secEmergencyAccess'), icon: AlertTriangle, count: BREAKGLASS_FIELDS.length },
       // +1: the backup-age fact row rendered alongside the two RPO/RTO fields.
-      { id: 'continuity', label: 'Backup targets', icon: Clock, count: CONTINUITY_FIELDS.length + 1 },
-      { id: 'watchlist', label: 'Security watchlist', icon: Eye, count: watchlist.length },
-      { id: 'overview', label: 'Security overview', icon: ShieldCheck, count: postureRows.length },
+      { id: 'continuity', label: t('adminMgmt.secBackupTitle'), icon: Clock, count: CONTINUITY_FIELDS.length + 1 },
+      { id: 'watchlist', label: t('ui.securityWatchlist'), icon: Eye, count: watchlist.length },
+      { id: 'overview', label: t('adminMgmt.secOverviewTitle'), icon: ShieldCheck, count: postureRows.length },
     ],
   }];
 
@@ -323,11 +320,11 @@ export default function SecurityCompliancePage() {
         {activeSection === 'access' && (
           <>
             <SadbPanelHeader
-              title="Sign-in and access"
-              note="Sign-in requirements applied platform-wide. Changes apply once saved above."
+              title={t('adminMgmt.secAccessTitle')}
+              note={t('adminMgmt.secAccessNote')}
             />
-            <SadbSettingGroup title="Passwords and sessions">
-              {accessFields.map(f => renderField(f, draft, setField, openEditor))}
+            <SadbSettingGroup title={t('adminMgmt.secPasswordsSessions')}>
+              {ACCESS_FIELDS.map(f => renderField(f, draft, setField, openEditor, t))}
             </SadbSettingGroup>
           </>
         )}
@@ -335,11 +332,11 @@ export default function SecurityCompliancePage() {
         {activeSection === 'phi' && (
           <>
             <SadbPanelHeader
-              title="Patient data"
-              note="Rules for exporting and deleting patient data and for issuing API keys across every organization."
+              title={t('adminMgmt.secPhiTitle')}
+              note={t('adminMgmt.secPhiNote')}
             />
-            <SadbSettingGroup title="Export, deletion and API keys">
-              {PHI_FIELDS.map(f => renderField(f, draft, setField, openEditor))}
+            <SadbSettingGroup title={t('adminMgmt.secPhiGroup')}>
+              {PHI_FIELDS.map(f => renderField(f, draft, setField, openEditor, t))}
             </SadbSettingGroup>
           </>
         )}
@@ -347,11 +344,11 @@ export default function SecurityCompliancePage() {
         {activeSection === 'breakglass' && (
           <>
             <SadbPanelHeader
-              title="Emergency and support access"
-              note="Ways to reach records outside normal permissions, each with a review window or an audit trail."
+              title={t('adminMgmt.secBreakTitle')}
+              note={t('adminMgmt.secBreakNote')}
             />
-            <SadbSettingGroup title="Review and approval rules">
-              {BREAKGLASS_FIELDS.map(f => renderField(f, draft, setField, openEditor))}
+            <SadbSettingGroup title={t('adminMgmt.secBreakGroup')}>
+              {BREAKGLASS_FIELDS.map(f => renderField(f, draft, setField, openEditor, t))}
             </SadbSettingGroup>
           </>
         )}
@@ -359,14 +356,14 @@ export default function SecurityCompliancePage() {
         {activeSection === 'continuity' && (
           <>
             <SadbPanelHeader
-              title="Backup targets"
-              note="How much data loss and downtime is acceptable, plus the age of the last backup reported."
+              title={t('adminMgmt.secBackupTitle')}
+              note={t('adminMgmt.secBackupNote')}
             />
-            <SadbSettingGroup title="Recovery targets">
-              {CONTINUITY_FIELDS.map(f => renderField(f, draft, setField, openEditor))}
+            <SadbSettingGroup title={t('adminMgmt.secRecoveryTargets')}>
+              {CONTINUITY_FIELDS.map(f => renderField(f, draft, setField, openEditor, t))}
               <SadbKvRow
-                label="Current backup age"
-                chip={backupUnknown ? 'Unknown. No backup reported' : `${Math.round(backupAgeHours ?? 0)}h ago`}
+                label={t('ui.currentBackupAge')}
+                chip={backupUnknown ? t('adminMgmt.secBackupUnknown') : t('adminMgmt.secHoursAgo', { count: Math.round(backupAgeHours ?? 0) })}
                 chipTone={TONE_CHIP[backupUnknown ? 'muted' : backupWithinRpo ? 'ok' : 'warn']}
               />
             </SadbSettingGroup>
@@ -376,25 +373,25 @@ export default function SecurityCompliancePage() {
         {activeSection === 'watchlist' && (
           <>
             <SadbPanelHeader
-              title="Security watchlist"
-              note="High-risk privileged actions recorded in the last 7 days, worst first. Open a row for the full audit entry."
-              tag="Last 7 days"
+              title={t('ui.securityWatchlist')}
+              note={t('adminMgmt.secWatchlistNote')}
+              tag={t('adminMgmt.secLast7Days')}
             />
             <SadbCard
-              title="High-risk actions"
-              meta={auditLoading ? 'Loading…' : `${watchlist.length} recorded`}
+              title={t('ui.highRiskActions')}
+              meta={auditLoading ? t('admin.loading') : t('adminMgmt.secNRecorded', { count: watchlist.length })}
             >
               {watchlist.length === 0 ? (
                 <p className="sadb-empty">
-                  {auditLoading ? 'Reading the audit store…' : 'No high-risk actions recorded this week.'}
+                  {auditLoading ? t('adminMgmt.secReadingAudit') : t('adminMgmt.secNoHighRisk')}
                 </p>
               ) : watchlist.map(({ log, severity }) => (
                 <SadbQueueRow
                   key={log._id}
-                  chip={severity}
+                  chip={t(SEVERITY_KEY[severity])}
                   chipTone={SEVERITY_CHIP[severity]}
                   title={log.action}
-                  sub={`${log.username || 'system'} · ${log.details}`}
+                  sub={`${log.username || t('admin.systemUser')} · ${log.details}`}
                   when={formatWhen(log.createdAt)}
                   onClick={() => router.push(`/admin/audit?log=${encodeURIComponent(log._id)}`)}
                 />
@@ -406,10 +403,10 @@ export default function SecurityCompliancePage() {
         {activeSection === 'overview' && (
           <>
             <SadbPanelHeader
-              title="Security overview"
-              note="Checks read from the saved policy and the most recent backup report."
+              title={t('adminMgmt.secOverviewTitle')}
+              note={t('adminMgmt.secOverviewNote')}
             />
-            <SadbCard title="Checks">
+            <SadbCard title={t('adminMgmt.secChecks')}>
               {postureRows.map(r => (
                 <SadbKvRow key={r.label} label={r.label} chip={r.chip} chipTone={TONE_CHIP[r.tone]} />
               ))}
@@ -421,8 +418,8 @@ export default function SecurityCompliancePage() {
 
       {editing && (
         <SadbEditorModal
-          title={editing.label}
-          sub={editing.sub}
+          title={t(editing.label)}
+          sub={t(editing.sub)}
           value={editValue}
           onChange={setEditValue}
           onCancel={() => setEditing(null)}

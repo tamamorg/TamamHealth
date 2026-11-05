@@ -105,8 +105,8 @@ export function PatientFacesheetView({
       <div className="tebra-facesheet">
         {/* The chart's own section header, its note as the light sub-line. */}
         <ChartSection
-          title="Facesheet"
-          subtitle="Clinical information is restricted for your role. Use Demographics, Appointments, Billing history, Documents, and Care coordination for administrative work."
+          title={t('ui.facesheet')}
+          subtitle={t('ui.clinicalInformationIsRestrictedFor')}
         >{null}</ChartSection>
       </div>
     );
@@ -126,10 +126,10 @@ export function PatientFacesheetView({
       </div>
 
       {customizeOpen && (
-        <div className="tebra-customize-panel" role="group" aria-label="Customize facesheet panels">
+        <div className="tebra-customize-panel" role="group" aria-label={t('ui.customizeFacesheetPanels')}>
           <div className="tebra-customize-panel__head">
             <strong>{t('ptDetail.showOnFacesheet')}</strong>
-            <button type="button" onClick={onResetPanels}>Reset</button>
+            <button type="button" onClick={onResetPanels}>{t('branding.reset')}</button>
           </div>
           <div className="tebra-customize-panel__grid">
             {FACESHEET_PANEL_OPTIONS.map(panel => (
@@ -149,7 +149,7 @@ export function PatientFacesheetView({
 
       {showPanel('medications') && (
       <section className="tebra-panel" {...clickable(() => onOpenTab('prescriptions'), { label: 'Open medications' })}>
-        <FacesheetPanelHead icon={Pill} title="Medications" action={actions.medications} />
+        <FacesheetPanelHead icon={Pill} title={t('noteEditor.section.medications')} action={actions.medications} />
         {currentMeds.length ? (
           <div className="tebra-list">
             {currentMeds.map(rx => (
@@ -163,13 +163,13 @@ export function PatientFacesheetView({
               </div>
             ))}
           </div>
-        ) : <p className="tebra-none">(None documented)</p>}
+        ) : <p className="tebra-none">{t('ui.noneDocumented')}</p>}
       </section>
       )}
 
       {showPanel('problems') && (
       <section className="tebra-panel" {...clickable(() => onOpenTab('problems'), { label: 'Open conditions' })}>
-        <FacesheetPanelHead icon={AlertTriangle} title="Conditions" action={actions.problems} />
+        <FacesheetPanelHead icon={AlertTriangle} title={t('patients.colConditions')} action={actions.problems} />
         {activeProblems.length ? (
           <div className="tebra-list">
             {activeProblems.slice(0, 4).map(problem => (
@@ -183,14 +183,14 @@ export function PatientFacesheetView({
               </div>
             ))}
           </div>
-        ) : <p className="tebra-none">No active problems documented.</p>}
+        ) : <p className="tebra-none">{t('ui.noActiveProblemsDocumented')}</p>}
       </section>
       )}
 
       {showPanel('vitals') && (() => {
         return (
       <section className="tebra-panel tebra-panel--highlight" {...clickable(() => onOpenTab('vitals'), { label: 'Open latest observations' })}>
-        <FacesheetPanelHead icon={Activity} title="Latest observations" action={actions.vitals} />
+        <FacesheetPanelHead icon={Activity} title={t('ui.latestObservations')} action={actions.vitals} />
         {latestTriage && (
           <div className="tebra-triage-snapshot">
             <div
@@ -200,11 +200,11 @@ export function PatientFacesheetView({
               <strong>{priorityLabel(latestTriage.priority)}</strong>
               <span>{latestTriage.chiefComplaint || 'Triage assessment'} · {formatDateTime(latestTriage.triagedAt)}</span>
             </div>
-            <div className="tebra-triage-snapshot__abcc" aria-label="Latest triage assessment">
-              <span data-tone={latestTriage.airway === 'clear' ? 'normal' : latestTriage.airway === 'not_assessed' ? 'muted' : 'danger'}><small>Airway</small><strong>{latestTriage.airway.replace('_', ' ')}</strong></span>
-              <span data-tone={latestTriage.breathing === 'normal' ? 'normal' : latestTriage.breathing === 'not_assessed' ? 'muted' : latestTriage.breathing === 'distressed' ? 'warning' : 'danger'}><small>Breathing</small><strong>{latestTriage.breathing.replace('_', ' ')}</strong></span>
-              <span data-tone={latestTriage.circulation === 'normal' ? 'normal' : latestTriage.circulation === 'not_assessed' ? 'muted' : latestTriage.circulation === 'impaired' ? 'warning' : 'danger'}><small>Circulation</small><strong>{latestTriage.circulation.replace('_', ' ')}</strong></span>
-              <span data-tone={latestTriage.consciousness === 'alert' ? 'normal' : latestTriage.consciousness === 'not_assessed' ? 'muted' : latestTriage.consciousness === 'verbal' ? 'warning' : 'danger'}><small>Consciousness</small><strong>{latestTriage.consciousness.replace('_', ' ')}</strong></span>
+            <div className="tebra-triage-snapshot__abcc" aria-label={t('ui.latestTriageAssessment')}>
+              <span data-tone={latestTriage.airway === 'clear' ? 'normal' : latestTriage.airway === 'not_assessed' ? 'muted' : 'danger'}><small>{t('nurse.airway')}</small><strong>{latestTriage.airway.replace('_', ' ')}</strong></span>
+              <span data-tone={latestTriage.breathing === 'normal' ? 'normal' : latestTriage.breathing === 'not_assessed' ? 'muted' : latestTriage.breathing === 'distressed' ? 'warning' : 'danger'}><small>{t('nurse.breathing')}</small><strong>{latestTriage.breathing.replace('_', ' ')}</strong></span>
+              <span data-tone={latestTriage.circulation === 'normal' ? 'normal' : latestTriage.circulation === 'not_assessed' ? 'muted' : latestTriage.circulation === 'impaired' ? 'warning' : 'danger'}><small>{t('nurse.circulation')}</small><strong>{latestTriage.circulation.replace('_', ' ')}</strong></span>
+              <span data-tone={latestTriage.consciousness === 'alert' ? 'normal' : latestTriage.consciousness === 'not_assessed' ? 'muted' : latestTriage.consciousness === 'verbal' ? 'warning' : 'danger'}><small>{t('ui.consciousness')}</small><strong>{latestTriage.consciousness.replace('_', ' ')}</strong></span>
             </div>
             {(latestTriage.destinationClinic || latestTriage.assignedProviderName || latestTriage.handoffNote) && (
               <p className="tebra-triage-snapshot__route">
@@ -231,7 +231,7 @@ export function PatientFacesheetView({
         {!latestTriage && recentLabs.length === 0 && (
           vitalsLoading
             ? <p className="tebra-none">{t('chart.vitalsLoading')}</p>
-            : <p className="tebra-none">{latestVitals ? t('chart.observationsInBand') : '(None documented)'}</p>
+            : <p className="tebra-none">{latestVitals ? t('chart.observationsInBand') : t('ui.noneDocumented')}</p>
         )}
         {recentLabs.length > 0 && (
           // Results live on their own section, not Vitals — without the
@@ -260,7 +260,7 @@ export function PatientFacesheetView({
 
       {showPanel('recommendations') && (
       <section className="tebra-panel tebra-recommendations" {...clickable(() => onOpenTab('careChecklist'), { label: 'Open next care actions' })}>
-        <FacesheetPanelHead icon={ClipboardList} title="Next care actions" action={actions.recommendations} />
+        <FacesheetPanelHead icon={ClipboardList} title={t('ui.nextCareActions')} action={actions.recommendations} />
         {careActions.length ? (
           <div className="tebra-reco-list">
             {careActions.map(item => (
@@ -275,7 +275,7 @@ export function PatientFacesheetView({
               </div>
             ))}
           </div>
-        ) : <p className="tebra-none">No outstanding care actions.</p>}
+        ) : <p className="tebra-none">{t('ui.noOutstandingCareActions')}</p>}
       </section>
       )}
 
@@ -323,11 +323,11 @@ export function PatientDemographicsView({
     <div className="tebra-demographics">
       {/* Titled like every other chart tab. */}
       <div className="tebra-demo-title tamam-section-title-wrap">
-        <h3 className="tamam-section-title">Demographics</h3>
+        <h3 className="tamam-section-title">{t('patient.demographics')}</h3>
         <span className="tamam-section-underline" aria-hidden />
       </div>
       <div className="tebra-demo-tabbar">
-        <div className="tebra-demo-tabs" role="tablist" aria-label="Demographics sections">
+        <div className="tebra-demo-tabs" role="tablist" aria-label={t('ui.demographicsSections')}>
           {tabs.map(([id, label]) => (
             <button
               key={id}
@@ -339,7 +339,7 @@ export function PatientDemographicsView({
             </button>
           ))}
         </div>
-        {activeTab === 'profile' && canEdit && <button type="button" className="tebra-demo-edit" onClick={onEdit}><Pencil aria-hidden /> Edit</button>}
+        {activeTab === 'profile' && canEdit && <button type="button" className="tebra-demo-edit" onClick={onEdit}><Pencil aria-hidden /> {t('action.edit')}</button>}
       </div>
 
       {activeTab === 'profile' && (
@@ -347,45 +347,45 @@ export function PatientDemographicsView({
           <div className="tebra-demo-person">
             <div className="tebra-demo-avatar">{patientInitials(patient)}</div>
             <h2>{patientFullName(patient)}</h2>
-            <span>Active</span>
+            <span>{t('adminBilling.statusActive')}</span>
           </div>
           <div className="tebra-demo-columns">
-            <DemoField label="Legal Name" value={patientFullName(patient)} />
-            <DemoField label="Pronoun" value="-" />
+            <DemoField label={t('ui.legalName')} value={patientFullName(patient)} />
+            <DemoField label={t('ui.pronoun')} value="-" />
             <DemoField label="MRN" value={patient.hospitalNumber || '-'} />
-            <DemoField label="Preferred Name" value={patient.firstName || '-'} />
-            <DemoField label="Sex" value={patient.gender || '-'} />
-            <DemoField label="Tamam Patient ID" value={patient.geocodeId || patient.hospitalNumber || '-'} />
-            <DemoField label="Date of Birth" value={patient.dateOfBirth ? `${formatDate(patient.dateOfBirth)} (${patientAgeLabel(patient)})` : '-'} />
-            <DemoField label="Gender Identity" value={patient.gender || '-'} />
-            <DemoField label="National ID" value={patient.nationalId || '-'} />
+            <DemoField label={t('ui.preferredName')} value={patient.firstName || '-'} />
+            <DemoField label={t('nutrition.formSex')} value={patient.gender || '-'} />
+            <DemoField label={t('ui.tamamPatientId')} value={patient.geocodeId || patient.hospitalNumber || '-'} />
+            <DemoField label={t('births.colDateOfBirth')} value={patient.dateOfBirth ? `${formatDate(patient.dateOfBirth)} (${patientAgeLabel(patient)})` : '-'} />
+            <DemoField label={t('ui.genderIdentity')} value={patient.gender || '-'} />
+            <DemoField label={t('patientNew.nationalId')} value={patient.nationalId || '-'} />
             {patient.identifiers?.map(id => (
               <DemoField key={`${id.type}-${id.value}`} label={t(`idType.${id.type}`)} value={[id.value, countryName(id.country)].filter(Boolean).join(' · ')} />
             ))}
             {patient.latinName && <DemoField label={t('patientNew.latinName')} value={patient.latinName} />}
             <DemoField label={t('patientNew.citizenship')} value={countryName(patient.citizenship) || '-'} />
-            <DemoField label="Previous Full Name" value={patient.maidenName || '-'} />
-            <DemoField label="Sexual Orientation" value="Choose not to disclose" />
-            <DemoField label="Facility" value={regHospitalName || '-'} />
-            <DemoField label="Marital Status" value="Unknown" />
-            <DemoField label="Blood Type" value={patient.bloodType || '-'} />
-            <DemoField label="Primary Language" value={patient.primaryLanguage || '-'} />
+            <DemoField label={t('ui.previousFullName')} value={patient.maidenName || '-'} />
+            <DemoField label={t('ui.sexualOrientation')} value="Choose not to disclose" />
+            <DemoField label={t('births.colFacility')} value={regHospitalName || '-'} />
+            <DemoField label={t('ui.maritalStatus')} value="Unknown" />
+            <DemoField label={t('patient.bloodType')} value={patient.bloodType || '-'} />
+            <DemoField label={t('patientNew.primaryLanguage')} value={patient.primaryLanguage || '-'} />
           </div>
 
           <div className="tebra-demo-section">
-            <h3>Contact Information:</h3>
+            <h3>{t('ui.contactInformation')}</h3>
             <div className="tebra-demo-columns">
-              <DemoField label="Home Address" value={[patient.address, patient.boma, patient.payam, patient.county, patient.state].filter(Boolean).join(', ') || '-'} wide />
-              <DemoField label="Mobile Phone" value={patient.phone ? `${formatPhoneDisplay(patient.phone)} Primary` : '-'} />
-              <DemoField label="Personal Email" value={patient.email || '-'} />
-              <DemoField label="Mailing Address" value={patient.address || '-'} wide />
-              <DemoField label="Home Phone" value="-" />
-              <DemoField label="Work Email" value="-" />
-              <DemoField label="Previous Address" value="-" wide />
-              <DemoField label="Other Phone" value={patient.altPhone ? formatPhoneDisplay(patient.altPhone) : '-'} />
-              <DemoField label="Preferred Communication" value="Unknown" />
-              <DemoField label="Driver's License" value="-" />
-              <DemoField label="Send Reminders by" value={patient.whatsapp ? 'Phone(Text Message), WhatsApp' : 'Phone(Text Message)'} wide />
+              <DemoField label={t('ui.homeAddress')} value={[patient.address, patient.boma, patient.payam, patient.county, patient.state].filter(Boolean).join(', ') || '-'} wide />
+              <DemoField label={t('ui.mobilePhone')} value={patient.phone ? `${formatPhoneDisplay(patient.phone)} Primary` : '-'} />
+              <DemoField label={t('ui.personalEmail')} value={patient.email || '-'} />
+              <DemoField label={t('ui.mailingAddress')} value={patient.address || '-'} wide />
+              <DemoField label={t('ui.homePhone')} value="-" />
+              <DemoField label={t('landing.demo.workEmail')} value="-" />
+              <DemoField label={t('ui.previousAddress')} value="-" wide />
+              <DemoField label={t('ui.otherPhone')} value={patient.altPhone ? formatPhoneDisplay(patient.altPhone) : '-'} />
+              <DemoField label={t('ui.preferredCommunication')} value="Unknown" />
+              <DemoField label={t('ui.driverSLicense')} value="-" />
+              <DemoField label={t('ui.sendRemindersBy')} value={patient.whatsapp ? 'Phone(Text Message), WhatsApp' : 'Phone(Text Message)'} wide />
             </div>
           </div>
         </section>
@@ -395,12 +395,12 @@ export function PatientDemographicsView({
         <section className="tebra-demo-panel">
           <div className="tebra-demo-columns">
             <DemoField label={t('patientNew.residenceCountry')} value={countryName(patient.residenceCountry || activeCountry().code)} />
-            <DemoField label="State" value={patient.state || '-'} />
-            <DemoField label="County" value={patient.county || '-'} />
-            <DemoField label="Payam" value={patient.payam || '-'} />
-            <DemoField label="Boma" value={patient.boma || '-'} />
-            {(activeCountry().asksTribe || patient.tribe) && <DemoField label="Tribe" value={patient.tribe || '-'} />}
-            <DemoField label="Registered" value={(patient.registrationDate || patient.registeredAt) ? formatDate(patient.registrationDate || patient.registeredAt) : '-'} />
+            <DemoField label={t('births.colState')} value={patient.state || '-'} />
+            <DemoField label={t('births.county')} value={patient.county || '-'} />
+            <DemoField label={t('dhis2.levelPayam')} value={patient.payam || '-'} />
+            <DemoField label={t('payam.boma')} value={patient.boma || '-'} />
+            {(activeCountry().asksTribe || patient.tribe) && <DemoField label={t('patient.tribe')} value={patient.tribe || '-'} />}
+            <DemoField label={t('deaths.colRegistered')} value={(patient.registrationDate || patient.registeredAt) ? formatDate(patient.registrationDate || patient.registeredAt) : '-'} />
           </div>
         </section>
       )}
@@ -408,11 +408,11 @@ export function PatientDemographicsView({
       {activeTab === 'contacts' && (
         <section className="tebra-demo-panel">
           <div className="tebra-demo-columns">
-            <DemoField label="Primary Contact" value={patient.nokName || '-'} />
-            <DemoField label="Relationship" value={patient.nokRelationship || '-'} />
-            <DemoField label="Phone" value={patient.nokPhone ? formatPhoneDisplay(patient.nokPhone) : '-'} />
+            <DemoField label={t('ui.primaryContact')} value={patient.nokName || '-'} />
+            <DemoField label={t('patientNew.relationship')} value={patient.nokRelationship || '-'} />
+            <DemoField label={t('noteEditor.type.phone')} value={patient.nokPhone ? formatPhoneDisplay(patient.nokPhone) : '-'} />
             {patient.nokEmail && <DemoField label={t('patientNew.nokEmail')} value={patient.nokEmail} />}
-            <DemoField label="Address" value={patient.nokAddress || '-'} wide />
+            <DemoField label={t('hospitals.fieldAddress')} value={patient.nokAddress || '-'} wide />
           </div>
         </section>
       )}
@@ -420,7 +420,7 @@ export function PatientDemographicsView({
       {(activeTab === 'upcoming' || activeTab === 'past') && (
         <section className="tebra-demo-panel">
           <table className="tebra-demo-table">
-            <thead><tr><th>Date</th><th>Time</th><th>{t('chartMessages.careTeam')}</th><th>Context</th><th>Status</th></tr></thead>
+            <thead><tr><th>{t('billing.activityColumn.date')}</th><th>{t('noteEditor.time')}</th><th>{t('chartMessages.careTeam')}</th><th>{t('ui.context')}</th><th>{t('billing.activityColumn.status')}</th></tr></thead>
             <tbody>
               {(activeTab === 'upcoming' ? upcoming : past).length ? (activeTab === 'upcoming' ? upcoming : past).map(appt => (
                 <tr key={appt._id}>
@@ -444,7 +444,7 @@ export function PatientDemographicsView({
                   <td>{appointmentStatusLabel(appt.status)}</td>
                 </tr>
               )) : (
-                <tr><td colSpan={5}>No appointments documented.</td></tr>
+                <tr><td colSpan={5}>{t('ui.noAppointmentsDocumented')}</td></tr>
               )}
             </tbody>
           </table>
@@ -454,8 +454,8 @@ export function PatientDemographicsView({
       {activeTab === 'portal' && (
         <section className="tebra-demo-panel">
           <div className="tebra-demo-columns">
-            <DemoField label="Portal Status" value="Not invited" />
-            <DemoField label="Reminder Channel" value={patient.whatsapp ? 'SMS / WhatsApp' : 'SMS'} />
+            <DemoField label={t('ui.portalStatus')} value="Not invited" />
+            <DemoField label={t('ui.reminderChannel')} value={patient.whatsapp ? 'SMS / WhatsApp' : 'SMS'} />
           </div>
         </section>
       )}

@@ -26,42 +26,12 @@ import { locationLabel, states } from '@/lib/data/south-sudan-reference';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import NumberInput from '@/components/forms/NumberInput';
 
-const EMERGENCY_TYPES: { value: EmergencyType; label: string }[] = [
-  { value: 'disease_outbreak', label: 'Disease outbreak' },
-  { value: 'cholera_outbreak', label: 'Cholera outbreak' },
-  { value: 'measles_outbreak', label: 'Measles outbreak' },
-  { value: 'ebola', label: 'Ebola' },
-  { value: 'flood', label: 'Flood' },
-  { value: 'conflict', label: 'Conflict / displacement' },
-  { value: 'famine', label: 'Famine' },
-  { value: 'mass_casualty', label: 'Mass casualty' },
-  { value: 'infrastructure_failure', label: 'Infrastructure failure' },
+const EMERGENCY_TYPES: EmergencyType[] = [
+  'disease_outbreak', 'cholera_outbreak', 'measles_outbreak', 'ebola', 'flood',
+  'conflict', 'famine', 'mass_casualty', 'infrastructure_failure',
 ];
-
-const PHASES: { value: EmergencyPhase; label: string }[] = [
-  { value: 'preparedness', label: 'Preparedness' },
-  { value: 'alert', label: 'Alert' },
-  { value: 'response', label: 'Response' },
-  { value: 'recovery', label: 'Recovery' },
-  { value: 'closed', label: 'Closed' },
-];
-
-const SEVERITIES: { value: EmergencySeverity; label: string }[] = [
-  { value: 'level_1', label: 'Level 1 — Watch' },
-  { value: 'level_2', label: 'Level 2 — Mobilize' },
-  { value: 'level_3', label: 'Level 3 — Full activation' },
-];
-
-const SEVERITY_LABEL: Record<EmergencySeverity, string> = Object.fromEntries(
-  SEVERITIES.map(v => [v.value, v.label.split(' — ')[0]]),
-) as Record<EmergencySeverity, string>;
-
-const TYPE_LABEL: Record<EmergencyType, string> = Object.fromEntries(
-  EMERGENCY_TYPES.map(t => [t.value, t.label]),
-) as Record<EmergencyType, string>;
-const PHASE_LABEL: Record<EmergencyPhase, string> = Object.fromEntries(
-  PHASES.map(p => [p.value, p.label]),
-) as Record<EmergencyPhase, string>;
+const PHASES: EmergencyPhase[] = ['preparedness', 'alert', 'response', 'recovery', 'closed'];
+const SEVERITIES: EmergencySeverity[] = ['level_1', 'level_2', 'level_3'];
 
 // Severity → Badge tone (level_3 full activation → danger, level_2 → warning,
 // level_1 watch → info).
@@ -212,18 +182,18 @@ export default function EmergencyPreparednessPage() {
       <main className="page-container page-enter sadb-scope">
         <div className="sadb-page">
           <FacilityKpiBand tiles={[
-            { key: 'active', label: 'Active responses', value: activePlans.length, detail: activePlans.length ? activePlans.map(p => p.planName).slice(0, 2).join(', ') : `Of ${plans.length} ${plans.length === 1 ? 'plan' : 'plans'}, none activated`, warn: activePlans.length > 0, trend: weekOverWeek(plans, p => p.createdAt, 'created') },
-            { key: 'beds', label: 'Surge beds free', value: `${surgeFree} of ${surgeTotal}`, detail: surgeTotal ? 'Free against the beds planned for surge' : 'No surge beds planned yet' },
-            { key: 'load', label: 'Capacity in use', value: capacityTotal ? `${Math.round((loadTotal / capacityTotal) * 100)}%` : '0%', detail: `${loadTotal} patients against ${capacityTotal} planned places` },
-            { key: 'cases', label: 'Cases managed', value: casesTotal, detail: 'Across every plan, from first activation' },
+            { key: 'active', label: t('emergencyPrep.kpiActive'), value: activePlans.length, detail: activePlans.length ? activePlans.map(p => p.planName).slice(0, 2).join(', ') : t(plans.length === 1 ? 'emergencyPrep.kpiNoneActivatedOne' : 'emergencyPrep.kpiNoneActivated', { count: plans.length }), warn: activePlans.length > 0, trend: weekOverWeek(plans, p => p.createdAt, t('emergencyPrep.trendCreated'), 'up', t) },
+            { key: 'beds', label: t('emergencyPrep.kpiSurgeFree'), value: t('emergencyPrep.kpiSurgeValue', { free: surgeFree, total: surgeTotal }), detail: surgeTotal ? t('emergencyPrep.kpiSurgeDetail') : t('emergencyPrep.kpiSurgeNone') },
+            { key: 'load', label: t('emergencyPrep.kpiCapacity'), value: capacityTotal ? `${Math.round((loadTotal / capacityTotal) * 100)}%` : '0%', detail: t('emergencyPrep.kpiCapacityDetail', { load: loadTotal, capacity: capacityTotal }) },
+            { key: 'cases', label: t('emergencyPrep.kpiCases'), value: casesTotal, detail: t('emergencyPrep.kpiCasesDetail') },
           ]} />
 
           <SadbCard
-            title="Emergency plans"
+            title={t('emergencyPrep.plansTitle')}
             meta={`${plans.length}`}
             action={
               <button type="button" onClick={openForm} className="btn btn-primary" data-tour="emergency-new-plan">
-                <Plus className="w-4 h-4" /> New plan
+                <Plus className="w-4 h-4" /> {t('ui.newPlan')}
               </button>
             }
           >
@@ -231,8 +201,8 @@ export default function EmergencyPreparednessPage() {
               <SadbGridList
                 template={GRID}
                 minWidth={1040}
-                head={['Plan', 'Type', 'Severity', 'Phase', 'Surge beds', 'Capacity', 'Incident commander', 'Action']}
-                empty={loading ? 'Loading…' : 'No emergency plans yet. Create a surge plan for a cholera outbreak, mass casualty event, or other emergency.'}
+                head={[t('emergencyPrep.colPlan'), t('emergencyPrep.colType'), t('epidemic.colSeverity'), t('ui.phase'), t('ui.surgeBeds'), t('orgHospitals.groupCapacity'), t('ui.incidentCommander'), t('emergencyPrep.colAction')]}
+                empty={loading ? t('admin.loading') : t('emergencyPrep.emptyPlans')}
               >
                 {plans.map(plan => {
                   const isActive = plan.phase === 'response';
@@ -244,9 +214,9 @@ export default function EmergencyPreparednessPage() {
                           {plan.facilityName}{plan.county ? ` · ${plan.county}` : ''}{plan.state ? ` · ${plan.state}` : ''}
                         </span>
                       </span>
-                      <span className="truncate">{TYPE_LABEL[plan.emergencyType] ?? plan.emergencyType}</span>
-                      <span><Badge tone={severityTone(plan.severity)}>{SEVERITY_LABEL[plan.severity] ?? plan.severity}</Badge></span>
-                      <span><Badge tone={phaseTone(plan.phase)}>{PHASE_LABEL[plan.phase] ?? plan.phase}</Badge></span>
+                      <span className="truncate">{t(`emergencyPrep.type_${plan.emergencyType}`)}</span>
+                      <span><Badge tone={severityTone(plan.severity)}>{t(`emergencyPrep.severityShort_${plan.severity}`)}</Badge></span>
+                      <span><Badge tone={phaseTone(plan.phase)}>{t(`emergencyPrep.phase_${plan.phase}`)}</Badge></span>
                       <span className="sadb-tenant-num">{plan.resources.availableSurgeBeds}/{plan.resources.surgeBeds}</span>
                       <span className="sadb-tenant-num">{plan.currentLoad}/{plan.estimatedCapacity}</span>
                       <span className="min-w-0">
@@ -261,7 +231,7 @@ export default function EmergencyPreparednessPage() {
                           onClick={() => handleActivate(plan)}
                           className={`btn btn-sm ${isActive ? 'btn-secondary' : 'btn-primary'}`}
                         >
-                          {isActive ? 'Deactivate' : 'Activate'}
+                          {isActive ? t('emergencyPrep.deactivate') : t('emergencyPrep.activate')}
                         </button>
                       </span>
                     </SadbGridRow>
@@ -274,63 +244,63 @@ export default function EmergencyPreparednessPage() {
 
         {showForm && (
           <FormSlider
-            title="New emergency plan"
+            title={t('ui.newEmergencyPlan')}
             onClose={() => !submitting && setShowForm(false)}
             busy={submitting}
             footer={<>
-                <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary" disabled={submitting}>Cancel</button>
+                <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary" disabled={submitting}>{t('action.cancel')}</button>
                 <button type="button" onClick={handleSubmit} className="btn btn-primary" disabled={submitting}>
-                  {submitting ? 'Saving…' : 'Create plan'}
+                  {submitting ? t('emergencyPrep.saving') : t('emergencyPrep.createPlan')}
                 </button>
             </>}
           >
             <div className="space-y-4">
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Plan name</label>
-                  <input type="text" value={form.planName} onChange={e => setForm({ ...form, planName: e.target.value })} placeholder="e.g. Cholera outbreak surge plan" />
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.planName')}</label>
+                  <input type="text" value={form.planName} onChange={e => setForm({ ...form, planName: e.target.value })} placeholder={t('ui.eGCholeraOutbreakSurge')} />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Emergency type</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.emergencyType')}</label>
                     <Select value={form.emergencyType} onChange={e => setForm({ ...form, emergencyType: e.target.value as EmergencyType })}>
-                      {EMERGENCY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                      {EMERGENCY_TYPES.map(v => <option key={v} value={v}>{t(`emergencyPrep.type_${v}`)}</option>)}
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Severity</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('epidemic.colSeverity')}</label>
                     <Select value={form.severity} onChange={e => setForm({ ...form, severity: e.target.value as EmergencySeverity })}>
-                      {SEVERITIES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                      {SEVERITIES.map(v => <option key={v} value={v}>{t(`emergencyPrep.severity_${v}`)}</option>)}
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Phase</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.phase')}</label>
                     <Select value={form.phase} onChange={e => setForm({ ...form, phase: e.target.value as EmergencyPhase })}>
-                      {PHASES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                      {PHASES.map(v => <option key={v} value={v}>{t(`emergencyPrep.phase_${v}`)}</option>)}
                     </Select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Description</label>
-                  <textarea rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Scope, triggers, and key actions for this plan" />
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.description')}</label>
+                  <textarea rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder={t('ui.scopeTriggersAndKeyActions')} />
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Surge beds</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.surgeBeds')}</label>
                     <NumberInput step="1" min={0} value={form.surgeBeds} onChange={e => setForm({ ...form, surgeBeds: Math.max(0, parseInt(e.target.value) || 0) })} />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Est. capacity / day</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.estCapacityDay')}</label>
                     <NumberInput step="1" min={0} value={form.estimatedCapacity} onChange={e => setForm({ ...form, estimatedCapacity: Math.max(0, parseInt(e.target.value) || 0) })} />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>State</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('births.colState')}</label>
                     <Select value={form.state} searchThreshold={0}
                       onChange={e => setForm({ ...form, state: e.target.value })}>
-                      <option value="">State / region</option>
+                      <option value="">{t('ui.stateRegion')}</option>
                       {states.map(state => <option key={state} value={state}>{locationLabel(state)}</option>)}
                     </Select>
                   </div>
@@ -338,12 +308,12 @@ export default function EmergencyPreparednessPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Incident commander</label>
-                    <input type="text" value={form.incidentCommander} onChange={e => setForm({ ...form, incidentCommander: e.target.value })} placeholder="Full name" />
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.incidentCommander')}</label>
+                    <input type="text" value={form.incidentCommander} onChange={e => setForm({ ...form, incidentCommander: e.target.value })} placeholder={t('adminUsers.fieldFullName')} />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Commander phone</label>
-                    <input type="tel" value={form.incidentCommanderPhone} onChange={e => setForm({ ...form, incidentCommanderPhone: e.target.value })} placeholder="Phone number" />
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.commanderPhone')}</label>
+                    <input type="tel" value={form.incidentCommanderPhone} onChange={e => setForm({ ...form, incidentCommanderPhone: e.target.value })} placeholder={t('billing.phoneNumber')} />
                   </div>
                 </div>
               </div>

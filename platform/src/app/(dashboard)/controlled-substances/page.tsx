@@ -24,14 +24,6 @@ import NumberInput from '@/components/forms/NumberInput';
 const SCHEDULES: ControlledSubstanceLogDoc['schedule'][] = ['I', 'II', 'III', 'IV', 'V'];
 const MOVEMENTS: ControlledSubstanceLogDoc['movement'][] = ['intake', 'dispense', 'waste', 'reconciliation', 'transfer'];
 
-const MOVEMENT_LABELS: Record<ControlledSubstanceLogDoc['movement'], string> = {
-  intake: 'Intake',
-  dispense: 'Dispense',
-  waste: 'Waste',
-  reconciliation: 'Reconciliation',
-  transfer: 'Transfer',
-};
-
 /** Semantic Badge tone per movement type for the small status pill. */
 const MOVEMENT_TONE: Record<ControlledSubstanceLogDoc['movement'], BadgeTone> = {
   intake: 'success',
@@ -152,7 +144,7 @@ export default function ControlledSubstancesPage() {
       await load();
     } catch (err) {
       // recordMovement throws on missing/duplicate signatories and bad math.
-      const message = err instanceof Error ? err.message : 'Movement not recorded. Check the entries and try again.';
+      const message = err instanceof Error ? err.message : t('controlledSubstances.notRecorded');
       showToast(message, 'error');
     } finally {
       setSaving(false);
@@ -169,25 +161,25 @@ export default function ControlledSubstancesPage() {
   return (
     <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0, overflow: 'hidden' }}>
         <FacilityKpiBand tiles={[
-          { key: 'all', label: 'Movements', value: movements.length, detail: `${countOf('intake')} intake · ${countOf('transfer')} transfer`, trend: weekOverWeek(movements, m => m.createdAt, 'recorded') },
-          { key: 'dispense', label: 'Dispensed', value: countOf('dispense'), detail: 'Doses handed out, each with a witness' },
-          { key: 'waste', label: 'Waste', value: countOf('waste'), detail: countOf('waste') ? 'Wasted doses on the audit trail' : 'No waste recorded', warn: countOf('waste') > 0 },
-          { key: 'recon', label: 'Reconciliations', value: countOf('reconciliation'), detail: lastReconciled ? `Last on ${formatDateTime(lastReconciled)}` : 'None recorded yet' },
+          { key: 'all', label: t('controlledSubstances.kpiMovements'), value: movements.length, detail: t('controlledSubstances.kpiMovementsDetail', { intake: countOf('intake'), transfer: countOf('transfer') }), trend: weekOverWeek(movements, m => m.createdAt, t('controlledSubstances.trendRecorded'), 'up', t) },
+          { key: 'dispense', label: t('controlledSubstances.kpiDispensed'), value: countOf('dispense'), detail: t('controlledSubstances.kpiDispensedDetail') },
+          { key: 'waste', label: t('controlledSubstances.kpiWaste'), value: countOf('waste'), detail: countOf('waste') ? t('controlledSubstances.kpiWasteDetail') : t('controlledSubstances.kpiNoWaste'), warn: countOf('waste') > 0 },
+          { key: 'recon', label: t('controlledSubstances.kpiReconciliations'), value: countOf('reconciliation'), detail: lastReconciled ? t('controlledSubstances.kpiLastOn', { when: formatDateTime(lastReconciled) }) : t('controlledSubstances.kpiNoneYet') },
         ]} />
         <div className="dash-card flex flex-col" style={{ flex: 1, minHeight: 0 }}>
           <EhrListHeader
-            title="Controlled substances"
+            title={t('ui.controlledSubstances')}
             count={movements.length}
             actions={
               <button data-tour="csub-record-movement" onClick={openModal} className="btn btn-primary">
-                <Plus className="w-4 h-4" /> Record movement
+                <Plus className="w-4 h-4" /> {t('ui.recordMovement')}
               </button>
             }
           />
 
           <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
           {loading ? (
-            <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Loading log…</div>
+            <div className="p-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('ui.loadingLog')}</div>
           ) : (
             <div className="ehr-list-scroll">
               <table className="data-table" style={{ minWidth: 960, tableLayout: 'fixed' }}>
@@ -203,14 +195,14 @@ export default function ControlledSubstancesPage() {
                 </colgroup>
                 <thead>
                   <tr>
-                    <th>Medication</th>
-                    <th>Schedule</th>
-                    <th>Movement</th>
-                    <th>Qty</th>
-                    <th>Operator</th>
-                    <th>Witness</th>
-                    <th>Reason</th>
-                    <th>Date</th>
+                    <th>{t('hospitals.colMedication')}</th>
+                    <th>{t('boma.schedule')}</th>
+                    <th>{t('ui.movement')}</th>
+                    <th>{t('ui.qty')}</th>
+                    <th>{t('ui.operator')}</th>
+                    <th>{t('mar.witness')}</th>
+                    <th>{t('appointments.labelReason')}</th>
+                    <th>{t('billing.activityColumn.date')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -219,8 +211,8 @@ export default function ControlledSubstancesPage() {
                       <td colSpan={8} style={{ padding: 0 }}>
                         <EmptyState
                           icon={Pill}
-                          title="No movements recorded yet"
-                          message="Record the first controlled-substance movement to start the audit trail."
+                          title={t('ui.noMovementsRecordedYet')}
+                          message={t('controlledSubstances.emptyHint')}
                         />
                       </td>
                     </tr>
@@ -228,10 +220,10 @@ export default function ControlledSubstancesPage() {
                     <tr key={m._id}>
                       <td className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{m.medicationName}</td>
                       <td>
-                        <Badge tone="neutral">Sch {m.schedule}</Badge>
+                        <Badge tone="neutral">{t('ui.sch')} {m.schedule}</Badge>
                       </td>
                       <td>
-                        <Badge tone={MOVEMENT_TONE[m.movement]}>{MOVEMENT_LABELS[m.movement]}</Badge>
+                        <Badge tone={MOVEMENT_TONE[m.movement]}>{t(`msg.movement.${m.movement}`)}</Badge>
                       </td>
                       <td className="text-sm" style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{m.quantity} {m.unit}</td>
                       <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>{m.operatorName}</td>
@@ -251,10 +243,10 @@ export default function ControlledSubstancesPage() {
 
         {open && (
           <FormSlider
-            title="Record controlled-substance movement"
+            title={t('ui.recordControlledSubstanceMovement')}
             onClose={() => setOpen(false)}
             footer={<>
-                <button onClick={() => setOpen(false)} className="btn btn-secondary" disabled={saving}>Cancel</button>
+                <button onClick={() => setOpen(false)} className="btn btn-secondary" disabled={saving}>{t('action.cancel')}</button>
                 {/* Correct a mis-typed draft before it is committed. The committed
                     log itself is append-only for regulatory compliance and is
                     never editable or deletable from here. */}
@@ -263,79 +255,79 @@ export default function ControlledSubstancesPage() {
                   className="btn btn-secondary"
                   disabled={saving}
                 >
-                  Clear
+                  {t('action.clear')}
                 </button>
                 <button onClick={handleSubmit} className="btn btn-primary" disabled={saving}>
-                  {saving ? 'Recording…' : 'Record movement'}
+                  {saving ? t('controlledSubstances.recording') : t('ui.recordMovement')}
                 </button>
             </>}
           >
             <div className="space-y-4">
               <div className="space-y-3" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                 <div>
-                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Medication</label>
-                  <input type="text" value={form.medicationName} onChange={e => setForm({ ...form, medicationName: e.target.value })} placeholder="e.g. Morphine sulfate" />
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hospitals.colMedication')}</label>
+                  <input type="text" value={form.medicationName} onChange={e => setForm({ ...form, medicationName: e.target.value })} placeholder={t('ui.eGMorphineSulfate')} />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Schedule</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('boma.schedule')}</label>
                     <Select value={form.schedule} onChange={e => setForm({ ...form, schedule: e.target.value as ControlledSubstanceLogDoc['schedule'] })}>
-                      {SCHEDULES.map(s => <option key={s} value={s}>Schedule {s}</option>)}
+                      {SCHEDULES.map(s => <option key={s} value={s}>{t('boma.schedule')} {s}</option>)}
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Movement</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.movement')}</label>
                     <Select value={form.movement} onChange={e => setForm({ ...form, movement: e.target.value as ControlledSubstanceLogDoc['movement'] })}>
-                      {MOVEMENTS.map(m => <option key={m} value={m}>{MOVEMENT_LABELS[m]}</option>)}
+                      {MOVEMENTS.map(m => <option key={m} value={m}>{t(`msg.movement.${m}`)}</option>)}
                     </Select>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Quantity</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.quantity')}</label>
                     <NumberInput min={0} step="any" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} placeholder="0" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Unit</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('lab.unit')}</label>
                     <input type="text" value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })} placeholder="mg" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Before balance</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.beforeBalance')}</label>
                     <NumberInput min={0} step="any" value={form.beforeBalance} onChange={e => setForm({ ...form, beforeBalance: e.target.value })} placeholder="0" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Patient (optional)</label>
-                  <input type="text" value={form.patientName} onChange={e => setForm({ ...form, patientName: e.target.value })} placeholder="For dispense movements" />
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('feedback.patientOptional')}</label>
+                  <input type="text" value={form.patientName} onChange={e => setForm({ ...form, patientName: e.target.value })} placeholder={t('ui.forDispenseMovements')} />
                 </div>
 
                 <hr className="section-divider" />
 
                 <div className="rounded-lg p-3" style={{ background: 'var(--accent-light)', border: '1px solid var(--border-light)' }}>
                   <label className="text-xs font-semibold mb-2 flex items-center gap-1.5" style={{ color: 'var(--accent-primary)' }}>
-                    <UserCheck className="w-3 h-3" /> Two-signature audit
+                    <UserCheck className="w-3 h-3" /> {t('ui.twoSignatureAudit')}
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Operator</label>
-                      <input type="text" value={form.operatorName} onChange={e => setForm({ ...form, operatorName: e.target.value })} placeholder="Operator name" />
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.operator')}</label>
+                      <input type="text" value={form.operatorName} onChange={e => setForm({ ...form, operatorName: e.target.value })} placeholder={t('ui.operatorName')} />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Witness</label>
-                      <input type="text" value={form.witnessName} onChange={e => setForm({ ...form, witnessName: e.target.value })} placeholder="Witness name" />
+                      <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('mar.witness')}</label>
+                      <input type="text" value={form.witnessName} onChange={e => setForm({ ...form, witnessName: e.target.value })} placeholder={t('rxFlow.witnessName')} />
                     </div>
                   </div>
                   <p className="text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>
-                    The operator (you) and the witness must be two different staff members.
+                    {t('ui.theOperatorYouAndThe')}
                   </p>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>Reason (optional)</label>
-                  <textarea rows={2} value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} placeholder="Reason / notes for this movement" />
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('screenings.declineReason')}</label>
+                  <textarea rows={2} value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} placeholder={t('ui.reasonNotesForThisMovement')} />
                 </div>
               </div>
             </div>

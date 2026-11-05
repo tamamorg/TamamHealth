@@ -29,6 +29,7 @@ import {
   groupDhis2DataValues, type Dhis2SyncLogDoc,
 } from '@/lib/services/dhis2-sync-log-service';
 import type { DHIS2ExportScope } from '@/lib/services/dhis2-export-service';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export type FacilitySyncStatus = 'synced' | 'error' | 'pending';
 
@@ -127,6 +128,7 @@ export function FacilitySyncButton({ sync }: { sync: FacilitySync }) {
  * too much of.
  */
 export function FacilitySyncDetail({ sync }: { sync: FacilitySync }) {
+  const { t } = useTranslation();
   if (!sync.loaded || sync.elementGroups.length === 0) return null;
   const { status, elementGroups, log, lastPush } = sync;
 
@@ -135,9 +137,9 @@ export function FacilitySyncDetail({ sync }: { sync: FacilitySync }) {
       <div className="ehr-set-section-head">
         <span><Check /></span>
         <div style={{ minWidth: 0, flex: '1 1 auto' }}>
-          <h3>Last push to DHIS2</h3>
+          <h3>{t('ui.lastPushToDhis2')}</h3>
           <small>
-            {elementGroups.length} data group{elementGroups.length > 1 ? 's' : ''}
+            {elementGroups.length} {t('ui.dataGroup')}{elementGroups.length > 1 ? 's' : ''}
             {log?.lastDataset?.period ? ` · ${log.lastDataset.period}` : ''}
             {' · '}
             {status === 'synced' ? 'All pushed' : status === 'error' ? 'Push failed' : 'Prepared, not pushed'}
@@ -169,6 +171,7 @@ export function FacilitySyncDetail({ sync }: { sync: FacilitySync }) {
  * own to hang the action on.
  */
 export default function FacilitySyncPanel() {
+  const { t } = useTranslation();
   const sync = useFacilitySync();
   return (
     <div data-tour="settings-sync-panel">
@@ -176,17 +179,16 @@ export default function FacilitySyncPanel() {
         <div className="ehr-set-section-head">
           <span><RefreshCw /></span>
           <div style={{ minWidth: 0, flex: '1 1 auto' }}>
-            <h3>Facility sync</h3>
-            <small>Push this facility&rsquo;s data to the national HMIS · {sync.lastSyncedLabel}</small>
+            <h3>{t('ui.facilitySync')}</h3>
+            <small>{t('ui.pushThisFacilitySData')} {sync.lastSyncedLabel}</small>
           </div>
           <FacilitySyncButton sync={sync} />
         </div>
         {!sync.loaded ? (
-          <p className="ehr-set-note">Loading sync status…</p>
+          <p className="ehr-set-note">{t('ui.loadingSyncStatus')}</p>
         ) : sync.elementGroups.length === 0 ? (
           <p className="ehr-set-note">
-            Nothing has been pushed from this device yet. Sync now prepares this facility&rsquo;s
-            current period and sends it.
+            {t('ui.nothingHasBeenPushedFrom')}
           </p>
         ) : null}
       </section>

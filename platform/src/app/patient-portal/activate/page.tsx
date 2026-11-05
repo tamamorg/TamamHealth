@@ -169,19 +169,20 @@ function ActivateAside() {
 }
 
 export default function PatientPortalActivatePage() {
+  const { t } = useTranslation();
   return (
     <div className="lg-root">
       <header className="lg-topbar">
         <a href="https://tamamhealth.org" className="lg-topbar-link">
           {/* eslint-disable-next-line @next/next/no-img-element -- brand mark, fixed size */}
-          <img src="/assets/tamamhealth-logo-full.svg" alt="Tamam Healthcare System" className="lg-topbar-logo" />
+          <img src="/assets/tamamhealth-logo-full.svg" alt={t('ui.tamamHealthcareSystem')} className="lg-topbar-logo" />
         </a>
       </header>
 
       <div className="lg-grid">
         <div className="lg-col">
           {/* useSearchParams needs a Suspense boundary in the App Router. */}
-          <Suspense fallback={<div className="lg-boot"><span className="lg-spin" /> Loading…</div>}>
+          <Suspense fallback={<div className="lg-boot"><span className="lg-spin" /> {t('admin.loading')}</div>}>
             <ActivateForm />
           </Suspense>
         </div>

@@ -103,7 +103,7 @@ export default function HrPayrollPage() {
   const money = (n: number) => formatMoney(n);
   const moneyTrend = (now: number, before: number | undefined, good: 'up' | 'down') => (
     prevSummary && prevSummary.total > 0 && before !== undefined
-      ? { direction: trendBetween(now, before), label: `vs ${money(before)} last month`, good }
+      ? { direction: trendBetween(now, before), label: t('hr.kpiVsLastMonth', { amount: money(before) }), good }
       : undefined
   );
 
@@ -111,15 +111,15 @@ export default function HrPayrollPage() {
     <HrPageShell>
       {summary && (
         <FacilityKpiBand tiles={[
-          { key: 'gross', label: 'Gross pay', value: money(summary.totalGross), detail: `Base salary and allowances, ${summary.total} ${summary.total === 1 ? 'entry' : 'entries'}`, trend: moneyTrend(summary.totalGross, prevSummary?.totalGross, 'up') },
-          { key: 'ded', label: 'Deductions', value: money(summary.totalDeductions), detail: summary.totalGross > 0 ? `${Math.round((summary.totalDeductions / summary.totalGross) * 100)}% of gross pay` : 'No gross pay yet', trend: moneyTrend(summary.totalDeductions, prevSummary?.totalDeductions, 'down') },
-          { key: 'net', label: 'Net pay', value: money(summary.totalNet), detail: 'Gross pay less deductions', trend: moneyTrend(summary.totalNet, prevSummary?.totalNet, 'up') },
-          { key: 'paid', label: 'Paid', value: `${summary.paid} of ${summary.total}`, detail: summary.total - summary.paid > 0 ? `${summary.total - summary.paid} still to pay` : 'Every entry paid', warn: summary.total - summary.paid > 0 && summary.total > 0 },
+          { key: 'gross', label: t('hr.kpiGrossPay'), value: money(summary.totalGross), detail: t(summary.total === 1 ? 'hr.kpiGrossPayDetailOne' : 'hr.kpiGrossPayDetailMany', { count: summary.total }), trend: moneyTrend(summary.totalGross, prevSummary?.totalGross, 'up') },
+          { key: 'ded', label: t('hr.kpiDeductions'), value: money(summary.totalDeductions), detail: summary.totalGross > 0 ? t('hr.kpiDeductionsDetail', { percent: Math.round((summary.totalDeductions / summary.totalGross) * 100) }) : t('hr.kpiNoGrossPay'), trend: moneyTrend(summary.totalDeductions, prevSummary?.totalDeductions, 'down') },
+          { key: 'net', label: t('hr.kpiNetPay'), value: money(summary.totalNet), detail: t('hr.kpiNetPayDetail'), trend: moneyTrend(summary.totalNet, prevSummary?.totalNet, 'up') },
+          { key: 'paid', label: t('hr.kpiPaid'), value: t('hr.kpiPaidValue', { paid: summary.paid, total: summary.total }), detail: summary.total - summary.paid > 0 ? t('hr.kpiStillToPay', { count: summary.total - summary.paid }) : t('hr.kpiEveryEntryPaid'), warn: summary.total - summary.paid > 0 && summary.total > 0 },
         ]} />
       )}
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="hr-payroll-list">
         <EhrListHeader
-          title="Payroll register"
+          title={t('ui.payrollRegister')}
           count={summary ? summary.total : payroll.length}
           actions={
             <>
@@ -157,7 +157,7 @@ export default function HrPayrollPage() {
             {payroll.length === 0 && (
               <EmptyState
                 icon={Wallet}
-                title="No payroll entries"
+                title={t('ui.noPayrollEntries')}
                 message={`${t('hr.noPayrollEntries', { period })} ${t('hr.addPayrollEntry')} ${t('hr.aboveToStartRegister')}`}
                 action={{ label: t('hr.addPayrollEntry'), onClick: () => setOpen(true) }}
               />

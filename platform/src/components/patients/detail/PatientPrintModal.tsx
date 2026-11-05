@@ -28,7 +28,7 @@ export default function PatientPrintModal({ setShowPrintModal, setPrintSections,
           titleId="print-sign-title"
           title={t('ptDetail.printRecord')}
           descriptionId="print-sign-desc"
-          description="Patient identity is always included. Select the sections needed for this printout, then sign the document."
+          description={t('ui.patientIdentityIsAlwaysIncluded')}
           onClose={close}
         />
         <DialogBody className="space-y-5">
@@ -65,23 +65,23 @@ export default function PatientPrintModal({ setShowPrintModal, setPrintSections,
                     ))}
                   </div>
                 </div>
-                <FormField label="Clinician name & title" required>
+                <FormField label={t('ui.clinicianNameTitle')} required>
                   {control => (
                     <input
                       {...control}
                       autoFocus
                       value={printSignature}
                       onChange={e => setPrintSignature(e.target.value)}
-                      placeholder="e.g. Dr. James Wani Igga, MD"
+                      placeholder={t('ui.eGDrJamesWani')}
                       onKeyDown={e => { if (e.key === 'Enter' && canSign) sign(); }}
                     />
                   )}
                 </FormField>
         </DialogBody>
         <DialogFooter>
-          <button type="button" className="btn btn-secondary" onClick={close}>Cancel</button>
+          <button type="button" className="btn btn-secondary" onClick={close}>{t('action.cancel')}</button>
           <button type="button" className="btn btn-primary" disabled={!canSign} onClick={sign}>
-            <Printer className="w-3.5 h-3.5" /> Sign &amp; Print selected
+            <Printer className="w-3.5 h-3.5" /> {t('ui.signPrintSelected')}
           </button>
         </DialogFooter>
       </DialogFrame>

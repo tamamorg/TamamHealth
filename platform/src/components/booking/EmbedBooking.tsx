@@ -14,8 +14,10 @@ import { useEffect, useRef, useState } from 'react';
 import type { PracticePayload, PublicProvider } from '@/lib/booking/public-client';
 import { BookingSelect, Field, ProviderAvatar } from './primitives';
 import BookingFlow from './BookingFlow';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export default function EmbedBooking({ data }: { data: PracticePayload }) {
+  const { t } = useTranslation();
   const { practice, policy, providers, reasons } = data;
   const [providerId, setProviderId] = useState(providers[0]?.id ?? '');
   const rootRef = useRef<HTMLDivElement>(null);
@@ -45,7 +47,7 @@ export default function EmbedBooking({ data }: { data: PracticePayload }) {
     return (
       <div className="booking-page" ref={rootRef}>
         <p className="booking-empty-note">
-          This practice has no clinicians published for online booking yet.
+          {t('ui.thisPracticeHasNoClinicians')}
         </p>
       </div>
     );
@@ -55,7 +57,7 @@ export default function EmbedBooking({ data }: { data: PracticePayload }) {
     <div className="booking-page" ref={rootRef}>
       {providers.length > 1 && (
         <div style={{ marginBottom: 12 }}>
-          <Field label="Clinician">
+          <Field label={t('ui.clinician')}>
             <BookingSelect value={providerId} onChange={setProviderId} ariaLabel="Clinician">
               {providers.map(p => <option key={p.id} value={p.id}>{p.displayName}</option>)}
             </BookingSelect>

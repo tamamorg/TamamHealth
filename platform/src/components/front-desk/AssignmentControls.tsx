@@ -83,7 +83,7 @@ export function RoomAssignmentControl({
   return (
     <div className="ehr-care-rooming">
       <MapPin className="w-4 h-4" />
-      <span>Exam room</span>
+      <span>{t('ui.examRoom')}</span>
       {/* The acuity belongs on the header line, not on a third line below the
           button — that extra line was what knocked this control out of
           alignment with the doctor and nurse pickers beside it. */}
@@ -91,7 +91,7 @@ export function RoomAssignmentControl({
         {t(priorityLabelKey(priority))}
       </span>
       <Select value={draft} onChange={(event) => setDraft(event.target.value)}>
-        <option value="">Unassigned</option>
+        <option value="">{t('noteEditor.unassigned')}</option>
         {roomOptions.map(room => <option key={room} value={room}>{room}</option>)}
       </Select>
       <button

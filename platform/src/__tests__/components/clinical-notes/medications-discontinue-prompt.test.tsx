@@ -44,8 +44,10 @@ async function openPrompt() {
   await tick(); await tick();
   const row = document.body.querySelector<HTMLElement>('[role="option"]')!;
   act(() => row.click());
+  // The footer button reads 'Discontinue' or, once translated, its key under the
+  // identity t() mock — accept either so the test tracks the dialog, not the copy.
   const discontinue = Array.from(document.body.querySelectorAll<HTMLButtonElement>('.tm-dialog__foot button'))
-    .find(b => b.textContent === 'Discontinue')!;
+    .find(b => b.textContent === 'Discontinue' || b.textContent === 'confirm.discontinueMedConfirm')!;
   act(() => discontinue.click());
   await tick();
   return m;

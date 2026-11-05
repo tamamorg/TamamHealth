@@ -91,7 +91,6 @@ describe('shared surfaces route through the mask', () => {
     'components/ehr/EhrClinicalDashboard.tsx',
     'components/lab/order/LabOrderPatientStrip.tsx',
     'app/(dashboard)/dashboard/front-desk/page.tsx',
-    'app/(dashboard)/inquiries/page.tsx',
     'app/(dashboard)/referrals/page.tsx',
   ];
   const LOCATION_SURFACES = [
