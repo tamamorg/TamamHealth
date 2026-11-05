@@ -18,7 +18,9 @@ import { toIsoDate, todayIso } from '@/lib/date-utils';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import FormSlider from '@/components/overlay/FormSlider';
 
-import { Plus, Search, ChevronDown, ChevronUp, UserCheck, ExternalLink } from '@/components/icons/lucide';
+import { Plus, Search, UserCheck, ExternalLink, Printer } from '@/components/icons/lucide';
+import PrintListDialog from '@/components/PrintListDialog';
+import { DeathRecordSlider } from '@/components/vital-events/VitalRecordSliders';
 import Select from '@/components/Select';
 import NumberInput from '@/components/forms/NumberInput';
 
@@ -60,7 +62,8 @@ export default function DeathsPage() {
   const setColFilter = (k: string, v: string) => setColFilters(f => ({ ...f, [k]: v }));
   const ageBandOf = (age: number | null) => age == null ? null : age < 18 ? 'child' : age < 65 ? 'adult' : 'elderly';
   const [showForm, setShowForm] = useState(false);
-  const [expandedDeath, setExpandedDeath] = useState<string | null>(null);
+  const [selectedDeathId, setSelectedDeathId] = useState<string | null>(null);
+  const [printOpen, setPrintOpen] = useState(false);
   const [patientLookup, setPatientLookup] = useState('');
   const [linkedPatientId, setLinkedPatientId] = useState<string | undefined>(undefined);
   // The visit this death closes, when registering from an open encounter
@@ -262,6 +265,8 @@ export default function DeathsPage() {
     }
   };
 
+  const selectedDeath = selectedDeathId ? (deaths || []).find(d => d._id === selectedDeathId) ?? null : null;
+
   return (
     <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
         {/* Table */}
@@ -277,8 +282,11 @@ export default function DeathsPage() {
             search={{ value: colFilters.name, onChange: v => setColFilter('name', v), placeholder: t('deaths.searchPlaceholder') || 'Search by name, certificate, cause…', ariaLabel: t('deaths.searchPlaceholder') || 'Search deaths' }}
             actions={
               <>
+                <button type="button" onClick={() => setPrintOpen(true)} className="btn tm-ghost-btn">
+                  <Printer className="w-4 h-4" /> {t('vital.print')}
+                </button>
                 {canRecordVitalEvents && (
-                  <button data-tour="register-death-btn" onClick={() => setShowForm(true)} className="btn btn-primary flex items-center gap-2" style={{ height: 38, whiteSpace: 'nowrap' }}>
+                  <button data-tour="register-death-btn" onClick={() => setShowForm(true)} className="btn btn-primary flex items-center gap-2" style={{ whiteSpace: 'nowrap' }}>
                     <Plus className="w-4 h-4" /> {t('deaths.registerDeath')}
                   </button>
                 )}
@@ -301,7 +309,7 @@ export default function DeathsPage() {
             </thead>
             <tbody>
               {filtered.map(d => (
-                <tr key={d._id} className="cursor-pointer hover:bg-[var(--table-row-hover)]" tabIndex={0} role="button" aria-expanded={expandedDeath === d._id} onClick={() => setExpandedDeath(expandedDeath === d._id ? null : d._id)} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setExpandedDeath(expandedDeath === d._id ? null : d._id); } }}>
+                <tr key={d._id} className="cursor-pointer hover:bg-[var(--table-row-hover)]" tabIndex={0} aria-haspopup="dialog" onClick={() => setSelectedDeathId(d._id)} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setSelectedDeathId(d._id); } }}>
                   <td className="font-mono text-xs">{d.certificateNumber}</td>
                   <td><PatientName patientId={d.patientId} name={`${d.deceasedFirstName} ${d.deceasedSurname}`} gender={d.deceasedGender} nameClassName="text-sm font-semibold" /></td>
                   <td className="text-sm">{d.deceasedGender}</td>
@@ -320,7 +328,6 @@ export default function DeathsPage() {
                       <span className={`badge text-[10px] ${d.deathRegistered ? 'badge-normal' : 'badge-warning'}`}>
                         {d.deathRegistered ? t('deaths.yes') : t('deaths.no')}
                       </span>
-                      {expandedDeath === d._id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                       {d.patientId && (
                         <button
                           type="button"
@@ -339,46 +346,36 @@ export default function DeathsPage() {
                   </td>
                 </tr>
               ))}
-              {expandedDeath && (() => {
-                const d = filtered.find(x => x._id === expandedDeath);
-                if (!d) return null;
-                return (
-                  <tr>
-                    <td colSpan={9} style={{ background: 'var(--overlay-subtle)', padding: 0 }}>
-                      <div className="p-4">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                          <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>{t('deaths.fullName')}</span>{d.deceasedFirstName} {d.deceasedSurname}</div>
-                          <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>{t('deaths.gender')}</span>{d.deceasedGender}</div>
-                          <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>{t('deaths.dateOfBirth')}</span>{d.dateOfBirth || t('deaths.na')}</div>
-                          <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>{t('deaths.placeOfDeath')}</span>{d.placeOfDeath || d.facilityName}</div>
-                        </div>
-                        <hr className="section-divider" />
-                        <div className="p-3 rounded-lg" style={{ background: 'var(--color-danger-bg)', border: '1px solid var(--color-danger)' }}>
-                          <p className="text-xs font-semibold mb-2" style={{ color: 'var(--color-danger-text)' }}>{t('deaths.causeChain')}</p>
-                          <div className="data-row-divider-sm text-xs">
-                            <p><span className="font-semibold">{t('deaths.causeImmediate')}</span> {d.immediateCause} {d.immediateICD11 && <span className="font-mono text-[10px] px-1 rounded" style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)' }}>{d.immediateICD11}</span>}</p>
-                            {d.antecedentCause1 && <p><span className="font-semibold">{t('deaths.causeDueTo')}</span> {d.antecedentCause1} {d.antecedentICD11_1 && <span className="font-mono text-[10px] px-1 rounded" style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)' }}>{d.antecedentICD11_1}</span>}</p>}
-                            {d.antecedentCause2 && <p><span className="font-semibold">{t('deaths.causeDueToC')}</span> {d.antecedentCause2} {d.antecedentICD11_2 && <span className="font-mono text-[10px] px-1 rounded" style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)' }}>{d.antecedentICD11_2}</span>}</p>}
-                            {d.underlyingCause && <p><span className="font-semibold">{t('deaths.causeUnderlying')}</span> {d.underlyingCause} {d.underlyingICD11 && <span className="font-mono text-[10px] px-1 rounded" style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)' }}>{d.underlyingICD11}</span>}</p>}
-                            {d.contributingConditions && <p><span className="font-semibold">{t('deaths.causeContributing')}</span> {d.contributingConditions}</p>}
-                          </div>
-                        </div>
-                        <hr className="section-divider" />
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                          <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>{t('deaths.colManner')}</span><span className="capitalize">{(d.mannerOfDeath || '').replace(/_/g, ' ')}</span></div>
-                          <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>{t('deaths.maternalDeath')}</span>{d.maternalDeath ? t('deaths.yes') : t('deaths.no')}</div>
-                          <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>{t('deaths.certifiedBy')}</span>{d.certifiedBy || t('deaths.na')} ({d.certifierRole || t('deaths.na')})</div>
-                          <div><span className="font-semibold block mb-0.5" style={{ color: 'var(--text-muted)' }}>{t('deaths.location')}</span>{d.county || t('deaths.na')}, {d.state}</div>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })()}
             </tbody>
           </table>
           </div>
         </div>
+
+        {selectedDeath && <DeathRecordSlider death={selectedDeath} onClose={() => setSelectedDeathId(null)} />}
+
+        {printOpen && (
+          <PrintListDialog
+            title={t('vital.printDeathRegister')}
+            filename="death-register"
+            sections={[{
+              key: 'deaths',
+              label: t('deaths.title'),
+              columns: deathCols.map(c => ({ key: c.key, label: c.label })),
+              rows: filtered.map(d => ({
+                certificate: d.certificateNumber || '',
+                deceased: [d.deceasedFirstName, d.deceasedSurname].filter(Boolean).join(' '),
+                sex: d.deceasedGender || '',
+                age: d.ageAtDeath < 1 ? t('deaths.neonate') : `${d.ageAtDeath}y`,
+                dateOfDeath: d.dateOfDeath || '',
+                cause: [d.underlyingICD11, d.underlyingCause || d.immediateCause].filter(Boolean).join(' '),
+                manner: (d.mannerOfDeath || '').replace(/_/g, ' '),
+                facility: d.facilityName || '',
+                registered: d.deathRegistered ? t('deaths.yes') : t('deaths.no'),
+              })),
+            }]}
+            onClose={() => setPrintOpen(false)}
+          />
+        )}
 
         {/* Death Registration Form Modal */}
         {showForm && (

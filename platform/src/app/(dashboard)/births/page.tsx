@@ -1,7 +1,7 @@
 'use client';
 
 import { ValidationError } from '@/lib/validation';
-import { useState, useMemo, Fragment } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useBirths } from '@/lib/hooks/useBirths';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -16,7 +16,9 @@ import PopupSelect from '@/components/PopupSelect';
 import FormSlider from '@/components/overlay/FormSlider';
 import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
-import { Plus } from '@/components/icons/lucide';
+import { Plus, Printer } from '@/components/icons/lucide';
+import PrintListDialog from '@/components/PrintListDialog';
+import { BirthRecordSlider } from '@/components/vital-events/VitalRecordSliders';
 import NumberInput from '@/components/forms/NumberInput';
 
 export default function BirthsPage() {
@@ -49,6 +51,7 @@ export default function BirthsPage() {
   const search = `${tableSearch} ${globalSearch}`.trim();
   const [showForm, setShowForm] = useState(false);
   const [selectedBirthId, setSelectedBirthId] = useState<string | null>(null);
+  const [printOpen, setPrintOpen] = useState(false);
   const [form, setForm] = useState({
     childFirstName: '', childSurname: '', childGender: 'Male' as 'Male' | 'Female',
     dateOfBirth: todayIso(), placeOfBirth: '', facilityId: '', facilityName: '',
@@ -101,59 +104,7 @@ export default function BirthsPage() {
     }
   };
 
-  /**
-   * The certificate detail, unfolded under its own row. It used to open in a
-   * dialog whose header repeated the certificate number and child name that
-   * the row it came from already shows.
-   */
-  /* Same expanded-row language as the doctor dashboard's visit dropdown
-     (`.ehr-visit-pop-*`): one label/value list, sentence-case labels in the
-     left column, no nested grids or boxes of its own. Related facts share a
-     row rather than each claiming one, so the panel stays short. */
-  const renderBirthDetail = (selectedBirth: NonNullable<typeof births>[number]) => (
-    <div className="ehr-visit-pop ehr-visit-pop--inline">
-      <div className="ehr-visit-pop-body">
-        <div className="ehr-visit-pop-row">
-          <span className="ehr-visit-pop-label">{t('ui.certificate')}</span>
-          <div>
-            <strong>{selectedBirth.certificateNumber}</strong>
-            <p className="capitalize">{selectedBirth.birthType} · {selectedBirth.deliveryType} · {selectedBirth.birthWeight}g</p>
-          </div>
-        </div>
-        <div className="ehr-visit-pop-row">
-          <span className="ehr-visit-pop-label">{t('births.colMother')}</span>
-          <div>
-            <strong>{selectedBirth.motherName}</strong>
-            <p>
-              {selectedBirth.motherAge ? `Age ${selectedBirth.motherAge}` : 'Age not recorded'}
-              {selectedBirth.motherNationality ? ` · ${selectedBirth.motherNationality}` : ''}
-            </p>
-          </div>
-        </div>
-        <div className="ehr-visit-pop-row">
-          <span className="ehr-visit-pop-label">{t('births.father')}</span>
-          <div>
-            <strong>{selectedBirth.fatherName || 'Not recorded'}</strong>
-            {selectedBirth.fatherNationality && <p>{selectedBirth.fatherNationality}</p>}
-          </div>
-        </div>
-        <div className="ehr-visit-pop-row">
-          <span className="ehr-visit-pop-label">{t('ward.journeyPlace')}</span>
-          <div>
-            <strong>{selectedBirth.placeOfBirth || selectedBirth.facilityName}</strong>
-            <p>{selectedBirth.county || 'County not recorded'}, {selectedBirth.state}</p>
-          </div>
-        </div>
-        <div className="ehr-visit-pop-row">
-          <span className="ehr-visit-pop-label">{t('meds.reported.colRecorded')}</span>
-          <div>
-            <strong>{selectedBirth.attendedBy || 'Attendant not recorded'}</strong>
-            <p>{t('ui.registeredBy')} {selectedBirth.registeredBy || 'not recorded'}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  const selectedBirth = selectedBirthId ? (births || []).find(b => b._id === selectedBirthId) ?? null : null;
 
   return (
     <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
@@ -168,13 +119,16 @@ export default function BirthsPage() {
               { label: 'Female', value: birthStats.female, color: LIST_STAT_COLORS.green },
             ]}
             search={{ value: tableSearch, onChange: setTableSearch, placeholder: 'Search by child or mother name…', ariaLabel: 'Search births' }}
-            actions={
-              canRecordVitalEvents && (
-                <button data-tour="register-birth-btn" onClick={() => setShowForm(true)} className="btn btn-primary flex items-center gap-2" style={{ height: 38, whiteSpace: 'nowrap' }}>
+            actions={<>
+              <button type="button" onClick={() => setPrintOpen(true)} className="btn tm-ghost-btn">
+                <Printer className="w-4 h-4" /> {t('vital.print')}
+              </button>
+              {canRecordVitalEvents && (
+                <button data-tour="register-birth-btn" onClick={() => setShowForm(true)} className="btn btn-primary flex items-center gap-2" style={{ whiteSpace: 'nowrap' }}>
                   <Plus className="w-4 h-4" /> {t('births.registerBirth')}
                 </button>
-              )
-            }
+              )}
+            </>}
           />
           <div className="ehr-list-scroll">
           {loading ? (
@@ -210,11 +164,13 @@ export default function BirthsPage() {
               </thead>
               <tbody>
                 {filtered.map(b => (
-                  <Fragment key={b._id}>
                   <tr
+                    key={b._id}
                     className="cursor-pointer hover:bg-[var(--table-row-hover)]"
-                    aria-expanded={selectedBirthId === b._id}
-                    onClick={() => setSelectedBirthId(current => (current === b._id ? null : b._id))}
+                    tabIndex={0}
+                    aria-haspopup="dialog"
+                    onClick={() => setSelectedBirthId(b._id)}
+                    onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setSelectedBirthId(b._id); } }}
                   >
                     <td className="font-mono text-xs">{b.certificateNumber}</td>
                     <td className="font-semibold text-sm">{b.childFirstName} {b.childSurname}</td>
@@ -241,16 +197,6 @@ export default function BirthsPage() {
                       {b.state}
                     </td>
                   </tr>
-                  {selectedBirthId === b._id && (
-                    <tr className="ehr-table-detail-row">
-                      <td colSpan={9}>
-                        <div className="ehr-row-detail ehr-row-detail--table" role="region" aria-label={`Certificate ${b.certificateNumber} details`}>
-                          {renderBirthDetail(b)}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -258,6 +204,48 @@ export default function BirthsPage() {
           </div>
         </div>
 
+
+        {selectedBirth && (
+          <BirthRecordSlider
+            birth={selectedBirth}
+            motherChartId={selectedBirth.motherPatientId || motherChartId(selectedBirth.motherName)}
+            onClose={() => setSelectedBirthId(null)}
+          />
+        )}
+
+        {printOpen && (
+          <PrintListDialog
+            title={t('vital.printBirthRegister')}
+            filename="birth-register"
+            sections={[{
+              key: 'births',
+              label: t('nav.births'),
+              columns: [
+                { key: 'number', label: t('births.colCertificate') },
+                { key: 'child', label: t('births.colChildName') },
+                { key: 'sex', label: t('deaths.gender') },
+                { key: 'dob', label: t('births.colDateOfBirth') },
+                { key: 'weight', label: t('births.colWeight') },
+                { key: 'delivery', label: t('births.colDelivery') },
+                { key: 'mother', label: t('births.colMother') },
+                { key: 'facility', label: t('births.colFacility') },
+                { key: 'state', label: t('births.colState') },
+              ],
+              rows: filtered.map(b => ({
+                number: b.certificateNumber || '',
+                child: [b.childFirstName, b.childSurname].filter(Boolean).join(' '),
+                sex: b.childGender || '',
+                dob: b.dateOfBirth || '',
+                weight: b.birthWeight ? `${b.birthWeight} g` : '',
+                delivery: b.deliveryType || '',
+                mother: b.motherName || '',
+                facility: b.facilityName || '',
+                state: b.state || '',
+              })),
+            }]}
+            onClose={() => setPrintOpen(false)}
+          />
+        )}
 
         {/* Registration Form Modal */}
         {showForm && (
