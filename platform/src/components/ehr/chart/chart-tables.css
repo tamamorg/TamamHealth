@@ -14,8 +14,9 @@ body .tamam-root .tamam-table thead th,
 body .tamam-root .ehr-chart-content table thead th {
   height: 40px;
   padding: 10px 16px !important;
-  background: var(--color-slate-100) !important;
-  border-bottom: 1px solid var(--border-light) !important;
+  /* White, ruled underneath (2026-11-05: no tinted fills in the chart). */
+  background: var(--bg-card-solid) !important;
+  border-bottom: 1px solid var(--border-medium) !important;
   font-family: inherit !important;
   font-size: 13px !important;
   font-weight: 600 !important;
