@@ -5,7 +5,6 @@ import { O3TextField } from '@/components/forms/O3Form';
 import { patientFullName, patientGenderAge } from '@/lib/patient-utils';
 import { X, AlertTriangle } from '@/components/icons/lucide';
 import type { TriageFormState } from './useTriageForm';
-import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export function TriagePatientPicker({ f }: { f: TriageFormState }) {
   const { t, setTriagePatientId, triagePatientSearch, setTriagePatientSearch, setOverrideVitalUrgency, setVitalUrgencyOverrideReason, triagePatientMatches, selectedTriagePatient, resetTriageBookkeeping, lockedPatientId } = f;
