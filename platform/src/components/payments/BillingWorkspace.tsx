@@ -24,19 +24,20 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import {
-  Wallet, Activity, AlertCircle, Receipt, Shield, Clock, Banknote,
-  RotateCcw, Ban, AlertTriangle, Search, Users,
+  Wallet, Activity, Receipt, Shield, Clock, Banknote,
+  RotateCcw, Ban, AlertTriangle, Search,
 } from '@/components/icons/lucide';
 import { useAuth, useUi } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import { SearchInput, FilterTabs, type FilterOption } from '@/components/filters';
+import { SearchInput, type FilterOption } from '@/components/filters';
 import EhrRailMenu, { type RailMenuItem } from '@/components/ehr/EhrRailMenu';
 import BillingOverviewCards from '@/components/payments/BillingOverviewCards';
 import BillingFilterMenu, { type FilterField } from '@/components/payments/BillingFilterMenu';
 import { claimFilterOptions, filterClaims, PAYER_LABEL_KEYS } from '@/components/payments/claims-filter';
 import Modal from '@/components/Modal';
+import InlineBanner from '@/components/overlay/InlineBanner';
 import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import FormSlider from '@/components/overlay/FormSlider';
 import { getMethodConfig } from '@/lib/payment-method-config';
@@ -676,12 +677,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
           expanded on a short screen, with no way to scroll it back. */}
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflowY: 'auto' }}>
         <div className="bl-root" style={{ flex: 1, minHeight: 0 }}>
-          {error && (
-            <div className="bl-card" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <AlertCircle size={16} style={{ color: 'var(--color-danger, #D92B20)', flexShrink: 0 }} />
-              <span className="bl-danger" style={{ fontSize: 13 }}>{error}</span>
-            </div>
-          )}
+          {error && <InlineBanner tone="danger">{error}</InlineBanner>}
 
           {/* No page-head band: the rail already says which module this is, and
               the work queue below titles itself ("Patient accounts" / "Claims
@@ -711,22 +707,21 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
               <div className="bl-card-head">
                 <h2 className="bl-card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Clock size={16} style={{ color: 'var(--color-warning-text)' }} />
-                  {t('ui.pendingVerification')}
-                  <span className="bl-chip bl-chip--partial">{pendingPayments.length}</span>
+                  {t('billing.pendingTitle')}
+                  <span className="bl-tab-count tabular-nums">{pendingPayments.length}</span>
                 </h2>
-                <p className="bl-card-sub">{t('ui.approvingPostsThePaymentAnd')}</p>
-                <span className="bl-underline" />
+                <p className="bl-card-sub">{t('billing.pendingHint')}</p>
               </div>
               <div className="bl-table-wrap">
                 <table className="bl-table">
                   <thead>
                     <tr>
-                      <th>{t('appointments.labelPatient')}</th>
-                      <th>{t('billing.activityColumn.reference')}</th>
-                      <th>{t('payments.methodFallback')}</th>
-                      <th>{t('claims.status_submitted')}</th>
-                      <th className="bl-right">{t('billing.activityColumn.amount')}</th>
-                      <th aria-label={t('adminBilling.colActions')} />
+                      <th>{t('billing.colPatient')}</th>
+                      <th>{t('billing.colReference')}</th>
+                      <th>{t('billing.colMethod')}</th>
+                      <th>{t('billing.colSubmitted')}</th>
+                      <th className="bl-right">{t('billing.colAmount')}</th>
+                      <th aria-label={t('billing.colActions')} />
                     </tr>
                   </thead>
                   <tbody>
@@ -748,7 +743,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                               className="bl-btn bl-btn--primary"
                               style={{ padding: '5px 12px', fontSize: 12 }}
                             >
-                              <Banknote size={14} /> {pendingBusy === p._id ? 'Working…' : 'Approve'}
+                              <Banknote size={14} /> {pendingBusy === p._id ? t('billing.working') : t('billing.approve')}
                             </button>
                             <button
                               type="button"
@@ -757,7 +752,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                               className="bl-btn bl-btn--outline"
                               style={{ padding: '5px 12px', fontSize: 12, borderColor: 'var(--color-danger)', color: 'var(--color-danger-text)' }}
                             >
-                              <Ban size={14} /> {t('hr.reject')}
+                              <Ban size={14} /> {t('billing.reject')}
                             </button>
                           </div>
                         </td>
@@ -774,23 +769,28 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
           {/* A floor rather than a share of the viewport — the table always has
               room for a useful number of rows, and the page scrolls past it. */}
           <div className="bl-card" data-tour="work-queue" style={{ flex: 1, minHeight: 320, display: 'flex', flexDirection: 'column' }}>
-            <div className="bl-card-head" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-              <div>
-                <h2 className="bl-card-title">{tab === 'claims' ? t('claims.title') : 'Patient accounts'}</h2>
-                <span className="bl-underline" />
-              </div>
-              {canSeeClaims && (
-                <FilterTabs
-                  ariaLabel="Billing work queue"
-                  size="sm"
-                  active={tab}
-                  onChange={key => switchTab(key as WorkspaceTab)}
-                  tabs={[
-                    { key: 'accounts', label: 'Accounts', count: patientLines.length, icon: Users },
-                    { key: 'claims', label: 'Claims', count: data.claims.length, icon: Shield },
-                  ]}
-                  className="mb-3 bl-workqueue-tabs"
-                />
+            <div className="bl-card-head">
+              {canSeeClaims ? (
+                <div role="tablist" aria-label={t('billing.queueAria')} className="bl-tabs" data-tab-style="underline">
+                  {([
+                    { key: 'accounts', label: t('billing.tabAccounts'), count: patientLines.length },
+                    { key: 'claims', label: t('billing.tabClaims'), count: data.claims.length },
+                  ] as const).map(tabItem => (
+                    <button
+                      key={tabItem.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={tab === tabItem.key}
+                      className="bl-tab"
+                      onClick={() => switchTab(tabItem.key)}
+                    >
+                      {tabItem.label}
+                      <span className="bl-tab-count tabular-nums">{tabItem.count}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <h2 className="bl-card-title">{t('billing.tabAccounts')}</h2>
               )}
             </div>
 
@@ -1162,7 +1162,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
     >
       <div className="bl-root bl-account-dialog">
         {/* Balance summary — flat, no gradient tint; colour carries the state. */}
-        <div className="px-5 py-4 bl-account-summary" style={{ borderBottom: '1px solid var(--ehr-border, #E2E6EB)' }}>
+        <div className="px-5 py-4 bl-account-summary" style={{ borderBottom: '1px solid var(--border-light)' }}>
           <div className="flex items-end justify-between gap-3 flex-wrap">
             <div>
               <span className="bl-stat-label" style={{ color: owing ? 'var(--color-danger-text)' : 'var(--color-success-text)' }}>
@@ -1172,7 +1172,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
                 {owing ? formatMoney(line.outstanding) : t('billing.paidInFull')}
               </span>
             </div>
-            <div className="bl-muted" style={{ fontSize: 11, textAlign: 'end' }}>
+            <div className="bl-muted" style={{ fontSize: 12, textAlign: 'end' }}>
               <div>{t('payments.charged')}: <span style={{ color: 'var(--ehr-text, #113055)', fontFamily: 'monospace' }}>{formatMoney(line.totalCharged)}</span></div>
               <div>{t('payments.collected')}: <span style={{ color: 'var(--color-success-text)', fontFamily: 'monospace' }}>{formatMoney(line.totalCollected)}</span></div>
             </div>
@@ -1335,7 +1335,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
                 return (
                   <div
                     key={p._id}
-                    style={{ padding: '9px 12px', borderBottom: idx === plans.length - 1 ? 'none' : '1px solid var(--ehr-border-soft, #ECEEF1)' }}
+                    style={{ padding: '9px 12px', borderBottom: idx === plans.length - 1 ? 'none' : '1px solid var(--border-light)' }}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
@@ -1350,7 +1350,7 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
                         {p.status}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between gap-3 mt-2 pt-2" style={{ borderTop: '1px solid var(--ehr-border-soft, #ECEEF1)' }}>
+                    <div className="flex items-center justify-between gap-3 mt-2 pt-2" style={{ borderTop: '1px solid var(--border-light)' }}>
                       <div className="bl-fee-cat">
                         {t('payments.paid')}: <span style={{ color: 'var(--color-success-text)' }}>{formatMoney(p.paidToDate, { currency: p.currency ?? defaultCurrency() })}</span>
                         {' · '}{t('billing.kpiOutstanding')}: <span style={{ color: planOutstanding > 0 ? 'var(--color-danger-text)' : 'var(--ehr-text-body, #3C5574)' }}>{formatMoney(planOutstanding, { currency: p.currency ?? defaultCurrency() })}</span>
@@ -1380,15 +1380,15 @@ function PatientBillingDetail({ line, payments, claims, plans, bills, showClaims
 
 function Section({ title, icon, count, children }: { title: string; icon: React.ReactNode; count: number; children: React.ReactNode }) {
   return (
-    <div className={`px-5 py-4 border-b bl-account-section${count === 0 ? ' bl-account-section--empty' : ''}`} style={{ borderColor: 'var(--ehr-border, #E2E6EB)' }}>
+    <div className={`px-5 py-4 border-b bl-account-section${count === 0 ? ' bl-account-section--empty' : ''}`} style={{ borderColor: 'var(--border-light)' }}>
       <div className="flex items-center justify-between mb-2.5">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'transparent', color: 'var(--bl-teal)' }}>
             {icon}
           </div>
-          <h3 className="text-sm font-semibold" style={{ color: 'var(--ehr-text-title, #113055)' }}>{title}</h3>
+          <h3>{title}</h3>
         </div>
-        <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--ehr-muted, #5D728B)' }}>{count}</span>
+        <span className="bl-tab-count tabular-nums">{count}</span>
       </div>
       {children}
     </div>

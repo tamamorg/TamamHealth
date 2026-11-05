@@ -24,7 +24,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Building2 } from '@/components/icons/lucide';
+import { Plus } from '@/components/icons/lucide';
 import Modal from '@/components/Modal';
 import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import './tenancy-slider.css';
@@ -38,7 +38,7 @@ import { isPathAllowed } from '@/lib/role-routes';
 import { OrganizationForm } from '@/components/admin/OrganizationForm';
 import FacilityFormModal from '@/components/admin/FacilityFormModal';
 import {
-  SadbCard, SadbChip, SadbGridList, SadbGridRow, SadbKpiTile, SadbSearch,
+  SadbCard, SadbChip, SadbGridList, SadbGridRow, SadbSearch,
   effectiveOrgStatus, statusChip,
 } from '@/components/admin/sadb-ui';
 import type { OrganizationDoc } from '@/lib/db-types';
@@ -154,44 +154,9 @@ function OrganizationRegistry() {
   return (
     <main className="page-container page-enter sadb-scope mgmt-shell">
       <div className="sadb-page">
-        {/* What the platform holds, in total — context for the list, not
-            navigation. The tiles used to switch tab; there are no tabs. */}
-        <div className="sadb-kpi-row">
-          <SadbKpiTile
-            label={t('management.organizations')}
-            value={organizations.length}
-            delta={t('management.kpiOrgDetail', {
-              active: organizations.filter(o => o.subscriptionStatus === 'active').length,
-              trial: organizations.filter(o => o.subscriptionStatus === 'trial').length,
-            })}
-          />
-          <SadbKpiTile
-            label={t('management.facilities')}
-            value={facilities.length}
-            delta={t('management.kpiFacilityDetail', { count: facilities.filter(f => f.isActive !== false).length })}
-          />
-          {may('person:view') && (
-            <SadbKpiTile
-              label={t('management.people')}
-              value={userStore.users.length}
-              delta={t('management.kpiPeopleDetail', { count: userStore.users.filter(u => u.isActive !== false).length })}
-            />
-          )}
-        </div>
-
         <SadbCard
           title={t('management.organizations')}
           meta={t('management.showingOf', { shown: filtered.length, total: organizations.length })}
-          action={may('organization:create') ? (
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              data-tour="manage-add-organization"
-              onClick={() => setShowOrgEditor(true)}
-            >
-              <Building2 className="w-4 h-4" /> {t('management.addOrganization')}
-            </button>
-          ) : undefined}
         >
           <div className="sadb-search-row" style={{ paddingBottom: 12 }}>
             <SadbSearch
@@ -200,6 +165,16 @@ function OrganizationRegistry() {
               placeholder={t('management.searchOrganizations')}
               ariaLabel={t('management.searchOrganizations')}
             />
+            {may('organization:create') && (
+              <button
+                type="button"
+                className="tm-ghost-btn"
+                data-tour="manage-add-organization"
+                onClick={() => setShowOrgEditor(true)}
+              >
+                {t('management.addOrganization')} <Plus className="w-4 h-4" aria-hidden="true" />
+              </button>
+            )}
           </div>
 
           <div data-tour="manage-organizations-list">

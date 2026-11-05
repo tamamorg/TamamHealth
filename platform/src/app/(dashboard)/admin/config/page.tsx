@@ -99,6 +99,7 @@ export default function AdminConfigPage() {
     setDraft(d => (d ? { ...d, [key]: value } : d));
   };
 
+  const yesNo = (v: boolean) => t(v ? 'action.yes' : 'action.no');
   const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || 'dev';
   const policies = config?.superAdminPolicies;
 
@@ -131,13 +132,13 @@ export default function AdminConfigPage() {
   };
 
   const railGroups = [{
-    title: 'Configuration',
+    title: t('routeContext.configuration'),
     items: [
-      { id: 'identity', label: 'Platform identity', icon: Building2, count: identityDirty || undefined },
-      { id: 'defaults', label: 'Tenant defaults', icon: Server, count: defaultsDirty || undefined },
-      { id: 'maintenance', label: 'Maintenance', icon: ShieldAlert, count: maintenanceDirty || undefined },
-      { id: 'security', label: 'Security policy defaults', icon: Shield },
-      { id: 'templates', label: 'Notification templates', icon: MessageSquare },
+      { id: 'identity', label: t('ui.platformIdentity'), icon: Building2, count: identityDirty || undefined },
+      { id: 'defaults', label: t('ui.tenantDefaults'), icon: Server, count: defaultsDirty || undefined },
+      { id: 'maintenance', label: t('system.maintenance'), icon: ShieldAlert, count: maintenanceDirty || undefined },
+      { id: 'security', label: t('ui.securityPolicyDefaults'), icon: Shield },
+      { id: 'templates', label: t('ui.notificationTemplates'), icon: MessageSquare },
     ],
   }];
 
@@ -154,10 +155,10 @@ export default function AdminConfigPage() {
               <>
                 <SadbPanelHeader
                   title={t('ui.platformIdentity')}
-                  note="Name and default brand colors shown across the platform shell and applied to new tenants."
+                  note={t('adminMgmt.cfgIdentityNote')}
                 />
                 <SadbSettingGroup title={t('branding.title')}>
-                  <SadbSettingRow label={t('ui.platformName')} sub="Shown in the app header and browser tab.">
+                  <SadbSettingRow label={t('ui.platformName')} sub={t('adminMgmt.cfgPlatformNameSub')}>
                     <input
                       className="sadb-modal-input"
                       style={{ maxWidth: 260 }}
@@ -165,10 +166,10 @@ export default function AdminConfigPage() {
                       onChange={e => setField('platformName', e.target.value)}
                     />
                   </SadbSettingRow>
-                  <SadbSettingRow label={t('ui.defaultPrimaryColor')} sub="Applied to new tenants unless they set their own.">
+                  <SadbSettingRow label={t('ui.defaultPrimaryColor')} sub={t('adminMgmt.cfgColorSub')}>
                     <ColorField value={draft.defaultPrimaryColor} onChange={v => setField('defaultPrimaryColor', v)} />
                   </SadbSettingRow>
-                  <SadbSettingRow label={t('ui.defaultSecondaryColor')} sub="Applied to new tenants unless they set their own.">
+                  <SadbSettingRow label={t('ui.defaultSecondaryColor')} sub={t('adminMgmt.cfgColorSub')}>
                     <ColorField value={draft.defaultSecondaryColor} onChange={v => setField('defaultSecondaryColor', v)} />
                   </SadbSettingRow>
                 </SadbSettingGroup>
@@ -179,24 +180,24 @@ export default function AdminConfigPage() {
               <>
                 <SadbPanelHeader
                   title={t('ui.tenantDefaults')}
-                  note="Trial length, capacity ceiling, and self-service signup applied to every new organization."
+                  note={t('adminMgmt.cfgDefaultsNote')}
                 />
-                <SadbSettingGroup title={t('ui.trialCapacity')}>
-                  <SadbSettingRow label={t('ui.trialDays')} sub="Length of the free trial period for new organizations.">
+                <SadbSettingGroup title={t('adminMgmt.trialsAndCapacity')}>
+                  <SadbSettingRow label={t('ui.trialDays')} sub={t('adminMgmt.cfgTrialDaysSub')}>
                     <NumberInput step="1" min={1} max={365}
                       className="sadb-modal-input" style={{ maxWidth: 120 }}
                       value={draft.trialDays}
                       onChange={e => setField('trialDays', parseInt(e.target.value, 10) || 1)}
                     />
                   </SadbSettingRow>
-                  <SadbSettingRow label={t('ui.maxOrganizations')} sub="Platform-wide ceiling on the number of tenant organizations.">
+                  <SadbSettingRow label={t('ui.maxOrganizations')} sub={t('adminMgmt.cfgMaxOrgsSub')}>
                     <NumberInput step="1" min={1}
                       className="sadb-modal-input" style={{ maxWidth: 120 }}
                       value={draft.maxOrganizations}
                       onChange={e => setField('maxOrganizations', parseInt(e.target.value, 10) || 1)}
                     />
                   </SadbSettingRow>
-                  <SadbSettingRow label={t('ui.newSignupsEnabled')} sub="Allow new organizations to self-register a trial.">
+                  <SadbSettingRow label={t('ui.newSignupsEnabled')} sub={t('adminMgmt.cfgSignupsSub')}>
                     <SadbToggle
                       checked={draft.signupsEnabled}
                       onChange={v => setField('signupsEnabled', v)}
@@ -211,12 +212,12 @@ export default function AdminConfigPage() {
               <>
                 <SadbPanelHeader
                   title={t('system.maintenance')}
-                  note="Platform-wide sign-in gate. Only super admins can reach the app while this is on."
-                  tag={config.maintenanceMode ? 'Live now' : 'Operational'}
+                  note={t('adminMgmt.cfgMaintNote')}
+                  tag={config.maintenanceMode ? t('adminMgmt.liveNow') : t('admin.healthOperational')}
                   tagTone={config.maintenanceMode ? 'red' : 'green'}
                 />
                 <SadbSettingGroup title={t('ui.signInGate')}>
-                  <SadbSettingRow label={t('ui.maintenanceMode')} sub="When on, only super admins can sign in — all other roles see a maintenance notice.">
+                  <SadbSettingRow label={t('ui.maintenanceMode')} sub={t('adminMgmt.cfgMaintSub')}>
                     <SadbToggle
                       checked={draft.maintenanceMode}
                       onChange={v => setField('maintenanceMode', v)}
@@ -225,11 +226,11 @@ export default function AdminConfigPage() {
                   </SadbSettingRow>
                   {draft.maintenanceMode && (
                     <div className="sadb-signal sadb-signal--yellow" style={{ margin: '0 16px 14px' }}>
-                      <b>{config.maintenanceMode ? 'Maintenance mode is live' : 'This will restrict tenant access'}</b>
+                      <b>{config.maintenanceMode ? t('adminMgmt.cfgMaintLive') : t('adminMgmt.cfgMaintWill')}</b>
                       <span>
                         {config.maintenanceMode
-                          ? 'Only super admins can sign in right now — all other roles see a maintenance notice.'
-                          : 'Saving turns this on immediately: all non-super-admin roles will be signed out of new sessions.'}
+                          ? t('adminMgmt.cfgMaintLiveBody')
+                          : t('adminMgmt.cfgMaintWillBody')}
                       </span>
                     </div>
                   )}
@@ -242,10 +243,10 @@ export default function AdminConfigPage() {
               <>
                 <SadbPanelHeader
                   title={t('ui.securityPolicyDefaults')}
-                  note="Configured from Security & Compliance — this page shows the current values only."
-                  tag="Read-only"
+                  note={t('adminMgmt.cfgSecNote')}
+                  tag={t('rxFlow.readOnly')}
                 />
-                <SadbCard action={<SadbHeadLink onClick={() => router.push('/admin/security')}>{t('ui.editInSecurityCompliance')}</SadbHeadLink>}>
+                <SadbCard action={<SadbHeadLink onClick={() => router.push('/admin/security')}>{t('adminConsole.editInSecuritySettings')}</SadbHeadLink>}>
                   {!policies ? (
                     <p className="sadb-empty">{t('admin.loading')}</p>
                   ) : (
@@ -260,10 +261,10 @@ export default function AdminConfigPage() {
                       <SadbKvRow label={t('ui.sessionTimeout')} value={`${policies.sessionTimeoutMinutes}m`} />
                       <SadbKvRow
                         label={t('ui.dualApprovalForHighRisk')}
-                        value={`${policies.dualApprovalForHighRisk ? 'Yes' : 'No'} · not enforced`}
+                        value={t('adminMgmt.notEnforced', { value: yesNo(policies.dualApprovalForHighRisk) })}
                       />
-                      <SadbKvRow label={t('ui.auditRetention')} value={`${policies.auditRetentionYears}y · not enforced`} />
-                      <SadbKvRow label={t('ui.ssoEnabled')} value={`${policies.ssoEnabled ? 'Yes' : 'No'} · not enforced`} />
+                      <SadbKvRow label={t('ui.auditRetention')} value={t('adminMgmt.notEnforced', { value: `${policies.auditRetentionYears}y` })} />
+                      <SadbKvRow label={t('adminMgmt.singleSignOn')} value={t('adminMgmt.notEnforced', { value: yesNo(policies.ssoEnabled) })} />
                     </>
                   )}
                 </SadbCard>
@@ -272,9 +273,9 @@ export default function AdminConfigPage() {
 
             {activeTab === 'templates' && (
               <>
-                <SadbPanelHeader title={t('ui.notificationTemplates')} note="Copy used for platform email and SMS notifications." />
+                <SadbPanelHeader title={t('ui.notificationTemplates')} note={t('adminMgmt.cfgTemplatesNote')} />
                 <SadbCard>
-                  <p className="sadb-empty">{t('ui.noTemplateStoreConfiguredEmail')}</p>
+                  <p className="sadb-empty">{t('adminMgmt.cfgNoTemplates')}</p>
                 </SadbCard>
               </>
             )}

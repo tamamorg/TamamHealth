@@ -10,7 +10,7 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import AncVisitForm from '@/components/anc/AncVisitForm';
-import { HeartPulse, Plus, ChevronRight } from '@/components/icons/lucide';
+import { HeartPulse, Plus } from '@/components/icons/lucide';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
 
 const riskColors: Record<'low' | 'moderate' | 'high', { tone: BadgeTone; label: string }> = {
@@ -164,45 +164,55 @@ export default function ANCPage() {
               }
             />
 
-            <div className="divide-y data-row-divider-sm" style={{ borderColor: 'var(--table-row-border)' }}>
-              {filteredMothers.map(({ latest, visitCount }) => {
-                const risk = riskColors[latest.riskLevel] || riskColors.low;
-                const hasRealPatientRecord = !!latest.motherId
-                  && !latest.motherId.startsWith('demo-')
-                  && !latest.motherId.startsWith('mother-new-')
-                  && !latest.motherId.includes('_demo');
-                const chartHref = `/patients/${encodeURIComponent(latest.motherId)}?tab=anc`;
-                const open = () => { if (hasRealPatientRecord) router.push(chartHref); };
-                return (
-                  <div
-                    key={latest.motherId}
-                    {...(hasRealPatientRecord ? {
-                      role: 'link',
-                      tabIndex: 0,
-                      'aria-label': t('ancChart.openChart', { name: latest.motherName }),
-                      onClick: open,
-                      onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } },
-                    } : {})}
-                    className={`flex items-center gap-3 px-4 py-3 transition-colors ${hasRealPatientRecord ? 'cursor-pointer hover:bg-[var(--table-row-hover)]' : ''}`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{latest.motherName}</p>
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {t('anc.motherMeta', { age: latest.motherAge, gravida: latest.gravida, parity: latest.parity, weeks: latest.gestationalAge, facility: latest.facilityName })}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <Badge tone={risk.tone}>{risk.label}</Badge>
-                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {visitCount} visit{visitCount !== 1 ? 's' : ''}
-                      </span>
-                      {hasRealPatientRecord
-                        ? <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-muted)' }} aria-hidden />
-                        : <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('ancChart.noRecord')}</span>}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="ehr-list-scroll">
+              <table className="data-table" style={{ minWidth: 820 }}>
+                <thead>
+                  <tr>
+                    <th>Mother</th>
+                    <th>Age</th>
+                    <th>{t('anc.gravida')} / {t('anc.parity')}</th>
+                    <th>{t('ancChart.gaWeeks')}</th>
+                    <th>Facility</th>
+                    <th>Risk</th>
+                    <th>Visits</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredMothers.map(({ latest, visitCount }) => {
+                    const risk = riskColors[latest.riskLevel] || riskColors.low;
+                    const hasRealPatientRecord = !!latest.motherId
+                      && !latest.motherId.startsWith('demo-')
+                      && !latest.motherId.startsWith('mother-new-')
+                      && !latest.motherId.includes('_demo');
+                    const chartHref = `/patients/${encodeURIComponent(latest.motherId)}?tab=anc`;
+                    const open = () => { if (hasRealPatientRecord) router.push(chartHref); };
+                    return (
+                      <tr
+                        key={latest.motherId}
+                        {...(hasRealPatientRecord ? {
+                          role: 'link',
+                          tabIndex: 0,
+                          'aria-label': t('ancChart.openChart', { name: latest.motherName }),
+                          onClick: open,
+                          onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } },
+                        } : {})}
+                        className={hasRealPatientRecord ? 'cursor-pointer hover:bg-[var(--table-row-hover)]' : ''}
+                      >
+                        <td>
+                          <span className="text-sm font-semibold">{latest.motherName}</span>
+                          {!hasRealPatientRecord && <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>{t('ancChart.noRecord')}</span>}
+                        </td>
+                        <td>{latest.motherAge}</td>
+                        <td>G{latest.gravida} P{latest.parity}</td>
+                        <td>{latest.gestationalAge}</td>
+                        <td>{latest.facilityName}</td>
+                        <td><Badge tone={risk.tone}>{risk.label}</Badge></td>
+                        <td>{visitCount}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
               {filteredMothers.length === 0 && (
                 <EmptyState
                   icon={HeartPulse}

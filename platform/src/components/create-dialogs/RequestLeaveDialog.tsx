@@ -83,7 +83,7 @@ export default function RequestLeaveDialog({ onClose, onCreated, presentation = 
     <>
       <div className="space-y-3">
         <div>
-          <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelStaffRequired')}</label>
+          <label className="field-required text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelStaffRequired')}</label>
           <Select value={form.userId} onChange={e => setForm({ ...form, userId: e.target.value })}>
             <option value="">{t('hr.selectStaffOption')}</option>
             {selectable.map(u => (
@@ -93,22 +93,22 @@ export default function RequestLeaveDialog({ onClose, onCreated, presentation = 
         </div>
         <div className="grid grid-cols-3 gap-3">
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelType')}</label>
+            <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelType')}</label>
             <Select value={form.leaveType} onChange={e => setForm({ ...form, leaveType: e.target.value as LeaveType })}>
               {LEAVE_TYPES.map(lt => <option key={lt.id} value={lt.id}>{t(`hr.leaveType_${lt.id}`)}</option>)}
             </Select>
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelStart')}</label>
+            <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelStart')}</label>
             <input type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelEnd')}</label>
+            <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelEnd')}</label>
             <input type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} />
           </div>
         </div>
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelReason')}</label>
+          <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelReason')}</label>
           <textarea rows={2} value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} placeholder={t('hr.optional')} />
         </div>
       </div>

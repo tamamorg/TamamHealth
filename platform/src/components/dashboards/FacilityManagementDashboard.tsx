@@ -51,6 +51,7 @@ import {
   Loader2,} from '@/components/icons/lucide';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
+import { summariseIssues } from '@/modules/communication/client';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useWards } from '@/lib/hooks/useWards';
@@ -218,17 +219,17 @@ export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOve
   const staffTone = usersUnavailable ? ('warning' as const) : undefined;
 
   const metrics: FacilityOverviewMetric[] = [
-    { key: 'staff-total', label: 'Total Staff', value: staffCount(users.length), href: usersHref, tone: staffTone },
-    { key: 'doctors', label: 'Total Doctors', value: staffCount(doctors.length), href: usersHref, tone: staffTone },
-    { key: 'nurses', label: 'Total Nurses', value: staffCount(nurses.length), href: usersHref, tone: staffTone },
-    { key: 'patients', label: 'Total Patients', value: patients.length, href: '/patients' },
-    { key: 'beds', label: 'Available Beds', value: availableBeds, href: '/wards' },
-    { key: 'inquiries-open', label: 'Open Inquiries', value: enquirySummary.open, href: '/inquiries?status=new', tone: enquirySummary.open > 0 ? 'warning' : undefined },
-    { key: 'leave-pending', label: 'Pending Leave', value: pendingLeave.length, href: '/hr/leave?status=pending', tone: pendingLeave.length > 0 ? 'warning' : undefined },
+    { key: 'staff-total', label: 'Total staff', value: staffCount(users.length), href: usersHref, tone: staffTone },
+    { key: 'doctors', label: 'Total doctors', value: staffCount(doctors.length), href: usersHref, tone: staffTone },
+    { key: 'nurses', label: 'Total nurses', value: staffCount(nurses.length), href: usersHref, tone: staffTone },
+    { key: 'patients', label: 'Total patients', value: patients.length, href: '/patients' },
+    { key: 'beds', label: 'Available beds', value: availableBeds, href: '/wards' },
+    { key: 'inquiries-open', label: 'Open inquiries', value: enquirySummary.open, href: '/inquiries?status=new', tone: enquirySummary.open > 0 ? 'warning' : undefined },
+    { key: 'leave-pending', label: 'Pending leave', value: pendingLeave.length, href: '/hr/leave?status=pending', tone: pendingLeave.length > 0 ? 'warning' : undefined },
     { key: 'shifts-today', label: "Today's Shifts", value: schedules.length, href: `/hr/schedule?date=${today}` },
     // "Unfilled" = short against a configured per-shift minimum, not a vacant
     // position record — this data model has no such record (see getStaffingGaps).
-    { key: 'shifts-unfilled', label: 'Unfilled Shifts', value: unfilledShifts, href: '/hr/schedule?gaps=1', tone: unfilledShifts > 0 ? 'danger' : undefined },
+    { key: 'shifts-unfilled', label: 'Unfilled shifts', value: unfilledShifts, href: '/hr/schedule?gaps=1', tone: unfilledShifts > 0 ? 'danger' : undefined },
   ];
 
   // The three queues, shaped by the shared builders the queue page uses. Here
@@ -254,6 +255,11 @@ export function buildFacilityOverview(input: FacilityOverviewInput): FacilityOve
   };
 }
 
+const METRIC_LABEL_KEY: Record<string, string> = {
+  'staff-total': 'facilityMgmt.totalStaff', doctors: 'facilityMgmt.totalDoctors', nurses: 'facilityMgmt.totalNurses',
+  patients: 'facilityMgmt.totalPatients', beds: 'facilityMgmt.availableBeds',
+};
+
 type ExtraKey = 'billing' | 'flow' | 'enquiries' | 'availability' | 'leave' | 'schedule' | 'gaps';
 
 /* The facility matrix uses equal tracks from the first field through Status.
@@ -278,6 +284,23 @@ export default function FacilityManagementDashboard() {
   const { currentUser } = useAuth();
   const router = useRouter();
   const scope = useDataScope();
+
+  /* Staff issue reports, for the "Open issues" tile. /inquiries is the
+     reported-issues inbox for management roles (PR #196), so the tile that
+     links there counts issues, not patient inquiries. */
+  const [issueReports, setIssueReports] = useState<MessageDoc[]>([]);
+  const [issuesLoaded, setIssuesLoaded] = useState(false);
+  useEffect(() => {
+    if (!scope) return;
+    let cancelled = false;
+    import('@/modules/communication/services/issue-report-service')
+      .then(({ getIssueReports }) => getIssueReports(scope))
+      .then(rows => { if (!cancelled) setIssueReports(rows); })
+      .catch(() => { /* the tile reads 0 rather than blocking the dashboard */ })
+      .finally(() => { if (!cancelled) setIssuesLoaded(true); });
+    return () => { cancelled = true; };
+  }, [scope]);
+  const issueSummary = useMemo(() => summariseIssues(issueReports), [issueReports]);
 
   const { users, loading: usersLoading, error: usersError } = useUsers();
   const { patients, loading: patientsLoading } = usePatients();
@@ -468,8 +491,8 @@ export default function FacilityManagementDashboard() {
       if (at >= nowMs - 7 * 86400000) thisWeek++;
       else if (at >= nowMs - 14 * 86400000) lastWeek++;
     }
-    return { direction: trendBetween(thisWeek, lastWeek), label: `${thisWeek} this week vs ${lastWeek} last` };
-  }, []);
+    return { direction: trendBetween(thisWeek, lastWeek), label: t('facilityMgmt.trendWeek', { thisWeek, lastWeek }) };
+  }, [t]);
   /* What each figure is made of, on the tile under the number (every
      management KPI carries one). Derived from the same records as the
      figures; a figure with nothing honest to add keeps none. */
@@ -478,25 +501,25 @@ export default function FacilityManagementDashboard() {
     const staff = num(overview.metrics.find(m => m.key === 'staff-total')?.value);
     const share = (key: string) => {
       const n = num(overview.metrics.find(m => m.key === key)?.value);
-      return Number.isFinite(n) && staff > 0 ? `${Math.round((n / staff) * 100)}% of staff` : undefined;
+      return Number.isFinite(n) && staff > 0 ? t('facilityMgmt.shareOfStaff', { percent: Math.round((n / staff) * 100) }) : undefined;
     };
     return {
-      'staff-total': `${overview.activeStaff.count} available now`,
+      'staff-total': t('facilityMgmt.availableNow', { count: overview.activeStaff.count }),
       doctors: share('doctors'),
       nurses: share('nurses'),
-      patients: `Across ${hospitals.length} ${hospitals.length === 1 ? 'facility' : 'facilities'}`,
-      beds: wardBedTotal > 0 ? `of ${wardBedTotal} · ${wardOccupancy}% occupied` : undefined,
-      'inquiries-open': `${enquiries.length} received in total`,
+      patients: t(hospitals.length === 1 ? 'facilityMgmt.acrossFacilitiesOne' : 'facilityMgmt.acrossFacilities', { count: hospitals.length }),
+      beds: wardBedTotal > 0 ? t('facilityMgmt.bedsDetail', { total: wardBedTotal, occupied: wardOccupancy }) : undefined,
+      issues: t('facilityMgmt.issuesTotal', { count: issueSummary.total }),
     };
-  }, [overview, hospitals.length, wardBedTotal, wardOccupancy, enquiries.length]);
+  }, [overview, hospitals.length, wardBedTotal, wardOccupancy, issueSummary.total, t]);
 
   // No trend until its data is in: an empty list read as "0 this week vs 0
   // last", which looks like a real, flat week.
   const tileTrends = useMemo<Record<string, SadbTrendValue | undefined>>(() => ({
     patients: patientsLoading ? undefined : weekTrend(patients),
-    // More inquiries arriving is more work waiting: up is not good news here.
-    'inquiries-open': extraLoading ? undefined : { ...weekTrend(enquiries), good: 'down' },
-  }), [weekTrend, patients, enquiries, patientsLoading, extraLoading]);
+    // More issues arriving is more work waiting: up is not good news here.
+    issues: issuesLoaded ? { ...weekTrend(issueReports), good: 'down' } : undefined,
+  }), [weekTrend, patients, patientsLoading, issueReports, issuesLoaded]);
 
   /* This week, Monday-first, on the CLINICAL calendar: both cards below read
      the same seven days, and a visit at 23:00 in Juba belongs to that day
@@ -520,9 +543,9 @@ export default function FacilityManagementDashboard() {
   );
 
   const flowSeries = useMemo(() => [
-    { key: 'inpatient', name: 'Inpatient', color: FLOW_INPATIENT },
-    { key: 'outpatient', name: 'Outpatient', color: FLOW_OUTPATIENT },
-  ], []);
+    { key: 'inpatient', name: t('encounters.inpatient'), color: FLOW_INPATIENT },
+    { key: 'outpatient', name: t('encounters.outpatient'), color: FLOW_OUTPATIENT },
+  ], [t]);
 
   /* The week's money as one total and its two parts — what the ring and its
      two figures are drawn from. Seven columns of two stacked bars said less
@@ -542,9 +565,9 @@ export default function FacilityManagementDashboard() {
   /* A ring of nothing is a grey ring, not two zero-width slices — the donut
      draws its own empty state when every slice is filtered out. */
   const cashSlices = useMemo(() => [
-    { name: 'Received', value: cashWeek.received, color: CASH_RECEIVED },
-    { name: 'Pending', value: cashWeek.pending, color: CASH_PENDING },
-  ].filter(slice => slice.value > 0), [cashWeek]);
+    { name: t('billing.ovReceived'), value: cashWeek.received, color: CASH_RECEIVED },
+    { name: t('billing.ovPending'), value: cashWeek.pending, color: CASH_PENDING },
+  ].filter(slice => slice.value > 0), [cashWeek, t]);
 
   const initialLoading = usersLoading || patientsLoading || wardsLoading || extraLoading;
 
@@ -553,19 +576,32 @@ export default function FacilityManagementDashboard() {
   /* KPI tiles carry the census/staffing totals; the three day-scoped figures
      (shifts, unfilled, pending leave) read in the Today's Operations card so
      the tile row is one line, not two. */
-  const TILE_KEYS = ['staff-total', 'doctors', 'nurses', 'patients', 'beds', 'inquiries-open'];
+  const TILE_KEYS = ['staff-total', 'doctors', 'nurses', 'patients', 'beds'];
+  const issuesTile = { key: 'issues', label: t('facilityMgmt.openIssues'), href: '/inquiries' };
 
   const unfilledShifts = metricByKey('shifts-unfilled')?.value ?? 0;
   // The unfiltered count — this page no longer carries the queue's search box.
   const pendingLeaveCount = metricByKey('leave-pending')?.value ?? 0;
 
   // Written-out facility tier ("National Referral", "Phcc" stays "PHCC").
-  const facilityLabel = useCallback((ft: string) =>
-    ft === 'phcc' || ft === 'phcu' ? ft.toUpperCase() : titleCase(ft.replace(/_/g, ' ')), []);
+  const facilityLabel = useCallback((ft: string) => {
+    const keys: Record<string, string> = {
+      national_referral: 'hospitals.typeNationalReferral', state_hospital: 'hospitals.typeStateHospital',
+      county_hospital: 'hospitals.typeCountyHospital', phcc: 'hospitals.typePhcc', phcu: 'hospitals.typePhcu',
+    };
+    return keys[ft] ? t(keys[ft]) : titleCase(ft.replace(/_/g, ' '));
+  }, [t]);
 
   const facilityStatus = useCallback((hospital: HospitalDoc) => hospital.isActive === false
-    ? 'Retired'
-    : titleCase((hospital.operationalStatus ?? 'functional').replace(/_/g, ' ')), []);
+    ? t('facilityMgmt.retired')
+    : (() => {
+        const st = hospital.operationalStatus ?? 'functional';
+        const keys: Record<string, string> = {
+          functional: 'myFacility.statusFunctional', partially_functional: 'myFacility.statusPartiallyFunctional',
+          non_functional: 'myFacility.statusNonFunctional', closed: 'myFacility.statusClosed',
+        };
+        return keys[st] ? t(keys[st]) : titleCase(st.replace(/_/g, ' '));
+      })(), [t]);
 
   const visibleFacilities = useMemo(() => {
     const terms = facilitySearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -613,7 +649,7 @@ export default function FacilityManagementDashboard() {
           return (
             <SadbKpiTile
               key={m.key}
-              label={m.label}
+              label={t(METRIC_LABEL_KEY[m.key] ?? m.key)}
               value={m.value}
               delta={tileDetails[m.key]}
               deltaTone={m.tone === 'warning' || m.tone === 'danger' ? 'warn' : undefined}
@@ -623,6 +659,15 @@ export default function FacilityManagementDashboard() {
             />
           );
         })}
+        <SadbKpiTile
+          key={issuesTile.key}
+          label={issuesTile.label}
+          value={issueSummary.open}
+          delta={tileDetails.issues}
+          deltaTone={issueSummary.open > 0 ? 'warn' : undefined}
+          trend={tileTrends.issues}
+          onClick={() => router.push(issuesTile.href)}
+        />
       </div>
 
       {/* ═══ Operational row: patient flow · cash · today ═══
@@ -634,7 +679,7 @@ export default function FacilityManagementDashboard() {
         {/* The week's arrivals: how many came, and how many stayed. Admissions
             and outpatient encounters are the two ends of the same day's work,
             and nothing on this page said either until now. */}
-        <SadbCard title={t('ui.patientFlow')} tabletTitle="Patients" meta="This week">
+        <SadbCard title={t('ui.patientFlow')} tabletTitle={t('facilityMgmt.tabletPatients')} meta={t('facilityMgmt.thisWeek')}>
           <div className="px-3 pt-3 pb-1">
             <WeeklyActivityChart data={weeklyFlow} chartType="bar" series={flowSeries} />
           </div>
@@ -646,7 +691,7 @@ export default function FacilityManagementDashboard() {
             the card, here it shares a row with a 208px chart, so it has
             height to spend and centres itself in it rather than sitting in
             the card's top corner. */}
-        <SadbCard title={t('ui.cashFlow')} tabletTitle="Cash" meta={`${cash.currency} · this week`}>
+        <SadbCard title={t('ui.cashFlow')} tabletTitle={t('facilityMgmt.tabletCash')} meta={t('facilityMgmt.currencyThisWeek', { currency: cash.currency })}>
           <div className="sadb-readiness-body fmcash-body">
             <div className="fmcash-ring">
               <CashFlowDonut data={cashSlices} />
@@ -670,7 +715,7 @@ export default function FacilityManagementDashboard() {
 
         <SadbCard
           title={t('ui.todaySOperations')}
-          tabletTitle="Operations"
+          tabletTitle={t('facilityMgmt.tabletOperations')}
           action={<SadbHeadLink onClick={() => router.push(`/hr/schedule?date=${today}`)}>{t('boma.schedule')}</SadbHeadLink>}
         >
           <div className="sadb-kv-fill">
@@ -713,7 +758,7 @@ export default function FacilityManagementDashboard() {
               value={facilitySearch}
               onChange={setFacilitySearch}
               placeholder={t('ui.searchFacilityTypeLocationOr')}
-              ariaLabel="Search facilities"
+              ariaLabel={t('facilityMgmt.searchFacilities')}
             />
             {/* The create actions beside the search of the list they add to
                 (the dashboard's greeting row that carried them is gone). */}
@@ -723,11 +768,11 @@ export default function FacilityManagementDashboard() {
             <SadbGridList
               template={FAC_GRID}
               minWidth={840}
-              head={['Facility', 'Type', 'Location', 'Beds', 'Patients', 'Status']}
+              head={[t('hospitals.colFacility'), t('hospitals.colType'), t('hospitals.colLocation'), t('dashboard.beds'), t('government.colPatients'), t('hospitals.colStatus')]}
               alignEndLast
               empty={facilitySearch
-                ? 'No facilities match this search.'
-                : 'No facilities registered yet. Use “Add facility” to register the first one.'}
+                ? t('facilityMgmt.noMatch')
+                : t('facilityMgmt.noneYet')}
             >
               {visibleFacilities.map((h: HospitalDoc) => (
                 <SadbGridRow key={h._id} template={FAC_GRID} onClick={() => router.push(`/admin/facilities/${h._id}`)}>

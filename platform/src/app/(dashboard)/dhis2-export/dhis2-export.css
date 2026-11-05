@@ -1,0 +1,140 @@
+/* DHIS2 export: the controls card, KPI band spacing, underline tabs and the
+   export cards. Type, tables, pills and cards come from the management frame;
+   this file only lays things out. */
+
+body main[data-surface="management"] .dx-controls {
+  margin-bottom: 12px;
+  padding: 12px 16px 14px;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+}
+body main[data-surface="management"] .dx-controls-title,
+body main[data-surface="management"] .dx-card-title,
+body main[data-surface="management"] .dx-section-title {
+  margin: 0 0 8px;
+  font-family: var(--font-platform);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--accent-text, var(--text-primary));
+}
+body main[data-surface="management"] .dx-controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+}
+body main[data-surface="management"] .dx-field {
+  flex: 1 1 200px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+}
+body main[data-surface="management"] .dx-field > span {
+  font-family: var(--font-platform);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-primary);
+}
+body main[data-surface="management"] .dx-sync { margin-inline-start: auto; }
+body main[data-surface="management"] .dx-controls-help,
+body main[data-surface="management"] .dx-section-sub {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+body main[data-surface="management"] .dx-section-sub { margin: 0 0 8px; }
+
+body main[data-surface="management"] .dx-kpis.sadb-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  margin: 12px 0;
+}
+
+body main[data-surface="management"] .dx-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border-light);
+}
+body main[data-surface="management"] .dx-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: -1px;
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font-family: var(--font-platform);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+body main[data-surface="management"] .dx-tab:hover { color: var(--text-primary); }
+body main[data-surface="management"] .dx-tab[aria-selected="true"] {
+  color: var(--accent-text, var(--text-primary));
+  border-bottom-color: var(--accent-primary);
+}
+
+body main[data-surface="management"] .dx-opener {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-platform);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--accent-link, var(--accent-text));
+  cursor: pointer;
+}
+body main[data-surface="management"] .dx-opener:hover:not(:disabled) { text-decoration: underline; }
+body main[data-surface="management"] .dx-opener:disabled { opacity: 0.5; cursor: not-allowed; }
+
+body main[data-surface="management"] .dx-export-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+body main[data-surface="management"] .dx-card { padding: 12px 16px 16px; }
+body main[data-surface="management"] .dx-include { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+body main[data-surface="management"] .dx-include li { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-secondary); }
+body main[data-surface="management"] .dx-formats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 12px; }
+body main[data-surface="management"] .dx-format {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  text-align: start;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  cursor: pointer;
+}
+body main[data-surface="management"] .dx-format:hover:not(:disabled) { background: var(--accent-light); }
+body main[data-surface="management"] .dx-format-head { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 600; color: var(--text-primary); }
+body main[data-surface="management"] .dx-format-desc { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+body main[data-surface="management"] .dx-opener-text { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; color: var(--accent-link, var(--accent-text)); }
+
+body main[data-surface="management"] :is(.dx-controls, .card-elevated) table thead th { text-align: start; }
+body main[data-surface="management"] .dx-controls-row { align-items: flex-start; }
+body main[data-surface="management"] .dx-sync { margin-top: 28px; }
+body main[data-surface="management"] .dx-field input[type="month"] {
+  height: 40px;
+  padding: 0 12px;
+  font-family: var(--font-platform);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+}

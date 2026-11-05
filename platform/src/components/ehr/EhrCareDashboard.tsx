@@ -73,6 +73,12 @@ export type EhrCareDashboardMetric = {
 };
 
 export type EhrCareDashboardRow = {
+  /**
+   * The title is a person's name (default): it is shortened to first and last
+   * word, the platform's two-name rule. A row that is not a person (a county
+   * on the county overview) sets false and keeps its title whole.
+   */
+  titleIsName?: boolean;
   id: string;
   title: string;
   subtitle: string;
@@ -240,6 +246,7 @@ function compareDashboardRows(a: EhrCareDashboardRow, b: EhrCareDashboardRow): n
 export default function EhrCareDashboard({
   title,
   compactHeader = false,
+  columnLabels,
   greetingName,
   greetingSubtitle,
   dateLabel,
@@ -295,6 +302,12 @@ export default function EhrCareDashboard({
    * content.
    */
   compactHeader?: boolean;
+  /**
+   * The list's five column heads. Defaults to the visit board's (Patient,
+   * Time, Care team, Context, Status); a board of something else (the county
+   * overview's counties) names its own columns.
+   */
+  columnLabels?: readonly [string, string, string, string, string];
   dateLabel: string;
   tabs: EhrCareDashboardTab[];
   activeTab: string;
@@ -897,11 +910,8 @@ export default function EhrCareDashboard({
                       empty day or a filter that matches nothing, so the table
                       never collapses into a bare message. */}
                   <div className="appointment-card-head" aria-hidden="true">
-                    <span>{t('appointments.labelPatient')}</span>
-                    <span>{t('noteEditor.time')}</span>
-                    <span>{t('chartMessages.careTeam')}</span>
-                    <span>{t('ui.context')}</span>
-                    <span>{t('billing.activityColumn.status')}</span>
+                    {(columnLabels ?? [t('appointments.labelPatient'), t('noteEditor.time'), t('chartMessages.careTeam'), t('ui.context'), t('billing.activityColumn.status')])
+                      .map(label => <span key={label}>{label}</span>)}
                   </div>
                   {visibleRows.length === 0 && (
                     <div className="ehr-empty-state">
@@ -1056,15 +1066,15 @@ export default function EhrCareDashboard({
                                 <button
                                   type="button"
                                   className={row.patientId ? 'print-visible ehr-row-name-link' : 'print-visible'}
-                                  title={row.patientId ? `Open ${row.title}'s chart` : undefined}
+                                  title={row.patientId ? `Open ${row.title}'s chart` : row.titleIsName === false ? row.title : undefined}
                                   onClick={(event) => {
                                     event.stopPropagation();
                                     if (row.patientId) router.push(`/patients/${row.patientId}`);
                                     else activate();
                                   }}
                                 >
-                                  {/* Two words on the row — first and last. */}
-                                  {shortenPersonName(row.title)}
+                                  {/* Two words on the row — first and last — for a person. */}
+                                  {row.titleIsName === false ? row.title : shortenPersonName(row.title)}
                                 </button>
                               </span>
                               <p>{row.subtitle}</p>

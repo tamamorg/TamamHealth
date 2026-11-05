@@ -94,7 +94,7 @@ export default function CreateShiftDialog({ onClose, defaultDate, onCreated, pre
     <>
       <div className="space-y-3">
         <div>
-          <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelStaffRequired')}</label>
+          <label className="field-required text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelStaffRequired')}</label>
           <Select value={form.userId} onChange={e => setForm({ ...form, userId: e.target.value })}>
             <option value="">{t('hr.selectStaffOption')}</option>
             {facilityUsers.map(u => (
@@ -104,26 +104,26 @@ export default function CreateShiftDialog({ onClose, defaultDate, onCreated, pre
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelShift')}</label>
+            <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelShift')}</label>
             <Select value={form.shiftType} onChange={e => setForm({ ...form, shiftType: e.target.value as StaffScheduleDoc['shiftType'] })}>
               {SHIFT_TYPES.map(s => <option key={s} value={s} className="capitalize">{t(`hr.shiftType_${s}`)}</option>)}
             </Select>
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.date')}</label>
+            <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.date')}</label>
             <input type="date" value={form.shiftDate} onChange={e => setForm({ ...form, shiftDate: e.target.value })} />
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelStart')}</label>
+            <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelStart')}</label>
             <input type="time" value={form.startTime} onChange={e => setForm({ ...form, startTime: e.target.value })} />
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelEnd')}</label>
+            <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelEnd')}</label>
             <input type="time" value={form.endTime} onChange={e => setForm({ ...form, endTime: e.target.value })} />
           </div>
         </div>
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelDepartment')}</label>
+          <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelDepartment')}</label>
           <Select value={form.department} onChange={e => setForm({ ...form, department: e.target.value })}>
             <option value="">{t('hr.departmentPlaceholder')}</option>
             {departments.filter(item => item.isActive).map(item => <option key={item._id} value={item.name}>{item.name}</option>)}
@@ -134,7 +134,7 @@ export default function CreateShiftDialog({ onClose, defaultDate, onCreated, pre
           {t('hr.onCallShift')}
         </label>
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelNotes')}</label>
+          <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelNotes')}</label>
           <textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
         </div>
       </div>

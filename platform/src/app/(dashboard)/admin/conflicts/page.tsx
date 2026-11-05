@@ -11,7 +11,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ConflictQueueDoc } from '@/lib/db-types';
 import { useAuth } from '@/lib/context';
-import { FormError } from '@/components/overlay/FormNotices';
+import InlineBanner from '@/components/overlay/InlineBanner';
+import Select from '@/components/Select';
+import '@/components/admin/admin-pages.css';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { apiFetch } from '@/lib/api-fetch';
 import { useToast } from '@/components/Toast';
@@ -20,20 +22,19 @@ import {
   SadbCard, SadbChip, SadbKvRow, SadbActionButton, SadbPanelHeader,
   SadbEditorModal, SadbConfirmModal, useSadbTab, type ChipTone,
 } from '@/components/admin/sadb-ui';
-import { describeApiError } from '@/lib/user-facing-error';
 
 const STATUSES = ['pending', 'resolved', 'dismissed'] as const;
 type Status = (typeof STATUSES)[number];
 
 const STATUS_LABEL: Record<Status, string> = {
-  pending: 'Pending', resolved: 'Resolved', dismissed: 'Dismissed',
+  pending: 'billing.ovPending', resolved: 'conflicts.actionResolved', dismissed: 'conflicts.actionDismissed',
 };
 
 const RISK_CHIP: Record<ConflictQueueDoc['risk'], ChipTone> = {
   high: 'red', medium: 'yellow', low: 'neutral',
 };
 const RISK_LABEL: Record<ConflictQueueDoc['risk'], string> = {
-  high: 'High', medium: 'Medium', low: 'Low',
+  high: 'epidemic.severityHigh', medium: 'syncConflicts.riskFilter_medium', low: 'epidemic.severityLow',
 };
 
 interface ResolveTarget { id: string; rev: string }
@@ -99,22 +100,17 @@ export default function ConflictsPage() {
         if (requestIdRef.current !== requestId) return;
         setConflicts(data.conflicts || []);
       } else {
-        const body = await res.json().catch(() => ({}));
-        const msg = describeApiError(body, 'Conflicts not loaded. Reload the page.');
         setConflicts([]);
-        setErrorMsg(msg);
-        showToast(msg, 'error');
+        setErrorMsg(t('conflicts.errLoad'));
       }
-    } catch (err) {
+    } catch {
       if (requestIdRef.current !== requestId) return;
-      const msg = err instanceof Error ? err.message : 'Failed to load conflicts';
       setConflicts([]);
-      setErrorMsg(msg);
-      showToast(msg, 'error');
+      setErrorMsg(t('conflicts.errLoad'));
     } finally {
       if (requestIdRef.current === requestId) setLoading(false);
     }
-  }, [filterStatus, showToast]);
+  }, [filterStatus, t]);
 
   const loadCounts = useCallback(async () => {
     try {
@@ -209,32 +205,32 @@ export default function ConflictsPage() {
       <div className="sadb-page">
         <SadbPanelHeader
           title={t('ui.conflictReconciliation')}
-          note="High-risk clinical data (allergies, referrals, discharge status) flagged for human review after a replication conflict."
+          note={t('adminMgmt.conflictsNote')}
         />
 
-        <div className="flex gap-1" role="tablist" aria-label={t('ui.conflictStatus')} data-tour="admin-conflicts-tabs">
-          {STATUSES.map(s => (
-            <button
-              key={s}
-              type="button"
-              role="tab"
-              aria-selected={filterStatus === s}
-              className={`sadb-pill${filterStatus === s ? ' is-active' : ''}`}
-              onClick={() => setFilterStatus(s)}
-            >
-              {STATUS_LABEL[s]} ({counts[s] ?? '…'})
-            </button>
-          ))}
+        <div className="adm-fields" data-tour="admin-conflicts-tabs">
+          <label className="adm-field">
+            <span className="adm-field-label">{t('conflicts.showLabel')}</span>
+            <Select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} aria-label={t('conflicts.showLabel')}>
+              {STATUSES.map(s => (
+                <option key={s} value={s}>{t(STATUS_LABEL[s])} ({counts[s] ?? '…'})</option>
+              ))}
+            </Select>
+          </label>
         </div>
 
         {errorMsg && (
-          <FormError message={errorMsg} onDismiss={() => setErrorMsg(null)} />
+          <InlineBanner
+            tone="danger"
+            title={errorMsg}
+            action={{ label: t('management.retry'), onClick: () => { void loadConflicts(); } }}
+          />
         )}
 
         {loading ? (
           <SadbCard><p className="sadb-empty">{t('admin.loading')}</p></SadbCard>
         ) : conflicts.length === 0 ? (
-          <SadbCard><p className="sadb-empty">{t('action.no')} {STATUS_LABEL[filterStatus as Status].toLowerCase()} {t('ui.conflicts')}</p></SadbCard>
+          <SadbCard><p className="sadb-empty">{t('action.no')} {t(STATUS_LABEL[filterStatus as Status]).toLowerCase()} {t('ui.conflicts')}</p></SadbCard>
         ) : (
           <div className="flex flex-col gap-3">
             {conflicts.map(c => {
@@ -243,19 +239,19 @@ export default function ConflictsPage() {
                 <SadbCard
                   key={c._id}
                   title={c.resourceType}
-                  meta={<span style={{ fontFamily: 'var(--font-platform-mono)' }}>{c.resourceId}</span>}
-                  action={<SadbChip tone={RISK_CHIP[c.risk]}>{RISK_LABEL[c.risk]}</SadbChip>}
+                  meta={<span className="adm-mono">{c.resourceId}</span>}
+                  action={<SadbChip tone={RISK_CHIP[c.risk]}>{t(RISK_LABEL[c.risk])}</SadbChip>}
                 >
                   <SadbKvRow
                     label={t('ui.defaultWinner')}
-                    value={<span style={{ fontFamily: 'var(--font-platform-mono)' }}>{c.winningRev}</span>}
+                    value={<span className="adm-mono">{c.winningRev}</span>}
                   />
                   <div className="sadb-setting-row">
                     <div className="sadb-setting-copy">
                       <b className="sadb-setting-label">{t('ui.losingRevisions')}</b>
                       <span className="sadb-setting-sub">
                         {c.losingRevs.map(r => (
-                          <span key={r} style={{ fontFamily: 'var(--font-platform-mono)', marginInlineEnd: 8 }}>{r}</span>
+                          <span key={r} className="adm-mono" style={{ marginInlineEnd: 8 }}>{r}</span>
                         ))}
                       </span>
                     </div>
@@ -263,8 +259,8 @@ export default function ConflictsPage() {
 
                   {c.status !== 'pending' && (
                     <p className="sadb-setting-sub" style={{ padding: '10px 16px' }}>
-                      {c.status === 'resolved' ? 'Resolved' : 'Dismissed'} by {c.resolvedBy || 'unknown'} on {c.resolvedAt?.slice(0, 16).replace('T', ' ') ?? ''}
-                      {c.resolvedRev && <> {t('ui.kept')} <span style={{ fontFamily: 'var(--font-platform-mono)' }}>{c.resolvedRev}</span></>}
+                      {t('adminMgmt.conflictClosedBy', { status: t(STATUS_LABEL[c.status as Status]), who: c.resolvedBy || t('transfers.unknown'), when: c.resolvedAt?.slice(0, 16).replace('T', ' ') ?? '' })}
+                      {c.resolvedRev && <> {t('ui.kept')} <span className="adm-mono">{c.resolvedRev}</span></>}
                       {c.resolutionNote && <> — &ldquo;{c.resolutionNote}&rdquo;</>}
                     </p>
                   )}
@@ -307,12 +303,12 @@ export default function ConflictsPage() {
       {resolveTarget && (
         <SadbEditorModal
           title={t('ui.resolutionNote')}
-          sub={`Keep revision ${resolveTarget.rev.slice(0, 8)}… as the resolved version.`}
+          sub={t('adminMgmt.keepRevisionSub', { rev: resolveTarget.rev.slice(0, 8) })}
           value={resolveNote}
           onChange={setResolveNote}
           onCancel={() => setResolveTarget(null)}
           onApply={submitResolve}
-          applyLabel="Resolve"
+          applyLabel={t('issues.action.resolve')}
           multiline
           busy={resolveBusy}
         />
@@ -321,14 +317,14 @@ export default function ConflictsPage() {
       {dismissTarget && (
         <SadbConfirmModal
           title={t('ui.dismissConflict')}
-          body="Dismissing removes this conflict from the pending queue without choosing a winning revision. It is not deleted — it stays in history as dismissed."
+          body={t('adminMgmt.dismissConflictBody')}
           confirmLabel={t('action.dismiss')}
           onCancel={() => { setDismissTarget(null); setDismissNote(''); }}
           onConfirm={submitDismiss}
           busy={dismissBusy}
           noteValue={dismissNote}
           onNoteChange={setDismissNote}
-          notePlaceholder="Reason for dismissing (optional)"
+          notePlaceholder={t('adminMgmt.dismissReasonOptional')}
         />
       )}
     </main>

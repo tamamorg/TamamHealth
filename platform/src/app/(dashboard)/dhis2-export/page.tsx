@@ -2,11 +2,13 @@
 
 import { todayIso } from '@/lib/date-utils';
 import { useState, useEffect, useMemo } from 'react';
-import EhrListHeader from '@/components/ehr/EhrListHeader';
+import InlineBanner from '@/components/overlay/InlineBanner';
+import { SadbKpiTile } from '@/components/admin/sadb-ui';
+import './dhis2-export.css';
 import {
-  RefreshCw, CheckCircle, Clock, AlertTriangle,
-  Download, FileJson, FileSpreadsheet, Upload, Loader2,
-  Wifi, Database, FileText, BarChart3,
+  RefreshCw, CheckCircle, Clock,
+  Download, FileJson, FileSpreadsheet, Loader2,
+  Database, FileText, BarChart3,
 } from '@/components/icons/lucide';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
@@ -43,6 +45,8 @@ export default function DHIS2ExportPage() {
   const [period, setPeriod] = useState(todayIso().slice(0, 7));
   const [exportLevel, setExportLevel] = useState<'facility' | 'payam' | 'county' | 'state' | 'national'>('facility');
   const [exporting, setExporting] = useState(false);
+  const [syncError, setSyncError] = useState('');
+  const [exportError, setExportError] = useState('');
   const [exportResult, setExportResult] = useState<{ format: string; rows: number; date: string } | null>(null);
   // Persisted sync state (last push, dataset snapshot, history) — replaces the
   // fabricated per-element statuses and seeded log lines this page used to show.
@@ -95,6 +99,7 @@ export default function DHIS2ExportPage() {
 
   const handleSync = async () => {
     setSyncing(true);
+    setSyncError('');
     try {
       const initiated = await appendDhis2LogEntry(t('dhis2.logInitiatingSync'), 'info');
       setLog(initiated);
@@ -108,6 +113,7 @@ export default function DHIS2ExportPage() {
     } catch (err) {
       const updated = await appendDhis2LogEntry(t('dhis2.logSyncFailed', { msg: (err as Error).message }), 'error').catch(() => null);
       if (updated) setLog(updated);
+      setSyncError(t('dhis2.syncNotSent'));
     } finally {
       setSyncing(false);
     }
@@ -115,6 +121,7 @@ export default function DHIS2ExportPage() {
 
   const handleExport = async (format: 'json' | 'csv') => {
     setExporting(true);
+    setExportError('');
     try {
       const { generateDHIS2Export, exportToJSON, exportToCSV } = await import('@/lib/services/dhis2-export-service');
       const dataset = await generateDHIS2Export(period, buildExportScope());
@@ -129,19 +136,20 @@ export default function DHIS2ExportPage() {
       setExportResult({ format: format.toUpperCase(), rows: dataset.dataValues?.length ?? 0, date: new Date().toLocaleString() });
     } catch (err) {
       console.error('Export failed', err);
+      setExportError(t('dhis2.exportNotCreated'));
     } finally {
       setExporting(false);
     }
   };
 
-  // Aggregate summary from real patient data
+  // Aggregate summary from real records. "OPD visits" was the patient count
+  // again under another name, so it is not repeated here.
   const summaryData = [
-    { label: t('dhis2.summaryOpdVisits'), value: patients.length, icon: BarChart3, color: 'var(--accent-primary)' },
-    { label: t('dhis2.summaryMalariaCases'), value: diseaseAlerts.filter(a => a.disease?.toLowerCase().includes('malaria')).length, icon: AlertTriangle, color: 'var(--color-danger)' },
-    { label: t('dhis2.summaryActiveSurveillanceAlerts'), value: diseaseAlerts.length, icon: AlertTriangle, color: 'var(--color-warning)' },
-    { label: t('dhis2.summaryAncVisits'), value: ancStats?.totalVisits || 0, icon: FileText, color: 'var(--chart-2)' },
-    { label: t('dhis2.summaryImmunizationsGiven'), value: immStats?.totalVaccinations || 0, icon: CheckCircle, color: 'var(--color-success-text)' },
-    { label: t('dhis2.summaryTotalPatients'), value: patients.length, icon: Database, color: 'var(--chart-3)' },
+    { label: t('dhis2.summaryTotalPatients'), value: patients.length, detail: t('dhis2.summaryTotalPatientsDetail') },
+    { label: t('dhis2.summaryMalariaCases'), value: diseaseAlerts.filter(a => a.disease?.toLowerCase().includes('malaria')).length, detail: t('dhis2.summaryMalariaDetail') },
+    { label: t('dhis2.summaryActiveSurveillanceAlerts'), value: diseaseAlerts.length, detail: t('dhis2.summaryAlertsDetail') },
+    { label: t('dhis2.summaryAncVisits'), value: ancStats?.totalVisits || 0, detail: t('dhis2.summaryAncDetail') },
+    { label: t('dhis2.summaryImmunizationsGiven'), value: immStats?.totalVaccinations || 0, detail: t('dhis2.summaryImmDetail') },
   ];
 
   const tabs = [
@@ -156,60 +164,78 @@ export default function DHIS2ExportPage() {
     <>
       <main className="page-container page-enter">
 
-        <div className="dash-card mb-4">
-          <EhrListHeader
-            title={t('dhis2.pageTitle')}
-            actions={
-              <button
-                onClick={handleSync}
-                disabled={syncing}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
-                style={{
-                  background: syncing ? 'var(--overlay-medium)' : 'linear-gradient(135deg, #2191D0, #015697)',
-                  color: syncing ? 'var(--text-muted)' : '#fff',
-                  boxShadow: syncing ? 'none' : '0 4px 12px rgba(33, 145, 208, 0.3)',
-                }}
-              >
-                <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-                {syncing ? t('dhis2.syncing') : t('dhis2.syncNow')}
-              </button>
-            }
+        {/* What goes to DHIS2: the period and the level, then the one command
+            that sends it. They used to sit on the Export tab only, though a
+            sync reads the same two choices. */}
+        <section className="dx-controls" aria-label={t('dhis2.controlsTitle')} data-tour="dhis2-export-config">
+          <h2 className="dx-controls-title">{t('dhis2.controlsTitle')}</h2>
+          <div className="dx-controls-row">
+            <label className="dx-field">
+              <span>{t('dhis2.reportingPeriod')}</span>
+              <input type="month" value={period} onChange={e => setPeriod(e.target.value)} />
+            </label>
+            <label className="dx-field">
+              <span>{t('dhis2.aggregationLevel')}</span>
+              <Select value={exportLevel} onChange={e => setExportLevel(e.target.value as typeof exportLevel)}>
+                <option value="facility" disabled={!currentUser?.hospitalId}>{t('dhis2.levelFacility')}{currentUser?.hospitalId ? '' : ` ${t('dhis2.noFacilityAssigned')}`}</option>
+                <option value="payam" disabled={!u?.payam}>{t('dhis2.levelPayam')}{u?.payam ? '' : ` ${t('dhis2.noneSetOnUser')}`}</option>
+                <option value="county" disabled={!u?.county}>{t('dhis2.levelCounty')}{u?.county ? '' : ` ${t('dhis2.noneSetOnUser')}`}</option>
+                <option value="state" disabled={!u?.state}>{t('dhis2.levelState')}{u?.state ? '' : ` ${t('dhis2.noneSetOnUser')}`}</option>
+                <option value="national" disabled={!nationalAllowed}>{t('dhis2.levelNational')}{nationalAllowed ? '' : ` ${t('dhis2.nationalRestricted')}`}</option>
+              </Select>
+            </label>
+            <button type="button" onClick={handleSync} disabled={syncing} className="btn btn-primary dx-sync" data-action="dhis2-sync">
+              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? t('dhis2.syncing') : t('dhis2.syncNow')}
+            </button>
+          </div>
+          <p className="dx-controls-help">{t('dhis2.tierHelp')}</p>
+        </section>
+
+        {syncError && <InlineBanner tone="danger" onDismiss={() => setSyncError('')}>{syncError}</InlineBanner>}
+
+        {/* Status band: each tile says what it is made of and opens the tab
+            that owns it. The sync log carries one entry per attempt, not a
+            series, so there is no honest period comparison to trend. */}
+        <div className="sadb-kpi-row dx-kpis" data-tour="dhis2-status-cards">
+          <SadbKpiTile
+            label={t('dhis2.statConnection')}
+            value={dhis2Configured ? t('dhis2.statConnectionActive') : t('dhis2.statNotConfigured')}
+            delta={dhis2Configured ? (dhis2Host || t('dhis2.statConnectionDetail')) : t('dhis2.statNotConfiguredDetail')}
+            deltaTone={dhis2Configured ? undefined : 'warn'}
+          />
+          <SadbKpiTile
+            label={t('dhis2.tabDataElements')}
+            value={snapshotValues ? `${lastPushSucceeded ? elementCount : 0} / ${elementCount}` : '—'}
+            delta={snapshotValues ? t('dhis2.statElementsDetail') : t('dhis2.statNoSync')}
+            onClick={() => setActiveTab('overview')}
+          />
+          <SadbKpiTile
+            label={t('dhis2.statReportsDue')}
+            value={String(reportsSubmitted ? 0 : REPORT_TYPES.length)}
+            delta={t('dhis2.statReportsDetail', { count: REPORT_TYPES.length, period })}
+            deltaTone={reportsSubmitted ? undefined : 'warn'}
+            onClick={() => setActiveTab('reports')}
+          />
+          <SadbKpiTile
+            label={t('dhis2.statLastSync')}
+            value={lastSyncedLabel ? lastSyncShort : t('dhis2.statNever')}
+            delta={lastSyncedLabel || t('dhis2.statLastSyncNone')}
+            onClick={() => setActiveTab('log')}
           />
         </div>
 
-        {/* Status Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6" data-tour="dhis2-status-cards">
-          {[
-            dhis2Configured
-              ? { label: t('dhis2.statConnection'), value: t('dhis2.statConnectionActive'), icon: Wifi, color: 'var(--color-success-text)', sub: dhis2Host || '' }
-              : { label: t('dhis2.statConnection'), value: 'Not configured', icon: Wifi, color: 'var(--color-warning-text)', sub: 'Set NEXT_PUBLIC_DHIS2_BASE_URL' },
-            { label: t('dhis2.tabDataElements'), value: snapshotValues ? `${lastPushSucceeded ? elementCount : 0}/${elementCount}` : '—', icon: Database, color: 'var(--accent-primary)', sub: snapshotValues ? t('sync.synced') : 'No sync run yet' },
-            { label: t('dhis2.statReportsDue'), value: String(reportsSubmitted ? 0 : REPORT_TYPES.length), icon: FileText, color: 'var(--color-warning-text)', sub: t('dhis2.statPendingCompletion') },
-            { label: t('dhis2.statLastSync'), value: lastSyncedLabel ? lastSyncShort : 'Never', icon: Clock, color: 'var(--accent-hover)', sub: lastSyncedLabel || 'Run a sync to push data' },
-          ].map((stat) => (
-            <div key={stat.label} className="card-elevated p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <stat.icon className="w-4 h-4" style={{ color: stat.color }} />
-                <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{stat.label}</span>
-              </div>
-              <p className="text-xl font-bold" style={{ color: stat.color }}>{stat.value}</p>
-              <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{stat.sub}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-0 border-b mb-5 overflow-x-auto" style={{ borderColor: 'var(--border-light)' }}>
+        {/* Tabs: underline strip, no fill */}
+        <div role="tablist" data-tab-style="underline" className="dx-tabs">
           {tabs.map(tab => (
             <button
               key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
               data-tour={`dhis2-tab-${tab.id}`}
               onClick={() => setActiveTab(tab.id)}
-              className="flex items-center gap-2 px-4 py-3 text-sm font-bold whitespace-nowrap transition-colors"
-              style={{
-                color: activeTab === tab.id ? 'var(--accent-primary)' : 'var(--text-muted)',
-                borderBottom: activeTab === tab.id ? '2px solid var(--accent-primary)' : '2px solid transparent',
-              }}
+              className="dx-tab"
             >
               <tab.icon className="w-4 h-4" />
               {tab.label}
@@ -221,297 +247,203 @@ export default function DHIS2ExportPage() {
         {activeTab === 'overview' && (
           <div className="card-elevated overflow-hidden">
             {!snapshotValues ? (
-              <div className="text-center py-12">
+              <div className="sadb-empty text-center py-12">
                 <Database className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
-                <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('ui.noSyncHasRunYet')}</p>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                  {t('ui.press')}{t('dhis2.syncNow')}{t('ui.toGenerateTheCurrentDataset')}
-                </p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('dhis2.noSyncTitle')}</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{t('dhis2.noSyncHelp', { action: t('dhis2.syncNow') })}</p>
               </div>
             ) : (
-              <>
-                <div className="hidden sm:grid" style={{
-                  gridTemplateColumns: '2fr 1fr 1.2fr 0.8fr 1.2fr',
-                  padding: '10px 20px',
-                  borderBottom: '1px solid var(--border-light)',
-                }}>
-                  {[t('dhis2.colDataElement'), 'Value', t('pharmacy.category'), t('lab.status'), t('dhis2.statLastSync')].map(h => (
-                    <span key={h} className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{h}</span>
-                  ))}
-                </div>
-                {elementGroups.flatMap(group => group.elements.map(de => (
-                  <div
-                    key={`${group.label}-${de.dataElement}`}
-                    className="sm:grid items-center transition-colors"
-                    style={{
-                      gridTemplateColumns: '2fr 1fr 1.2fr 0.8fr 1.2fr',
-                      padding: '12px 20px',
-                      borderBottom: '1px solid var(--border-light)',
-                    }}
-                  >
-                    <div className="flex items-center gap-2 mb-1 sm:mb-0">
-                      <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
-                        {de.dataElement.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}
-                      </span>
-                    </div>
-                    <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{de.value}</span>
-                    <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{group.label}</span>
-                    <div>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                        lastPushSucceeded ? 'badge-normal' : 'badge-warning'
-                      }`}>
-                        {lastPushSucceeded ? t('sync.synced') : t('lab.filterPending')}
-                      </span>
-                    </div>
-                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{lastSyncedLabel || '—'}</span>
-                  </div>
-                )))}
-              </>
+              <div className="overflow-x-auto">
+                <table className="w-full" style={{ minWidth: 640 }}>
+                  <thead>
+                    <tr>
+                      <th>{t('dhis2.colDataElement')}</th>
+                      <th>{t('dhis2.colValue')}</th>
+                      <th>{t('pharmacy.category')}</th>
+                      <th>{t('lab.status')}</th>
+                      <th>{t('dhis2.statLastSync')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {elementGroups.flatMap(group => group.elements.map(de => (
+                      <tr key={`${group.label}-${de.dataElement}`}>
+                        <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {de.dataElement.replace(/_/g, ' ').toLowerCase().replace(/^\w/, c => c.toUpperCase())}
+                        </td>
+                        <td className="tabular-nums" style={{ color: 'var(--text-secondary)' }}>{de.value}</td>
+                        <td style={{ color: 'var(--text-secondary)' }}>{group.label}</td>
+                        <td>
+                          <span className={`sadb-chip ${lastPushSucceeded ? 'sadb-chip--green' : 'sadb-chip--yellow'}`}>
+                            {lastPushSucceeded ? t('sync.synced') : t('lab.filterPending')}
+                          </span>
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)' }}>{lastSyncedLabel || '—'}</td>
+                      </tr>
+                    )))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}
 
         {/* ── HMIS REPORTS TAB ── */}
         {activeTab === 'reports' && (
-          <div className="space-y-3" data-tour="dhis2-reports-list">
+          <div className="card-elevated overflow-hidden" data-tour="dhis2-reports-list">
             {/* Every HMIS report here is fed by the same aggregate dataset push,
-                so status/completeness derive from the REAL last sync for the
-                selected period — not per-report fabrications. */}
-            {REPORT_TYPES.map((report) => (
-              <div key={report.name} className="card-elevated p-5">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{report.name}</h3>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{period}{lastSyncedLabel ? ` · ${t('dhis2.statLastSync')}: ${lastSyncedLabel}` : ''}</p>
-                  </div>
-                  <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-md ${
-                    reportsSubmitted ? 'badge-normal' : 'badge-muted'
-                  }`} style={reportsSubmitted ? {} : { background: 'var(--overlay-subtle)', color: 'var(--text-muted)' }}>
-                    {reportsSubmitted ? 'submitted' : 'pending'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--overlay-medium)' }}>
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: `${reportCompleteness}%`,
-                        background: reportCompleteness === 100 ? 'var(--color-success)' : reportCompleteness > 50 ? 'var(--accent-primary)' : 'var(--color-warning)',
-                      }}
-                    />
-                  </div>
-                  <span className="text-sm font-bold font-mono" style={{ color: 'var(--text-primary)', minWidth: '36px' }}>
-                    {reportCompleteness}%
-                  </span>
-                </div>
-                {!reportsSubmitted && (
-                  <div className="flex items-center gap-2 mt-3">
-                    <button
-                      onClick={() => setActiveTab('aggregate')}
-                      className="text-xs font-bold flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors"
-                      style={{
-                        background: 'var(--accent-light)',
-                        color: 'var(--accent-primary)',
-                        border: '1px solid var(--accent-border)',
-                      }}
-                    >
-                      <FileText className="w-3 h-3" /> {t('dhis2.reviewData')}
-                    </button>
-                    <button
-                      onClick={handleSync}
-                      disabled={syncing}
-                      className="text-xs font-bold flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                      style={{
-                        background: 'rgba(79, 199, 155,0.08)',
-                        color: 'var(--color-success-text)',
-                        border: '1px solid rgba(79, 199, 155,0.15)',
-                        cursor: syncing ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      <Upload className="w-3 h-3" /> {syncing ? t('dhis2.submitting') : t('action.submit')}
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+                so status and completeness come from the real last sync for the
+                selected period, not from per-report figures. */}
+            <div className="overflow-x-auto">
+              <table className="w-full" style={{ minWidth: 720 }}>
+                <thead>
+                  <tr>
+                    <th>{t('dhis2.colReport')}</th>
+                    <th>{t('dhis2.colPeriod')}</th>
+                    <th>{t('dhis2.colCompleteness')}</th>
+                    <th>{t('lab.status')}</th>
+                    <th>{t('dhis2.colNextStep')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {REPORT_TYPES.map(report => (
+                    <tr key={report.name}>
+                      <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{report.name}</td>
+                      <td className="tabular-nums" style={{ color: 'var(--text-secondary)' }}>{period}</td>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 rounded-full overflow-hidden flex-shrink-0" style={{ width: 90, background: 'var(--overlay-medium)' }}>
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${reportCompleteness}%`,
+                                background: reportCompleteness === 100 ? 'var(--color-success)' : reportCompleteness > 50 ? 'var(--accent-primary)' : 'var(--color-warning)',
+                              }}
+                            />
+                          </div>
+                          <span className="tabular-nums" style={{ fontWeight: 600 }}>{reportCompleteness}%</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`sadb-chip ${reportsSubmitted ? 'sadb-chip--green' : 'sadb-chip--yellow'}`}>
+                          {reportsSubmitted ? t('dhis2.statusSubmitted') : t('lab.filterPending')}
+                        </span>
+                      </td>
+                      <td>
+                        {reportsSubmitted ? (
+                          <span style={{ color: 'var(--text-muted)' }}>—</span>
+                        ) : (
+                          <span className="flex items-center gap-4">
+                            <button type="button" className="dx-opener" onClick={() => setActiveTab('aggregate')}>{t('dhis2.reviewData')}</button>
+                            <button type="button" className="dx-opener" onClick={handleSync} disabled={syncing}>
+                              {syncing ? t('dhis2.submitting') : t('action.submit')}
+                            </button>
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
         {/* ── AGGREGATE DATA TAB ── */}
         {activeTab === 'aggregate' && (
           <div>
-            <div className="card-elevated p-5 mb-5">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{t('dhis2.autoAggregated')}</h3>
-                  {/* These are running totals of what is on record, not one month: the
-                      export below is what uses the selected period. */}
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('dhis2.totalsToDate')} · {hospitalName}</p>
-                </div>
-                <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-md" style={{
-                  background: 'var(--accent-light)',
-                  color: 'var(--accent-primary)',
-                }}>{t('dhis2.liveData')}</span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {summaryData.map((item) => (
-                  <div key={item.label} className="p-4 rounded-xl" style={{
-                    background: 'var(--overlay-subtle)',
-                    border: '1px solid var(--border-light)',
-                  }}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <item.icon className="w-4 h-4" style={{ color: item.color }} />
-                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.label}</span>
-                    </div>
-                    <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{item.value}</p>
-                    <p className="text-[10px] font-bold mt-1" style={{ color: item.color }}>{t('dhis2.mapsToDhis2')}</p>
-                  </div>
-                ))}
-              </div>
+            {/* Running totals of what is on record, not one month: the export
+                is what uses the selected period. */}
+            <h2 className="dx-section-title">{t('dhis2.autoAggregated')}</h2>
+            <p className="dx-section-sub">{t('dhis2.totalsToDate')}{hospitalName ? ` · ${hospitalName}` : ''}</p>
+            <div className="sadb-kpi-row dx-kpis">
+              {summaryData.map(item => (
+                <SadbKpiTile key={item.label} label={item.label} value={item.value.toLocaleString()} delta={item.detail} />
+              ))}
             </div>
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-white transition-all"
-              style={{
-                background: 'linear-gradient(135deg, #2191D0, #015697)',
-                boxShadow: '0 4px 12px rgba(33, 145, 208, 0.3)',
-              }}
-            >
-              <Upload className="w-4 h-4" />
-              {t('dhis2.pushAggregateData')}
-            </button>
           </div>
         )}
 
         {/* ── EXPORT TAB ── */}
         {activeTab === 'export' && (
-          <div className="max-w-2xl">
-            <div className="card-elevated p-6 mb-5" data-tour="dhis2-export-config">
-              <h3 className="font-semibold text-sm mb-4">{t('dhis2.exportConfiguration')}</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('dhis2.reportingPeriod')}</label>
-                  <input
-                    type="month"
-                    value={period}
-                    onChange={e => setPeriod(e.target.value)}
-                    className="w-full p-2.5 rounded-xl text-sm outline-none"
-                    style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('dhis2.aggregationLevel')}</label>
-                  <Select
-                    value={exportLevel}
-                    onChange={e => setExportLevel(e.target.value as typeof exportLevel)}
-                    className="w-full p-2.5 rounded-xl text-sm outline-none"
-                    style={{ background: 'var(--overlay-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }}
-                  >
-                    <option value="facility" disabled={!currentUser?.hospitalId}>{t('dhis2.levelFacility')}{currentUser?.hospitalId ? '' : ` ${t('dhis2.noFacilityAssigned')}`}</option>
-                    <option value="payam" disabled={!u?.payam}>{t('dhis2.levelPayam')}{u?.payam ? '' : ` ${t('dhis2.noneSetOnUser')}`}</option>
-                    <option value="county" disabled={!u?.county}>{t('dhis2.levelCounty')}{u?.county ? '' : ` ${t('dhis2.noneSetOnUser')}`}</option>
-                    <option value="state" disabled={!u?.state}>{t('dhis2.levelState')}{u?.state ? '' : ` ${t('dhis2.noneSetOnUser')}`}</option>
-                    <option value="national" disabled={!nationalAllowed}>{t('dhis2.levelNational')}{nationalAllowed ? '' : ` ${t('dhis2.nationalRestricted')}`}</option>
-                  </Select>
-                  <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>{t('dhis2.tierHelp')}</p>
-                </div>
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider mb-2 block" style={{ color: 'var(--text-muted)' }}>{t('dhis2.dataElementsIncluded')}</label>
-                  <div className="space-y-1.5">
-                    {[
-                      t('dhis2.includePopulationHealth'),
-                      t('dhis2.includeCrvs'),
-                      t('dhis2.includeMortality'),
-                      t('dhis2.includeSurveillance'),
-                      t('dhis2.includeDataQuality'),
-                      t('dhis2.includePerFacility'),
-                    ].map(item => (
-                      <div key={item} className="flex items-center gap-2">
-                        <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--accent-primary)' }} />
-                        <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+          <div className="dx-export-grid">
+            <div className="card-elevated dx-card">
+              <h2 className="dx-card-title">{t('dhis2.dataElementsIncluded')}</h2>
+              <ul className="dx-include">
+                {[
+                  t('dhis2.includePopulationHealth'),
+                  t('dhis2.includeCrvs'),
+                  t('dhis2.includeMortality'),
+                  t('dhis2.includeSurveillance'),
+                  t('dhis2.includeDataQuality'),
+                  t('dhis2.includePerFacility'),
+                ].map(item => (
+                  <li key={item}>
+                    <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--accent-primary)' }} />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            <div className="card-elevated p-6 mb-5">
-              <h3 className="font-semibold text-sm mb-4">{t('dhis2.exportFormat')}</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={() => handleExport('json')}
-                  disabled={exporting}
-                  className="p-4 rounded-xl border text-start transition-all hover:shadow-md"
-                  style={{ borderColor: 'var(--border-light)', background: 'var(--overlay-subtle)' }}
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <FileJson className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />
-                    <span className="font-semibold text-sm">JSON</span>
-                  </div>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('dhis2.jsonDesc')}</p>
-                  <div className="mt-3 flex items-center gap-2 text-xs font-bold" style={{ color: 'var(--accent-primary)' }}>
+            <div className="card-elevated dx-card">
+              <h2 className="dx-card-title">{t('dhis2.exportFormat')}</h2>
+              <div className="dx-formats">
+                <button type="button" onClick={() => handleExport('json')} disabled={exporting} className="dx-format">
+                  <span className="dx-format-head"><FileJson className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />JSON</span>
+                  <span className="dx-format-desc">{t('dhis2.jsonDesc')}</span>
+                  <span className="dx-opener-text">
                     {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
                     {t('dhis2.downloadJson')}
-                  </div>
+                  </span>
                 </button>
-                <button
-                  onClick={() => handleExport('csv')}
-                  disabled={exporting}
-                  className="p-4 rounded-xl border text-start transition-all hover:shadow-md"
-                  style={{ borderColor: 'var(--border-light)', background: 'var(--overlay-subtle)' }}
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <FileSpreadsheet className="w-5 h-5" style={{ color: 'var(--color-success-text)' }} />
-                    <span className="font-semibold text-sm">CSV</span>
-                  </div>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('dhis2.csvDesc')}</p>
-                  <div className="mt-3 flex items-center gap-2 text-xs font-bold" style={{ color: 'var(--color-success-text)' }}>
+                <button type="button" onClick={() => handleExport('csv')} disabled={exporting} className="dx-format">
+                  <span className="dx-format-head"><FileSpreadsheet className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} />CSV</span>
+                  <span className="dx-format-desc">{t('dhis2.csvDesc')}</span>
+                  <span className="dx-opener-text">
                     {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
                     {t('dhis2.downloadCsv')}
-                  </div>
+                  </span>
                 </button>
               </div>
-            </div>
-
-            {exportResult && (
-              <div className="card-elevated p-4" style={{ background: 'rgba(33, 145, 208, 0.06)', border: '1px solid var(--accent-border)' }}>
-                <div className="flex items-center gap-2 mb-1">
-                  <CheckCircle className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                  <span className="font-semibold text-sm" style={{ color: 'var(--accent-primary)' }}>{t('dhis2.exportSuccessful')}</span>
-                </div>
-                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+              {exportError && <InlineBanner tone="danger" onDismiss={() => setExportError('')}>{exportError}</InlineBanner>}
+              {exportResult && (
+                <InlineBanner tone="success" title={t('dhis2.exportSuccessful')}>
                   {t('dhis2.exportSummary', { rows: exportResult.rows, format: exportResult.format, period, date: exportResult.date })}
-                </p>
-              </div>
-            )}
+                </InlineBanner>
+              )}
+            </div>
           </div>
         )}
 
         {/* ── SYNC LOG TAB ── */}
         {activeTab === 'log' && (
           <div className="card-elevated overflow-hidden" data-tour="dhis2-sync-log">
-            {(log?.entries ?? []).map((entry, i) => (
-              <div
-                key={`${entry.time}-${i}`}
-                className="flex items-center gap-3 px-5 py-3 transition-colors"
-                style={{
-                  borderBottom: '1px solid var(--border-light)',
-                  animation: i === 0 ? 'slideIn 0.3s ease' : undefined,
-                }}
-              >
-                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{
-                  background: entry.status === 'success' ? 'var(--color-success)' : entry.status === 'error' ? 'var(--color-danger)' : 'var(--accent-primary)',
-                }} />
-                <span className="text-xs font-mono flex-shrink-0" style={{ color: 'var(--text-muted)', minWidth: '150px' }}>{new Date(entry.time).toLocaleString()}</span>
-                <span className="text-sm" style={{
-                  color: entry.status === 'error' ? 'var(--color-danger-text)' : 'var(--text-secondary)',
-                }}>{entry.message}</span>
-              </div>
-            ))}
+            {(log?.entries ?? []).length > 0 && (
+              <table className="w-full">
+                <thead>
+                  <tr>
+                    <th>{t('dhis2.colTime')}</th>
+                    <th>{t('lab.status')}</th>
+                    <th>{t('dhis2.colMessage')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(log?.entries ?? []).map((entry, i) => (
+                    <tr key={`${entry.time}-${i}`}>
+                      <td className="tabular-nums" style={{ whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>{new Date(entry.time).toLocaleString()}</td>
+                      <td>
+                        <span className={`sadb-chip ${entry.status === 'success' ? 'sadb-chip--green' : entry.status === 'error' ? 'sadb-chip--red' : 'sadb-chip--blue'}`}>
+                          {entry.status === 'success' ? t('dhis2.logSuccess') : entry.status === 'error' ? t('dhis2.logError') : t('dhis2.logInfo')}
+                        </span>
+                      </td>
+                      <td style={{ color: entry.status === 'error' ? 'var(--color-danger-text)' : 'var(--text-primary)' }}>{entry.message}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
             {(log?.entries ?? []).length === 0 && (
-              <div className="text-center py-12">
+              <div className="sadb-empty text-center py-12">
                 <Clock className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
                 <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('dhis2.noSyncActivity')}</p>
               </div>

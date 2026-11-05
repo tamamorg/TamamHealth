@@ -10,9 +10,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Plus, Wallet } from '@/components/icons/lucide';
 import AddPayrollEntryDialog from '@/components/create-dialogs/AddPayrollEntryDialog';
-import EhrListHeader, { EhrListHeaderButton } from '@/components/ehr/EhrListHeader';
+import EhrListHeader from '@/components/ehr/EhrListHeader';
 import RowStatusSelect from '@/components/ehr/RowStatusSelect';
 import EmptyState from '@/components/EmptyState';
+import FacilityKpiBand from '@/components/dashboards/FacilityKpiBand';
+import { trendBetween } from '@/components/admin/sadb-ui';
 import { formatMoney } from '@/lib/format-utils';
 import type { PayrollEntryDoc } from '@/lib/db-types-hr';
 import type { PayrollSummary } from '@/lib/services/payroll-service';
@@ -57,16 +59,23 @@ export default function HrPayrollPage() {
   const [payroll, setPayroll] = useState<PayrollEntryDoc[]>([]);
   const [summary, setSummary] = useState<PayrollSummary | null>(null);
   const [period, setPeriod] = useState(todayIso().slice(0, 7));
+  // The month before the one on screen: the only history payroll carries, so
+  // it is what the tiles' trends compare against.
+  const [prevSummary, setPrevSummary] = useState<PayrollSummary | null>(null);
   const [open, setOpen] = useState(false);
 
   const reload = useCallback(async () => {
     const { getPayrollByPeriod, getPayrollSummary } = await import('@/lib/services/payroll-service');
-    const [list, sum] = await Promise.all([
+    const [y, m] = period.split('-').map(Number);
+    const prevPeriod = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+    const [list, sum, prev] = await Promise.all([
       getPayrollByPeriod(period),
       getPayrollSummary(period),
+      getPayrollSummary(prevPeriod),
     ]);
     setPayroll(list);
     setSummary(sum);
+    setPrevSummary(prev);
   }, [period]);
   useEffect(() => { reload(); }, [reload]);
 
@@ -91,18 +100,27 @@ export default function HrPayrollPage() {
     }
   };
 
+  const money = (n: number) => formatMoney(n);
+  const moneyTrend = (now: number, before: number | undefined, good: 'up' | 'down') => (
+    prevSummary && prevSummary.total > 0 && before !== undefined
+      ? { direction: trendBetween(now, before), label: t('hr.kpiVsLastMonth', { amount: money(before) }), good }
+      : undefined
+  );
+
   return (
     <HrPageShell>
+      {summary && (
+        <FacilityKpiBand tiles={[
+          { key: 'gross', label: t('hr.kpiGrossPay'), value: money(summary.totalGross), detail: t(summary.total === 1 ? 'hr.kpiGrossPayDetailOne' : 'hr.kpiGrossPayDetailMany', { count: summary.total }), trend: moneyTrend(summary.totalGross, prevSummary?.totalGross, 'up') },
+          { key: 'ded', label: t('hr.kpiDeductions'), value: money(summary.totalDeductions), detail: summary.totalGross > 0 ? t('hr.kpiDeductionsDetail', { percent: Math.round((summary.totalDeductions / summary.totalGross) * 100) }) : t('hr.kpiNoGrossPay'), trend: moneyTrend(summary.totalDeductions, prevSummary?.totalDeductions, 'down') },
+          { key: 'net', label: t('hr.kpiNetPay'), value: money(summary.totalNet), detail: t('hr.kpiNetPayDetail'), trend: moneyTrend(summary.totalNet, prevSummary?.totalNet, 'up') },
+          { key: 'paid', label: t('hr.kpiPaid'), value: t('hr.kpiPaidValue', { paid: summary.paid, total: summary.total }), detail: summary.total - summary.paid > 0 ? t('hr.kpiStillToPay', { count: summary.total - summary.paid }) : t('hr.kpiEveryEntryPaid'), warn: summary.total - summary.paid > 0 && summary.total > 0 },
+        ]} />
+      )}
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="hr-payroll-list">
         <EhrListHeader
           title={t('ui.payrollRegister')}
           count={summary ? summary.total : payroll.length}
-          stats={summary ? [
-            { label: t('hr.pillGross'), value: formatMoney(summary.totalGross), color: 'var(--accent-primary)' },
-            { label: t('hr.pillDeductions'), value: formatMoney(summary.totalDeductions), color: 'var(--color-warning-text)' },
-            { label: t('hr.pillNet'), value: formatMoney(summary.totalNet), color: 'var(--color-success)' },
-            { label: t('hr.pillPaid'), value: `${summary.paid}/${summary.total}`, color: 'var(--color-success)' },
-          ] : []}
           actions={
             <>
               <input
@@ -113,9 +131,9 @@ export default function HrPayrollPage() {
                 className="listpage-toolbar-date"
                 style={{ flex: 1, minWidth: 0 }}
               />
-              <EhrListHeaderButton primary onClick={() => setOpen(true)} ariaLabel={t('hr.addPayrollEntry')}>
-                <Plus className="w-4 h-4" color="#fff" />
-              </EhrListHeaderButton>
+              <button type="button" className="btn btn-primary" onClick={() => setOpen(true)}>
+                <Plus className="w-4 h-4" /> {t('hr.addPayrollEntry')}
+              </button>
             </>
           }
         />

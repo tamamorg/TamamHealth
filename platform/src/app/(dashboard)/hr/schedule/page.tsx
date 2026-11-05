@@ -8,11 +8,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { AlertTriangle, CalendarClock, Plus } from '@/components/icons/lucide';
+import { CalendarClock, Plus } from '@/components/icons/lucide';
 import CreateShiftDialog from '@/components/create-dialogs/CreateShiftDialog';
-import EhrListHeader, { EhrListHeaderButton } from '@/components/ehr/EhrListHeader';
+import EhrListHeader from '@/components/ehr/EhrListHeader';
 import RowStatusSelect from '@/components/ehr/RowStatusSelect';
 import EmptyState from '@/components/EmptyState';
+import InlineBanner from '@/components/overlay/InlineBanner';
+import FacilityKpiBand from '@/components/dashboards/FacilityKpiBand';
 import type { StaffScheduleDoc } from '@/lib/db-types';
 import { todayIso } from '@/lib/date-utils';
 import {
@@ -101,19 +103,21 @@ export default function HrSchedulePage() {
     }
   };
 
+  const shiftCount = (type: string) => schedules.filter(s => s.shiftType === type).length;
+  const shortBy = staffingGaps.reduce((n, g) => n + g.gap, 0);
+
   return (
     <HrPageShell>
+      <FacilityKpiBand tiles={[
+        { key: 'shifts', label: t('hr.kpiShifts'), value: schedules.length, detail: SHIFT_TYPES.map(type => t('hr.kpiShiftCount', { count: shiftCount(type), type: t(`hr.shiftType_${type}`).toLowerCase() })).join(' · ') },
+        { key: 'confirmed', label: t('hr.kpiConfirmed'), value: schedules.filter(s => s.status === 'confirmed' || s.status === 'completed').length, detail: t('hr.kpiConfirmedDetail', { count: schedules.length, date }) },
+        { key: 'oncall', label: t('hr.kpiOnCall'), value: schedules.filter(s => s.isOnCall).length, detail: t('hr.kpiOnCallDetail') },
+        { key: 'gap', label: t('hr.kpiShortStaffed'), value: shortBy, detail: staffingGaps.length ? t('hr.kpiShortStaffedDetail', { gaps: staffingGaps.length, total: SHIFT_TYPES.length }) : t('hr.kpiShortStaffedNone'), warn: staffingGaps.length > 0 },
+      ]} />
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }} data-tour="hr-schedule-list">
         <EhrListHeader
           title={t('ui.shiftSchedule')}
           count={schedules.length}
-          stats={[
-            ...SHIFT_TYPES.map(shift => ({
-              label: t(`hr.shiftType_${shift}`),
-              value: schedules.filter(s => s.shiftType === shift).length,
-              color: SHIFT_TOKENS[shift].color,
-            })),
-          ]}
           actions={
             <>
               <input
@@ -124,9 +128,9 @@ export default function HrSchedulePage() {
                 className="listpage-toolbar-date"
                 style={{ flex: 1, minWidth: 0 }}
               />
-              <EhrListHeaderButton primary onClick={() => setOpen(true)} ariaLabel={t('hr.scheduleShift')}>
-                <Plus className="w-4 h-4" color="#fff" />
-              </EhrListHeaderButton>
+              <button type="button" className="btn btn-primary" onClick={() => setOpen(true)}>
+                <Plus className="w-4 h-4" /> {t('hr.scheduleShift')}
+              </button>
             </>
           }
         />
@@ -134,43 +138,17 @@ export default function HrSchedulePage() {
             minimum per shift type, not a list of specific vacant shifts
             (this data model has no unassigned-shift record). */}
         {staffingGaps.length > 0 && (
-          <div
-            ref={gapsRef}
-            className="mx-4 mt-3 mb-1 p-3 rounded-xl flex flex-wrap items-center gap-3"
-            style={{
-              background: 'rgba(224, 49, 39, 0.06)',
-              border: gapsParam ? '2px solid var(--color-danger-500)' : '1px solid rgba(224, 49, 39, 0.25)',
-            }}
-          >
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--color-danger-text)' }}>
-              <AlertTriangle className="w-4 h-4" />
-              {t('ui.staffingShortfall')}
-            </span>
-            <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              {t('ui.belowTheConfiguredMinimumFor')} {date}.
-            </span>
-            <div className="flex flex-wrap gap-2 ms-auto">
-              {staffingGaps.map(g => (
-                <span
-                  key={g.shift}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-1 rounded-lg whitespace-nowrap"
-                  style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
-                >
-                  <span className="capitalize">{t(`hr.shiftType_${g.shift}`)}</span>
-                  <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>{g.currentStaff}/{g.requiredStaff}</span>
-                  <span className="tabular-nums font-bold" style={{ color: 'var(--color-danger-text)' }}>(−{g.gap})</span>
-                </span>
-              ))}
-            </div>
+          <div ref={gapsRef} className="mx-4 mt-3 mb-1" style={gapsParam ? { outline: '2px solid var(--color-danger-500)', outlineOffset: 2 } : undefined}>
+            <InlineBanner tone="warning" title={t('ui.staffingShortfall')}>
+              {staffingGaps.map(g => { const name = t(`hr.shiftType_${g.shift}`); return t('hr.staffingGapLine', { shift: `${name.charAt(0).toUpperCase()}${name.slice(1)}`, current: g.currentStaff, required: g.requiredStaff, gap: g.gap }); }).join(' · ')}
+            </InlineBanner>
           </div>
         )}
         {staffingGaps.length === 0 && gapsParam && (
-          <div
-            ref={gapsRef}
-            className="mx-4 mt-3 mb-1 p-3 rounded-xl text-[11px] font-semibold"
-            style={{ background: 'rgba(15, 160, 106, 0.08)', border: '1px solid rgba(15, 160, 106, 0.3)', color: 'var(--color-success-text)' }}
-          >
-            {t('ui.fullyStaffedEveryShiftType')} {date}.
+          <div ref={gapsRef} className="mx-4 mt-3 mb-1">
+            <InlineBanner tone="success">
+              {t('hr.fullyStaffedMinimum', { date })}
+            </InlineBanner>
           </div>
         )}
         {/* The patient registry's list, exactly: the same surface + flow

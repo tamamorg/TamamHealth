@@ -2,11 +2,12 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import FormSlider from '@/components/overlay/FormSlider';
-import { AlertTriangle, Shield, TrendingUp, TrendingDown, Minus, FileText, ChevronRight, Download, Plus } from '@/components/icons/lucide';
+import { Shield, TrendingUp, TrendingDown, Minus, Download, Plus } from '@/components/icons/lucide';
 import EmptyState from '@/components/EmptyState';
 import Badge, { type BadgeTone } from '@/components/Badge';
-import { formatDate, isoWeek } from '@/lib/format-utils';
+import { isoWeek } from '@/lib/format-utils';
 // `states` is the real ADM1 state list — a leaf reference module with no
 // mock.ts generator behind it — used to populate the state dropdown.
 import { countiesFor, locationLabel, states } from '@/lib/data/south-sudan-reference';
@@ -22,6 +23,8 @@ import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { downloadJson, safeFilenamePart } from '@/lib/export-file';
 import { ChartLoadingState, type ChartType } from '@/components/ChartCard';
+import { SadbKpiTile, trendBetween } from '@/components/admin/sadb-ui';
+import { Field, FieldRow } from '@/components/oversight/OversightKit';
 
 /** How many weekly buckets the trend chart shows: six weeks, a quarter, a year. */
 type TrendWindow = 6 | 13 | 52;
@@ -84,7 +87,7 @@ const alertDotColors: Record<string, string> = {
 // fatality rate (CFR). The legacy hard-coded numbers were highly
 // suggestive of a real outbreak picture and would be reported to MOH —
 // computing from real PouchDB content avoids that.
-type IDSRRow = { disease: string; casesThisWeek: number; casesPrevWeek: number; deaths: number; cfrPercent: number };
+type IDSRRow = { disease: string; casesThisWeek: number; casesPrevWeek: number; deaths: number; deathsPrevWeek: number; cfrPercent: number };
 
 function buildIDSRSummary(alerts: Array<{ disease: string; cases: number; deaths: number; reportDate: string }>): IDSRRow[] {
   // Latest week present in the data is "this week"; the one before is "prev week".
@@ -98,17 +101,18 @@ function buildIDSRSummary(alerts: Array<{ disease: string; cases: number; deaths
   const thisWeek = sortedWeeks[sortedWeeks.length - 1];
   const prevWeek = sortedWeeks.length > 1 ? sortedWeeks[sortedWeeks.length - 2] : '';
 
-  const byDisease = new Map<string, { thisWeek: number; prevWeek: number; deaths: number }>();
+  const byDisease = new Map<string, { thisWeek: number; prevWeek: number; deaths: number; deathsPrev: number }>();
   for (const a of alerts) {
     const w = isoWeek(a.reportDate);
     if (!w) continue;
     const wk = `${w.year}-${String(w.week).padStart(2, '0')}`;
-    const row = byDisease.get(a.disease) ?? { thisWeek: 0, prevWeek: 0, deaths: 0 };
+    const row = byDisease.get(a.disease) ?? { thisWeek: 0, prevWeek: 0, deaths: 0, deathsPrev: 0 };
     if (wk === thisWeek) {
       row.thisWeek += a.cases || 0;
       row.deaths += a.deaths || 0;
     } else if (wk === prevWeek) {
       row.prevWeek += a.cases || 0;
+      row.deathsPrev += a.deaths || 0;
     }
     byDisease.set(a.disease, row);
   }
@@ -119,6 +123,7 @@ function buildIDSRSummary(alerts: Array<{ disease: string; cases: number; deaths
       casesThisWeek: v.thisWeek,
       casesPrevWeek: v.prevWeek,
       deaths: v.deaths,
+      deathsPrevWeek: v.deathsPrev,
       cfrPercent: v.thisWeek > 0 ? Number(((v.deaths / v.thisWeek) * 100).toFixed(1)) : 0,
     }))
     .sort((a, b) => b.casesThisWeek - a.casesThisWeek);
@@ -149,6 +154,14 @@ const REPORTABLE_DISEASES = [
 
 export default function SurveillancePage() {
   const { t } = useTranslation();
+  // The alert level in words ("Emergency"), never the raw stored value.
+  const levelLabel = (level: string) => ({
+    emergency: t('surveillance.levelEmergency'),
+    warning: t('surveillance.levelWarning'),
+    watch: t('surveillance.levelWatch'),
+    normal: t('surveillance.levelNormal'),
+  } as Record<string, string>)[level] ?? level;
+  const router = useRouter();
   const [hoveredHospital, setHoveredHospital] = useState<string | null>(null);
   const [showNewAlert, setShowNewAlert] = useState(false);
   const [alertForm, setAlertForm] = useState({
@@ -334,56 +347,45 @@ export default function SurveillancePage() {
     <>
       <main className="page-container page-enter">
 
-        {/* ── Header: what/where/when — gov-page-head, no decorative hero ── */}
-        <div className="gov-page-head">
-          <div>
-            <h1>{t('nav.surveillance')}</h1>
-            <p>{t('surveillance.dashboardSubtitle', { week: reportingWeek })}</p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {canReportAlert && (
-              <button type="button" className="btn btn-primary" onClick={() => setShowNewAlert(true)}>
-                <Plus className="w-4 h-4" />
-                {t('surveillance.reportAlert')}
-              </button>
-            )}
-            <button type="button" className="btn btn-secondary" onClick={handleExport}>
-              <Download className="w-4 h-4" />
-              {t('surveillance.exportReport')}
-            </button>
-          </div>
-        </div>
-
-        {/* Aggregate summary strip */}
-        <section className="gov-panel mb-4">
-          <div className="gov-panel-head">
-            <h3>{t('epidemic.colThisWeek')}</h3>
-            <span className="gov-meta">{t('surveillance.updated', { date: formatDate(new Date().toISOString()) })}</span>
-          </div>
-          <div className="flex items-center gap-8 flex-wrap p-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{t('surveillance.totalCasesThisWeek')}</span>
-              <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{totalCases.toLocaleString()}</span>
+        {/* No page title or button row: the hub tab names the page, "Report alert"
+            opens from the alert list it adds to, and the export sits in the
+            IDSR summary head. The band is this week's reporting, each figure
+            against the week before (latest two ISO weeks on file). */}
+        {(() => {
+          const cases = idsrSummary.reduce((n, r) => n + r.casesThisWeek, 0);
+          const casesPrev = idsrSummary.reduce((n, r) => n + r.casesPrevWeek, 0);
+          const deaths = idsrSummary.reduce((n, r) => n + r.deaths, 0);
+          const deathsPrev = idsrSummary.reduce((n, r) => n + r.deathsPrevWeek, 0);
+          const hasPrev = idsrSummary.some(r => r.casesPrevWeek > 0);
+          return (
+            <div className="sadb-kpi-row mb-4">
+              <SadbKpiTile
+                label={t('surveillance.totalCasesThisWeek')}
+                value={cases.toLocaleString()}
+                delta={t('surveillance.kpiDiseasesReported', { n: idsrSummary.length, week: reportingWeek })}
+                trend={hasPrev ? { direction: trendBetween(cases, casesPrev), label: t('epidemic.vsLastWeek', { count: casesPrev.toLocaleString() }), good: 'down' } : undefined}
+              />
+              <SadbKpiTile
+                label={t('surveillance.totalDeaths')}
+                value={deaths.toLocaleString()}
+                delta={t('surveillance.kpiDeathsDetail')}
+                trend={hasPrev ? { direction: trendBetween(deaths, deathsPrev), label: t('epidemic.vsLastWeek', { count: deathsPrev.toLocaleString() }), good: 'down' } : undefined}
+              />
+              <SadbKpiTile
+                label={t('surveillance.reportingFacilities')}
+                value={t('surveillance.kpiFacilitiesValue', { n: reportingFacilities.reporting.toLocaleString(), total: reportingFacilities.total.toLocaleString() })}
+                delta={t('surveillance.kpiFacilitiesDetail')}
+                onClick={() => router.push('/manage')}
+              />
+              <SadbKpiTile
+                label={t('surveillance.cfrCholera')}
+                value={`${choleraCFR}%`}
+                delta={t('surveillance.kpiCfrDetail')}
+                deltaTone={choleraCFR >= 5 ? 'warn' : undefined}
+              />
             </div>
-            <div className="w-px h-5" style={{ background: 'var(--border-light)' }} />
-            <div className="flex items-center gap-2">
-              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{t('surveillance.totalDeaths')}</span>
-              <span className="text-sm font-bold" style={{ color: 'var(--tamamhealth-red)' }}>{totalDeaths.toLocaleString()}</span>
-            </div>
-            <div className="w-px h-5" style={{ background: 'var(--border-light)' }} />
-            <div className="flex items-center gap-2">
-              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{t('surveillance.reportingFacilities')}</span>
-              <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
-                {reportingFacilities.reporting.toLocaleString()}/{reportingFacilities.total.toLocaleString()}
-              </span>
-            </div>
-            <div className="w-px h-5" style={{ background: 'var(--border-light)' }} />
-            <div className="flex items-center gap-2">
-              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{t('surveillance.cfrCholera')}</span>
-              <span className="text-sm font-bold" style={{ color: 'var(--tamamhealth-red)' }}>{choleraCFR}%</span>
-            </div>
-          </div>
-        </section>
+          );
+        })()}
 
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -424,8 +426,8 @@ export default function SurveillancePage() {
                       <path
                         key={`${s.name}-${i}`}
                         d={surveillanceProjector.ringPath(ring)}
-                        fill="rgba(33, 145, 208, 0.09)"
-                        stroke="rgba(1, 86, 151, 0.22)"
+                        fill="var(--accent-light)"
+                        stroke="var(--border-medium)"
                         strokeWidth="1"
                         strokeLinejoin="round"
                       />
@@ -445,9 +447,9 @@ export default function SurveillancePage() {
 
                   {/* White Nile / Bahr el Jebel along its real course. */}
                   <path d={surveillanceProjector.ringPath(WHITE_NILE, false)}
-                    fill="none" stroke="rgba(33, 145, 208, 0.38)" strokeWidth="2" strokeLinecap="round" />
+                    fill="none" stroke="var(--accent-primary)" strokeWidth="2" strokeLinecap="round" />
                   <text x={surveillanceProjector.project(7.5, 31.1).x + 8} y={surveillanceProjector.project(7.5, 31.1).y} fontSize="9"
-                    fill="rgba(1, 86, 151, 0.45)" fontStyle="italic">
+                    fill="var(--text-muted)" fontStyle="italic">
                     {t('ui.whiteNile')}
                   </text>
 
@@ -489,36 +491,36 @@ export default function SurveillancePage() {
                         )}
 
                         {/* Shadow */}
-                        <circle cx={pos.x} cy={pos.y + 1} r={radius} fill="rgba(0,0,0,0.1)" />
+                        <circle cx={pos.x} cy={pos.y + 1} r={radius} fill="var(--overlay-light)" />
 
                         {/* Main dot */}
                         <circle cx={pos.x} cy={pos.y} r={isHovered ? radius + 2 : radius}
-                          fill={dotColor} stroke="#001D3F" strokeWidth="2.5"
+                          fill={dotColor} stroke="var(--brand-900)" strokeWidth="2.5"
                           style={{ transition: 'r 0.15s ease' }} />
 
                         {/* National referral indicator */}
                         {h.facilityType === 'national_referral' && (
                           <text x={pos.x} y={pos.y + 3.5} textAnchor="middle" fontSize="9"
-                            fill="white" fontWeight="700">+</text>
+                            fill="var(--bg-card-solid)" fontWeight="700">+</text>
                         )}
 
                         {/* Hover tooltip */}
                         {isHovered && (
                           <g>
                             <rect x={pos.x - 80} y={pos.y - 58} width="160" height="48"
-                              rx="6" ry="6" fill="#001D3F" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+                              rx="6" ry="6" fill="var(--brand-900)" />
                             <polygon
                               points={`${pos.x - 5},${pos.y - 10} ${pos.x + 5},${pos.y - 10} ${pos.x},${pos.y - 3}`}
-                              fill="#001D3F" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+                              fill="var(--brand-900)" />
                             <rect x={pos.x - 80} y={pos.y - 58} width="160" height="48"
-                              rx="6" ry="6" fill="#001D3F" />
+                              rx="6" ry="6" fill="var(--brand-900)" />
                             <text x={pos.x} y={pos.y - 40} textAnchor="middle" fontSize="10.5"
-                              fontWeight="600" fill="#CFD6DD">{h.name}</text>
+                              fontWeight="600" fill="var(--bg-card-solid)">{h.name}</text>
                             <text x={pos.x} y={pos.y - 27} textAnchor="middle" fontSize="9"
-                              fill="#94A2B3">{h.state}</text>
+                              fill="var(--border-medium)">{h.state}</text>
                             <text x={pos.x} y={pos.y - 15} textAnchor="middle" fontSize="9"
                               fill={dotColor} fontWeight="500">
-                              {alertLevel.toUpperCase()} -- {censusFor(census, h._id).patients.toLocaleString()} patients
+                              {levelLabel(alertLevel)} · {t('surveillance.mapPatients', { n: censusFor(census, h._id).patients.toLocaleString() })}
                             </text>
                           </g>
                         )}
@@ -535,38 +537,22 @@ export default function SurveillancePage() {
                 <h3>{t('surveillance.weeklyTrendsTitle')}</h3>
                 <span className="gov-meta">{t('surveillance.sourceIdsrReports')}</span>
               </div>
-              <div className="gov-map-layers" style={{ justifyContent: 'space-between', paddingBottom: 10 }}>
-                <div className="flex items-center gap-1.5">
-                  {(['line', 'area', 'bar'] as ChartType[]).map(ct => (
-                    <button
-                      key={ct}
-                      type="button"
-                      onClick={() => setChartType(ct)}
-                      className={chartType === ct ? 'is-active' : undefined}
-                    >
-                      {ct}
-                    </button>
-                  ))}
-                </div>
-                <Select
-                  value={String(trendWeeks)}
-                  onChange={e => setTrendWeeks(Number(e.target.value) as TrendWindow)}
-                  style={{
-                    fontSize: 11,
-                    color: 'var(--text-muted)',
-                    background: 'var(--overlay-subtle)',
-                    border: '1px solid var(--border-light)',
-                    borderRadius: 7,
-                    padding: '3px 8px',
-                    cursor: 'pointer',
-                    fontFamily: 'var(--font-platform)',
-                  }}
-                >
-                  {TREND_WINDOWS.map(w => (
-                    <option key={w.weeks} value={w.weeks}>{t(w.key)}</option>
-                  ))}
-                </Select>
-              </div>
+              <FieldRow>
+                <Field label={t('surveillance.fieldChart')} inline>
+                  <Select value={chartType} onChange={e => setChartType(e.target.value as ChartType)} data-action="surv-chart-type">
+                    <option value="line">{t('surveillance.chartLine')}</option>
+                    <option value="area">{t('surveillance.chartArea')}</option>
+                    <option value="bar">{t('surveillance.chartBar')}</option>
+                  </Select>
+                </Field>
+                <Field label={t('surveillance.fieldPeriod')} inline>
+                  <Select value={String(trendWeeks)} onChange={e => setTrendWeeks(Number(e.target.value) as TrendWindow)} data-action="surv-trend-window">
+                    {TREND_WINDOWS.map(w => (
+                      <option key={w.weeks} value={w.weeks}>{t(w.key)}</option>
+                    ))}
+                  </Select>
+                </Field>
+              </FieldRow>
               <div className="gov-chart-body">
                 {(() => {
                   const sliced = weeklyDiseaseData.slice(-trendWeeks);
@@ -584,7 +570,14 @@ export default function SurveillancePage() {
             <section data-tour="surv-alerts-panel" className="gov-panel">
               <div className="gov-panel-head">
                 <h3>{t('surveillance.activeAlertsTitle')}</h3>
-                <span className="gov-meta">{totalAlerts.toLocaleString()} {totalAlerts === 1 ? 'alert' : 'alerts'}</span>
+                <div className="flex items-center gap-3">
+                  <span className="gov-meta">{t(totalAlerts === 1 ? 'surveillance.alertCountOne' : 'surveillance.alertCountMany', { n: totalAlerts.toLocaleString() })}</span>
+                  {canReportAlert && (
+                    <button type="button" className="tm-ghost-btn" onClick={() => setShowNewAlert(true)}>
+                      {t('surveillance.reportAlert')} <Plus aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
               </div>
               <div style={{ maxHeight: 480, overflowY: 'auto' }}>
                 {filteredAlerts.length === 0 && (
@@ -592,69 +585,43 @@ export default function SurveillancePage() {
                     <EmptyState
                       icon={Shield}
                       title={t('ui.noActiveAlerts')}
-                      message="Disease surveillance alerts will appear here as they're reported."
+                      message={t('surveillance.noAlertsMessage')}
                     />
                   </div>
                 )}
-                {filteredAlerts.map((alert, idx) => (
-                  <div
-                    key={alert._id}
-                    id={`surveillance-alert-${alert._id}`}
-                    tabIndex={focusedAlertId === alert._id ? 0 : undefined}
-                    aria-current={focusedAlertId === alert._id ? 'true' : undefined}
-                    className="px-3.5 py-3"
-                    style={{
-                      borderBottom: idx < filteredAlerts.length - 1 ? '1px solid var(--border-light)' : 'none',
-                      background: focusedAlertId === alert._id ? 'var(--overlay-subtle)' : undefined,
-                      outline: focusedAlertId === alert._id ? '2px solid var(--accent-primary)' : undefined,
-                      outlineOffset: focusedAlertId === alert._id ? -2 : undefined,
-                    }}
-                  >
-                    <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <div className="flex items-center gap-2 min-w-0">
-                        {alert.alertLevel === 'normal' ? (
-                          <Shield className="w-3.5 h-3.5 flex-shrink-0" style={{ color: alertDotColors.normal }} />
-                        ) : (
-                          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: alertDotColors[alert.alertLevel] }} />
-                        )}
-                        <span className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{alert.disease}</span>
-                      </div>
-                      <Badge tone={alertLevelTone[alert.alertLevel] ?? 'neutral'} uppercase>
-                        {alert.alertLevel}
-                      </Badge>
-                    </div>
-                    <p className="text-xs mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                      {alert.county}, {alert.state}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                          <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{(alert.cases || 0).toLocaleString()}</span> {t('surveillance.cases')}
-                        </span>
-                        <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                          <span className="font-semibold" style={{ color: 'var(--tamamhealth-red)' }}>{(alert.deaths || 0).toLocaleString()}</span> {t('surveillance.deaths')}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {alert.trend === 'increasing' ? (
-                          <TrendingUp className="w-3 h-3" style={{ color: 'var(--color-danger)' }} />
-                        ) : alert.trend === 'decreasing' ? (
-                          <TrendingDown className="w-3 h-3" style={{ color: 'var(--color-success)' }} />
-                        ) : (
-                          <Minus className="w-3 h-3" style={{ color: 'var(--color-warning)' }} />
-                        )}
-                        <span className="text-[10px] font-semibold" style={{
-                          color: alert.trend === 'increasing' ? 'var(--color-danger-text)' : alert.trend === 'decreasing' ? 'var(--color-success-text)' : 'var(--color-warning-text)'
-                        }}>
-                          {alert.trend}
-                        </span>
-                      </div>
-                    </div>
-                    <p className="text-[10px] mt-1.5" style={{ color: 'var(--text-muted)' }}>
-                      {t('surveillance.reported', { date: formatDate(alert.reportDate) })}
-                    </p>
-                  </div>
-                ))}
+                {filteredAlerts.length > 0 && (
+                  <table className="w-full ov-table">
+                    <thead>
+                      <tr>
+                        <th className="text-start">{t('surveillance.colDisease')}</th>
+                        <th className="text-start">{t('surveillance.colCases')}</th>
+                        <th className="text-start">{t('surveillance.colDeaths')}</th>
+                        <th className="text-start">{t('ui.level')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredAlerts.map(alert => (
+                        <tr
+                          key={alert._id}
+                          id={`surveillance-alert-${alert._id}`}
+                          tabIndex={focusedAlertId === alert._id ? 0 : undefined}
+                          aria-current={focusedAlertId === alert._id ? 'true' : undefined}
+                          style={focusedAlertId === alert._id ? { background: 'var(--overlay-subtle)', outline: '2px solid var(--accent-primary)', outlineOffset: -2 } : undefined}
+                        >
+                          <td>
+                            <span className="font-semibold">{alert.disease}</span>
+                            <span className="block" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                              {alert.county}, {alert.state}
+                            </span>
+                          </td>
+                          <td>{(alert.cases || 0).toLocaleString()}</td>
+                          <td style={{ color: (alert.deaths || 0) > 0 ? 'var(--color-danger-text)' : undefined }}>{(alert.deaths || 0).toLocaleString()}</td>
+                          <td><Badge tone={alertLevelTone[alert.alertLevel] ?? 'neutral'}>{levelLabel(alert.alertLevel)}</Badge></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </section>
 
@@ -662,34 +629,34 @@ export default function SurveillancePage() {
             <section className="gov-panel">
               <div className="gov-panel-head">
                 <h3>{t('surveillance.idsrWeeklySummary')}</h3>
-                <span className="gov-meta">{reportingWeek}</span>
+                <div className="flex items-center gap-3">
+                  <span className="gov-meta">{reportingWeek}</span>
+                  <button type="button" onClick={handleExport} className="inline-flex items-center gap-1.5" style={{ color: 'var(--accent-link)', fontSize: 14 }}>
+                    <Download className="w-4 h-4" aria-hidden="true" />
+                    {t('surveillance.exportReport')}
+                  </button>
+                </div>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full" style={{ borderCollapse: 'collapse', minWidth: 720 }}>
+                <table className="w-full ov-table" style={{ borderCollapse: 'collapse', minWidth: 520 }}>
                   <thead>
                     <tr>
-                      <th className="text-start text-[10px] font-semibold uppercase tracking-wider px-3 py-2.5"
-                        style={{ color: 'var(--text-secondary)', background: 'var(--overlay-subtle)', borderBottom: '1px solid var(--border-light)' }}>
+                      <th className="text-start">
                         {t('surveillance.colDisease')}
                       </th>
-                      <th className="text-end text-[10px] font-semibold uppercase tracking-wider px-3 py-2.5"
-                        style={{ color: 'var(--text-secondary)', background: 'var(--overlay-subtle)', borderBottom: '1px solid var(--border-light)' }}>
+                      <th className="text-end">
                         {t('surveillance.colCases')}
                       </th>
-                      <th className="text-end text-[10px] font-semibold uppercase tracking-wider px-3 py-2.5"
-                        style={{ color: 'var(--text-secondary)', background: 'var(--overlay-subtle)', borderBottom: '1px solid var(--border-light)' }}>
+                      <th className="text-end">
                         {t('surveillance.colPrev')}
                       </th>
-                      <th className="text-center text-[10px] font-semibold uppercase tracking-wider px-3 py-2.5"
-                        style={{ color: 'var(--text-secondary)', background: 'var(--overlay-subtle)', borderBottom: '1px solid var(--border-light)' }}>
+                      <th className="text-center">
                         {t('surveillance.colTrend')}
                       </th>
-                      <th className="text-end text-[10px] font-semibold uppercase tracking-wider px-3 py-2.5"
-                        style={{ color: 'var(--text-secondary)', background: 'var(--overlay-subtle)', borderBottom: '1px solid var(--border-light)' }}>
+                      <th className="text-end">
                         {t('surveillance.colDeaths')}
                       </th>
-                      <th className="text-end text-[10px] font-semibold uppercase tracking-wider px-3 py-2.5"
-                        style={{ color: 'var(--text-secondary)', background: 'var(--overlay-subtle)', borderBottom: '1px solid var(--border-light)' }}>
+                      <th className="text-end">
                         {t('surveillance.colCfr')}
                       </th>
                     </tr>
@@ -719,7 +686,7 @@ export default function SurveillancePage() {
                               ) : (
                                 <Minus className="w-3 h-3" style={{ color: 'var(--color-warning)' }} />
                               )}
-                              <span className="text-[10px] font-semibold" style={{
+                              <span className="text-xs font-semibold" style={{
                                 color: isUp ? 'var(--color-danger-text)' : isDown ? 'var(--color-success-text)' : 'var(--color-warning-text)'
                               }}>
                                 {isUp ? '+' : ''}{change.toLocaleString()}
@@ -755,7 +722,7 @@ export default function SurveillancePage() {
                       <td className="px-3 py-2 text-center">
                         <div className="inline-flex items-center gap-0.5">
                           <TrendingUp className="w-3 h-3" style={{ color: 'var(--color-danger)' }} />
-                          <span className="text-[10px] font-semibold" style={{ color: 'var(--color-danger-text)' }}>
+                          <span className="text-xs font-semibold" style={{ color: 'var(--color-danger-text)' }}>
                             +{(idsrSummary.reduce((s, r) => s + r.casesThisWeek, 0) - idsrSummary.reduce((s, r) => s + r.casesPrevWeek, 0)).toLocaleString()}
                           </span>
                         </div>
@@ -773,13 +740,6 @@ export default function SurveillancePage() {
                     </tr>
                   </tfoot>
                 </table>
-              </div>
-              <div className="px-4 py-3 border-t" style={{ borderColor: 'var(--border-light)' }}>
-                <button onClick={handleExport} className="flex items-center gap-1.5 text-xs font-bold" style={{ color: 'var(--tamamhealth-blue)' }}>
-                  <FileText className="w-3.5 h-3.5" />
-                  {t('surveillance.downloadFullReport')}
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
               </div>
             </section>
           </div>

@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  SadbPage, SadbCard, SadbStatusCard, SadbHeadLink, SadbKvRow, TONE_CHIP,
+  SadbPage, SadbCard, SadbStatusCard, SadbKvRow, TONE_CHIP,
 } from '@/components/admin/sadb-ui';
 import { SaPill, SaTable, formatWhen } from '@/components/admin/sa-ui';
 import { useToast } from '@/components/Toast';
@@ -85,7 +85,7 @@ export default function AdminInteropPage() {
       if (result.skipped) {
         showToast(t('msg.retryNotSentNationalSync'), 'error');
       } else if (result.error) {
-        showToast(t('msg.retryNotSent', { value: describeApiError({ error: result.error }, 'The national server did not accept the records. Try again later.') }), 'error');
+        showToast(t('msg.retryNotSent', { value: describeApiError({ error: result.error }, t('adminMgmt.nationalServerRejected')) }), 'error');
       } else {
         showToast(t('msg.retryCompleteSentConfirmedBy', { pushed: result.pushed, acknowledged: result.acknowledged }), 'success');
       }
@@ -101,17 +101,17 @@ export default function AdminInteropPage() {
   const dhisHost = getDhis2BaseUrlHost();
   const dhisSynced = dhisLog ? isFullySynced(dhisLog) : false;
   const dhisTone = !dhisConfigured ? 'muted' : dhisSynced ? 'ok' : 'warn';
-  const dhisLabel = !dhisConfigured ? 'Not configured' : dhisSynced ? 'Synced' : 'Configured, awaiting sync';
+  const dhisLabel = !dhisConfigured ? t('dhis2.statNotConfigured') : dhisSynced ? t('admin.healthSynced') : t('adminMgmt.configuredAwaitingSync');
   const dhisLastActivity = dhisLog ? formatWhen(dhisLog.lastSyncedAt || dhisLog.lastAttemptAt) : '—';
 
   const queueTone = !queue || queue.total === 0 ? 'muted' : queue.failed > 0 ? 'danger' : queue.pending > 0 ? 'warn' : 'ok';
   const queueLabel = !queue || queue.total === 0
-    ? 'No events yet'
+    ? t('adminMgmt.noEventsYet')
     : queue.failed > 0
-      ? `${queue.failed} failed`
+      ? t('adminMgmt.nFailed', { count: queue.failed })
       : queue.pending > 0
-        ? `${queue.pending} pending`
-        : 'Drained';
+        ? t('adminMgmt.nPending', { count: queue.pending })
+        : t('adminMgmt.drained');
 
   const apiKeysEnabled = !!config?.superAdminPolicies?.apiKeysEnabled;
 
@@ -119,50 +119,50 @@ export default function AdminInteropPage() {
 
   return (
     <SadbPage>
-      <SadbCard title={t('routeContext.interoperability')} meta={loading || configLoading ? 'Loading…' : 'Integration endpoints'}>
+      <SadbCard title={t('routeContext.interoperability')} meta={loading || configLoading ? t('admin.loading') : t('adminMgmt.integrationEndpoints')}>
         <div className="sadb-status-grid">
           <SadbStatusCard
-            name="DHIS2 export"
+            name={t('product.roadmap.done4')}
             status={dhisLabel}
             tone={TONE_CHIP[dhisTone]}
-            detail={`Aggregate export · ${dhisHost || 'Not configured'} · Last activity ${dhisLastActivity}`}
+            detail={t('adminMgmt.dhisDetail', { host: dhisHost || t('dhis2.statNotConfigured'), when: dhisLastActivity })}
             actionLabel={t('ui.openDhis2Export')}
             onAction={() => router.push('/dhis2-export')}
           />
           <SadbStatusCard
-            name="Country-node replication"
+            name={t('adminMgmt.countryNodeReplication')}
             status={queueLabel}
             tone={TONE_CHIP[queueTone]}
-            detail={`Document sync · Local outbox → country node · Last activity ${queue ? formatWhen(queue.newestEvent) : '—'}`}
+            detail={t('adminMgmt.countryNodeDetail', { when: queue ? formatWhen(queue.newestEvent) : '—' })}
           />
           <SadbStatusCard
-            name="API keys"
-            status={apiKeysEnabled ? 'Enabled by policy' : 'Disabled by policy'}
+            name={t('adminMgmt.apiKeys')}
+            status={apiKeysEnabled ? t('adminMgmt.enabledByPolicy') : t('adminMgmt.disabledByPolicy')}
             tone={apiKeysEnabled ? 'green' : 'neutral'}
-            detail="Platform REST endpoints, gated by super-admin policy."
+            detail={t('adminMgmt.apiKeysDetail')}
           />
           <SadbStatusCard
-            name="FHIR endpoints"
-            status="Not configured"
+            name={t('adminMgmt.fhirEndpoints')}
+            status={t('dhis2.statNotConfigured')}
             tone="neutral"
-            detail="No FHIR endpoints are registered on this deployment."
+            detail={t('adminMgmt.fhirDetail')}
           />
           <SadbStatusCard
-            name="Webhooks"
-            status="Not configured"
+            name={t('adminMgmt.webhooks')}
+            status={t('dhis2.statNotConfigured')}
             tone="neutral"
-            detail="No webhook subscriptions are registered on this deployment."
+            detail={t('adminMgmt.webhooksDetail')}
           />
         </div>
       </SadbCard>
 
-      <SadbCard title={t('ui.dhis2PushLog')} meta={loading ? 'Loading…' : `${entries.length} entries`}>
+      <SadbCard title={t('ui.dhis2PushLog')} meta={loading ? t('admin.loading') : t('adminMgmt.nEntries', { count: entries.length })}>
         <SaTable
           columns={[
-            { label: 'When', w: 0.9 }, { label: 'Dataset', w: 1.4 }, { label: 'Period', w: 0.8 },
-            { label: 'Result', w: 0.9 }, { label: 'Detail', w: 2 },
+            { label: t('transfers.when'), w: 0.9 }, { label: t('adminMgmt.dataset'), w: 1.4 }, { label: t('chart.periodLabel'), w: 0.8 },
+            { label: t('lab.result'), w: 0.9 }, { label: t('adminUsers.activityDetail'), w: 2 },
           ]}
-          empty={loading ? 'Loading…' : 'No DHIS2 push attempts recorded yet.'}
+          empty={loading ? t('admin.loading') : t('adminMgmt.noDhisPushes')}
           minWidth={680}
         >
           {entries.map((e, i) => (
@@ -179,20 +179,20 @@ export default function AdminInteropPage() {
 
       <SadbCard
         title={t('ui.failedPushesRetry')}
-        meta={loading ? 'Loading…' : `${failedEvents.length} shown${failedEvents.length === 50 ? ' (capped)' : ''}`}
+        meta={loading ? t('admin.loading') : t(failedEvents.length === 50 ? 'adminMgmt.nShownCapped' : 'adminMgmt.nShown', { count: failedEvents.length })}
         action={
           <button type="button" className="btn btn-secondary btn-sm" disabled={retrying} onClick={handleRetryBatch}>
             <RefreshCw className="w-3.5 h-3.5" />
-            {retrying ? 'Retrying…' : 'Retry batch'}
+            {retrying ? t('connectivity.retrying') : t('adminMgmt.retryFailedPushes')}
           </button>
         }
       >
         <SaTable
           columns={[
-            { label: 'When', w: 0.9 }, { label: 'Resource', w: 1.5 },
-            { label: 'Operation', w: 1 }, { label: 'Error', w: 2.2 },
+            { label: t('transfers.when'), w: 0.9 }, { label: t('syncConflicts.colResource'), w: 1.5 },
+            { label: t('history.col.operation'), w: 1 }, { label: t('toast.error'), w: 2.2 },
           ]}
-          empty={loading ? 'Loading…' : 'No failed pushes.'}
+          empty={loading ? t('admin.loading') : t('adminMgmt.noFailedPushes')}
           minWidth={620}
         >
           {failedEvents.map(ev => (
@@ -206,14 +206,11 @@ export default function AdminInteropPage() {
         </SaTable>
       </SadbCard>
 
-      <SadbCard
-        title={t('ui.terminologyCodeMappings')}
-        action={<SadbHeadLink onClick={() => router.push('/dhis2-export')}>{t('ui.openDhis2Export')}</SadbHeadLink>}
-      >
-        <SadbKvRow label={t('ui.icd11ReferenceSet')} value="Bundled client-side (icd11-codes.ts) for diagnosis coding" />
+      <SadbCard title={t('ui.terminologyCodeMappings')}>
+        <SadbKvRow label={t('ui.icd11ReferenceSet')} value={t('adminMgmt.icd11BuiltIn')} />
         <SadbKvRow
           label={t('ui.dhis2DataElementMappings')}
-          value="Facility & workforce, births/deaths (CRVS), laboratory, pharmacy, immunizations, ANC, disease surveillance, data quality"
+          value={t('adminMgmt.dhis2MappingsValue')}
         />
       </SadbCard>
     </SadbPage>

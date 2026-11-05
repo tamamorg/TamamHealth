@@ -108,12 +108,12 @@ export default function AdminDataGovernancePage() {
   const busy = loading || hospitalsLoading;
 
   const railGroups = [{
-    title: 'Data Governance',
+    title: t('adminMgmt.dataChecks'),
     items: [
-      { id: 'duplicates', label: 'Duplicate review', icon: Copy, count: busy ? '…' : review.candidates.length },
-      { id: 'completeness', label: 'Completeness', icon: BarChart3, count: busy ? '…' : completeness.rows.length },
-      { id: 'invalid', label: 'Invalid values', icon: AlertTriangle, count: validity.missingAny },
-      { id: 'reconciliation', label: 'Reconciliation', icon: GitCompareArrows, count: conflictsError ? 0 : pendingConflicts ?? '…' },
+      { id: 'duplicates', label: t('adminMgmt.duplicateReview'), icon: Copy, count: busy ? '…' : review.candidates.length },
+      { id: 'completeness', label: t('dataQuality.thCompleteness'), icon: BarChart3, count: busy ? '…' : completeness.rows.length },
+      { id: 'invalid', label: t('adminMgmt.invalidValues'), icon: AlertTriangle, count: validity.missingAny },
+      { id: 'reconciliation', label: t('msg.movement.reconciliation'), icon: GitCompareArrows, count: conflictsError ? 0 : pendingConflicts ?? '…' },
     ],
   }];
 
@@ -130,17 +130,17 @@ export default function AdminDataGovernancePage() {
           <>
             <SadbPanelHeader
               title={t('ui.dataCompletenessByFacility')}
-              note="Scores registered patients that have a date of birth, gender, and phone on file."
-              tag={busy ? undefined : (completeness.belowThreshold > 0 ? `${completeness.belowThreshold} below 80%` : 'All facilities ≥80%')}
+              note={t('adminMgmt.completenessNote')}
+              tag={busy ? undefined : (completeness.belowThreshold > 0 ? t('adminMgmt.nBelow80', { count: completeness.belowThreshold }) : t('adminMgmt.allFacilitiesOk'))}
               tagTone={busy ? undefined : (completeness.belowThreshold > 0 ? 'red' : 'green')}
             />
-            <SadbCard meta={busy ? undefined : `${completeness.rows.length} facilities with patients`}>
+            <SadbCard meta={busy ? undefined : t('adminMgmt.nFacilitiesWithPatients', { count: completeness.rows.length })}>
               <SaTable
                 columns={[
-                  { label: 'Facility', w: 2.2 }, { label: 'Patients', w: 0.9 },
-                  { label: 'Complete', w: 0.9 }, { label: 'Score', w: 0.9 },
+                  { label: t('births.colFacility'), w: 2.2 }, { label: t('admin.dbPatients'), w: 0.9 },
+                  { label: t('rxFlow.actionComplete'), w: 0.9 }, { label: t('assessments.scoreLabel'), w: 0.9 },
                 ]}
-                empty={busy ? 'Loading…' : 'No facilities with registered patients yet.'}
+                empty={busy ? t('admin.loading') : t('adminMgmt.noFacilitiesWithPatients')}
                 minWidth={520}
               >
                 {completeness.rows.slice(0, ROW_CAP).map(r => (
@@ -156,7 +156,7 @@ export default function AdminDataGovernancePage() {
               </SaTable>
               {!busy && completeness.rows.length > ROW_CAP && (
                 <p className="sadb-card-meta" style={{ padding: '10px 14px', margin: 0, borderTop: '1px solid var(--border-light)' }}>
-                  {t('ui.showingFirst')} {ROW_CAP} of {completeness.rows.length}.
+                  {t('adminMgmt.showingFirstOf', { cap: ROW_CAP, total: completeness.rows.length })}
                 </p>
               )}
             </SadbCard>
@@ -167,11 +167,11 @@ export default function AdminDataGovernancePage() {
           <>
             <SadbPanelHeader
               title={t('ui.invalidMissingValues')}
-              note="Scans every patient record for a missing date of birth, gender, phone, or a date of birth in the future."
-              tag={busy ? undefined : (validity.missingAny > 0 ? `${validity.missingAny} flagged` : 'No issues found')}
+              note={t('adminMgmt.invalidNote')}
+              tag={busy ? undefined : (validity.missingAny > 0 ? t('adminMgmt.nFlagged', { count: validity.missingAny }) : t('adminMgmt.noIssuesFound'))}
               tagTone={busy ? undefined : (validity.missingAny > 0 ? 'yellow' : 'green')}
             />
-            <SadbCard meta={busy ? undefined : `${patients.length.toLocaleString()} records scanned`}>
+            <SadbCard meta={busy ? undefined : t('adminMgmt.nRecordsScanned', { count: patients.length.toLocaleString() })}>
               <SadbKvRow label={t('ui.missingDateOfBirth')} value={busy ? '—' : validity.missingDob} />
               <SadbKvRow label={t('ui.missingGender')} value={busy ? '—' : validity.missingGender} />
               <SadbKvRow label={t('ui.missingPhone')} value={busy ? '—' : validity.missingPhone} />
@@ -184,8 +184,8 @@ export default function AdminDataGovernancePage() {
           <>
             <SadbPanelHeader
               title={t('ui.reconciliationRequests')}
-              note="Sync conflicts awaiting resolution, and any patient data export or deletion requests."
-              tag={conflictsError ? 'Unavailable' : (busy ? undefined : ((pendingConflicts ?? 0) > 0 ? `${pendingConflicts} pending` : 'Clear'))}
+              note={t('adminMgmt.reconNote')}
+              tag={conflictsError ? t('adminMgmt.unavailable') : (busy ? undefined : ((pendingConflicts ?? 0) > 0 ? t('adminMgmt.nPending', { count: pendingConflicts ?? 0 }) : t('action.clear')))}
               tagTone={conflictsError ? 'neutral' : ((pendingConflicts ?? 0) > 0 ? 'red' : 'green')}
             />
             <SadbCard>
@@ -195,19 +195,19 @@ export default function AdminDataGovernancePage() {
                 valueTone={!conflictsError && (pendingConflicts ?? 0) > 0 ? 'warn' : undefined}
               />
               <div style={{ padding: '0 14px 14px' }}>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => router.push('/admin/conflicts')}>
+                <button type="button" className="tm-ghost-btn" onClick={() => router.push('/admin/conflicts')}>
                   {t('ui.openReconciliationQueue')}
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
               <div className="sadb-kv">
                 <span>{t('ui.exportDeletionRequests')}</span>
-                <span style={{ color: 'var(--text-muted)', fontFamily: 'inherit', fontWeight: 600 }}>{t('ui.nonePolicyGatedNoRequest')}</span>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{t('adminMgmt.exportDeletionNone')}</span>
               </div>
               <div style={{ padding: '14px 14px 0' }}>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => router.push('/admin/security')}>
+                <button type="button" className="tm-ghost-btn" onClick={() => router.push('/admin/security')}>
                   {t('ui.reviewDataPolicy')}
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </SadbCard>

@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import FormSlider from '@/components/overlay/FormSlider';
-import { AlertTriangle, Phone, Users, BedDouble, Activity, Plus } from '@/components/icons/lucide';
-import EhrListHeader from '@/components/ehr/EhrListHeader';
+import { Plus } from '@/components/icons/lucide';
+import { SadbCard, SadbGridList, SadbGridRow } from '@/components/admin/sadb-ui';
+import FacilityKpiBand, { weekOverWeek } from '@/components/dashboards/FacilityKpiBand';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import {
@@ -19,45 +20,18 @@ import type {
   EmergencySeverity,
 } from '@/lib/db-types';
 import Badge, { type BadgeTone } from '@/components/Badge';
-import EmptyState from '@/components/EmptyState';
 import Select from '@/components/Select';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { locationLabel, states } from '@/lib/data/south-sudan-reference';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import NumberInput from '@/components/forms/NumberInput';
 
-const EMERGENCY_TYPES: { value: EmergencyType; label: string }[] = [
-  { value: 'disease_outbreak', label: 'Disease outbreak' },
-  { value: 'cholera_outbreak', label: 'Cholera outbreak' },
-  { value: 'measles_outbreak', label: 'Measles outbreak' },
-  { value: 'ebola', label: 'Ebola' },
-  { value: 'flood', label: 'Flood' },
-  { value: 'conflict', label: 'Conflict / displacement' },
-  { value: 'famine', label: 'Famine' },
-  { value: 'mass_casualty', label: 'Mass casualty' },
-  { value: 'infrastructure_failure', label: 'Infrastructure failure' },
+const EMERGENCY_TYPES: EmergencyType[] = [
+  'disease_outbreak', 'cholera_outbreak', 'measles_outbreak', 'ebola', 'flood',
+  'conflict', 'famine', 'mass_casualty', 'infrastructure_failure',
 ];
-
-const PHASES: { value: EmergencyPhase; label: string }[] = [
-  { value: 'preparedness', label: 'Preparedness' },
-  { value: 'alert', label: 'Alert' },
-  { value: 'response', label: 'Response' },
-  { value: 'recovery', label: 'Recovery' },
-  { value: 'closed', label: 'Closed' },
-];
-
-const SEVERITIES: { value: EmergencySeverity; label: string }[] = [
-  { value: 'level_1', label: 'Level 1 — Watch' },
-  { value: 'level_2', label: 'Level 2 — Mobilize' },
-  { value: 'level_3', label: 'Level 3 — Full activation' },
-];
-
-const TYPE_LABEL: Record<EmergencyType, string> = Object.fromEntries(
-  EMERGENCY_TYPES.map(t => [t.value, t.label]),
-) as Record<EmergencyType, string>;
-const PHASE_LABEL: Record<EmergencyPhase, string> = Object.fromEntries(
-  PHASES.map(p => [p.value, p.label]),
-) as Record<EmergencyPhase, string>;
+const PHASES: EmergencyPhase[] = ['preparedness', 'alert', 'response', 'recovery', 'closed'];
+const SEVERITIES: EmergencySeverity[] = ['level_1', 'level_2', 'level_3'];
 
 // Severity → Badge tone (level_3 full activation → danger, level_2 → warning,
 // level_1 watch → info).
@@ -195,111 +169,78 @@ export default function EmergencyPreparednessPage() {
     }
   };
 
+  const activePlans = plans.filter(p => p.phase === 'response');
+  const surgeTotal = plans.reduce((n, p) => n + p.resources.surgeBeds, 0);
+  const surgeFree = plans.reduce((n, p) => n + p.resources.availableSurgeBeds, 0);
+  const capacityTotal = plans.reduce((n, p) => n + p.estimatedCapacity, 0);
+  const loadTotal = plans.reduce((n, p) => n + p.currentLoad, 0);
+  const casesTotal = plans.reduce((n, p) => n + p.totalCasesManaged, 0);
+  const GRID = 'minmax(200px, 1.6fr) minmax(130px, 1fr) minmax(110px, 0.8fr) minmax(110px, 0.8fr) 90px 90px minmax(150px, 1fr) 110px';
+
   return (
     <>
-      <main className="page-container page-enter">
-        <div className="dash-card overflow-hidden mb-4">
-          <EhrListHeader
-            title={t('ui.emergencyPreparedness')}
-            actions={
-              <button onClick={openForm} className="btn btn-primary" data-tour="emergency-new-plan" style={{ marginInlineStart: 'auto', height: 38, whiteSpace: 'nowrap', flexShrink: 0 }}>
+      <main className="page-container page-enter sadb-scope">
+        <div className="sadb-page">
+          <FacilityKpiBand tiles={[
+            { key: 'active', label: t('emergencyPrep.kpiActive'), value: activePlans.length, detail: activePlans.length ? activePlans.map(p => p.planName).slice(0, 2).join(', ') : t(plans.length === 1 ? 'emergencyPrep.kpiNoneActivatedOne' : 'emergencyPrep.kpiNoneActivated', { count: plans.length }), warn: activePlans.length > 0, trend: weekOverWeek(plans, p => p.createdAt, t('emergencyPrep.trendCreated'), 'up', t) },
+            { key: 'beds', label: t('emergencyPrep.kpiSurgeFree'), value: t('emergencyPrep.kpiSurgeValue', { free: surgeFree, total: surgeTotal }), detail: surgeTotal ? t('emergencyPrep.kpiSurgeDetail') : t('emergencyPrep.kpiSurgeNone') },
+            { key: 'load', label: t('emergencyPrep.kpiCapacity'), value: capacityTotal ? `${Math.round((loadTotal / capacityTotal) * 100)}%` : '0%', detail: t('emergencyPrep.kpiCapacityDetail', { load: loadTotal, capacity: capacityTotal }) },
+            { key: 'cases', label: t('emergencyPrep.kpiCases'), value: casesTotal, detail: t('emergencyPrep.kpiCasesDetail') },
+          ]} />
+
+          <SadbCard
+            title={t('emergencyPrep.plansTitle')}
+            meta={`${plans.length}`}
+            action={
+              <button type="button" onClick={openForm} className="btn btn-primary" data-tour="emergency-new-plan">
                 <Plus className="w-4 h-4" /> {t('ui.newPlan')}
               </button>
             }
-          />
+          >
+            <div className="sadb-card-scroll">
+              <SadbGridList
+                template={GRID}
+                minWidth={1040}
+                head={[t('emergencyPrep.colPlan'), t('emergencyPrep.colType'), t('epidemic.colSeverity'), t('ui.phase'), t('ui.surgeBeds'), t('orgHospitals.groupCapacity'), t('ui.incidentCommander'), t('emergencyPrep.colAction')]}
+                empty={loading ? t('admin.loading') : t('emergencyPrep.emptyPlans')}
+              >
+                {plans.map(plan => {
+                  const isActive = plan.phase === 'response';
+                  return (
+                    <SadbGridRow key={plan._id} template={GRID}>
+                      <span className="min-w-0">
+                        <span className="sadb-tenant-name truncate">{plan.planName}</span>
+                        <span className="block text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                          {plan.facilityName}{plan.county ? ` · ${plan.county}` : ''}{plan.state ? ` · ${plan.state}` : ''}
+                        </span>
+                      </span>
+                      <span className="truncate">{t(`emergencyPrep.type_${plan.emergencyType}`)}</span>
+                      <span><Badge tone={severityTone(plan.severity)}>{t(`emergencyPrep.severityShort_${plan.severity}`)}</Badge></span>
+                      <span><Badge tone={phaseTone(plan.phase)}>{t(`emergencyPrep.phase_${plan.phase}`)}</Badge></span>
+                      <span className="sadb-tenant-num">{plan.resources.availableSurgeBeds}/{plan.resources.surgeBeds}</span>
+                      <span className="sadb-tenant-num">{plan.currentLoad}/{plan.estimatedCapacity}</span>
+                      <span className="min-w-0">
+                        <span className="block truncate">{plan.incidentCommander}</span>
+                        {plan.incidentCommanderPhone && (
+                          <span className="block text-xs truncate" style={{ color: 'var(--text-muted)' }}>{plan.incidentCommanderPhone}</span>
+                        )}
+                      </span>
+                      <span>
+                        <button
+                          type="button"
+                          onClick={() => handleActivate(plan)}
+                          className={`btn btn-sm ${isActive ? 'btn-secondary' : 'btn-primary'}`}
+                        >
+                          {isActive ? t('emergencyPrep.deactivate') : t('emergencyPrep.activate')}
+                        </button>
+                      </span>
+                    </SadbGridRow>
+                  );
+                })}
+              </SadbGridList>
+            </div>
+          </SadbCard>
         </div>
-        {loading ? (
-          <div className="p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('admin.loading')}</div>
-        ) : plans.length === 0 ? (
-          <div className="dash-card">
-            <EmptyState
-              icon={AlertTriangle}
-              title={t('ui.noEmergencyPlansYet')}
-              message="Create a surge plan for a cholera outbreak, mass casualty event, or other emergency."
-            />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {plans.map(plan => {
-              const isActive = plan.phase === 'response';
-              return (
-                <div key={plan._id} className="dash-card p-5">
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="min-w-0">
-                      <h3 className="font-semibold text-sm truncate">{plan.planName}</h3>
-                      <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>
-                        {plan.facilityName}{plan.county ? ` · ${plan.county}` : ''}{plan.state ? ` · ${plan.state}` : ''}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                      <Badge tone={severityTone(plan.severity)} uppercase>
-                        {plan.severity.replace('_', ' ')}
-                      </Badge>
-                      <Badge tone={phaseTone(plan.phase)} uppercase>
-                        {PHASE_LABEL[plan.phase] ?? plan.phase}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 mb-3">
-                    <Badge tone="neutral">
-                      {TYPE_LABEL[plan.emergencyType] ?? plan.emergencyType}
-                    </Badge>
-                  </div>
-
-                  {plan.description && (
-                    <p className="text-xs mb-3 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{plan.description}</p>
-                  )}
-
-                  <div className="grid grid-cols-3 gap-3 mb-3">
-                    <div className="flex flex-col">
-                      <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                        <BedDouble className="w-3 h-3" /> {t('ui.surgeBeds')}
-                      </span>
-                      <span className="text-sm font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                        {plan.resources.availableSurgeBeds}/{plan.resources.surgeBeds}
-                      </span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                        <Activity className="w-3 h-3" /> {t('orgHospitals.groupCapacity')}
-                      </span>
-                      <span className="text-sm font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                        {plan.currentLoad}/{plan.estimatedCapacity}
-                      </span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                        <Users className="w-3 h-3" /> {t('epidemic.colCases')}
-                      </span>
-                      <span className="text-sm font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                        {plan.totalCasesManaged}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-3 pt-3 border-t" style={{ borderColor: 'var(--border-light)' }}>
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('ui.incidentCommander')}</p>
-                      <p className="text-xs font-semibold truncate">{plan.incidentCommander}</p>
-                      {plan.incidentCommanderPhone && (
-                        <p className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--text-secondary)' }}>
-                          <Phone className="w-3 h-3" /> {plan.incidentCommanderPhone}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => handleActivate(plan)}
-                      className={`btn btn-sm flex-shrink-0 ${isActive ? 'btn-secondary' : 'btn-primary'}`}
-                    >
-                      {isActive ? 'Deactivate' : 'Activate'}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
 
         {showForm && (
           <FormSlider
@@ -309,54 +250,54 @@ export default function EmergencyPreparednessPage() {
             footer={<>
                 <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary" disabled={submitting}>{t('action.cancel')}</button>
                 <button type="button" onClick={handleSubmit} className="btn btn-primary" disabled={submitting}>
-                  {submitting ? 'Saving…' : 'Create plan'}
+                  {submitting ? t('emergencyPrep.saving') : t('emergencyPrep.createPlan')}
                 </button>
             </>}
           >
             <div className="space-y-4">
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.planName')}</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.planName')}</label>
                   <input type="text" value={form.planName} onChange={e => setForm({ ...form, planName: e.target.value })} placeholder={t('ui.eGCholeraOutbreakSurge')} />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.emergencyType')}</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.emergencyType')}</label>
                     <Select value={form.emergencyType} onChange={e => setForm({ ...form, emergencyType: e.target.value as EmergencyType })}>
-                      {EMERGENCY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                      {EMERGENCY_TYPES.map(v => <option key={v} value={v}>{t(`emergencyPrep.type_${v}`)}</option>)}
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('epidemic.colSeverity')}</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('epidemic.colSeverity')}</label>
                     <Select value={form.severity} onChange={e => setForm({ ...form, severity: e.target.value as EmergencySeverity })}>
-                      {SEVERITIES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                      {SEVERITIES.map(v => <option key={v} value={v}>{t(`emergencyPrep.severity_${v}`)}</option>)}
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.phase')}</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.phase')}</label>
                     <Select value={form.phase} onChange={e => setForm({ ...form, phase: e.target.value as EmergencyPhase })}>
-                      {PHASES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                      {PHASES.map(v => <option key={v} value={v}>{t(`emergencyPrep.phase_${v}`)}</option>)}
                     </Select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.description')}</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.description')}</label>
                   <textarea rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder={t('ui.scopeTriggersAndKeyActions')} />
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.surgeBeds')}</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.surgeBeds')}</label>
                     <NumberInput step="1" min={0} value={form.surgeBeds} onChange={e => setForm({ ...form, surgeBeds: Math.max(0, parseInt(e.target.value) || 0) })} />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.estCapacityDay')}</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.estCapacityDay')}</label>
                     <NumberInput step="1" min={0} value={form.estimatedCapacity} onChange={e => setForm({ ...form, estimatedCapacity: Math.max(0, parseInt(e.target.value) || 0) })} />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('births.colState')}</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('births.colState')}</label>
                     <Select value={form.state} searchThreshold={0}
                       onChange={e => setForm({ ...form, state: e.target.value })}>
                       <option value="">{t('ui.stateRegion')}</option>
@@ -367,11 +308,11 @@ export default function EmergencyPreparednessPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.incidentCommander')}</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.incidentCommander')}</label>
                     <input type="text" value={form.incidentCommander} onChange={e => setForm({ ...form, incidentCommander: e.target.value })} placeholder={t('adminUsers.fieldFullName')} />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.commanderPhone')}</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.commanderPhone')}</label>
                     <input type="tel" value={form.incidentCommanderPhone} onChange={e => setForm({ ...form, incidentCommanderPhone: e.target.value })} placeholder={t('billing.phoneNumber')} />
                   </div>
                 </div>

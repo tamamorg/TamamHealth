@@ -1,77 +1,22 @@
 'use client';
 
+/**
+ * Disease programmes. Immunization and antenatal care each own a tab in this
+ * hub, so here they are two figure tiles that open those pages; the programmes
+ * the platform does not collect data for yet sit in one list, marked as such.
+ */
+
 import { useMemo } from 'react';
-import EhrListHeader from '@/components/ehr/EhrListHeader';
 import { useRouter } from 'next/navigation';
 import { useImmunizations } from '@/lib/hooks/useImmunizations';
 import { useANC } from '@/lib/hooks/useANC';
 import { useSurveillance } from '@/lib/hooks/useSurveillance';
-import { Syringe, HeartPulse, ArrowUpRight, Info } from '@/components/icons/lucide';
+import { SadbCard, SadbChip, SadbKpiTile } from '@/components/admin/sadb-ui';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-
-function StatTile({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
-  return (
-    <div className="px-3 py-2.5 rounded-lg" style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)' }}>
-      <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{label}</p>
-      <p className="text-[20px] font-bold" style={{ color: color || 'var(--text-primary)' }}>{value}</p>
-      {sub && <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{sub}</p>}
-    </div>
-  );
-}
-
-function ProgramCard({ icon: Icon, iconColor, title, period, children, links }: {
-  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
-  iconColor: string;
-  title: string;
-  period: string;
-  children: React.ReactNode;
-  links: { label: string; href: string }[];
-}) {
-  const router = useRouter();
-  return (
-    <div className="dash-card mb-3">
-      <div className="px-4 pt-4 pb-3 flex items-center justify-between gap-2 flex-wrap" style={{ borderBottom: '1px solid var(--border-light)' }}>
-        <div className="flex items-center gap-2">
-          <Icon className="w-4 h-4" style={{ color: iconColor }} />
-          <span className="text-[15px] font-bold" style={{ color: 'var(--text-primary)' }}>{title}</span>
-        </div>
-        <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{period}</span>
-      </div>
-      <div className="px-4 py-3">
-        {children}
-        <div className="flex items-center gap-4 mt-3">
-          {links.map(l => (
-            <button
-              key={l.href}
-              onClick={() => router.push(l.href)}
-              className="inline-flex items-center gap-1 text-[12px] font-semibold"
-              style={{ color: 'var(--accent-primary)' }}
-            >
-              {l.label} <ArrowUpRight className="w-3 h-3" />
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PlaceholderCard({ title, note }: { title: string; note: React.ReactNode }) {
-  return (
-    <div className="dash-card mb-3" style={{ opacity: 0.85 }}>
-      <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
-        <span className="text-[15px] font-bold" style={{ color: 'var(--text-primary)' }}>{title}</span>
-      </div>
-      <div className="px-4 py-3 flex items-start gap-2">
-        <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--text-muted)' }} />
-        <div className="text-[13px]" style={{ color: 'var(--text-muted)' }}>{note}</div>
-      </div>
-    </div>
-  );
-}
 
 export default function DiseaseProgramsPage() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { stats: immStats, loading: immLoading } = useImmunizations();
   const { stats: ancStats, loading: ancLoading } = useANC();
   const { alerts, loading: alertsLoading } = useSurveillance();
@@ -83,58 +28,67 @@ export default function DiseaseProgramsPage() {
 
   const loading = immLoading || ancLoading || alertsLoading;
 
+  const notReporting = [
+    { name: t('ui.hivProgramme'), note: t('govPrograms.noHiv') },
+    { name: t('ui.tbProgramme'), note: t('govPrograms.noTb') },
+    {
+      name: t('ui.malariaProgramme'),
+      note: t(malariaAlertCount === 1 ? 'govPrograms.noMalariaOne' : 'govPrograms.noMalariaMany', { n: malariaAlertCount }),
+    },
+  ];
+
   return (
-    <main className="page-container page-enter">
-      <div data-tour="gov-programs-header" className="dash-card mb-3">
-        <EhrListHeader title={t('ui.diseasePrograms')} stats={[{ label: 'Scope', value: 'Programme monitoring · National' }]} />
+    <main className="page-container page-enter sadb-scope">
+      <div className="sadb-page" data-tour="gov-programs-header">
+        {loading ? (
+          <SadbCard><p className="sadb-empty">{t('ui.loadingProgrammeData')}</p></SadbCard>
+        ) : (
+          <>
+            <div className="sadb-kpi-row">
+              <SadbKpiTile
+                label={t('govHome.kpiImmunized')}
+                value={immStats ? `${immStats.coverageRate}%` : '—'}
+                delta={immStats ? t('govPrograms.immDetail', { n: immStats.fullyImmunized.toLocaleString(), total: immStats.totalChildren.toLocaleString() }) : t('govHome.kpiImmunizedNone')}
+                onClick={() => router.push('/immunizations')}
+              />
+              <SadbKpiTile
+                label={t('govPrograms.kpiOverdue')}
+                value={immStats ? (immStats.overdue + immStats.missed).toLocaleString() : '—'}
+                delta={t('govPrograms.kpiOverdueDetail')}
+                deltaTone={immStats && immStats.overdue + immStats.missed > 0 ? 'warn' : undefined}
+                onClick={() => router.push('/immunizations')}
+              />
+              <SadbKpiTile
+                label={t('govPrograms.kpiAnc4')}
+                value={ancStats ? `${ancStats.anc4PlusRate}%` : '—'}
+                delta={ancStats ? t('govPrograms.ancDetail', { n: ancStats.anc4Plus.toLocaleString(), total: ancStats.totalMothers.toLocaleString() }) : t('govPrograms.ancNone')}
+                onClick={() => router.push('/anc')}
+              />
+              <SadbKpiTile
+                label={t('ui.highRiskPregnancies')}
+                value={ancStats ? ancStats.highRiskCount.toLocaleString() : '—'}
+                delta={t('govPrograms.highRiskDetail')}
+                deltaTone={ancStats && ancStats.highRiskCount > 0 ? 'warn' : undefined}
+                onClick={() => router.push('/anc')}
+              />
+            </div>
+
+            <SadbCard title={t('govPrograms.pendingTitle')} meta={t('govPrograms.metaPrograms')}>
+              <ul>
+                {notReporting.map(p => (
+                  <li key={p.name} className="flex items-center justify-between gap-3 px-4 py-3" style={{ borderTop: '1px solid var(--border-light)' }}>
+                    <div className="min-w-0">
+                      <p style={{ fontSize: 14, fontWeight: 600 }}>{p.name}</p>
+                      <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{p.note}</p>
+                    </div>
+                    <SadbChip tone="neutral">{t('govPrograms.pending')}</SadbChip>
+                  </li>
+                ))}
+              </ul>
+            </SadbCard>
+          </>
+        )}
       </div>
-
-      {loading ? (
-        <div className="dash-card p-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('ui.loadingProgrammeData')}</div>
-      ) : (
-        <>
-          <ProgramCard icon={Syringe} iconColor="var(--chart-1)" title={t('ui.immunizationEpi')} period="All records · National"
-            links={[{ label: 'Open immunizations', href: '/immunizations' }]}>
-            {immStats ? (
-              <div className="grid grid-cols-3 gap-2">
-                <StatTile label={t('labOrder.fieldCoverage')} value={`${immStats.coverageRate}%`} color="var(--chart-1)" />
-                <StatTile label={t('ui.fullyImmunized')} value={immStats.fullyImmunized.toLocaleString()} sub={`of ${immStats.totalChildren.toLocaleString()} children`} />
-                <StatTile label={t('ui.overdueMissed')} value={(immStats.overdue + immStats.missed).toLocaleString()} color="var(--color-warning-text)" />
-              </div>
-            ) : (
-              <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>{t('ui.noDataOnFileFor')}</p>
-            )}
-          </ProgramCard>
-
-          <ProgramCard icon={HeartPulse} iconColor="var(--color-success)" title={t('ui.rmncahAntenatalCare')} period="All records · National"
-            links={[{ label: 'Open ANC', href: '/anc' }, { label: 'Open MCH analytics', href: '/mch-analytics' }]}>
-            {ancStats ? (
-              <div className="grid grid-cols-3 gap-2">
-                <StatTile label={t('ui.anc4Rate')} value={`${ancStats.anc4PlusRate}%`} color="var(--color-success-text)" />
-                <StatTile label={t('ui.mothersOnRecord')} value={ancStats.totalMothers.toLocaleString()} />
-                <StatTile label={t('ui.highRiskPregnancies')} value={ancStats.highRiskCount.toLocaleString()} color="var(--color-danger-text)" />
-              </div>
-            ) : (
-              <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>{t('ui.noDataOnFileFor2')}</p>
-            )}
-          </ProgramCard>
-
-          <PlaceholderCard title={t('ui.hivProgramme')} note="Programme reporting not yet configured — no HIV programme dataset is collected in TamamHealth yet." />
-          <PlaceholderCard title={t('ui.tbProgramme')} note="Programme reporting not yet configured — no TB programme dataset is collected in TamamHealth yet." />
-          <PlaceholderCard
-            title={t('ui.malariaProgramme')}
-            note={
-              <>
-                {t('ui.programmeReportingNotYetConfigured')}
-                {' '}
-                <span style={{ color: 'var(--text-secondary)' }}>
-                  {malariaAlertCount} {t('ui.activeMalariaSurveillanceSignal')}{malariaAlertCount === 1 ? '' : 's'} {t('ui.onFileSurveillanceSignalNot')}
-                </span>
-              </>
-            }
-          />
-        </>
-      )}
     </main>
   );
 }

@@ -160,7 +160,7 @@ export default function FacilityFormModal({
     <label className={`${required ? 'field-required ' : ''}block text-xs font-semibold mb-1.5`} style={{ color: 'var(--text-muted)' }}>{text}</label>
   );
   const groupHeading = (text: string) => (
-    <h4 className="text-[11px] font-bold uppercase tracking-wider mb-2 mt-1" style={{ color: 'var(--accent-primary)' }}>{text}</h4>
+    <h4 className="text-sm font-semibold mb-2 mt-1" style={{ color: 'var(--text-primary)' }}>{text}</h4>
   );
   const numberField = (key: keyof FacilityFormValues, text: string) => (
     <div key={String(key)}>
@@ -262,7 +262,7 @@ export default function FacilityFormModal({
             type="button"
             onClick={() => setShowDetails(v => !v)}
             className="flex items-center gap-1.5 text-xs font-semibold"
-            style={{ color: 'var(--accent-text)' }}
+            style={{ color: 'var(--accent-link)' }}
             aria-expanded={showDetails}
             data-action="toggle-facility-details"
           >

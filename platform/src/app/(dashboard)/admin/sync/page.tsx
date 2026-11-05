@@ -43,6 +43,13 @@ const STATUS_CHIP: Record<SyncEventDoc['syncStatus'], ChipTone> = {
   failed: 'red',
 };
 
+const STATUS_KEY: Record<SyncEventDoc['syncStatus'], string> = {
+  pending: 'billing.ovPending',
+  syncing: 'status.syncing',
+  synced: 'admin.healthSynced',
+  failed: 'admin.statusFailed',
+};
+
 export default function AdminSyncPage() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -100,7 +107,7 @@ export default function AdminSyncPage() {
       if (result.skipped) {
         showToast(t('msg.nothingSentNationalSyncIs'), 'error');
       } else if (result.error) {
-        showToast(t('msg.syncStoppedAfterRecords', { pushed: result.pushed, value: describeApiError({ error: result.error }, 'The national server did not accept the rest. Try again later.') }), 'error');
+        showToast(t('msg.syncStoppedAfterRecords', { pushed: result.pushed, value: describeApiError({ error: result.error }, t('adminMgmt.nationalServerRejectedRest')) }), 'error');
       } else {
         showToast(t('msg.syncCompleteSentConfirmedBy', { pushed: result.pushed, acknowledged: result.acknowledged }), 'success');
       }
@@ -142,7 +149,7 @@ export default function AdminSyncPage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const msg = body?.result?.message || body?.error || 'DHIS2 export not sent. The server refused it; try again.';
+        const msg = body?.result?.message || body?.error || t('adminMgmt.dhisNotSent');
         showToast(msg, 'error');
       } else {
         const ok = body.result?.ok !== false;
@@ -173,27 +180,27 @@ export default function AdminSyncPage() {
           <SadbKvRow label={t('ui.pendingReconciliation')} value={conflictsError ? '—' : pendingConflicts ?? '…'} />
         </SadbCard>
 
-        <SadbSettingGroup title={t('ui.jobRunners')}>
-          <SadbSettingRow label={t('ui.pushPendingToCountryNode')} sub="Pushes up to 50 queued events from this browser to the configured country node.">
+        <SadbSettingGroup title={t('adminMgmt.runNow')}>
+          <SadbSettingRow label={t('ui.pushPendingToCountryNode')} sub={t('adminMgmt.syncCountryNodeSub')}>
             <SadbActionButton onClick={handlePushCountryNode} disabled={anyRunning}>
-              {pushingCountryNode ? 'Running…' : 'Run now'}
+              {pushingCountryNode ? t('adminMgmt.running') : t('adminMgmt.runNow')}
             </SadbActionButton>
           </SadbSettingRow>
-          <SadbSettingRow label={t('ui.serverSyncPush')} sub="Server-side push of pending sync events to CouchDB.">
+          <SadbSettingRow label={t('ui.serverSyncPush')} sub={t('adminMgmt.syncServerPushSub')}>
             <SadbActionButton onClick={handleSyncPush} disabled={anyRunning}>
-              {syncPushing ? 'Running…' : 'Run now'}
+              {syncPushing ? t('adminMgmt.running') : t('adminMgmt.runNow')}
             </SadbActionButton>
           </SadbSettingRow>
-          <SadbSettingRow label={t('ui.dhis2ExportPush')} sub="Exports this reporting period's aggregate data values to DHIS2.">
+          <SadbSettingRow label={t('ui.dhis2ExportPush')} sub={t('adminMgmt.syncDhisSub')}>
             <SadbActionButton onClick={handleDhis2Push} disabled={anyRunning}>
-              {dhis2Pushing ? 'Running…' : 'Run now'}
+              {dhis2Pushing ? t('adminMgmt.running') : t('adminMgmt.runNow')}
             </SadbActionButton>
           </SadbSettingRow>
         </SadbSettingGroup>
       </div>
 
       <SadbCard
-        title={t('ui.syncAmpJobs')}
+        title={t('adminMgmt.syncQueue')}
         meta={(
           <div className="sadb-legend">
             <span><i style={{ background: 'var(--color-warning-600)' }} />{t('ui.pending2')}{loading ? '—' : stats?.pending ?? 0})</span>
@@ -205,15 +212,15 @@ export default function AdminSyncPage() {
       >
         <p className="sadb-card-meta" style={{ padding: '2px 16px 10px' }}>
           {loading
-            ? 'Loading…'
-            : `${events.length} shown${events.length === 100 ? ' (capped at 100)' : ''} · Oldest pending ${formatWhen(stats?.oldestPending)}`}
+            ? t('admin.loading')
+            : t(events.length === 100 ? 'adminMgmt.syncShownCapped' : 'adminMgmt.syncShown', { count: events.length, when: formatWhen(stats?.oldestPending) })}
         </p>
         <SaTable
           columns={[
-            { label: 'When', w: 0.9 }, { label: 'Resource', w: 1.5 }, { label: 'Operation', w: 1 },
-            { label: 'Facility', w: 1.2 }, { label: 'Status', w: 0.8 }, { label: 'Error', w: 1.8 },
+            { label: t('transfers.when'), w: 0.9 }, { label: t('syncConflicts.colResource'), w: 1.5 }, { label: t('history.col.operation'), w: 1 },
+            { label: t('births.colFacility'), w: 1.2 }, { label: t('admin.colStatus'), w: 0.8 }, { label: t('toast.error'), w: 1.8 },
           ]}
-          empty={loading ? 'Loading…' : 'Queue is drained — all events synced.'}
+          empty={loading ? t('admin.loading') : t('adminMgmt.syncNothingWaiting')}
           minWidth={760}
         >
           {events.map(ev => (
@@ -222,7 +229,7 @@ export default function AdminSyncPage() {
               <td><strong>{ev.resourceType}</strong> <span style={{ color: 'var(--text-muted)' }}>{ev.resourceId.slice(0, 12)}</span></td>
               <td>{ev.operation}</td>
               <td>{(ev.hospitalId && hospitalNames.get(ev.hospitalId)) || ev.hospitalId || '—'}</td>
-              <td><SadbChip tone={STATUS_CHIP[ev.syncStatus]}>{ev.syncStatus}</SadbChip></td>
+              <td><SadbChip tone={STATUS_CHIP[ev.syncStatus]}>{t(STATUS_KEY[ev.syncStatus])}</SadbChip></td>
               <td>{ev.syncError || '—'}</td>
             </tr>
           ))}

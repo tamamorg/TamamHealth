@@ -19,8 +19,10 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import { formatMoney } from '@/lib/format-utils';
 import { formatBillDate, STATUS_CHIP } from '@/components/billing/billing-utils';
 import type { BillingDoc } from '@/lib/db-types-billing';
-import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import EhrListHeader from '@/components/ehr/EhrListHeader';
+import { SadbKpiTile, trendBetween } from '@/components/admin/sadb-ui';
 import '@/components/billing/billing.css';
+import '@/components/payments/billing-kpis.css';
 import Select from '@/components/Select';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
@@ -94,25 +96,66 @@ export default function BillingHomePage() {
   }, [bills, filter, search]);
   const visible = filtered.slice(0, visibleCount);
 
-  // Header chips: the ledger's standing breakdown, independent of the filter —
-  // the same relationship every registry header keeps with its rows.
-  const stats = useMemo(() => {
-    const count = (match: (b: BillingDoc) => boolean) => bills.filter(match).length;
-    return [
-      { label: 'Open', value: count(b => b.status === 'pending' || b.status === 'partial'), color: LIST_STAT_COLORS.blue },
-      { label: 'Paid', value: count(b => b.status === 'paid'), color: LIST_STAT_COLORS.green },
-      { label: 'Waived', value: count(b => b.status === 'waived'), color: LIST_STAT_COLORS.amber },
-      { label: 'Cancelled', value: count(b => b.status === 'cancelled'), color: LIST_STAT_COLORS.muted },
-    ];
+  // The ledger's standing figures, independent of the filter: each tile says
+  // what it is made of, and the week's new bills say which way they moved.
+  const kpis = useMemo(() => {
+    const open = bills.filter(b => b.status === 'pending' || b.status === 'partial');
+    const unpaid = open.filter(b => b.status === 'pending').length;
+    const now = Date.now();
+    const created = (b: BillingDoc) => (b.createdAt ? new Date(b.createdAt).getTime() : NaN);
+    const thisWeek = bills.filter(b => created(b) >= now - 7 * 86400000);
+    const lastWeek = bills.filter(b => created(b) >= now - 14 * 86400000 && created(b) < now - 7 * 86400000);
+    const live = bills.filter(b => b.status !== 'cancelled' && b.status !== 'waived' && b.status !== 'draft');
+    return {
+      open: open.length,
+      unpaid,
+      partial: open.length - unpaid,
+      owed: open.reduce((sum, b) => sum + (b.balanceDue || 0), 0),
+      collected: live.reduce((sum, b) => sum + (b.amountPaid || 0), 0),
+      withPayment: live.filter(b => (b.amountPaid || 0) > 0).length,
+      review: bills.filter(b => b.status === 'draft').length,
+      thisWeek: thisWeek.length,
+      lastWeek: lastWeek.length,
+      billedThisWeek: thisWeek.reduce((sum, b) => sum + (b.totalAmount || 0), 0),
+    };
   }, [bills]);
 
   return (
-    <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+    <main className="page-container page-enter bl-page" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+      <div className="sadb-kpi-row bl-kpis" data-tour="billing-home-kpis">
+        <SadbKpiTile
+          label={t('billing.homeOpenBills')}
+          value={kpis.open.toLocaleString()}
+          delta={t('billing.homeOpenBillsDetail', { unpaid: kpis.unpaid, partial: kpis.partial })}
+        />
+        <SadbKpiTile
+          label={t('billing.homeBalanceDue')}
+          value={formatMoney(kpis.owed)}
+          delta={t('billing.homeBalanceDueDetail', { count: kpis.open })}
+          deltaTone={kpis.owed > 0 ? 'warn' : undefined}
+        />
+        <SadbKpiTile
+          label={t('billing.homeCollected')}
+          value={formatMoney(kpis.collected)}
+          delta={t('billing.homeCollectedDetail', { count: kpis.withPayment })}
+        />
+        <SadbKpiTile
+          label={t('billing.homeToReview')}
+          value={kpis.review.toLocaleString()}
+          delta={t('billing.homeToReviewDetail')}
+          deltaTone={kpis.review > 0 ? 'warn' : undefined}
+        />
+        <SadbKpiTile
+          label={t('billing.homeRaisedWeek')}
+          value={kpis.thisWeek.toLocaleString()}
+          delta={t('billing.homeRaisedWeekDetail', { amount: formatMoney(kpis.billedThisWeek) })}
+          trend={{ direction: trendBetween(kpis.thisWeek, kpis.lastWeek), label: t('billing.homeRaisedVsLast', { lastWeek: kpis.lastWeek }) }}
+        />
+      </div>
       <div className="card-elevated overflow-hidden flex flex-col" style={{ flex: 1, minHeight: 0 }}>
         <EhrListHeader
           title={t('admin.linkBilling')}
           count={bills.length}
-          stats={stats}
           search={{
             value: search,
             onChange: v => { setSearch(v); setVisibleCount(PAGE_SIZE); },

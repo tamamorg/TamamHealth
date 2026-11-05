@@ -438,26 +438,18 @@ export function ReferModal({ isOpen, onClose, patient, currentUser }: BaseModalP
             </Select>
           </div>
           <div className="col-span-2">
-            <label>{t('referrals.urgency')}</label>
-            <div className="flex gap-3 mt-1">
+            {/* A dropdown, like every other single choice on the form (user,
+                2026-11-04); it was three coloured pill buttons. */}
+            <label htmlFor="referral-urgency">{t('referrals.urgency')}</label>
+            <Select
+              id="referral-urgency"
+              value={urgency}
+              onChange={e => setUrgency(e.target.value as 'routine' | 'urgent' | 'emergency')}
+            >
               {(['routine', 'urgent', 'emergency'] as const).map(level => (
-                <button
-                  key={level}
-                  type="button"
-                  onClick={() => setUrgency(level)}
-                  className={`badge urgency-${level} cursor-pointer px-4 py-2 text-sm transition-all`}
-                  style={{
-                    opacity: urgency === level ? 1 : 0.45,
-                    transform: urgency === level ? 'scale(1.05)' : 'scale(1)',
-                    border: urgency === level ? '2px solid currentColor' : '2px solid transparent',
-                    borderRadius: '4px',
-                  }}
-                >
-                  {level === 'emergency' && <AlertTriangle className="w-3.5 h-3.5 inline me-1" />}
-                  {t(`referrals.urgency_${level}`)}
-                </button>
+                <option key={level} value={level}>{t(`referrals.urgency_${level}`)}</option>
               ))}
-            </div>
+            </Select>
           </div>
           <div className="col-span-2">
             <label>{t('referrals.reasonForReferral')}</label>

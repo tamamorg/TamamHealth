@@ -144,14 +144,17 @@ export default function MyFacilityPage() {
   // just report it.
   const numberField = (label: string, value: number, onChange: (v: number) => void, max?: number) => (
     <SadbSettingRow key={label} label={label}>
-      <NumberInput step="1"
-        min={0}
-        max={max}
-        className="sadb-modal-input"
-        style={{ maxWidth: 120 }}
-        value={value}
-        onChange={e => onChange(Math.max(0, parseInt(e.target.value) || 0))}
-      />
+      {/* A fixed-width cell: the stepper is 100% wide by default and would
+          squeeze the label to nothing in a flex row. */}
+      <span style={{ flex: '0 0 156px', width: 156 }}>
+        <NumberInput step="1"
+          min={0}
+          max={max}
+          className="sadb-modal-input"
+          value={value}
+          onChange={e => onChange(Math.max(0, parseInt(e.target.value) || 0))}
+        />
+      </span>
     </SadbSettingRow>
   );
 
@@ -325,10 +328,11 @@ export default function MyFacilityPage() {
                 </div>
 
                 {submittedAt && (
-                  <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                    {t('ui.lastSubmitted')} {new Date(submittedAt).toLocaleString()}
-                    {submission?.submittedByName ? ` by ${submission.submittedByName}` : ''}.
-                    {hasPendingChanges ? ' The profile has been edited since — submit again to report the latest data.' : ''}
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    {submission?.submittedByName
+                      ? t('facilityOverview.lastSubmittedBy', { when: new Date(submittedAt).toLocaleString(), name: submission.submittedByName })
+                      : t('facilityOverview.lastSubmittedOn', { when: new Date(submittedAt).toLocaleString() })}
+                    {hasPendingChanges ? ` ${t('myFacility.editedSince')}` : ''}
                   </p>
                 )}
 
@@ -341,14 +345,14 @@ export default function MyFacilityPage() {
                     className="btn btn-primary btn-sm"
                   >
                     {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                    {submittedAt && !hasPendingChanges ? 'Submitted' : 'Submit to Ministry of Health'}
+                    {submittedAt && !hasPendingChanges ? t('dhis2.statusSubmitted') : t('facilityOverview.submitToMoh')}
                   </button>
                   {submitError && (
                     <FormError message={submitError} />
                   )}
                 </div>
 
-                <p className="text-[11px] flex items-center gap-1.5 pt-1" style={{ color: 'var(--text-muted)' }}>
+                <p className="text-xs flex items-center gap-1.5 pt-1" style={{ color: 'var(--text-muted)' }}>
                   <AlertTriangle className="w-3 h-3" /> {t('ui.saveYourChangesBeforeSubmitting')}
                 </p>
               </>

@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { SadbKpiTile } from '@/components/admin/sadb-ui';
 import TableCols from '@/components/TableCols';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useMCHAnalytics } from '@/lib/hooks/useMCHAnalytics';
 import {
   HeartPulse, Baby, Syringe, AlertTriangle,
-  Shield, Users, Activity, Heart,
+  Users, Heart,
   ChevronDown, ChevronRight, Eye,
 } from '@/components/icons/lucide';
 import { SOUTH_SUDAN_STATES } from '@/lib/geographic-data';
@@ -17,6 +19,7 @@ type TabView = 'overview' | 'anc' | 'births' | 'mortality' | 'immunization' | 'h
 
 export default function MCHAnalyticsPage() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { data, loading } = useMCHAnalytics();
   // In the URL (?view=) so Back returns to the tab the user was on.
   const [activeTab, setActiveTab] = useUrlView<TabView>(['overview', 'anc', 'births', 'mortality', 'immunization', 'high-risk'], 'overview');
@@ -40,15 +43,6 @@ export default function MCHAnalyticsPage() {
 
   const { summary, ancCascade, maternalMortality, birthOutcomes, neonatalData, immunizationGaps, highRiskPregnancies } = data;
 
-  const gradeColors: Record<string, { bg: string; text: string }> = {
-    A: { bg: 'rgba(79, 199, 155,0.12)', text: 'var(--color-success-text)' },
-    B: { bg: 'rgba(124, 199, 255,0.12)', text: 'var(--accent-primary)' },
-    C: { bg: 'rgba(255, 210, 166,0.12)', text: 'var(--color-warning-text)' },
-    D: { bg: 'rgba(255, 153, 51,0.12)', text: '#FF9933' },
-    F: { bg: 'rgba(242, 109, 100,0.12)', text: 'var(--color-danger-text)' },
-  };
-
-  const grade = gradeColors[summary.overallGrade] || gradeColors.F;
   const scoreColor = (v: number, target: number) => v >= target ? 'var(--color-success)' : v >= target * 0.6 ? 'var(--color-warning)' : 'var(--color-danger)';
 
   const tabs: { key: TabView; label: string; icon: typeof HeartPulse }[] = [
@@ -66,42 +60,64 @@ export default function MCHAnalyticsPage() {
         {/* No greeting row (removed 2026-11-04): the grade it carried is the
             first KPI below, and its high-risk count already had a tile. */}
 
-        {/* ═══ KPI STRIP ═══ */}
-        <div className="kpi-grid mb-4">
-          {[
-            { label: t('mch.kpiOverallGrade'), value: summary.overallGrade, icon: Shield, color: grade.text, bg: grade.bg },
-            { label: t('mch.kpiMothersTracked'), value: summary.totalMothersTracked, icon: Users, color: 'var(--chart-2)', bg: 'rgba(204, 102, 0,0.12)' },
-            { label: t('mch.kpiAnc4Rate'), value: `${summary.anc4PlusCoverage}%`, icon: HeartPulse, color: scoreColor(summary.anc4PlusCoverage, 50), bg: 'rgba(204, 102, 0,0.08)' },
-            { label: t('mch.kpiMmr'), value: summary.maternalMortalityRatio.toLocaleString(), icon: Heart, color: summary.maternalMortalityRatio > 500 ? 'var(--color-danger-text)' : 'var(--color-warning-text)', bg: summary.maternalMortalityRatio > 500 ? 'rgba(242, 109, 100,0.12)' : 'rgba(255, 210, 166,0.12)' },
-            { label: t('mch.kpiNmr'), value: summary.neonatalMortalityRate, icon: Baby, color: summary.neonatalMortalityRate > 30 ? 'var(--color-danger-text)' : 'var(--color-warning-text)', bg: summary.neonatalMortalityRate > 30 ? 'rgba(242, 109, 100,0.12)' : 'rgba(255, 210, 166,0.12)' },
-            { label: t('mch.kpiImmunization'), value: `${summary.immunizationCoverage}%`, icon: Syringe, color: scoreColor(summary.immunizationCoverage, 80), bg: 'rgba(204, 102, 0,0.08)' },
-            { label: t('mch.kpiFacilityBirths'), value: `${summary.facilityDeliveryRate}%`, icon: Activity, color: scoreColor(summary.facilityDeliveryRate, 50), bg: 'rgba(204, 102, 0,0.08)' },
-            { label: t('mch.kpiHighRisk'), value: summary.highRiskCount, icon: AlertTriangle, color: 'var(--color-danger-text)', bg: 'rgba(242, 109, 100,0.12)' },
-          ].map((kpi) => (
-            <div key={kpi.label} className="kpi">
-              <div className="kpi__icon">
-                <kpi.icon style={{ color: kpi.color }} />
-              </div>
-              <div className="kpi__body">
-                <div className="kpi__value">{kpi.value}</div>
-                <div className="kpi__label">{kpi.label}</div>
-              </div>
-            </div>
-          ))}
+        {/* ═══ KPI BAND ═══ Each tile names what it is made of. There is no
+            earlier period on file for these indicators, so none carries a trend. */}
+        <div className="sadb-kpi-row mb-4">
+          <SadbKpiTile
+            label={t('mch.kpiOverallGrade')}
+            value={summary.overallGrade}
+            delta={t('mchx.gradeDetail')}
+          />
+          <SadbKpiTile
+            label={t('mch.kpiMothersTracked')}
+            value={summary.totalMothersTracked.toLocaleString()}
+            delta={t('mchx.mothersDetail')}
+            onClick={() => router.push('/anc')}
+          />
+          <SadbKpiTile
+            label={t('mch.kpiAnc4Rate')}
+            value={`${summary.anc4PlusCoverage}%`}
+            delta={t('mchx.anc4Detail')}
+            onClick={() => router.push('/anc')}
+          />
+          <SadbKpiTile
+            label={t('mch.kpiMmr')}
+            value={summary.maternalMortalityRatio.toLocaleString()}
+            delta={t('mchx.mmrDetail')}
+            deltaTone={summary.maternalMortalityRatio > 500 ? 'warn' : undefined}
+            onClick={() => setActiveTab('mortality')}
+          />
+          <SadbKpiTile
+            label={t('mch.kpiNmr')}
+            value={summary.neonatalMortalityRate.toLocaleString()}
+            delta={t('mchx.nmrDetail')}
+            deltaTone={summary.neonatalMortalityRate > 30 ? 'warn' : undefined}
+            onClick={() => setActiveTab('mortality')}
+          />
+          <SadbKpiTile
+            label={t('mch.kpiImmunization')}
+            value={`${summary.immunizationCoverage}%`}
+            delta={t('mchx.immDetail')}
+            onClick={() => router.push('/immunizations')}
+          />
+          <SadbKpiTile
+            label={t('mch.kpiFacilityBirths')}
+            value={`${summary.facilityDeliveryRate}%`}
+            delta={t('mchx.facilityBirthsDetail')}
+            onClick={() => router.push('/births')}
+          />
+          <SadbKpiTile
+            label={t('mch.kpiHighRisk')}
+            value={summary.highRiskCount.toLocaleString()}
+            delta={t('mchx.highRiskDetail')}
+            deltaTone={summary.highRiskCount > 0 ? 'warn' : undefined}
+            onClick={() => setActiveTab('high-risk')}
+          />
         </div>
 
         {/* ═══ SECTION SHELL: sidebar nav + content panel (replaces old pill-tab bar) ═══ */}
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <aside style={{ width: 224, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div className="dash-card" style={{ padding: '14px 16px' }}>
-              <div className="flex items-center gap-2.5">
-                <div className="listpage-header-icon"><HeartPulse size={20} /></div>
-                <div style={{ minWidth: 0 }}>
-                  <p className="listpage-eyebrow" style={{ margin: 0 }}>{t('ui.maternalChildHealth')}</p>
-                  <h1 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>{t('mch.topbarTitle')}</h1>
-                </div>
-              </div>
-            </div>
             <nav className="ehr-set-nav" aria-label={t('mch.topbarTitle')}>
               {tabs.map(tab => {
                 const Icon = tab.icon;
@@ -139,7 +155,7 @@ export default function MCHAnalyticsPage() {
                 {[
                   { label: t('mch.anc1Visit'), value: ancCascade.anc1, rate: ancCascade.anc1Rate, target: 90, color: 'var(--chart-2)' },
                   { label: t('mch.anc4Visits'), value: ancCascade.anc4, rate: ancCascade.anc4Rate, target: 50, color: 'var(--chart-3)' },
-                  { label: t('mch.anc8WhoTarget'), value: ancCascade.anc8, rate: ancCascade.anc8Rate, target: 30, color: '#1174B4' },
+                  { label: t('mch.anc8WhoTarget'), value: ancCascade.anc8, rate: ancCascade.anc8Rate, target: 30, color: 'var(--chart-1)' },
                 ].map(item => (
                   <div key={item.label}>
                     <div className="flex items-center justify-between mb-1.5">
@@ -170,7 +186,7 @@ export default function MCHAnalyticsPage() {
                 ))}
                 <div className="p-2 rounded-lg text-center mt-2" style={{ background: 'var(--overlay-subtle)' }}>
                   <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                    {t('mch.dropOffAnc1Anc4')} <strong style={{ color: '#FF9933' }}>{ancCascade.anc1Rate - ancCascade.anc4Rate}%</strong>
+                    {t('mch.dropOffAnc1Anc4')} <strong style={{ color: 'var(--color-warning-text)' }}>{ancCascade.anc1Rate - ancCascade.anc4Rate}%</strong>
                   </p>
                 </div>
               </div>
@@ -186,8 +202,8 @@ export default function MCHAnalyticsPage() {
               </div>
               <div className="p-4 space-y-3">
                 <div className="p-3 rounded-md text-center" style={{
-                  background: maternalMortality.mmr > 500 ? 'rgba(242, 109, 100,0.08)' : 'rgba(255, 210, 166,0.08)',
-                  border: `1px solid ${maternalMortality.mmr > 500 ? 'rgba(242, 109, 100,0.15)' : 'rgba(255, 210, 166,0.15)'}`,
+                  background: maternalMortality.mmr > 500 ? 'var(--color-danger-bg)' : 'var(--color-warning-bg)',
+                  border: `1px solid ${maternalMortality.mmr > 500 ? 'var(--color-danger-bg)' : 'var(--color-warning-bg)'}`,
                 }}>
                   <p className="text-3xl font-bold stat-value" style={{
                     color: maternalMortality.mmr > 500 ? 'var(--color-danger-text)' : 'var(--color-warning-text)',
@@ -298,7 +314,7 @@ export default function MCHAnalyticsPage() {
                         <div className="flex justify-between text-[9px]">
                           <span style={{ color: 'var(--text-muted)' }}>{gap.vaccinated}/{gap.targetPopulation}</span>
                           {gap.dropoutRate > 0 && (
-                            <span style={{ color: '#FF9933' }}>{t('mch.dropoutPercent', { value: gap.dropoutRate })}</span>
+                            <span style={{ color: 'var(--color-warning-text)' }}>{t('mch.dropoutPercent', { value: gap.dropoutRate })}</span>
                           )}
                         </div>
                       </div>
@@ -347,7 +363,7 @@ export default function MCHAnalyticsPage() {
                 {[
                   { label: t('mch.anc1Short'), value: ancCascade.anc1, rate: ancCascade.anc1Rate, color: 'var(--chart-2)' },
                   { label: t('mch.anc4Short'), value: ancCascade.anc4, rate: ancCascade.anc4Rate, color: 'var(--chart-3)' },
-                  { label: t('mch.anc8Short'), value: ancCascade.anc8, rate: ancCascade.anc8Rate, color: '#1174B4' },
+                  { label: t('mch.anc8Short'), value: ancCascade.anc8, rate: ancCascade.anc8Rate, color: 'var(--chart-1)' },
                 ].map(item => {
                   const maxRate = Math.max(ancCascade.anc1Rate, 1);
                   const barHeight = (item.rate / maxRate) * 100;
@@ -408,7 +424,7 @@ export default function MCHAnalyticsPage() {
                             </span>
                           </td>
                           <td>
-                            <span className="text-xs" style={{ color: dropoff > 50 ? 'var(--color-danger-text)' : '#FF9933' }}>
+                            <span className="text-xs" style={{ color: dropoff > 50 ? 'var(--color-danger-text)' : 'var(--color-warning-text)' }}>
                               {dropoff}%
                             </span>
                           </td>
@@ -477,7 +493,7 @@ export default function MCHAnalyticsPage() {
                     .sort(([, a], [, b]) => b - a)
                     .map(([attendant, count]) => {
                       const pct = birthOutcomes.totalBirths > 0 ? Math.round((count / birthOutcomes.totalBirths) * 100) : 0;
-                      const color = attendant === 'doctor' ? 'var(--accent-primary)' : attendant === 'midwife' ? 'var(--chart-2)' : attendant === 'nurse' ? 'var(--accent-primary)' : '#FF9933';
+                      const color = attendant === 'doctor' ? 'var(--accent-primary)' : attendant === 'midwife' ? 'var(--chart-2)' : attendant === 'nurse' ? 'var(--accent-primary)' : 'var(--color-warning-text)';
                       return (
                         <div key={attendant}>
                           <div className="flex justify-between text-xs mb-1">
@@ -515,7 +531,7 @@ export default function MCHAnalyticsPage() {
                           <div className="w-full rounded-t-md" style={{
                             height: `${height}%`,
                             minHeight: m.births > 0 ? '4px' : '0',
-                            background: 'linear-gradient(180deg, #2191D0, rgba(17, 116, 180,0.3))',
+                            background: 'linear-gradient(180deg, var(--accent-primary), var(--accent-light))',
                           }} />
                         </div>
                         <span className="text-[9px] font-mono" style={{ color: 'var(--text-muted)' }}>{m.month}</span>
@@ -554,7 +570,7 @@ export default function MCHAnalyticsPage() {
                         <td className="font-semibold">{d.total}</td>
                         <td>{d.caesarean}</td>
                         <td>
-                          <span style={{ color: d.total > 0 && (d.caesarean / d.total * 100) > 15 ? '#FF9933' : 'var(--text-secondary)' }}>
+                          <span style={{ color: d.total > 0 && (d.caesarean / d.total * 100) > 15 ? 'var(--color-warning-text)' : 'var(--text-secondary)' }}>
                             {d.total > 0 ? Math.round((d.caesarean / d.total) * 100) : 0}%
                           </span>
                         </td>
@@ -650,11 +666,11 @@ export default function MCHAnalyticsPage() {
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>{t('mch.under5ByGender')}</p>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 rounded-md text-center" style={{ background: 'rgba(124, 199, 255,0.08)' }}>
+                      <div className="p-3 rounded-md text-center" style={{ background: 'var(--accent-light)' }}>
                         <p className="text-xl font-bold" style={{ color: 'var(--accent-primary)' }}>{neonatalData.byGender?.Male || 0}</p>
                         <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{t('mch.male')}</p>
                       </div>
-                      <div className="p-3 rounded-md text-center" style={{ background: 'rgba(204, 102, 0,0.08)' }}>
+                      <div className="p-3 rounded-md text-center" style={{ background: 'var(--color-warning-bg)' }}>
                         <p className="text-xl font-bold" style={{ color: 'var(--chart-2)' }}>{neonatalData.byGender?.Female || 0}</p>
                         <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{t('mch.female')}</p>
                       </div>
@@ -677,7 +693,7 @@ export default function MCHAnalyticsPage() {
                             <div className="h-2 rounded-full" style={{ background: 'var(--overlay-light)' }}>
                               <div className="h-full rounded-full" style={{
                                 width: `${(c.count / maxCount) * 100}%`,
-                                background: i === 0 ? 'var(--color-danger)' : i < 3 ? '#FF9933' : 'var(--color-warning)',
+                                background: i === 0 ? 'var(--color-danger)' : i < 3 ? 'var(--color-warning-text)' : 'var(--color-warning)',
                               }} />
                             </div>
                           </div>
@@ -776,10 +792,10 @@ export default function MCHAnalyticsPage() {
                             <span className="text-xs font-bold" style={{ color }}>{gap.coverageRate}%</span>
                           </div>
                         </td>
-                        <td style={{ color: '#FF9933' }}>{gap.gap}</td>
+                        <td style={{ color: 'var(--color-warning-text)' }}>{gap.gap}</td>
                         <td>
                           {gap.dropoutRate > 0 ? (
-                            <span style={{ color: gap.dropoutRate > 20 ? 'var(--color-danger-text)' : '#FF9933' }}>{gap.dropoutRate}%</span>
+                            <span style={{ color: gap.dropoutRate > 20 ? 'var(--color-danger-text)' : 'var(--color-warning-text)' }}>{gap.dropoutRate}%</span>
                           ) : (
                             <span style={{ color: 'var(--text-muted)' }}>—</span>
                           )}

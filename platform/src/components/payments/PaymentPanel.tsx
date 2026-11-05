@@ -15,6 +15,7 @@ import '@/components/billing/billing.css';
 import Select from '@/components/Select';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { FormError } from '@/components/overlay/FormNotices';
+import InlineBanner from '@/components/overlay/InlineBanner';
 import NumberInput from '@/components/forms/NumberInput';
 
 interface PaymentPanelProps {
@@ -332,7 +333,7 @@ export default function PaymentPanel({
           )}
           {showEmailInput && !emailSent && emailLoaded && !emailAddress && <p className="bl-muted bl-receipt-note">{t('payments.noPatientEmailNote')}</p>}
           {emailSent && <p className="bl-muted bl-receipt-note">{t('payments.receiptSentTo', { email: emailAddress })}</p>}
-          {emailError && !emailSent && <p className="bl-danger bl-receipt-note">{emailError}</p>}
+          {emailError && !emailSent && <InlineBanner tone="danger">{emailError}</InlineBanner>}
         </div>
       </FormSlider>
     );
@@ -352,47 +353,19 @@ export default function PaymentPanel({
       </>}
     >
       <div className="bl-root">
-        {/* Scoped field styling. It sits after the header so the header
-            stays the panel's first child — the popup header bar is matched
-            structurally, and a leading <style> node displaced it. */}
-        <style>{`
-          .pp-pay input:not([type=checkbox]):not([type=radio]), .pp-pay select, .pp-pay textarea {
-            width:100% !important; padding:11px 13px !important; border-radius:10px !important;
-            border:1px solid var(--border-light) !important; background:var(--bg-card, #FFFFFF) !important;
-            color:var(--text-primary) !important; font-size:14px !important;
-            transition:border-color .15s, box-shadow .15s !important;
-          }
-          .pp-pay select { -webkit-appearance:none; appearance:none; background-image:none; }
-          .pp-pay input:focus, .pp-pay select:focus, .pp-pay textarea:focus {
-            outline:none !important; border-color:var(--accent-primary) !important;
-            box-shadow:0 0 0 3px var(--accent-light) !important;
-          }
-          .pp-pay label { font-size:11px !important; font-weight:700 !important; letter-spacing:.03em; text-transform:uppercase; color:var(--text-muted) !important; }
-          .pp-pay .pp-field-label { font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px; display:block; }
-          /* The method chooser. Full width so it lines up with the amount and
-             the fields under it, and sized like the panel's other inputs. */
-          .pp-pay .pp-method-select {
-            width:100%; min-height:42px; padding:0 12px; font-size:14px; font-weight:600;
-            color:var(--text-primary); background:var(--bg-card, #FFFFFF);
-            border:1px solid var(--border-light); border-radius:10px; cursor:pointer;
-          }
-          .pp-pay .pp-method-select:focus-visible { outline:2px solid var(--accent-primary); outline-offset:1px; }
-        `}</style>
-
         {/* Amount hero — flat panel, no gradient wash: the figure itself is
             the emphasis, matching the billing module's plain label-above-
             value stat treatment. */}
         <div style={{ padding: '18px var(--dialog-gutter)', borderBottom: '1px solid var(--border-light)' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-text)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('payments.amountDueLabel')}</div>
-          <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--accent-text)', letterSpacing: -0.5, fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{formatMoney(amountDue, { currency })}</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>{t('payments.amountDueLabel')}</div>
+          <div style={{ fontSize: 24, fontWeight: 600, color: 'var(--accent-text)', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{formatMoney(amountDue, { currency })}</div>
         </div>
 
         <div style={{ padding: '16px var(--dialog-gutter) 4px' }}>
-          <div className="pp-payment-choices" role="group" aria-label={t('payments.methodLabel')}>
-            {tabs.map(item => <button key={item.key} type="button" disabled={processing} aria-pressed={tab === item.key} onClick={() => setTab(item.key as TabType)}>
-              <item.icon size={20} /><span>{item.label}</span>
-            </button>)}
-          </div>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>{t('payments.methodLabel')}</label>
+          <Select value={tab} disabled={processing} onChange={e => setTab(e.target.value as TabType)} aria-label={t('payments.methodLabel')} data-action="payment-method">
+            {tabs.map(item => <option key={item.key} value={item.key}>{item.label}</option>)}
+          </Select>
           <p className="pp-payment-guidance">{t(`payments.steps.${tab === 'insurance' ? insuranceWaiverMode : tab}`)}</p>
         </div>
 
@@ -420,18 +393,11 @@ export default function PaymentPanel({
             <>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>{t('payments.provider')}</label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {(['mpesa', 'airtel', 'mtn_momo'] as const).map(p => (
-                    <button key={p} onClick={() => setMobileProvider(p)} style={{
-                      flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                      border: mobileProvider === p ? '2px solid var(--accent-primary)' : '1px solid var(--border-medium)',
-                      background: mobileProvider === p ? 'color-mix(in srgb, var(--accent-primary) 8%, transparent)' : 'transparent',
-                      color: mobileProvider === p ? 'var(--accent-primary)' : 'var(--text-muted)',
-                    }}>
-                      {p === 'mpesa' ? t('payments.methodMpesa') : p === 'airtel' ? t('payments.methodAirtel') : t('payments.methodMtnMomo')}
-                    </button>
-                  ))}
-                </div>
+                <Select value={mobileProvider} onChange={e => setMobileProvider(e.target.value as typeof mobileProvider)} aria-label={t('payments.provider')}>
+                  <option value="mpesa">{t('payments.methodMpesa')}</option>
+                  <option value="airtel">{t('payments.methodAirtel')}</option>
+                  <option value="mtn_momo">{t('payments.methodMtnMomo')}</option>
+                </Select>
               </div>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>{t('payments.phoneNumber')}</label>
@@ -494,19 +460,11 @@ export default function PaymentPanel({
           {tab === 'insurance' && (
             <>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>{t('payments.type')}</label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {(['insurance', 'waiver'] as const).map(mode => (
-                    <button key={mode} onClick={() => setInsuranceWaiverMode(mode)} style={{
-                      flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                      border: insuranceWaiverMode === mode ? '2px solid var(--accent-primary)' : '1px solid var(--border-medium)',
-                      background: insuranceWaiverMode === mode ? 'color-mix(in srgb, var(--accent-primary) 8%, transparent)' : 'transparent',
-                      color: insuranceWaiverMode === mode ? 'var(--accent-primary)' : 'var(--text-muted)',
-                    }}>
-                      {mode === 'insurance' ? t('billing.insurance') : t('payments.methodWaiver')}
-                    </button>
-                  ))}
-                </div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>{t('payments.type')}</label>
+                <Select value={insuranceWaiverMode} onChange={e => setInsuranceWaiverMode(e.target.value as 'insurance' | 'waiver')} aria-label={t('payments.type')}>
+                  <option value="insurance">{t('billing.insurance')}</option>
+                  <option value="waiver">{t('payments.methodWaiver')}</option>
+                </Select>
               </div>
 
               {insuranceWaiverMode === 'insurance' ? (
@@ -519,7 +477,7 @@ export default function PaymentPanel({
                         onChange={e => setPayerName(e.target.value)}
                         style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', fontSize: 14, background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
                       >
-                        <option value="">{t('ui.selectPayor')}</option>
+                        <option value="">{t('payments.selectPayor')}</option>
                         {settings.payors.filter(p => p !== 'out_of_pocket').map(p => (
                           <option key={p} value={PAYOR_LABELS[p]}>{PAYOR_LABELS[p]}</option>
                         ))}

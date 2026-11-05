@@ -22,6 +22,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import InlineBanner from '@/components/overlay/InlineBanner';
+import Select from '@/components/Select';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
@@ -41,9 +42,25 @@ import {
   getRiskResolutions, indexResolutions, isRiskResolved, reopenRisk, resolveRisks,
   type ResolveRiskInput,
 } from '@/lib/services/risk-resolution-service';
-import { SadbPage, SadbCard, SadbSearch, SadbChip, SadbTabs, SEVERITY_CHIP } from '@/components/admin/sadb-ui';
+import { SadbPage, SadbCard, SadbSearch, SadbChip, SEVERITY_CHIP } from '@/components/admin/sadb-ui';
 import { humanizeStatus } from '@/lib/format-utils';
 import { useUrlView } from '@/lib/navigation/use-url-view';
+
+const SEVERITY_KEY: Record<SaSeverity, string> = {
+  critical: 'admin.healthCritical',
+  high: 'epidemic.severityHigh',
+  medium: 'syncConflicts.riskFilter_medium',
+  low: 'epidemic.severityLow',
+};
+
+const SOURCE_KEY: Record<RiskSource, string> = {
+  Audit: 'adminMgmt.srcAudit',
+  Sync: 'adminMgmt.srcSync',
+  Data: 'adminMgmt.srcData',
+  Tenants: 'adminMgmt.srcTenants',
+  Continuity: 'adminMgmt.srcContinuity',
+  Platform: 'adminMgmt.srcPlatform',
+};
 
 const SOURCE_HREF: Record<RiskSource, string> = {
   Audit: '/admin/audit',
@@ -294,15 +311,6 @@ export default function RiskCenterPage() {
         title={t('ui.riskIncidentQueue')}
         action={
           <>
-            <SadbTabs
-              ariaLabel="Risk queue view"
-              active={tab}
-              onChange={key => setTab(key as 'open' | 'resolved')}
-              tabs={[
-                { key: 'open', label: 'Open', count: openTotal },
-                { key: 'resolved', label: 'Resolved', count: resolvedDocs.length },
-              ]}
-            />
             <div className="sadb-legend">
               <span><i style={{ background: 'var(--color-danger-500)' }} />{t('ui.critical')}{counts.critical})</span>
               <span><i style={{ background: 'var(--color-danger-500)' }} />{t('ui.high')}{counts.high})</span>
@@ -327,7 +335,16 @@ export default function RiskCenterPage() {
         )}
 
         <div className="sadb-search-row sadb-search-row--table-aligned">
-          <SadbSearch value={search} onChange={setSearch} placeholder={t('ui.searchSignalOrDetail')} ariaLabel="Search risk signals" />
+          <SadbSearch value={search} onChange={setSearch} placeholder={t('ui.searchSignalOrDetail')} ariaLabel={t('adminMgmt.searchRiskSignals')} />
+          <Select
+            aria-label={t('adminMgmt.showRisks')}
+            value={tab}
+            onChange={e => setTab(e.target.value as 'open' | 'resolved')}
+            style={{ width: 190 }}
+          >
+            <option value="open">{t('adminMgmt.openCount', { count: openTotal })}</option>
+            <option value="resolved">{t('adminMgmt.resolvedCount', { count: resolvedDocs.length })}</option>
+          </Select>
           {/* Deliberately "all shown", not "all": whatever the filters have
               narrowed to is what an operator has actually just looked at. Past
               MAX_BULK_RESOLVE the one-click bulk is withheld — clearing a safety
@@ -350,22 +367,23 @@ export default function RiskCenterPage() {
           {tab === 'open' ? (
             <SaTable
               columns={[
-                'Signal', 'Severity', 'Source', 'Detail', 'Age', 'Status', 'Resolve',
+                t('adminMgmt.colSignal'), t('epidemic.colSeverity'), t('ui.source'), t('adminUsers.activityDetail'),
+                t('anc.age'), t('admin.colStatus'), t('feedback.resolve'),
               ]}
-              empty={loading ? 'Loading risk signals…' : 'No open risk signals — the platform is clean.'}
+              empty={loading ? t('adminMgmt.loadingRiskSignals') : t('adminMgmt.noOpenRisksClean')}
             >
               {pagedOpen.map(r => (
                 <tr
                   key={r.id}
                   tabIndex={0}
-                  aria-label={`Open risk signal: ${r.signal}`}
+                  aria-label={t('adminMgmt.openRiskSignal', { signal: r.signal })}
                   style={{ cursor: 'pointer' }}
                   onClick={() => openResolveDialog([r])}
                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openResolveDialog([r]); } }}
                 >
                   <td><strong>{r.signal}</strong></td>
-                  <td><SadbChip tone={SEVERITY_CHIP[r.severity]}>{r.severity}</SadbChip></td>
-                  <td>{r.source}</td>
+                  <td><SadbChip tone={SEVERITY_CHIP[r.severity]}>{t(SEVERITY_KEY[r.severity])}</SadbChip></td>
+                  <td>{t(SOURCE_KEY[r.source])}</td>
                   <td>{r.detail}</td>
                   <td>{formatWhen(r.when)}</td>
                   <td>{humanizeStatus(r.status)}</td>
@@ -378,7 +396,7 @@ export default function RiskCenterPage() {
                         openResolveDialog([r]);
                       }}
                       onKeyDown={event => event.stopPropagation()}
-                      aria-label={`Resolve risk signal: ${r.signal}`}
+                      aria-label={t('adminMgmt.resolveRiskSignal', { signal: r.signal })}
                     >
                       {t('feedback.resolve')}
                     </button>
@@ -389,22 +407,23 @@ export default function RiskCenterPage() {
           ) : (
             <SaTable
               columns={[
-                'Signal', 'Severity', 'Source', 'What was done', 'Resolved', 'By',
+                t('adminMgmt.colSignal'), t('epidemic.colSeverity'), t('ui.source'), t('adminMgmt.colWhatWasDone'),
+                t('conflicts.actionResolved'), t('ui.by'),
               ]}
-              empty={loading ? 'Loading…' : 'Nothing has been resolved yet.'}
+              empty={loading ? t('admin.loading') : t('adminMgmt.nothingResolved')}
             >
               {pagedResolved.map(d => (
                 <tr
                   key={d._id}
                   tabIndex={0}
-                  aria-label={`Open resolved risk signal: ${d.signal}`}
+                  aria-label={t('adminMgmt.openResolvedRiskSignal', { signal: d.signal })}
                   style={{ cursor: 'pointer' }}
                   onClick={() => setReopening(d)}
                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setReopening(d); } }}
                 >
                   <td><strong>{d.signal}</strong></td>
-                  <td><SadbChip tone={SEVERITY_CHIP[d.severity]}>{d.severity}</SadbChip></td>
-                  <td>{d.source}</td>
+                  <td><SadbChip tone={SEVERITY_CHIP[d.severity]}>{t(SEVERITY_KEY[d.severity])}</SadbChip></td>
+                  <td>{SOURCE_KEY[d.source as RiskSource] ? t(SOURCE_KEY[d.source as RiskSource]) : d.source}</td>
                   <td>{d.note || <span style={{ color: 'var(--text-muted)' }}>{t('ui.acknowledgedNoNote')}</span>}</td>
                   <td>{formatWhen(d.resolvedAt)}</td>
                   <td>{d.resolvedByName || '—'}</td>
@@ -424,7 +443,7 @@ export default function RiskCenterPage() {
             }}
           >
             <span>
-              {(pageStart + 1).toLocaleString()}–{Math.min(pageStart + PAGE_SIZE, activeList.length).toLocaleString()} of {activeList.length.toLocaleString()}
+              {t('adminMgmt.pageRange', { from: (pageStart + 1).toLocaleString(), to: Math.min(pageStart + PAGE_SIZE, activeList.length).toLocaleString(), total: activeList.length.toLocaleString() })}
             </span>
             <span style={{ display: 'flex', gap: 6 }}>
               <button
@@ -432,18 +451,18 @@ export default function RiskCenterPage() {
                 className="btn btn-secondary btn-sm"
                 onClick={() => setPage(Math.max(0, safePage - 1))}
                 disabled={safePage <= 0}
-                aria-label="Previous page"
+                aria-label={t('ui.previousPage')}
               >
-                Prev
+                {t('admin.prev')}
               </button>
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
                 onClick={() => setPage(Math.min(pageCount - 1, safePage + 1))}
                 disabled={safePage >= pageCount - 1}
-                aria-label="Next page"
+                aria-label={t('ui.nextPage')}
               >
-                Next
+                {t('action.next')}
               </button>
             </span>
           </div>
@@ -458,11 +477,11 @@ export default function RiskCenterPage() {
           <DialogFrame>
             <DialogHeader
               titleId="resolve-risk-title"
-              title={<>{single ? single.signal : `Resolve ${resolving.length} risks`}</>}
+              title={<>{single ? single.signal : t('adminMgmt.resolveNRisks', { count: resolving.length })}</>}
               descriptionId="resolve-risk-title-desc"
               description={<>{single
-                  ? 'Resolve this signal?'
-                  : `${resolving.length} signals currently shown in the queue.`}
+                  ? t('adminMgmt.resolveThisSignal')
+                  : t('adminMgmt.nSignalsShown', { count: resolving.length })}
                 {' '}{t('ui.resolvingRecordsThatItHas')}</>}
               onClose={() => setResolving(null)}
             />
@@ -480,9 +499,9 @@ export default function RiskCenterPage() {
                 <div style={{ border: '1px solid var(--border-light)', borderRadius: 8, marginBottom: 14 }}>
                   <div className="sadb-kv">
                     <span>{t('epidemic.colSeverity')}</span>
-                    <SadbChip tone={SEVERITY_CHIP[single.severity]}>{single.severity}</SadbChip>
+                    <SadbChip tone={SEVERITY_CHIP[single.severity]}>{t(SEVERITY_KEY[single.severity])}</SadbChip>
                   </div>
-                  <div className="sadb-kv"><span>{t('ui.source')}</span><span className="sadb-kv-value">{single.source}</span></div>
+                  <div className="sadb-kv"><span>{t('ui.source')}</span><span className="sadb-kv-value">{t(SOURCE_KEY[single.source])}</span></div>
                   <div className="sadb-kv"><span>{t('billing.activityColumn.status')}</span><span className="sadb-kv-value">{humanizeStatus(single.status)}</span></div>
                   <div className="sadb-kv"><span>{t('anc.age')}</span><span className="sadb-kv-value">{formatWhen(single.when)}</span></div>
                 </div>
@@ -533,7 +552,7 @@ export default function RiskCenterPage() {
                   onClick={() => router.push(rowHref(single))}
                   disabled={saving}
                 >
-                  {t('ui.openIn')} {single.source}
+                  {t('ui.openIn')} {t(SOURCE_KEY[single.source])}
                 </button>
               )}
             >
@@ -541,7 +560,7 @@ export default function RiskCenterPage() {
                 {t('action.cancel')}
               </button>
               <button type="button" className="btn btn-primary" onClick={confirmResolve} disabled={saving}>
-                {saving ? 'Saving…' : single ? 'Resolve' : `Resolve ${resolving.length}`}
+                {saving ? t('common.saving') : single ? t('feedback.resolve') : t('adminMgmt.resolveN', { count: resolving.length })}
               </button>
             </DialogFooter>
           </DialogFrame>
@@ -564,9 +583,9 @@ export default function RiskCenterPage() {
             <div style={{ border: '1px solid var(--border-light)', borderRadius: 8, marginBottom: 14 }}>
               <div className="sadb-kv">
                 <span>{t('epidemic.colSeverity')}</span>
-                <SadbChip tone={SEVERITY_CHIP[reopening.severity]}>{reopening.severity}</SadbChip>
+                <SadbChip tone={SEVERITY_CHIP[reopening.severity]}>{t(SEVERITY_KEY[reopening.severity])}</SadbChip>
               </div>
-              <div className="sadb-kv"><span>{t('ui.source')}</span><span className="sadb-kv-value">{reopening.source}</span></div>
+              <div className="sadb-kv"><span>{t('ui.source')}</span><span className="sadb-kv-value">{SOURCE_KEY[reopening.source as RiskSource] ? t(SOURCE_KEY[reopening.source as RiskSource]) : reopening.source}</span></div>
               <div className="sadb-kv"><span>{t('conflicts.actionResolved')}</span><span className="sadb-kv-value">{formatWhen(reopening.resolvedAt)}</span></div>
               <div className="sadb-kv"><span>{t('ui.by')}</span><span className="sadb-kv-value">{reopening.resolvedByName || '—'}</span></div>
             </div>
@@ -575,7 +594,7 @@ export default function RiskCenterPage() {
               overflowWrap: 'anywhere', margin: '0 0 4px', padding: '10px 12px',
               background: 'var(--overlay-subtle)', borderRadius: 10,
             }}>
-              {reopening.note || 'Acknowledged, no note.'}
+              {reopening.note || t('ui.acknowledgedNoNote')}
             </p>
             </DialogBody>
             <DialogFooter>
@@ -583,7 +602,7 @@ export default function RiskCenterPage() {
                 {t('action.cancel')}
               </button>
               <button type="button" className="btn btn-primary" onClick={confirmReopen} disabled={reopenBusy}>
-                {reopenBusy ? 'Reopening…' : 'Reopen'}
+                {reopenBusy ? t('adminMgmt.reopening') : t('action.reopen')}
               </button>
             </DialogFooter>
           </DialogFrame>

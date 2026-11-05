@@ -20,7 +20,7 @@ import {
 } from 'recharts';
 import { tooltipStyle as chartTooltipStyle, axisTick, AreaGradients } from '@/components/ChartCard';
 import {
-  SadbPage, SadbPanelHeader, SadbKpiTile, SadbCard, SadbKvRow, SadbGridList, SadbGridRow,
+  SadbPage, SadbKpiTile, SadbCard, SadbKvRow, SadbGridList, SadbGridRow, trendBetween,
 } from '@/components/admin/sadb-ui';
 
 interface UsageSummary {
@@ -86,7 +86,21 @@ export default function OrgAdminAnalyticsPage() {
     return () => { cancelled = true; };
   }, [currentUser]);
 
-  const orgName = currentUser?.organization?.name || t('orgAnalytics.yourOrganization');
+  // Trends come from the daily series the summary already carries: today's
+  // users against the day before, and the last 7 days' events against the 7
+  // before. Sessions and the weekly users have no series, so no trend.
+  const series = usage?.dauTrend ?? [];
+  const dauTrend = series.length >= 2
+    ? { direction: trendBetween(series[series.length - 1].users, series[series.length - 2].users), label: `vs ${series[series.length - 2].users} the day before` }
+    : undefined;
+  const eventsTrend = series.length >= 14
+    ? (() => {
+        const sum = (rows: typeof series) => rows.reduce((n, r) => n + r.events, 0);
+        const thisWeek = sum(series.slice(-7));
+        const lastWeek = sum(series.slice(-14, -7));
+        return { direction: trendBetween(thisWeek, lastWeek), label: `${thisWeek.toLocaleString()} this week vs ${lastWeek.toLocaleString()} last` };
+      })()
+    : undefined;
 
   function renderDauChart() {
     if (loading) {
@@ -95,7 +109,7 @@ export default function OrgAdminAnalyticsPage() {
     if (!usage?.dauTrend?.length || usage.dauTrend.every(d => !d.users && !d.events)) {
       return (
         <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <EmptyState icon={Activity} title={t('analytics.noUsageYet')} message={t('analytics.noDataShort')} />
+          <EmptyState icon={Activity} title={t('analytics.noUsageYet')} />
         </div>
       );
     }
@@ -117,29 +131,23 @@ export default function OrgAdminAnalyticsPage() {
 
   return (
     <SadbPage roles={['org_admin', 'super_admin']}>
-      <SadbPanelHeader
-        title={t('orgAnalytics.topBarTitle')}
-        note={t('orgAnalytics.subtitle', { org: orgName })}
-      />
-
       {/* ═══ 30-day usage vitals ═══ */}
       <div className="sadb-kpi-row" data-tour="org-analytics-stats">
-        <SadbKpiTile label={t('analytics.dau')} value={loading || !usage ? '—' : usage.dau.toLocaleString()} delta={t('analytics.kpiSignedInToday')} />
+        <SadbKpiTile label={t('analytics.dau')} value={loading || !usage ? '—' : usage.dau.toLocaleString()} delta={t('analytics.kpiSignedInToday')} trend={dauTrend} />
         <SadbKpiTile label={t('analytics.wau')} value={loading || !usage ? '—' : usage.wau.toLocaleString()} delta={t('analytics.kpiSignedInWeek')} />
         <SadbKpiTile label={t('analytics.sessions')} value={loading || !usage ? '—' : usage.sessionCount.toLocaleString()} delta={t('analytics.kpiLast30')} />
         <SadbKpiTile
           label={t('analytics.events')}
           value={loading || !usage ? '—' : usage.eventCount.toLocaleString()}
           delta={usage ? t('analytics.kpiPerDay', { count: Math.round(usage.eventCount / 30) }) : t('analytics.kpiLast30')}
+          trend={eventsTrend}
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
         <SadbCard
           title={t('analytics.dauTrend')}
-          meta={usage
-            ? `${t('analytics.dau')} ${usage.dau} · ${t('analytics.wau')} ${usage.wau} · ${t('analytics.last30Days')}`
-            : t('analytics.last30Days')}
+          meta={t('analytics.last30Days')}
         >
           <div className="px-3 pt-3 pb-1">{renderDauChart()}</div>
         </SadbCard>

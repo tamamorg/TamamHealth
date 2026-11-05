@@ -27,7 +27,7 @@ import {
 } from '@/components/icons/lucide';
 import type { OrganizationDoc } from '@/lib/db-types';
 import {
-  SadbPage, SadbPanelHeader, SadbSettingGroup, SadbSettingRow, SadbSaveBar, SadbCard,
+  SadbPage, SadbSettingGroup, SadbSettingRow, SadbSaveBar, SadbCard,
 } from '@/components/admin/sadb-ui';
 import { describeError } from '@/lib/user-facing-error';
 
@@ -101,7 +101,7 @@ export default function OrgBrandingPage() {
           setDraft(d);
         }
       } catch (err) {
-        console.error('Failed to load org:', err);
+        console.error('[branding] organization not loaded:', err);
       } finally {
         setLoading(false);
       }
@@ -209,7 +209,6 @@ export default function OrgBrandingPage() {
   if (loading || !draft) {
     return (
       <SadbPage roles={['org_admin', 'super_admin']}>
-        <SadbPanelHeader title={t('branding.title')} note={t('branding.subtitle')} />
         {/* Two states share this branch: still loading, and loaded-but-no-org
             (an account whose organization record is not in the local replica,
             or a platform operator with no orgId). Only the first is transient,
@@ -235,8 +234,6 @@ export default function OrgBrandingPage() {
         />
       }
     >
-      <SadbPanelHeader title={t('branding.title')} note={t('branding.subtitle')} />
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 items-start">
         {/* ═══ Editor column ═══ */}
         <div className="flex flex-col gap-3.5 min-w-0">
@@ -264,7 +261,7 @@ export default function OrgBrandingPage() {
                       type="button"
                       onClick={() => set('logoUrl', undefined)}
                       className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center"
-                      style={{ background: 'var(--color-danger)', color: '#fff' }}
+                      style={{ background: 'var(--color-danger)', color: 'var(--color-white)' }}
                       aria-label={t('ui.removeLogo')}
                     >
                       <X className="w-3 h-3" />
@@ -278,7 +275,7 @@ export default function OrgBrandingPage() {
                     <Upload className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
                   </span>
                 )}
-                <label className="sadb-action-btn cursor-pointer inline-flex items-center gap-1.5" style={{ textTransform: 'uppercase' }}>
+                <label className="sadb-action-btn cursor-pointer inline-flex items-center gap-1.5">
                   <Upload className="w-3.5 h-3.5" />
                   {t('branding.uploadLogo')}
                   <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
@@ -324,9 +321,9 @@ export default function OrgBrandingPage() {
             <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-light)' }}>
               <div className="flex" style={{ height: 360 }}>
                 {/* Sidebar preview */}
-                <div className="w-[200px] flex flex-col" style={{ background: '#001D3F' }}>
+                <div className="w-[200px] flex flex-col" style={{ background: 'var(--color-slate-900)' }}>
                   {/* Sidebar header */}
-                  <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid color-mix(in srgb, var(--color-white) 8%, transparent)' }}>
                     {logoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={logoUrl} alt="" className="w-7 h-7 rounded-md object-cover" />
@@ -348,7 +345,7 @@ export default function OrgBrandingPage() {
                           className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs"
                           style={{
                             background: item.active ? `${primaryColor}20` : 'transparent',
-                            color: item.active ? primaryColor : 'rgba(255,255,255,0.5)',
+                            color: item.active ? primaryColor : 'color-mix(in srgb, var(--color-white) 55%, transparent)',
                             borderInlineStart: item.active ? `2px solid ${primaryColor}` : '2px solid transparent',
                           }}
                         >
@@ -360,12 +357,12 @@ export default function OrgBrandingPage() {
                   </div>
 
                   {/* User pill */}
-                  <div className="px-3 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div className="px-3 py-3" style={{ borderTop: '1px solid color-mix(in srgb, var(--color-white) 8%, transparent)' }}>
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ background: primaryColor }}>
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold text-white" style={{ background: primaryColor }}>
                         OA
                       </div>
-                      <div className="text-[10px]">
+                      <div className="text-xs">
                         <p className="text-white/80 font-medium truncate">{t('branding.orgAdmin')}</p>
                         <p className="text-white/40">{t('branding.adminRole')}</p>
                       </div>
@@ -387,52 +384,27 @@ export default function OrgBrandingPage() {
 
                   {/* Content preview */}
                   <div className="flex-1 p-3 space-y-2">
-                    {/* Mini stat cards */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      <div className="p-2 rounded-lg" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-                        <div className="w-5 h-5 rounded mb-1 flex items-center justify-center" style={{ background: `${primaryColor}20` }}>
-                          <Users className="w-3 h-3" style={{ color: primaryColor }} />
-                        </div>
-                        <p className="text-[10px] font-bold" style={{ color: 'var(--text-primary)' }}>24</p>
-                        <p className="text-[8px]" style={{ color: 'var(--text-muted)' }}>{t('breadcrumb.users')}</p>
-                      </div>
-                      <div className="p-2 rounded-lg" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-                        <div className="w-5 h-5 rounded mb-1 flex items-center justify-center" style={{ background: `${secondaryColor}20` }}>
-                          <Building2 className="w-3 h-3" style={{ color: secondaryColor }} />
-                        </div>
-                        <p className="text-[10px] font-bold" style={{ color: 'var(--text-primary)' }}>5</p>
-                        <p className="text-[8px]" style={{ color: 'var(--text-muted)' }}>{t('government.kpiHospitals')}</p>
-                      </div>
-                      <div className="p-2 rounded-lg" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-                        <div className="w-5 h-5 rounded mb-1 flex items-center justify-center" style={{ background: `${accentColor}20` }}>
-                          <BarChart3 className="w-3 h-3" style={{ color: accentColor }} />
-                        </div>
-                        <p className="text-[10px] font-bold" style={{ color: 'var(--text-primary)' }}>1.2k</p>
-                        <p className="text-[8px]" style={{ color: 'var(--text-muted)' }}>{t('breadcrumb.patients')}</p>
-                      </div>
-                    </div>
-
                     {/* Color swatches */}
                     <div className="p-2 rounded-lg" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}>
-                      <p className="text-[9px] mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>{t('branding.colorPalette')}</p>
+                      <p className="text-xs mb-1.5 font-medium" style={{ color: 'var(--text-muted)' }}>{t('branding.colorPalette')}</p>
                       <div className="flex gap-2">
                         <div className="flex-1 h-8 rounded-md" style={{ background: primaryColor }} />
                         <div className="flex-1 h-8 rounded-md" style={{ background: secondaryColor }} />
                         <div className="flex-1 h-8 rounded-md" style={{ background: accentColor }} />
                       </div>
                       <div className="flex gap-2 mt-1">
-                        <p className="flex-1 text-center text-[8px]" style={{ color: 'var(--text-muted)' }}>{t('consultation.diagPrimary')}</p>
-                        <p className="flex-1 text-center text-[8px]" style={{ color: 'var(--text-muted)' }}>{t('consultation.diagSecondary')}</p>
-                        <p className="flex-1 text-center text-[8px]" style={{ color: 'var(--text-muted)' }}>{t('branding.accent')}</p>
+                        <p className="flex-1 text-center text-xs" style={{ color: 'var(--text-muted)' }}>{t('consultation.diagPrimary')}</p>
+                        <p className="flex-1 text-center text-xs" style={{ color: 'var(--text-muted)' }}>{t('consultation.diagSecondary')}</p>
+                        <p className="flex-1 text-center text-xs" style={{ color: 'var(--text-muted)' }}>{t('branding.accent')}</p>
                       </div>
                     </div>
 
                     {/* Button preview */}
                     <div className="flex gap-2">
-                      <div className="px-3 py-1.5 rounded-md text-[9px] text-white font-medium" style={{ background: primaryColor }}>
+                      <div className="px-3 py-1.5 rounded-md text-xs text-white font-medium" style={{ background: primaryColor }}>
                         {t('branding.primaryButton')}
                       </div>
-                      <div className="px-3 py-1.5 rounded-md text-[9px] font-medium" style={{ background: `${secondaryColor}15`, color: secondaryColor, border: `1px solid ${secondaryColor}30` }}>
+                      <div className="px-3 py-1.5 rounded-md text-xs font-medium" style={{ background: `${secondaryColor}15`, color: secondaryColor, border: `1px solid ${secondaryColor}30` }}>
                         {t('consultation.diagSecondary')}
                       </div>
                     </div>

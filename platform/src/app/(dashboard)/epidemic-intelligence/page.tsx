@@ -20,6 +20,9 @@ import { Activity, MapPin, ChevronDown, ChevronRight } from '@/components/icons/
 import { CHART_SERIES, DISEASE_COLOR } from '@/lib/chart-colors';
 import { ChartLoadingState } from '@/components/ChartCard';
 import { useUrlView } from '@/lib/navigation/use-url-view';
+import Select from '@/components/Select';
+import { SadbKpiTile, trendBetween, type SadbTrendValue } from '@/components/admin/sadb-ui';
+import { Field, FieldRow } from '@/components/oversight/OversightKit';
 
 // recharts (~80-100KB) is deferred behind a dynamic boundary so it's fetched
 // only when this chart renders — same pattern as
@@ -123,6 +126,7 @@ export default function EpidemicIntelligencePage() {
 
   const [selectedDisease, setSelectedDisease] = useState<string | null>(null);
   const [expandedAlert, setExpandedAlert] = useState<number | null>(null);
+  const [severity, setSeverity] = useState('');
 
   if (loading || !data) {
     return (
@@ -169,35 +173,19 @@ export default function EpidemicIntelligencePage() {
 
   const riskTone = severityTone(summary.overallRiskLevel);
 
-  const statTiles: { label: string; value: string; tone?: Tone }[] = [
-    {
-      label: pluralLabel(summary.totalActiveDiseases, 'Active Disease', t('epidemic.kpiActiveDiseases')),
-      value: summary.totalActiveDiseases.toLocaleString(),
-    },
-    {
-      label: pluralLabel(summary.totalCasesThisWeek, 'Case This Week', t('epidemic.kpiCasesThisWeek')),
-      value: summary.totalCasesThisWeek.toLocaleString(),
-    },
-    {
-      label: pluralLabel(summary.totalDeathsThisWeek, 'Death This Week', t('epidemic.kpiDeathsThisWeek')),
-      value: summary.totalDeathsThisWeek.toLocaleString(),
-      tone: summary.totalDeathsThisWeek > 0 ? 'red' : undefined,
-    },
-    {
-      label: t('epidemic.kpiHighestRt'),
-      value: summary.highestRt ? summary.highestRt.value.toFixed(2) : t('epidemic.notAvailable'),
-      tone: summary.highestRt ? (summary.highestRt.value > 1 ? 'red' : 'green') : undefined,
-    },
-    {
-      label: pluralLabel(summary.statesWithEmergency.length, 'Emergency State', t('epidemic.kpiEmergencyStates')),
-      value: summary.statesWithEmergency.length.toLocaleString(),
-      tone: summary.statesWithEmergency.length > 0 ? 'red' : undefined,
-    },
-    {
-      label: pluralLabel(ewarsAlerts.length, 'EWARS Alert', t('epidemic.kpiEwarsAlerts')),
-      value: ewarsAlerts.length.toLocaleString(),
-    },
-  ];
+  // Week on week, from the weekly curve points (latest two weeks on file).
+  const sortedWeeks = [...weeks].sort();
+  const lastWeek = sortedWeeks[sortedWeeks.length - 1];
+  const prevWeek = sortedWeeks.length > 1 ? sortedWeeks[sortedWeeks.length - 2] : null;
+  const weekSum = (w: string | null, f: 'cases' | 'deaths') => (epidemicCurves || []).filter(c => c.week === w).reduce((n, c) => n + c[f], 0);
+  const weekTrend = (f: 'cases' | 'deaths'): SadbTrendValue | undefined => {
+    if (!prevWeek) return undefined;
+    const now = weekSum(lastWeek, f); const before = weekSum(prevWeek, f);
+    return { direction: trendBetween(now, before), label: t('epidemic.vsLastWeek', { count: before.toLocaleString() }), good: 'down' };
+  };
+  const rtTrend = summary.highestRt
+    ? rtEstimates.find(r => r.disease === summary.highestRt?.disease)
+    : undefined;
 
   const tabs: { key: TabView; label: string }[] = [
     { key: 'overview', label: t('epidemic.tabOverview') },
@@ -253,40 +241,55 @@ export default function EpidemicIntelligencePage() {
   return (
     <main className="page-container page-enter">
 
-      {/* ── Header: condensed title, IDSR week subtitle, risk chip ── */}
-      <div className="gov-page-head">
-        <div>
-          <div className="epi-title-row">
-            <h1>{t('epidemic.pageTitle')}</h1>
-            <Chip tone={riskTone} className="epi-chip--lg">{t('epidemic.riskSuffix', { level: summary.overallRiskLevel })}</Chip>
-          </div>
-          <p>{t('ui.southSudanIdsrWeek')} {idsrReport.reportingWeek} {t('ui.computedLiveFromFacilityReports')}</p>
-        </div>
+      {/* No page title: the hub tab names the page. The band is the national
+          picture; each tile says what it is made of. */}
+      <div className="sadb-kpi-row mb-4">
+        <SadbKpiTile
+          label={t('epidemic.kpiOverallRisk')}
+          value={<span className="capitalize">{summary.overallRiskLevel}</span>}
+          delta={t(summary.statesWithEmergency.length === 1 ? 'epidemic.kpiEmergencyDetailOne' : 'epidemic.kpiEmergencyDetailMany', { n: summary.statesWithEmergency.length.toLocaleString() })}
+          deltaTone={riskTone === 'red' ? 'warn' : undefined}
+        />
+        <SadbKpiTile
+          label={pluralLabel(summary.totalActiveDiseases, t('epidemic.kpiActiveDiseaseOne'), t('epidemic.kpiActiveDiseases'))}
+          value={summary.totalActiveDiseases.toLocaleString()}
+          delta={t('epidemic.kpiDiseasesDetail')}
+        />
+        <SadbKpiTile
+          label={pluralLabel(summary.totalCasesThisWeek, t('epidemic.kpiCaseOne'), t('epidemic.kpiCasesThisWeek'))}
+          value={summary.totalCasesThisWeek.toLocaleString()}
+          delta={t('epidemic.kpiCasesDetail', { week: idsrReport.reportingWeek })}
+          trend={weekTrend('cases')}
+        />
+        <SadbKpiTile
+          label={pluralLabel(summary.totalDeathsThisWeek, t('epidemic.kpiDeathOne'), t('epidemic.kpiDeathsThisWeek'))}
+          value={summary.totalDeathsThisWeek.toLocaleString()}
+          delta={t('epidemic.kpiDeathsDetail')}
+          trend={weekTrend('deaths')}
+        />
+        <SadbKpiTile
+          label={t('epidemic.kpiHighestRt')}
+          value={summary.highestRt ? summary.highestRt.value.toFixed(2) : t('epidemic.notAvailable')}
+          delta={summary.highestRt ? t('epidemic.kpiRtDetail', { disease: summary.highestRt.disease }) : t('epidemic.kpiRtNone')}
+          trend={rtTrend && rtTrend.trend !== 'insufficient_data' ? { direction: trendBetween(rtTrend.weeklyChange, 0), label: t('epidemic.rtWeekChange', { change: `${rtTrend.weeklyChange > 0 ? '+' : ''}${rtTrend.weeklyChange}` }), good: 'down' } : undefined}
+        />
+        <SadbKpiTile
+          label={pluralLabel(ewarsAlerts.length, t('epidemic.kpiEwarsAlertOne'), t('epidemic.kpiEwarsAlerts'))}
+          value={ewarsAlerts.length.toLocaleString()}
+          delta={t('epidemic.kpiEwarsDetail')}
+          onClick={() => setActiveTabAndUrl('alerts')}
+        />
       </div>
 
-      {/* ── Stat tile row ── */}
-      <div className="epi-stat-row">
-        {statTiles.map(tile => (
-          <div key={tile.label} className="epi-stat-tile">
-            <p className="epi-stat-label">{tile.label}</p>
-            <p className="epi-stat-value" style={tile.tone ? { color: TONE_FILL[tile.tone] } : undefined}>{tile.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Tab strip (gov-map-layers pill pattern) ── */}
-      <div className="gov-map-layers" style={{ padding: 0, marginBottom: 16 }}>
-        {tabs.map(tab => (
-          <button
-            key={tab.key}
-            type="button"
-            data-tour={`epi-tab-${tab.key}`}
-            onClick={() => setActiveTabAndUrl(tab.key)}
-            className={activeTab === tab.key ? 'is-active' : undefined}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* The views are one choice from a set, so they are a field. */}
+      <div className="mb-4">
+        <FieldRow end={<span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{t('epidemic.hubSubtitle', { week: idsrReport.reportingWeek })}</span>}>
+          <Field label={t('epidemic.fieldView')}>
+            <Select value={activeTab} onChange={e => setActiveTabAndUrl(e.target.value as TabView)} data-action="epi-view" data-tour="epi-view">
+              {tabs.map(tab => <option key={tab.key} value={tab.key}>{tab.label}</option>)}
+            </Select>
+          </Field>
+        </FieldRow>
       </div>
 
       {/* OVERVIEW TAB */}
@@ -328,7 +331,7 @@ export default function EpidemicIntelligencePage() {
 
           {/* Active EWARS Alerts */}
           <section className="gov-panel flex flex-col" style={{ maxHeight: 480 }}>
-            <PanelHead title={t('epidemic.activeEwarsAlerts')} meta={`${ewarsAlerts.length.toLocaleString()} active`} />
+            <PanelHead title={t('epidemic.activeEwarsAlerts')} meta={t('epidemic.activeCount', { n: ewarsAlerts.length.toLocaleString() })} />
             {overviewAlerts.length === 0 ? (
               <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>{t('epidemic.noActiveDiseaseAlerts')}</p>
             ) : (
@@ -338,7 +341,7 @@ export default function EpidemicIntelligencePage() {
             )}
             {moreAlertsCount > 0 && (
               <button type="button" className="epi-alert-more" onClick={() => setActiveTabAndUrl('alerts')}>
-                {moreAlertsCount} more {moreAlertsCount === 1 ? 'alert' : 'alerts'} {t('ui.openTheEwarsTab')}
+                {t('epidemic.seeAllAlerts', { n: ewarsAlerts.length.toLocaleString() })}
                 <ChevronRight className="w-3 h-3" />
               </button>
             )}
@@ -350,24 +353,20 @@ export default function EpidemicIntelligencePage() {
       {activeTab === 'curves' && (
         <div className="space-y-4">
           {/* Disease filter */}
-          <section className="gov-panel epi-filter-panel">
-            <div className="gov-map-layers">
-              <button type="button" onClick={() => setSelectedDisease(null)} className={selectedDisease === null ? 'is-active' : undefined}>
-                {t('epidemic.allDiseases')}
-              </button>
-              {diseases.map(d => (
-                <button key={d} type="button" onClick={() => setSelectedDisease(d)} className={selectedDisease === d ? 'is-active' : undefined}>
-                  {d}
-                </button>
-              ))}
-            </div>
-          </section>
+          <FieldRow>
+            <Field label={t('epidemic.colDisease')}>
+              <Select value={selectedDisease ?? ''} onChange={e => setSelectedDisease(e.target.value || null)} data-action="epi-disease">
+                <option value="">{t('epidemic.allDiseases')}</option>
+                {diseases.map(d => <option key={d} value={d}>{d}</option>)}
+              </Select>
+            </Field>
+          </FieldRow>
 
           {/* Epidemic curve chart */}
           <section data-tour="epi-curve-panel" className="gov-panel">
             <PanelHead
               title={t('epidemic.epidemicCurveTitle', { disease: selectedDisease || t('epidemic.allDiseases') })}
-              meta={curveChartCapped ? `${t('epidemic.weeklyCaseCounts')} · top ${curveChartDiseases.length} of ${diseases.length} by volume` : t('epidemic.weeklyCaseCounts')}
+              meta={curveChartCapped ? `${t('epidemic.weeklyCaseCounts')} · ${t('epidemic.curveCapped', { shown: curveChartDiseases.length, total: diseases.length })}` : t('epidemic.weeklyCaseCounts')}
             />
             <div className="gov-chart-body">
               {diseases.length === 0 ? (
@@ -574,22 +573,15 @@ export default function EpidemicIntelligencePage() {
       {/* IDSR TAB */}
       {activeTab === 'idsr' && (
         <div className="space-y-4">
-          <div className="epi-stat-row" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-            <div className="epi-stat-tile">
-              <p className="epi-stat-label">{t('epidemic.reportingWeek')}</p>
-              <p className="epi-stat-value">{idsrReport.reportingWeek}</p>
-            </div>
-            <div className="epi-stat-tile">
-              <p className="epi-stat-label">{t('epidemic.facilitiesReportingLabel')}</p>
-              <p className="epi-stat-value" style={{ color: 'var(--accent-primary)' }}>{idsrReport.totalFacilitiesReporting.toLocaleString()}</p>
-            </div>
-            <div className="epi-stat-tile">
-              <p className="epi-stat-label">{t('epidemic.completeness')}</p>
-              <p className="epi-stat-value" style={{
-                color: idsrReport.completeness >= 80 ? 'var(--color-success-600)' : idsrReport.completeness >= 60 ? 'var(--color-warning-600)' : 'var(--color-danger-500)',
-              }}>{idsrReport.completeness}%</p>
-              <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('epidemic.whoTarget')}</p>
-            </div>
+          <div className="sadb-kpi-row">
+            <SadbKpiTile label={t('epidemic.reportingWeek')} value={idsrReport.reportingWeek} delta={t('epidemic.idsrWeekDetail')} />
+            <SadbKpiTile label={t('epidemic.facilitiesReportingLabel')} value={idsrReport.totalFacilitiesReporting.toLocaleString()} delta={t('epidemic.idsrFacilitiesDetail')} />
+            <SadbKpiTile
+              label={t('epidemic.completeness')}
+              value={`${idsrReport.completeness}%`}
+              delta={t('epidemic.whoTarget')}
+              deltaTone={idsrReport.completeness < 80 ? 'warn' : undefined}
+            />
           </div>
 
           <section data-tour="epi-idsr-panel" className="gov-panel">
@@ -651,25 +643,24 @@ export default function EpidemicIntelligencePage() {
       {/* EWARS ALERTS TAB */}
       {activeTab === 'alerts' && (
         <div className="space-y-4">
-          <div className="epi-stat-row">
-            {(['critical', 'high', 'medium', 'low'] as const).map(sev => {
-              const count = ewarsAlerts.filter(a => a.severity === sev).length;
-              return (
-                <div key={sev} className="epi-stat-tile text-center">
-                  <p className="epi-stat-value" style={{ color: TONE_FILL[severityTone(sev)] }}>{count}</p>
-                  <p className="epi-stat-label">{sev}</p>
-                </div>
-              );
-            })}
-          </div>
+          <FieldRow>
+            <Field label={t('epidemic.colSeverity')}>
+              <Select value={severity} onChange={e => setSeverity(e.target.value)} data-action="epi-severity">
+                <option value="">{t('epidemic.sevAll')}</option>
+                {(['critical', 'high', 'medium', 'low'] as const).map(sev => (
+                  <option key={sev} value={sev}>{`${t(`epidemic.sev_${sev}`)} (${ewarsAlerts.filter(a => a.severity === sev).length})`}</option>
+                ))}
+              </Select>
+            </Field>
+          </FieldRow>
 
           <section className="gov-panel">
-            <PanelHead title={t('epidemic.tabAlerts')} meta={`${ewarsAlerts.length.toLocaleString()} total`} />
+            <PanelHead title={t('epidemic.tabAlerts')} meta={t('epidemic.alertsMeta', { shown: ewarsAlerts.filter(a => !severity || a.severity === severity).length.toLocaleString(), total: ewarsAlerts.length.toLocaleString() })} />
             {ewarsAlerts.length === 0 ? (
               <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>{t('epidemic.noActiveDiseaseAlerts')}</p>
             ) : (
               <div>
-                {ewarsAlerts.map((alert, i) => renderAlertRow(alert, i))}
+                {ewarsAlerts.map((alert, i) => (!severity || alert.severity === severity) ? renderAlertRow(alert, i) : null)}
               </div>
             )}
           </section>

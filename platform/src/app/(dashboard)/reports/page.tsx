@@ -71,6 +71,15 @@ const SECTION_ACCENT: Record<string, string> = {
    1,169 lines. */
 
 /* ── Component ─────────────────────────────────────────────────── */
+/** "Total Patients" -> "Total patients". Acronyms (ANC, HIV, m-GURUSH) and
+ *  words with digits keep their form. */
+function sentenceCase(label: string): string {
+  return label
+    .split(' ')
+    .map((w, i) => (i === 0 || /\d/.test(w) || /[A-Z].*[A-Z]/.test(w) ? w : w.toLowerCase()))
+    .join(' ');
+}
+
 export default function ReportsPage() {
   const { t } = useTranslation();
   const { patients, loading: patientsLoading } = usePatients();
@@ -686,7 +695,7 @@ export default function ReportsPage() {
       <div className="rpt-table-scroll">
         <table className="rpt-table">
           <thead>
-            <tr>{headers.map(h => <th key={h}>{h}</th>)}</tr>
+            <tr>{headers.map(h => <th key={h}>{sentenceCase(h)}</th>)}</tr>
           </thead>
           <tbody>
             {rows.map((row, i) => {
@@ -750,7 +759,7 @@ export default function ReportsPage() {
       <div className="rpt-kpis">
         <article className="rpt-kpi">
           <p className="rpt-kpi-label">
-            {activeChart?.valueLabel ?? t('reports.statsTitle')}
+            {activeChart ? sentenceCase(activeChart.valueLabel) : t('reports.statsTitle')}
             {chartInsights?.isRate ? ` · ${t('reports.insightHighest')}` : ''}
           </p>
           <p className="rpt-kpi-value">
@@ -763,7 +772,7 @@ export default function ReportsPage() {
 
         <article className="rpt-kpi">
           <p className="rpt-kpi-label">
-            {t('reports.kpiTopLabel', { category: activeChart?.categoryLabel ?? '' })}
+            {sentenceCase(t('reports.kpiTopLabel', { category: activeChart?.categoryLabel ?? '' }))}
           </p>
           <p className="rpt-kpi-value" title={chartInsights?.top.label}>
             {chartInsights?.top.label ?? '—'}
@@ -782,7 +791,7 @@ export default function ReportsPage() {
 
         <article className="rpt-kpi">
           <p className="rpt-kpi-label">
-            {t('reports.insightCategoryCount', { category: activeChart?.categoryLabel ?? '' })}
+            {t('reports.insightCategoryCount', { category: sentenceCase(activeChart?.categoryLabel ?? '') })}
           </p>
           <p className="rpt-kpi-value">{activeChart?.categoryCount.toLocaleString() ?? '—'}</p>
           <p className="rpt-kpi-note">
@@ -817,8 +826,8 @@ export default function ReportsPage() {
                 {activeChart && (
                   <i>
                     {t('reports.chartCaption', {
-                      measure: activeChart.valueLabel,
-                      category: activeChart.categoryLabel,
+                      measure: sentenceCase(activeChart.valueLabel),
+                      category: sentenceCase(activeChart.categoryLabel),
                     })}
                     {activeReport ? ` · ${t(periodKey[activeReport.period] ?? activeReport.period)}` : ''}
                     {` · ${t('reports.periodAllRecords')}`}

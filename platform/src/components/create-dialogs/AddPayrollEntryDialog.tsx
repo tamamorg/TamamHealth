@@ -84,7 +84,7 @@ export default function AddPayrollEntryDialog({ onClose, period, onCreated, pres
     <>
       <div className="space-y-3">
         <div>
-          <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelStaffRequired')}</label>
+          <label className="field-required text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelStaffRequired')}</label>
           <Select value={form.userId} onChange={e => setForm({ ...form, userId: e.target.value })}>
             <option value="">{t('hr.selectStaffOption')}</option>
             {facilityUsers.map(u => (
@@ -94,21 +94,21 @@ export default function AddPayrollEntryDialog({ onClose, period, onCreated, pres
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelCurrency')}</label>
+            <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelCurrency')}</label>
             <Select value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })}>
               {offeredCurrencies().map(code => <option key={code} value={code}>{code}</option>)}
             </Select>
           </div>
           <div>
-            <label className="field-required text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelBaseSalary')}</label>
+            <label className="field-required text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelBaseSalary')}</label>
             <NumberInput step="any" min={0} value={form.baseSalary || ''} onChange={e => setForm({ ...form, baseSalary: parseFloat(e.target.value) || 0 })} />
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelAllowances')}</label>
+            <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelAllowances')}</label>
             <NumberInput step="any" min={0} value={form.allowances || ''} onChange={e => setForm({ ...form, allowances: parseFloat(e.target.value) || 0 })} />
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelDeductions')}</label>
+            <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelDeductions')}</label>
             <NumberInput step="any" min={0} value={form.deductions || ''} onChange={e => setForm({ ...form, deductions: parseFloat(e.target.value) || 0 })} />
           </div>
         </div>
@@ -121,7 +121,7 @@ export default function AddPayrollEntryDialog({ onClose, period, onCreated, pres
           </div>
         </div>
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelNotes')}</label>
+          <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hr.labelNotes')}</label>
           <textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
         </div>
       </div>

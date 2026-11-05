@@ -1,29 +1,29 @@
 'use client';
 
 /**
- * The three overview cards that head the merged Billing & Claims workspace,
- * drawn in the dashboard card language the org-admin and super-admin
- * dashboards use (`dash-card` shell, tinted tone tiles, `ChartCard`):
+ * The overview that heads the merged Billing & Claims workspace: the KPI
+ * band, then two cards drawn in the patient chart's frame (hairline, white,
+ * 16px titles, labelled Select fields in place of chart-type pills):
  *
- *   1. Cash Flow          — donut of received vs pending + the two amounts
- *   2. Billing at a glance — the icon stat list (invoices, bills, claims)
- *   3. Collections trend   — ChartCard with line/area/bar + a period select
+ *   1. Cash flow         — donut of received vs pending + the two amounts
+ *   2. Collections trend — line/area/bar of collected vs claimed, with Chart
+ *                          type and Period fields
  *
  * Every figure is derived from the same docs the queues below render, so the
  * cards and the tables can never disagree. Deeper breakdowns (service line,
  * payer mix, A/R aging, plans) stay behind the workspace's analytics toggle —
- * these three answer "what came in, what is owed, which way is it trending?".
+ * these answer "what came in, what is owed, which way is it trending?".
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, Line, LineChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
-import ChartCard, { tooltipStyle, axisTick, type ChartPeriod } from '@/components/ChartCard';
+import { tooltipStyle, axisTick, type ChartPeriod, type ChartType } from '@/components/ChartCard';
+import Select from '@/components/Select';
 import { CashFlowDonut } from '@/components/dashboards/_FacilityCharts';
-import { Wallet } from '@/components/icons/lucide';
 import { SadbKpiTile, trendBetween } from '@/components/admin/sadb-ui';
 import './billing-kpis.css';
 import { addDays } from '@/components/ehr/EhrMiniCalendar';
@@ -35,9 +35,8 @@ import type { BillingDoc } from '@/lib/db-types-billing';
 
 /* Same hues as the facility/org dashboards so a user moving between them
    reads the identical colour for the identical meaning. */
-const CASH_RECEIVED = '#0fa06a';
+const CASH_RECEIVED = 'var(--color-success)';
 const CASH_PENDING = 'var(--color-warning)';
-const CASH_PENDING_TEXT = 'var(--color-warning)'; // legible amber for text on a light card
 const CHART_BLUE = 'var(--chart-1)';
 const CHART_TEAL = 'var(--chart-4)';
 
@@ -99,6 +98,9 @@ export default function BillingOverviewCards({
     };
   }, [bills, claims]);
 
+  const [chartType, setChartType] = useState<ChartType>('line');
+  const [period, setPeriod] = useState<ChartPeriod>('month');
+
   /* Today's and yesterday's posted takings, by the local calendar day, for
      the trend on Collected today. */
   const dayTotals = useMemo(() => {
@@ -126,6 +128,19 @@ export default function BillingOverviewCards({
     return { thisWeek, lastWeek };
   }, [bills]);
 
+  /* Claims raised this week against the week before. */
+  const claimWeeks = useMemo(() => {
+    const now = Date.now();
+    let thisWeek = 0; let lastWeek = 0;
+    for (const c of claims) {
+      const when = c.submittedDate || c.createdAt;
+      const at = when ? new Date(when).getTime() : NaN;
+      if (at >= now - 7 * 86400000) thisWeek++;
+      else if (at >= now - 14 * 86400000) lastWeek++;
+    }
+    return { thisWeek, lastWeek };
+  }, [claims]);
+
   // "Cash SSP 24,000 · m-GURUSH SSP 20,000" — the per-method figures the old
   // stat strip carried, kept as the caption on the day's total.
   const methodSplit = useMemo(() => {
@@ -136,9 +151,9 @@ export default function BillingOverviewCards({
   }, [todayByMethod]);
 
   const cashSlices = useMemo(() => [
-    { name: 'Received', value: cash.received, color: CASH_RECEIVED },
-    { name: 'Pending', value: cash.pending, color: CASH_PENDING },
-  ].filter(d => d.value > 0), [cash]);
+    { name: t('billing.ovReceived'), value: cash.received, color: CASH_RECEIVED },
+    { name: t('billing.ovPending'), value: cash.pending, color: CASH_PENDING },
+  ].filter(d => d.value > 0), [cash, t]);
 
   // Daily series builder — posted collections against claims billed, over the
   // window the period select asks for.
@@ -199,6 +214,7 @@ export default function BillingOverviewCards({
           label={t('billing.kpiOpenClaims')}
           value={counts.openClaims.toLocaleString()}
           delta={t('billing.kpiOpenClaimsDetail')}
+          trend={{ direction: trendBetween(claimWeeks.thisWeek, claimWeeks.lastWeek), label: t('billing.kpiClaimsWeekVsLast', { thisWeek: claimWeeks.thisWeek, lastWeek: claimWeeks.lastWeek }) }}
         />
       )}
       <SadbKpiTile
@@ -209,56 +225,67 @@ export default function BillingOverviewCards({
       />
     </div>
 
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 bl-overview-cards" data-tour="billing-overview">
+    <div className="bl-overview-cards" data-tour="billing-overview">
 
-      {/* ── 1. Cash Flow — the ring carries the weight, the amounts caption it ── */}
-      <div className="dash-card overflow-hidden">
-        <div className="bl-overview-heading px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid var(--border-light)' }}>
-          <Wallet className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-          <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('ui.cashFlow')}</h3>
-          <span className="text-[11px] ms-auto" style={{ color: 'var(--text-muted)' }}>{t('ui.allInvoices')}</span>
-        </div>
-        <div className="flex flex-col items-center gap-4 p-4">
-          <div className="relative flex-shrink-0" style={{ width: 124, height: 124 }}>
+      {/* ── 1. Cash flow: the ring carries the weight, the amounts caption it ── */}
+      <section className="bl-ov-card">
+        <header className="bl-ov-head">
+          <h2 className="bl-ov-title">{t('billing.ovCashFlow')}</h2>
+          <span className="bl-ov-meta">{t('billing.ovAllInvoices')}</span>
+        </header>
+        <div className="bl-ov-cash">
+          <div className="bl-ov-ring">
             <CashFlowDonut data={cashSlices} />
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-2">
-              <span className="text-[12px] font-bold leading-tight text-center" style={{ color: 'var(--text-primary)' }}>
-                {formatMoney(cash.total)}
-              </span>
-              <span className="text-[9px] uppercase tracking-wide leading-tight mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                {t('ui.totalInvoiced')}
-              </span>
+            <div className="bl-ov-ring-label">
+              <span className="bl-ov-ring-value">{formatMoney(cash.total)}</span>
+              <span className="bl-ov-ring-cap">{t('billing.ovTotalInvoiced')}</span>
             </div>
           </div>
-          <div className="w-full min-w-0 space-y-2">
-            <div className="rounded-xl px-3 py-2" style={{ background: 'rgba(15, 160, 106,0.10)', border: '1px solid rgba(15, 160, 106,0.28)' }}>
-              <p className="text-[10px] font-semibold uppercase tracking-wide leading-tight" style={{ color: 'var(--text-muted)' }}>{t('facilityQueue.detailReceived')}</p>
-              <p className="text-[13px] font-bold truncate leading-tight mt-0.5" style={{ color: CASH_RECEIVED }}>{formatMoney(cash.received)}</p>
+          <dl className="bl-ov-legend">
+            <div>
+              <dt><span className="bl-ov-dot" style={{ background: CASH_RECEIVED }} />{t('billing.ovReceived')}</dt>
+              <dd>{formatMoney(cash.received)}</dd>
             </div>
-            <div className="rounded-xl px-3 py-2" style={{ background: 'rgba(255, 153, 51,0.12)', border: '1px solid rgba(255, 153, 51,0.35)' }}>
-              <p className="text-[10px] font-semibold uppercase tracking-wide leading-tight" style={{ color: 'var(--text-muted)' }}>{t('postConsult.status.pending')}</p>
-              <p className="text-[13px] font-bold truncate leading-tight mt-0.5" style={{ color: CASH_PENDING_TEXT }}>{formatMoney(cash.pending)}</p>
+            <div>
+              <dt><span className="bl-ov-dot" style={{ background: CASH_PENDING }} />{t('billing.ovPending')}</dt>
+              <dd>{formatMoney(cash.pending)}</dd>
             </div>
-          </div>
+          </dl>
         </div>
-      </div>
+      </section>
 
-      {/* ── 3. The trend — collections against what was billed to payers ── */}
-      <ChartCard
-        title={showClaims ? 'Collections & Claims' : 'Daily Collections'}
-        defaultType="line"
-        defaultPeriod="month"
-        periods={['week', 'month', 'quarter']}
-        className="dash-card"
-      >
-        {({ chartType, period }) => {
+      {/* ── 2. The trend: collections against what was billed to payers ── */}
+      <section className="bl-ov-card">
+        <header className="bl-ov-head">
+          <h2 className="bl-ov-title">{showClaims ? t('billing.ovCollectionsClaims') : t('billing.ovDailyCollections')}</h2>
+          <div className="bl-ov-fields">
+            <label className="bl-ov-field">
+              <span>{t('billing.ovChartType')}</span>
+              <Select value={chartType} onChange={e => setChartType(e.target.value as ChartType)} data-action="billing-chart-type">
+                <option value="line">{t('billing.ovTypeLine')}</option>
+                <option value="area">{t('billing.ovTypeArea')}</option>
+                <option value="bar">{t('billing.ovTypeBar')}</option>
+              </Select>
+            </label>
+            <label className="bl-ov-field">
+              <span>{t('billing.ovPeriod')}</span>
+              <Select value={period} onChange={e => setPeriod(e.target.value as ChartPeriod)} data-action="billing-chart-period">
+                <option value="week">{t('billing.ovPeriodWeek')}</option>
+                <option value="month">{t('billing.ovPeriodMonth')}</option>
+                <option value="quarter">{t('billing.ovPeriodQuarter')}</option>
+              </Select>
+            </label>
+          </div>
+        </header>
+        <div className="bl-ov-chart">
+        {(() => {
           const data = trendFor(period);
           const series = showClaims
             ? [
-                { key: 'collected', name: 'Collected', color: CHART_TEAL },
-                { key: 'claimed', name: 'Claimed', color: CHART_BLUE },
+                { key: 'collected', name: t('billing.ovCollected'), color: CHART_TEAL },
+                { key: 'claimed', name: t('billing.ovClaimed'), color: CHART_BLUE },
               ]
-            : [{ key: 'collected', name: 'Collected', color: CHART_TEAL }];
+            : [{ key: 'collected', name: t('billing.ovCollected'), color: CHART_TEAL }];
           const axes = (
             <>
               <CartesianGrid stroke="var(--border-light)" vertical={false} />
@@ -268,7 +295,7 @@ export default function BillingOverviewCards({
               <Legend
                 iconType="circle"
                 iconSize={8}
-                wrapperStyle={{ fontSize: 11, paddingTop: 4 }}
+                wrapperStyle={{ fontSize: 12, paddingTop: 4 }}
                 formatter={(value: React.ReactNode) => <span style={{ color: 'var(--text-secondary)' }}>{value}</span>}
               />
             </>
@@ -307,8 +334,9 @@ export default function BillingOverviewCards({
               </LineChart>
             </ResponsiveContainer>
           );
-        }}
-      </ChartCard>
+        })()}
+        </div>
+      </section>
     </div>
     </>
   );

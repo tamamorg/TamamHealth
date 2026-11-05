@@ -16,13 +16,13 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import {
-  Shield, KeyRound, Mail, UserX, UserCheck, Trash2, Building2,
+  Shield, KeyRound, Mail, UserX, UserCheck, Trash2,
 } from '@/components/icons/lucide';
 import {
   SadbPage, SadbCard, SadbKvRow, SadbConfirmModal, SadbGridList, SadbGridRow, SadbChip,
@@ -39,7 +39,6 @@ import {
 } from '@/modules/identity/client';
 import type { InvitationOutcome } from '@/modules/identity/client';
 import { avatarTint } from '@/lib/patient-utils';
-import { getRoleConfig } from '@/lib/permissions';
 import { formatDate } from '@/lib/format-utils';
 import type { AuditLogDoc, UserDoc, UserRole } from '@/lib/db-types';
 import {
@@ -58,12 +57,11 @@ const ROLE_OPTIONS: UserRole[] = [
 
 export default function AdminUserDetailPage() {
   const { t } = useTranslation();
-  const router = useRouter();
   const params = useParams<{ id: string }>();
   const userId = params?.id ?? '';
   const { currentUser } = useAuth();
   const { showToast } = useToast();
-  const { organizations } = useOrganizations();
+  const { organizations, loading: orgsLoading } = useOrganizations();
   const { tempLength } = usePasswordPolicy();
 
   const [user, setUser] = useState<UserDoc | null>(null);
@@ -117,8 +115,11 @@ export default function AdminUserDetailPage() {
   const roleLabel = (role: string) => t(`adminUsers.role_${role}`);
   const orgName = useMemo(() => {
     if (!user?.orgId) return null;
-    return organizations.find(o => o._id === user.orgId)?.name ?? user.orgId;
-  }, [organizations, user]);
+    const found = organizations.find(o => o._id === user.orgId)?.name;
+    /* While the organization list is still loading, say nothing rather than
+       flashing the raw id. */
+    return found ?? (orgsLoading ? '…' : user.orgId);
+  }, [organizations, orgsLoading, user]);
 
   /**
    * Where "back" goes — the level this account was opened FROM.
@@ -148,7 +149,7 @@ export default function AdminUserDetailPage() {
   /* … › <tenant> › <facility> › <person>. Each rung is the page that lists
      the one after it, so the trail is also the way back up. */
   useConsoleTrail('user-detail', user ? [
-    ...(orgName && orgHref ? [{ label: orgName, href: orgHref }] : []),
+    ...(orgName && orgName !== '…' && orgHref ? [{ label: orgName, href: orgHref }] : []),
     ...(user.hospitalName && facilityHref ? [{ label: user.hospitalName, href: facilityHref }] : []),
     { label: user.name },
   ] : null);
@@ -248,15 +249,6 @@ export default function AdminUserDetailPage() {
               <Mail className="w-4 h-4" /> {t('adminUsers.resendInvite')}
             </button>
           )}
-          {user.hospitalId && (
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => router.push(`/admin/facilities/${encodeURIComponent(user.hospitalId!)}`)}
-            >
-              <Building2 className="w-4 h-4" /> {t('adminUsers.openFacility')}
-            </button>
-          )}
           {/* Deactivating is destructive — it routes through the confirm
               dialog. Reactivating is one reversible click, so it runs. */}
           {user.isActive ? (
@@ -280,7 +272,6 @@ export default function AdminUserDetailPage() {
       <SadbCard title={t('adminUsers.accountDetails')}>
         <SadbKvRow label={t('adminUsers.colStatus')} value={user.isActive ? t('adminUsers.statusActive') : t('adminUsers.statusInactive')} />
         <SadbKvRow label={t('adminUsers.colRole')} value={roleLabel(user.role)} />
-        <SadbKvRow label={t('adminUsers.workspace')} value={getRoleConfig(user.role)?.label ?? '—'} />
         <SadbKvRow label={t('adminUsers.colOrganization')} value={orgName ?? t('adminUsers.platformLevel')} />
         <SadbKvRow label={t('adminUsers.colHospital')} value={user.hospitalName || t('adminUsers.facilityUnassigned')} />
         <SadbKvRow label={t('adminUsers.department')} value={user.department || '—'} />
@@ -292,7 +283,7 @@ export default function AdminUserDetailPage() {
           label={t('adminUsers.lastSignIn')}
           value={user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : t('adminUsers.never')}
         />
-        <SadbKvRow label={t('adminUsers.created')} value={user.createdAt ? formatDate(user.createdAt) : '—'} />
+        <SadbKvRow label={t('adminUsers.created')} value={user.createdAt && new Date(user.createdAt).getFullYear() > 2000 ? formatDate(user.createdAt) : '—'} />
         {user.deactivatedAt && (
           <SadbKvRow
             label={t('adminUsers.deactivatedOn')}

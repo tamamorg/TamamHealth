@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import FormSlider from '@/components/overlay/FormSlider';
 import {
-  SadbPage, SadbCard, SadbPanelHeader, SadbKpiTile, SadbKvRow, SadbChip,
+  SadbPage, SadbCard, SadbKpiTile, SadbKvRow, SadbChip,
   SadbGridList, SadbGridRow,
 } from '@/components/admin/sadb-ui';
 import type { ChipTone } from '@/components/admin/sadb-ui';
@@ -183,18 +183,7 @@ export default function FacilityAssessmentsPage() {
   const expandedRecord = expandedAssessment ? rows.find(x => x._id === expandedAssessment) ?? null : null;
 
   return (
-    <SadbPage
-      roles={ASSESSMENT_ROLES}
-      actions={canAssessFacility && (
-        <button onClick={() => setShowForm(true)} className="btn btn-primary">
-          <Plus className="w-4 h-4" /> {t('facilityAssessments.newAssessment')}
-        </button>
-      )}
-    >
-      <SadbPanelHeader
-        title={t('facilityAssessments.pageTitle')}
-        note={t('facilityAssessments.pageSubtitle')}
-      />
+    <SadbPage roles={ASSESSMENT_ROLES}>
 
       {/* ═══ Headline readiness figures ═══ */}
       {/* Every tile says what its figure is made of (management KPI rule). */}
@@ -254,7 +243,15 @@ export default function FacilityAssessmentsPage() {
       )}
 
       {/* ═══ Per-facility scorecards ═══ */}
-      <SadbCard title={t('facilityAssessments.individualTitle')} meta={`${rows.length}`}>
+      <SadbCard
+        title={t('facilityAssessments.individualTitle')}
+        meta={`${rows.length}`}
+        action={canAssessFacility ? (
+          <button type="button" onClick={() => setShowForm(true)} className="btn btn-primary">
+            <Plus className="w-4 h-4" /> {t('facilityAssessments.newAssessment')}
+          </button>
+        ) : undefined}
+      >
         <SadbGridList
           template={ASSESS_GRID}
           minWidth={1180}
@@ -350,19 +347,19 @@ export default function FacilityAssessmentsPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('facilityAssessments.formFacility')}</label>
+                <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('facilityAssessments.formFacility')}</label>
                 <Select value={form.facilityId} onChange={e => setForm({ ...form, facilityId: e.target.value })}>
                   <option value="">{t('facilityAssessments.selectFacility')}</option>
                   {hospitals.map(h => <option key={h._id} value={h._id}>{h.name} ({h.state})</option>)}
                 </Select>
               </div>
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('facilityAssessments.formAssessmentDate')}</label>
+                <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('facilityAssessments.formAssessmentDate')}</label>
                 <input type="date" value={form.assessmentDate} onChange={e => setForm({ ...form, assessmentDate: e.target.value })} />
               </div>
             </div>
 
-            <p className="text-[10px] font-semibold uppercase tracking-wider mt-2 mb-2" style={{ color: 'var(--text-muted)' }}>{t('facilityAssessments.sectionServiceReadiness')}</p>
+            <p className="text-xs font-semibold mt-2 mb-2" style={{ color: 'var(--text-muted)' }}>{t('facilityAssessments.sectionServiceReadiness')}</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
               {([
                 ['generalEquipmentScore', t('facilityAssessments.fieldGeneralEquipment')],
@@ -373,13 +370,13 @@ export default function FacilityAssessmentsPage() {
                 ['powerReliabilityScore', t('facilityAssessments.fieldPowerReliability')],
               ] as const).map(([key, label]) => (
                 <div key={key}>
-                  <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-secondary)' }}>{label}</label>
+                  <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-secondary)' }}>{label}</label>
                   <NumberInput step="1" min={0} max={100} value={form[key]} onChange={e => setForm({ ...form, [key]: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })} />
                 </div>
               ))}
             </div>
 
-            <p className="text-[10px] font-semibold uppercase tracking-wider mt-2 mb-2" style={{ color: 'var(--text-muted)' }}>{t('facilityAssessments.sectionDataManagement')}</p>
+            <p className="text-xs font-semibold mt-2 mb-2" style={{ color: 'var(--text-muted)' }}>{t('facilityAssessments.sectionDataManagement')}</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
               {([
                 ['reportingCompleteness', t('facilityAssessments.fieldReportingCompleteness')],
@@ -387,13 +384,13 @@ export default function FacilityAssessmentsPage() {
                 ['dataQualityScore', t('facilityAssessments.fieldDataQuality')],
               ] as const).map(([key, label]) => (
                 <div key={key}>
-                  <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-secondary)' }}>{label}</label>
+                  <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-secondary)' }}>{label}</label>
                   <NumberInput step="1" min={0} max={100} value={form[key]} onChange={e => setForm({ ...form, [key]: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })} />
                 </div>
               ))}
             </div>
 
-            <p className="text-[10px] font-semibold uppercase tracking-wider mt-2 mb-2" style={{ color: 'var(--text-muted)' }}>{t('facilityAssessments.sectionInfrastructure')}</p>
+            <p className="text-xs font-semibold mt-2 mb-2" style={{ color: 'var(--text-muted)' }}>{t('facilityAssessments.sectionInfrastructure')}</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
               {([
                 ['hasCleanWater', t('facilityAssessments.infraCleanWater')],
@@ -413,17 +410,17 @@ export default function FacilityAssessmentsPage() {
 
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div>
-                <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-secondary)' }}>{t('facilityAssessments.fieldHISStaffCount')}</label>
+                <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-secondary)' }}>{t('facilityAssessments.fieldHISStaffCount')}</label>
                 <NumberInput step="1" min={0} value={form.hisStaffCount} onChange={e => setForm({ ...form, hisStaffCount: Math.max(0, parseInt(e.target.value) || 0) })} />
               </div>
               <div>
-                <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-secondary)' }}>{t('facilityAssessments.fieldHISStaffTrained')}</label>
+                <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-secondary)' }}>{t('facilityAssessments.fieldHISStaffTrained')}</label>
                 <NumberInput step="1" min={0} value={form.hisStaffTrained} onChange={e => setForm({ ...form, hisStaffTrained: Math.max(0, parseInt(e.target.value) || 0) })} />
               </div>
             </div>
 
             <div className="mb-4">
-              <label className="text-[11px] font-bold block mb-1" style={{ color: 'var(--text-secondary)' }}>{t('facilityAssessments.recommendations')}</label>
+              <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-secondary)' }}>{t('facilityAssessments.recommendations')}</label>
               <textarea rows={3} value={form.recommendations} onChange={e => setForm({ ...form, recommendations: e.target.value })} placeholder={t('facilityAssessments.recommendationsPlaceholder')} />
             </div>
           </div>

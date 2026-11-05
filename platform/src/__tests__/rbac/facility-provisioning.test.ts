@@ -126,18 +126,15 @@ describe('the pages that host the create dialog', () => {
     expect(source(file)).toContain(marker);
   });
 
-  test('the Add facility button paints its glyph', () => {
-    // globals.css repaints any lucide glyph with no INLINE colour to
-    // --icon-color, the same brand blue as a primary button's fill — a plus
-    // that inherits it is a blank blue circle. Two ways out: an inline
-    // `color` prop, or `.btn-primary`, which globals.css DOES paint
-    // (`.btn-primary svg.lucide`). The button lives on the organization page
-    // now, in the head of the facilities list it adds a row to.
+  test('the Add facility button is a ghost opener beside the facilities search', () => {
+    // An O3 ghost opener (blue label, trailing plus) in the search row of the
+    // list it adds to, not a filled button in the card head. `.tm-ghost-btn`
+    // paints its own glyph in the link blue.
     const view = source('modules/tenancy/components/OrganizationDetail.tsx');
-    const addButton = view.split('addFacility')[1] ?? '';
-    expect(
-      addButton.includes('color="#fff"') || view.includes('btn btn-primary btn-sm'),
-    ).toBe(true);
+    const addButton = view.split("may('facility:create') && (")[1] ?? '';
+    expect(addButton).toContain('tm-ghost-btn');
+    expect(addButton).toContain('<Plus');
+    expect(view).not.toContain('btn btn-primary btn-sm');
   });
 
   test('the dialog asks a platform operator which organization owns the facility', () => {

@@ -13,12 +13,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  MapPin, Phone, Mail, UserPlus, Edit3, Ban, RotateCcw,
+  MapPin, Phone, Mail, Plus, Edit3, Ban, RotateCcw,
 } from '@/components/icons/lucide';
+import Select from '@/components/Select';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import {
-  SadbCard, SadbChip, SadbGridList, SadbGridRow, SadbKpiTile, SadbSearch,
+  SadbCard, SadbChip, SadbGridList, SadbGridRow, SadbSearch,
 } from '@/components/admin/sadb-ui';
 import { CreateUserModal, CredentialHandoffModal, type CreatedCredentials } from '@/modules/identity/client';
 import { canCreateUsers } from '@/lib/people-nav';
@@ -35,7 +36,6 @@ import type { HospitalDoc, UserDoc } from '@/lib/db-types';
 const STAFF_GRID = 'minmax(200px, 1.7fr) minmax(140px, 1fr) minmax(100px, 0.7fr) minmax(110px, 0.8fr)';
 
 /** How many role tiles ride the KPI strip before the tail is summed into one. */
-const ROLE_TILE_CAP = 4;
 
 const TYPE_LABEL_KEYS: Record<string, string> = {
   national_referral: 'hospitals.typeNationalReferral',
@@ -151,27 +151,16 @@ export function FacilityProfile({ hospital, canCreate, onEdit, onRetire }: {
    * even had; the tiles say so on arrival, and each one narrows the list to
    * that role — so it filters AND answers, where the select only filtered.
    */
-  const roleTiles = useMemo(() => {
+  const roleOptions = useMemo(() => {
     if (!staff) return [];
     const counts = new Map<string, number>();
     for (const user of staff) counts.set(user.role, (counts.get(user.role) ?? 0) + 1);
-    const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-    const head = ranked.slice(0, ROLE_TILE_CAP);
-    const tail = ranked.slice(ROLE_TILE_CAP);
-    return [
-      ...head.map(([role, count]) => ({ role, label: getRoleConfig(role as UserDoc['role']).label, count })),
-      // Never a silent truncation: the tail is summed rather than dropped.
-      ...(tail.length
-        ? [{
-          role: null,
-          label: t('management.otherRoles', { count: tail.length }),
-          count: tail.reduce((sum, [, count]) => sum + count, 0),
-        }]
-        : []),
-    ];
-  }, [staff, t]);
+    return [...counts.entries()]
+      .map(([role, count]) => ({ role, label: getRoleConfig(role as UserDoc['role']).label, count }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  }, [staff]);
 
-  /** Set by clicking a role tile; '' is every role. */
+  /** Chosen in the Role dropdown; '' is every role. */
   const [roleFilter, setRoleFilter] = useState('');
 
   const visibleStaff = useMemo(() => {
@@ -182,8 +171,6 @@ export function FacilityProfile({ hospital, canCreate, onEdit, onRetire }: {
       .filter(user => !query || `${user.name} ${user.username}`.toLowerCase().includes(query))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [staff, roleFilter, search]);
-
-  const activeStaff = staff?.filter(user => user.isActive !== false).length ?? null;
 
   return (
     <>
@@ -246,44 +233,12 @@ export function FacilityProfile({ hospital, canCreate, onEdit, onRetire }: {
         </div>
       </div>
 
-      {/* ═══ Who works here, and in what roles ═══ */}
-      <div className="sadb-kpi-row">
-        <SadbKpiTile
-          label={t('hospitals.tabStaff')}
-          value={staff === null ? '…' : staff.length}
-          delta={activeStaff === null ? undefined : t('management.activeCount', { count: activeStaff })}
-          onClick={roleFilter ? () => setRoleFilter('') : undefined}
-        />
-        {roleTiles.map(tile => (
-          <SadbKpiTile
-            key={tile.role ?? 'other'}
-            label={tile.label}
-            value={tile.count}
-            delta={tile.role && roleFilter === tile.role ? t('management.filtering') : undefined}
-            deltaTone={tile.role && roleFilter === tile.role ? 'up' : undefined}
-            onClick={tile.role
-              ? () => setRoleFilter(current => (current === tile.role ? '' : tile.role as string))
-              : undefined}
-          />
-        ))}
-      </div>
-
       {/* ═══ THE ROSTER — the page, not a section of it ═══ */}
       <SadbCard
         title={t('hospitals.tabStaff')}
         meta={staff === null
           ? undefined
           : t('management.showingOf', { shown: visibleStaff.length, total: staff.length })}
-        action={canAddUser ? (
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            data-action="add-facility-user"
-            onClick={() => setShowAddUser(true)}
-          >
-            <UserPlus className="w-4 h-4" /> {t('hospitals.addUser')}
-          </button>
-        ) : undefined}
       >
         <div className="sadb-search-row" style={{ paddingBottom: 12 }}>
           <SadbSearch
@@ -292,12 +247,23 @@ export function FacilityProfile({ hospital, canCreate, onEdit, onRetire }: {
             placeholder={t('hospitals.searchNameUsername')}
             ariaLabel={t('hospitals.searchNameUsername')}
           />
-          {/* The "All roles" select is gone. The tiles above are the filter,
-              and unlike the select they say what there is to filter BY before
-              you click. This clears whichever one is engaged. */}
-          {roleFilter && (
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setRoleFilter('')}>
-              {t('management.clearRoleFilter', { role: getRoleConfig(roleFilter as UserDoc['role']).label })}
+          <Select
+            aria-label={t('orgUsers.colRole')}
+            value={roleFilter}
+            onChange={e => setRoleFilter(e.target.value)}
+            style={{ width: 220 }}
+          >
+            <option value="">{t('hospitals.allRoles')}</option>
+            {roleOptions.map(o => <option key={o.role} value={o.role}>{`${o.label} (${o.count})`}</option>)}
+          </Select>
+          {canAddUser && (
+            <button
+              type="button"
+              className="tm-ghost-btn"
+              data-action="add-facility-user"
+              onClick={() => setShowAddUser(true)}
+            >
+              {t('hospitals.addUser')} <Plus className="w-4 h-4" aria-hidden="true" />
             </button>
           )}
         </div>

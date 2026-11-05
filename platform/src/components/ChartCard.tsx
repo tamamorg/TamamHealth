@@ -13,6 +13,7 @@
 import { useState, type ReactNode } from 'react';
 import Select from '@/components/Select';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import './chart-card.css';
 
 export type ChartType = 'line' | 'area' | 'bar';
 export type ChartPeriod = 'week' | 'month' | 'quarter' | 'year';
@@ -53,11 +54,16 @@ interface ChartCardProps {
   children: (controls: { chartType: ChartType; period: ChartPeriod }) => ReactNode;
 }
 
-const PERIOD_LABELS: Record<ChartPeriod, string> = {
-  week: 'This Week',
-  month: 'This Month',
-  quarter: 'This Quarter',
-  year: 'This Year',
+const PERIOD_KEYS: Record<ChartPeriod, string> = {
+  week: 'chart.periodWeek',
+  month: 'chart.periodMonth',
+  quarter: 'chart.periodQuarter',
+  year: 'chart.periodYear',
+};
+const TYPE_KEYS: Record<ChartType, string> = {
+  line: 'chart.typeLine',
+  area: 'chart.typeArea',
+  bar: 'chart.typeBar',
 };
 
 export default function ChartCard({
@@ -72,6 +78,7 @@ export default function ChartCard({
   style,
   children,
 }: ChartCardProps) {
+  const { t } = useTranslation();
   const [chartType, setChartType] = useState<ChartType>(defaultType);
   const [period, setPeriod] = useState<ChartPeriod>(defaultPeriod);
 
@@ -83,11 +90,11 @@ export default function ChartCard({
         style={{ borderBottom: '1px solid var(--border-light)' }}
       >
         <div className="flex items-center gap-3 min-w-0">
-          <h3 style={{ fontFamily: "var(--font-platform)", fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', letterSpacing: -0.2, lineHeight: 1 }}>
+          <h3 style={{ fontFamily: "var(--font-platform)", fontWeight: 600, fontSize: 16, color: 'var(--accent-text, var(--text-primary))', lineHeight: 1.3 }}>
             {title}
           </h3>
           {subtitle && (
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{subtitle}</span>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{subtitle}</span>
           )}
         </div>
 
@@ -95,27 +102,21 @@ export default function ChartCard({
             type buttons plus the period select are wider than the card, and
             an unshrinkable row pushed the select out past its edge. */}
         <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-          {/* Chart type buttons */}
-          {chartTypes.length > 1 && chartTypes.map(t => (
-            <button
-              key={t}
-              onClick={() => setChartType(t)}
-              style={{
-                fontSize: 10,
-                fontWeight: 600,
-                padding: '3px 9px',
-                borderRadius: 6,
-                border: 'none',
-                cursor: 'pointer',
-                fontFamily: "var(--font-platform)",
-                background: chartType === t ? 'var(--accent-primary)' : 'var(--overlay-subtle)',
-                color: chartType === t ? '#fff' : 'var(--text-muted)',
-                transition: 'background 0.15s, color 0.15s',
-              }}
+          {/* Chart type: a dropdown like the period beside it (user, 2026-11-04:
+              single choices are selected from a field, not from pills). */}
+          {chartTypes.length > 1 && (
+            <Select
+              value={chartType}
+              onChange={e => setChartType(e.target.value as ChartType)}
+              aria-label={t('chart.typeLabel')}
+              className="chart-card-select"
+              data-action="chart-card-type"
             >
-              {t[0].toUpperCase() + t.slice(1)}
-            </button>
-          ))}
+              {chartTypes.map(type => (
+                <option key={type} value={type}>{t(TYPE_KEYS[type] ?? type)}</option>
+              ))}
+            </Select>
+          )}
 
           {extraControls}
 
@@ -124,20 +125,12 @@ export default function ChartCard({
             <Select
               value={period}
               onChange={e => setPeriod(e.target.value as ChartPeriod)}
-              style={{
-                fontSize: 11,
-                color: 'var(--text-muted)',
-                background: 'var(--overlay-subtle)',
-                border: '1px solid var(--border-light)',
-                borderRadius: 7,
-                padding: '3px 8px',
-                cursor: 'pointer',
-                outline: 'none',
-                fontFamily: "var(--font-platform)",
-              }}
+              aria-label={t('chart.periodLabel')}
+              className="chart-card-select"
+              data-action="chart-card-period"
             >
               {periods.map(p => (
-                <option key={p} value={p}>{PERIOD_LABELS[p]}</option>
+                <option key={p} value={p}>{t(PERIOD_KEYS[p])}</option>
               ))}
             </Select>
           )}

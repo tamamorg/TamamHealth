@@ -19,7 +19,8 @@ import type { BloodBankDoc, PatientDoc } from '@/lib/db-types';
 import Badge, { type BadgeTone } from '@/components/Badge';
 import EmptyState from '@/components/EmptyState';
 import { formatDate, humanizeStatus } from '@/lib/format-utils';
-import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
+import EhrListHeader from '@/components/ehr/EhrListHeader';
+import FacilityKpiBand, { weekOverWeek } from '@/components/dashboards/FacilityKpiBand';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import type { RowAction } from '@/components/RowActionsMenu';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -34,16 +35,16 @@ import NumberInput from '@/components/forms/NumberInput';
 
 const BLOOD_GROUPS: BloodBankDoc['bloodGroup'][] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
-const COMPONENTS: { value: BloodBankDoc['component']; label: string }[] = [
-  { value: 'whole_blood', label: 'Whole blood' },
-  { value: 'packed_rbc', label: 'Packed RBC' },
-  { value: 'platelets', label: 'Platelets' },
-  { value: 'ffp', label: 'Fresh frozen plasma' },
-  { value: 'cryoprecipitate', label: 'Cryoprecipitate' },
+const COMPONENTS: { value: BloodBankDoc['component']; labelKey: string }[] = [
+  { value: 'whole_blood', labelKey: 'bloodBank.componentWholeBlood' },
+  { value: 'packed_rbc', labelKey: 'bloodBank.componentPackedRbc' },
+  { value: 'platelets', labelKey: 'bloodBank.componentPlatelets' },
+  { value: 'ffp', labelKey: 'bloodBank.componentFfp' },
+  { value: 'cryoprecipitate', labelKey: 'bloodBank.componentCryo' },
 ];
 
-const COMPONENT_LABEL: Record<BloodBankDoc['component'], string> =
-  Object.fromEntries(COMPONENTS.map(c => [c.value, c.label])) as Record<BloodBankDoc['component'], string>;
+const COMPONENT_LABEL_KEY: Record<BloodBankDoc['component'], string> =
+  Object.fromEntries(COMPONENTS.map(c => [c.value, c.labelKey])) as Record<BloodBankDoc['component'], string>;
 
 // Unit status → semantic Badge tone (available→success, reserved/crossmatched→
 // warning, transfused→neutral, expired/discarded→danger).
@@ -136,6 +137,12 @@ export default function BloodBankPage() {
     }
     return counts;
   }, [units]);
+
+  const outOfStock = BLOOD_GROUPS.filter(g => !availableByGroup[g]);
+  const mostStocked = useMemo(() => {
+    const top = Object.entries(availableByGroup).sort((a, b) => b[1] - a[1])[0];
+    return top && top[1] > 0 ? top : null;
+  }, [availableByGroup]);
 
   // Header stat chips — computed from the units already loaded on this page.
   const unitStats = useMemo(() => {
@@ -336,7 +343,7 @@ export default function BloodBankPage() {
   const rowActions = (u: BloodBankDoc): RowAction[] => {
     const discardAction: RowAction = {
       key: 'discard',
-      label: 'Discard',
+      label: t('bloodBank.actDiscard'),
       icon: <Trash2 className="w-3.5 h-3.5" />,
       tone: 'danger',
       onClick: () => { setDiscardUnitId(u._id); setDiscardReason(''); },
@@ -344,14 +351,14 @@ export default function BloodBankPage() {
     switch (u.status) {
       case 'available':
         return [
-          { key: 'reserve', label: 'Reserve', icon: <UserCheck className="w-3.5 h-3.5" />, onClick: () => setReserveUnitId(u._id) },
+          { key: 'reserve', label: t('bloodBank.actReserve'), icon: <UserCheck className="w-3.5 h-3.5" />, onClick: () => setReserveUnitId(u._id) },
           discardAction,
         ];
       case 'reserved':
         return [
           {
             key: 'crossmatch',
-            label: 'Record crossmatch',
+            label: t('bloodBank.actCrossmatch'),
             icon: <FlaskConical className="w-3.5 h-3.5" />,
             onClick: () => { setCrossmatchUnitId(u._id); setCrossmatchChoice('compatible'); },
           },
@@ -359,7 +366,7 @@ export default function BloodBankPage() {
         ];
       case 'crossmatched':
         return [
-          { key: 'transfuse', label: 'Record transfusion', icon: <Syringe className="w-3.5 h-3.5" />, onClick: () => setTransfuseUnitId(u._id) },
+          { key: 'transfuse', label: t('bloodBank.actTransfuse'), icon: <Syringe className="w-3.5 h-3.5" />, onClick: () => setTransfuseUnitId(u._id) },
           discardAction,
         ];
       default:
@@ -370,46 +377,25 @@ export default function BloodBankPage() {
   return (
     <>
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-        {/* Availability by blood group — one tile per group, count of AVAILABLE units.
+        {/* Headline stock figures as the management KPI band. The per-group
+            counts that used to be a strip of eight tiles ride the detail
+            lines (most stocked, and which groups have run out).
             data-tour: guided-tour anchor for the lab journey's blood-bank step. */}
-        <div className="dash-card mb-4" data-tour="bb-availability">
-          <div className="px-5 py-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
-            <h3 className="font-semibold text-sm">{t('ui.availabilityByBloodGroup')}</h3>
-          </div>
-          <div className="p-3 overflow-x-auto">
-            <table className="w-full text-center" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-              <thead>
-                <tr>
-                  {BLOOD_GROUPS.map((g, i) => (
-                    <th
-                      key={g}
-                      className="text-[11px] font-bold uppercase tracking-wider px-2 py-1.5"
-                      style={{ color: 'var(--accent-primary)', borderBottom: '1px solid var(--border-light)', borderInlineStart: i === 0 ? undefined : '1px solid var(--border-light)' }}
-                    >
-                      {g}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  {BLOOD_GROUPS.map((g, i) => {
-                    const count = availableByGroup[g] || 0;
-                    const color = count === 0 ? 'var(--color-danger)' : count <= 2 ? 'var(--color-warning)' : 'var(--color-success)';
-                    return (
-                      <td
-                        key={g}
-                        className="text-base font-bold px-2 py-2"
-                        style={{ color, fontVariantNumeric: 'tabular-nums', borderInlineStart: i === 0 ? undefined : '1px solid var(--border-light)' }}
-                      >
-                        {count}
-                      </td>
-                    );
-                  })}
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div className="mb-3" data-tour="bb-availability">
+          <FacilityKpiBand tiles={[
+            {
+              key: 'available', label: t('bloodBank.kpiAvailable'), value: unitStats.available,
+              detail: mostStocked ? t('bloodBank.kpiMostStocked', { group: mostStocked[0], count: mostStocked[1] }) : t('bloodBank.kpiNoUsable'),
+              trend: weekOverWeek(units, u => u.collectionDate, t('bloodBank.trendCollected'), 'up', t),
+            },
+            { key: 'reserved', label: t('bloodBank.kpiReserved'), value: unitStats.reserved, detail: t('bloodBank.kpiReservedDetail') },
+            { key: 'expiring', label: t('bloodBank.kpiExpiring'), value: unitStats.expiringSoon, detail: t('bloodBank.kpiExpiringDetail'), warn: unitStats.expiringSoon > 0 },
+            {
+              key: 'outofstock', label: t('bloodBank.kpiOutOfStock'), value: outOfStock.length,
+              detail: outOfStock.length ? outOfStock.join(', ') : t('bloodBank.kpiAllInStock', { count: BLOOD_GROUPS.length }),
+              warn: outOfStock.length > 0,
+            },
+          ]} />
         </div>
 
         {/* Units table */}
@@ -417,14 +403,9 @@ export default function BloodBankPage() {
           <EhrListHeader
             title={t('ui.bloodUnits')}
             count={unitStats.total}
-            stats={[
-              { label: 'Available', value: unitStats.available, color: LIST_STAT_COLORS.blue },
-              { label: 'Reserved', value: unitStats.reserved, color: LIST_STAT_COLORS.amber },
-              { label: 'Expiring ≤7d', value: unitStats.expiringSoon, color: LIST_STAT_COLORS.green },
-            ]}
-            search={{ value: unitSearch, onChange: setUnitSearch, placeholder: 'Filter table', ariaLabel: 'Search units by ID, group, status' }}
+            search={{ value: unitSearch, onChange: setUnitSearch, placeholder: t('bloodBank.filterTable'), ariaLabel: t('bloodBank.searchAria') }}
             actions={
-              <button onClick={openModal} className="btn btn-primary" style={{ height: 38, whiteSpace: 'nowrap', flexShrink: 0 }}>
+              <button type="button" onClick={openModal} className="btn btn-primary">
                 <Plus className="w-4 h-4" /> {t('ui.addUnit')}
               </button>
             }
@@ -463,7 +444,7 @@ export default function BloodBankPage() {
                       <EmptyState
                         icon={Droplets}
                         title={t('ui.noBloodUnitsStockedYet')}
-                        message="Use “Add unit” to register one."
+                        message={t('bloodBank.emptyHint')}
                       />
                     </td>
                   </tr>
@@ -486,17 +467,17 @@ export default function BloodBankPage() {
                           {u.bloodGroup}
                         </span>
                       </td>
-                      <td className="text-sm">{COMPONENT_LABEL[u.component] || u.component}</td>
+                      <td className="text-sm">{COMPONENT_LABEL_KEY[u.component] ? t(COMPONENT_LABEL_KEY[u.component]) : u.component}</td>
                       <td className="text-sm" style={{ fontVariantNumeric: 'tabular-nums' }}>{u.volume}</td>
                       <td className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatDate(u.collectionDate)}</td>
                       <td className="text-xs font-semibold" style={{ color: expiryColor }}>
                         {formatDate(u.expiryDate)}
-                        {expired ? ' · expired' : expiringSoon ? ` · ${days}d left` : ''}
+                        {expired ? ` · ${t('bloodBank.expired')}` : expiringSoon ? ` · ${t('bloodBank.daysLeft', { days })}` : ''}
                       </td>
                       <td>
                         <Badge tone={STATUS_TONE[u.status]}>{humanizeStatus(u.status)}</Badge>
                       </td>
-                      <td><RowActionsMenu ariaLabel={`Actions for unit ${u.unitId}`} actions={rowActions(u)} /></td>
+                      <td><RowActionsMenu ariaLabel={t('bloodBank.actionsFor', { id: u.unitId })} actions={rowActions(u)} /></td>
                     </tr>
                   );
                 })}
@@ -519,7 +500,7 @@ export default function BloodBankPage() {
             <div className="space-y-4">
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.unitId')}</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.unitId')}</label>
                   <input
                     type="text"
                     value={form.unitId}
@@ -529,21 +510,21 @@ export default function BloodBankPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.bloodGroup')}</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.bloodGroup')}</label>
                     <Select value={form.bloodGroup} onChange={e => setForm({ ...form, bloodGroup: e.target.value as BloodBankDoc['bloodGroup'] })}>
                       {BLOOD_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.component')}</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.component')}</label>
                     <Select value={form.component} onChange={e => setForm({ ...form, component: e.target.value as BloodBankDoc['component'] })}>
-                      {COMPONENTS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                      {COMPONENTS.map(c => <option key={c.value} value={c.value}>{t(c.labelKey)}</option>)}
                     </Select>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.volumeMl')}</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.volumeMl')}</label>
                     <NumberInput step="any"
                       min={1}
                       value={form.volume || ''}
@@ -551,7 +532,7 @@ export default function BloodBankPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.donorName')}</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.donorName')}</label>
                     <input
                       type="text"
                       value={form.donorName}
@@ -562,16 +543,16 @@ export default function BloodBankPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.collectionDate')}</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.collectionDate')}</label>
                     <input type="date" value={form.collectionDate} onChange={e => setForm({ ...form, collectionDate: e.target.value })} />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.expiryDate')}</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('ui.expiryDate')}</label>
                     <input type="date" value={form.expiryDate} onChange={e => setForm({ ...form, expiryDate: e.target.value })} />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('postConsult.link.notes')}</label>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('postConsult.link.notes')}</label>
                   <textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder={t('hr.optional')} />
                 </div>
               </div>
@@ -591,7 +572,7 @@ export default function BloodBankPage() {
               footer={<>
                   <button onClick={closeReserve} className="btn btn-secondary">{t('action.cancel')}</button>
                   <button onClick={handleReserve} disabled={!reservePatient || reserving} className="btn btn-primary">
-                    {reserving ? 'Reserving…' : 'Reserve unit'}
+                    {reserving ? t('bloodBank.reserving') : t('bloodBank.reserveUnit')}
                   </button>
               </>}
             >
@@ -642,8 +623,8 @@ export default function BloodBankPage() {
                   {reservePatient && reserveCompatibleGroups && (
                     <p className="text-xs" style={{ color: isCompatible ? 'var(--color-success-text)' : 'var(--color-warning-text)' }}>
                       {isCompatible
-                        ? `Unit ${unit.bloodGroup} is compatible with ${reservePatient.bloodType || 'the patient'}'s blood type.`
-                        : `Note: unit ${unit.bloodGroup} is not typically compatible with ${reservePatient.bloodType || "this patient's"} blood type (compatible groups: ${reserveCompatibleGroups.join(', ') || '—'}).`}
+                        ? t('bloodBank.compatibleMsg', { group: unit.bloodGroup, type: reservePatient.bloodType || t('bloodBank.thePatient') })
+                        : t('bloodBank.incompatibleMsg', { group: unit.bloodGroup, type: reservePatient.bloodType || t('bloodBank.thisPatient'), groups: reserveCompatibleGroups.join(', ') || '—' })}
                     </p>
                   )}
                 </div>
@@ -672,7 +653,7 @@ export default function BloodBankPage() {
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('appointments.labelReason')}</label>
+                    <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('appointments.labelReason')}</label>
                     <textarea
                       autoFocus
                       rows={3}
@@ -686,7 +667,7 @@ export default function BloodBankPage() {
                 <div className="flex gap-2 mt-2">
                   <button onClick={closeDiscard} className="btn btn-secondary flex-1">{t('action.cancel')}</button>
                   <button onClick={handleDiscard} disabled={!discardReason.trim() || discarding} className="btn btn-danger flex-1">
-                    {discarding ? 'Discarding…' : 'Discard unit'}
+                    {discarding ? t('bloodBank.discarding') : t('bloodBank.discardUnit')}
                   </button>
                 </div>
               </div>
@@ -705,7 +686,7 @@ export default function BloodBankPage() {
               footer={<>
                   <button onClick={closeCrossmatch} className="btn btn-secondary">{t('action.cancel')}</button>
                   <button onClick={handleCrossmatch} disabled={crossmatching} className="btn btn-primary">
-                    {crossmatching ? 'Saving…' : 'Save result'}
+                    {crossmatching ? t('bloodBank.saving') : t('bloodBank.saveResult')}
                   </button>
               </>}
             >
@@ -735,8 +716,8 @@ export default function BloodBankPage() {
                   </div>
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                     {crossmatchChoice === 'compatible'
-                      ? 'The unit will move to “crossmatched” and be ready for transfusion.'
-                      : 'The unit will return to “available” inventory for a different patient.'}
+                      ? t('bloodBank.crossmatchCompatibleNote')
+                      : t('bloodBank.crossmatchIncompatibleNote')}
                   </p>
                 </div>
               </div>
@@ -756,7 +737,7 @@ export default function BloodBankPage() {
               footer={<>
                   <button onClick={closeTransfuse} className="btn btn-secondary">{t('action.cancel')}</button>
                   <button onClick={handleTransfuse} disabled={transfusing || !unit.reservedForPatient} className="btn btn-primary">
-                    {transfusing ? 'Recording…' : 'Confirm transfusion'}
+                    {transfusing ? t('bloodBank.recording') : t('bloodBank.confirmTransfusion')}
                   </button>
               </>}
             >

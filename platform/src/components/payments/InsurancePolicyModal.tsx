@@ -129,7 +129,7 @@ export default function InsurancePolicyModal({
   const fields = (
       <div className="space-y-3">
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>
+          <label className="text-[13px] font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>
             {t('billing.payerType') || 'Payer type'}
           </label>
           <Select value={form.payerType} onChange={e => set('payerType', e.target.value as PayerType)}>
@@ -138,7 +138,7 @@ export default function InsurancePolicyModal({
         </div>
 
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>
+          <label className="text-[13px] font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>
             {t('billing.payerName') || 'Payer / plan name'}
           </label>
           <input type="text" value={form.payerName} onChange={e => set('payerName', e.target.value)} placeholder={t('ui.eGAarInsurance')} />
@@ -146,13 +146,13 @@ export default function InsurancePolicyModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>
+            <label className="text-[13px] font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>
               {t('billing.memberId') || 'Member ID'}
             </label>
             <input type="text" value={form.memberId} onChange={e => set('memberId', e.target.value)} />
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>
+            <label className="text-[13px] font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>
               {t('billing.groupNumber') || 'Group number'}
             </label>
             <input type="text" value={form.groupNumber} onChange={e => set('groupNumber', e.target.value)} />
@@ -160,7 +160,7 @@ export default function InsurancePolicyModal({
         </div>
 
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>
+          <label className="text-[13px] font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>
             {t('billing.policyNumber') || 'Policy number'}
           </label>
           <input type="text" value={form.policyNumber} onChange={e => set('policyNumber', e.target.value)} />
@@ -168,13 +168,13 @@ export default function InsurancePolicyModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>
+            <label className="text-[13px] font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>
               {t('billing.effectiveDate') || 'Effective date'}
             </label>
             <input type="date" value={form.effectiveDate} onChange={e => set('effectiveDate', e.target.value)} />
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>
+            <label className="text-[13px] font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>
               {t('billing.terminationDate') || 'Termination date'}
             </label>
             <input type="date" value={form.terminationDate} onChange={e => set('terminationDate', e.target.value)} />
@@ -183,7 +183,7 @@ export default function InsurancePolicyModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>
+            <label className="text-[13px] font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>
               {t('billing.copayAmount') || 'Copay amount'}
             </label>
             <NumberInput step="any" min={0} value={form.copayAmount ?? ''}
@@ -191,7 +191,7 @@ export default function InsurancePolicyModal({
             />
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>
+            <label className="text-[13px] font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>
               {t('billing.coinsurancePct') || 'Coinsurance %'}
             </label>
             <NumberInput step="any" min={0} max={100} value={form.coinsurancePct ?? ''}
@@ -203,13 +203,13 @@ export default function InsurancePolicyModal({
         {form.payerType === 'donor' && (
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>
+              <label className="text-[13px] font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>
                 {t('billing.donorProgramId') || 'Donor program ID'}
               </label>
               <input type="text" value={form.donorProgramId} onChange={e => set('donorProgramId', e.target.value)} />
             </div>
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>
+              <label className="text-[13px] font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>
                 {t('billing.donorCoverageType') || 'Coverage type'}
               </label>
               <Select
@@ -224,7 +224,7 @@ export default function InsurancePolicyModal({
         )}
 
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>
+          <label className="text-[13px] font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>
             {t('billing.coverageNotes') || 'Coverage notes'}
           </label>
           <textarea rows={2} value={form.coverageNotes} onChange={e => set('coverageNotes', e.target.value)} placeholder={t('common.optional') || 'Optional'} />

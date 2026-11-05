@@ -92,6 +92,7 @@ const CLAIM_COLUMNS = [
   { key: 'claims.colBilled', align: 'right' as const },
   { key: 'claims.colAllowed', align: 'right' as const },
   { key: 'claims.colPaid', align: 'right' as const },
+  { key: 'claims.colStatus', align: 'left' as const },
   { key: 'claims.colSubmittedDate', align: 'left' as const },
 ] as const;
 
@@ -147,10 +148,11 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
         setPatientBills(bills.filter(b => b.patientId === newClaim.patientId && (b.balanceDue ?? 0) > 0));
       } catch (err) {
         console.error('Failed to load patient billing context:', err);
+        showToast(t('claims.contextNotLoaded'), 'error');
       }
     })();
     return () => { cancelled = true; };
-  }, [newClaim.patientId, scope]);
+  }, [newClaim.patientId, scope]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAppeal = async () => {
     if (!scope) return;
@@ -319,8 +321,8 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                 <td colSpan={CLAIM_COLUMNS.length}>
                   <div className="bl-empty">
                     <AlertTriangle size={34} />
-                    <h3>{claims.length === 0 ? t('claims.emptyTitle') : 'No claims match these filters'}</h3>
-                    <p>{claims.length === 0 ? t('claims.emptyDescription') : 'Clear the status or payer filter to see the rest of the queue.'}</p>
+                    <h3>{claims.length === 0 ? t('claims.emptyTitle') : t('claims.noMatchTitle')}</h3>
+                    <p>{claims.length === 0 ? t('claims.emptyDescription') : t('claims.noMatchHelp')}</p>
                   </div>
                 </td>
               </tr>
@@ -347,6 +349,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                 <td className="bl-num bl-right">{formatMoney(claim.totalBilled || 0, { currency: claim.currency || defaultCurrency(), decimals: 2 })}</td>
                 <td className="bl-num bl-right">{formatMoney(claim.totalAllowed || 0, { currency: claim.currency || defaultCurrency(), decimals: 2 })}</td>
                 <td className="bl-num bl-right">{formatMoney(claim.status === 'paid' ? claim.settlement?.amount ?? claim.totalApproved ?? 0 : 0, { currency: claim.currency || defaultCurrency(), decimals: 2 })}</td>
+                <td><span className={`bl-chip ${CLAIM_STATUS_CHIP[claim.status]}`}>{t(`claims.status_${claim.status}`)}</span></td>
                 <td style={{ whiteSpace: 'nowrap' }}>
                   {claim.submittedDate ? new Date(claim.submittedDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                 </td>
@@ -362,9 +365,9 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
       {openClaim && (
         <Modal onClose={() => setOpenClaim(null)} width={560} labelledBy="claim-detail-title">
           <div className="bl-root" style={{ display: 'flex', flexDirection: 'column', gap: 0, overflow: 'hidden', maxHeight: 'calc(100vh - 32px)' }}>
-            <div className="px-5 py-4 border-b flex items-start justify-between gap-3" style={{ borderColor: 'var(--ehr-border, #E2E6EB)' }}>
+            <div className="px-5 py-4 border-b flex items-start justify-between gap-3" style={{ borderColor: 'var(--border-light)' }}>
               <div className="min-w-0">
-                <h2 className="bl-modal-title" id="claim-detail-title">{openClaim.claimNumber || 'Claim'}</h2>
+                <h2 className="bl-modal-title" id="claim-detail-title">{openClaim.claimNumber || t('claims.fallbackTitle')}</h2>
                 <p className="bl-card-sub" style={{ margin: '4px 0 0' }}>
                   {openClaim.payerName} · {t(PAYER_LABEL_KEYS[openClaim.payerType]) || openClaim.payerType}
                 </p>
@@ -374,7 +377,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
 
             <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
               <ClaimEvidence key={openClaim._id} claim={openClaim} onChanged={onChanged} />
-              <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--ehr-border, #E2E6EB)' }}>
+              <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-light)' }}>
                 <div className="bl-stats" style={{ border: 'none', padding: 0 }}>
                   <div>
                     <span className="bl-stat-label">{t('claims.colBilled')}</span>
@@ -392,14 +395,14 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                   </div>
                   {(openClaim.totalDenied || 0) > 0 && (
                     <div>
-                      <span className="bl-stat-label">{t('claims.status_denied')}</span>
+                      <span className="bl-stat-label">{t('claims.denied')}</span>
                       <span className="bl-stat-value bl-stat-value--danger">{formatMoney(openClaim.totalDenied || 0, { currency: openClaim.currency || defaultCurrency(), decimals: 2 })}</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--ehr-border, #E2E6EB)' }}>
+              <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-light)' }}>
                 <dl className="bl-totals">
                   <div className="bl-totals-row">
                     <dt>{t('claims.colPatientName')}</dt>
@@ -411,41 +414,41 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                   </div>
                   {openClaim.adjudicatedDate && (
                     <div className="bl-totals-row">
-                      <dt>{t('ui.adjudicated')}</dt>
+                      <dt>{t('claims.adjudicated')}</dt>
                       <dd>{new Date(openClaim.adjudicatedDate).toLocaleDateString()}{openClaim.adjudicatedBy ? ` · ${openClaim.adjudicatedBy}` : ''}</dd>
                     </div>
                   )}
                   {!!openClaim.resubmissionCount && (
                     <div className="bl-totals-row">
-                      <dt>{t('ui.resubmissions')}</dt>
+                      <dt>{t('claims.resubmissions')}</dt>
                       <dd>{openClaim.resubmissionCount}{openClaim.lastResubmittedAt ? ` · ${new Date(openClaim.lastResubmittedAt).toLocaleDateString()}` : ''}</dd>
                     </div>
                   )}
                   <div className="bl-totals-row">
-                    <dt>{openClaim.facilityName ? 'Facility' : ''}</dt>
+                    <dt>{openClaim.facilityName ? t('claims.facility') : ''}</dt>
                     <dd>{openClaim.facilityName || ''}</dd>
                   </div>
                 </dl>
               </div>
 
               {(openClaim.denialReasons?.length || openClaim.adjudicationNotes || openClaim.appealNote) && (
-                <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--ehr-border, #E2E6EB)' }}>
+                <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-light)' }}>
                   {!!openClaim.denialReasons?.length && (
                     <p className="bl-modal-sub" style={{ margin: 0 }}>
-                      <strong style={{ color: 'var(--color-danger, #D92B20)' }}>{t('ui.denialReason')}</strong> {openClaim.denialReasons.join(', ')}
+                      <strong style={{ color: 'var(--color-danger-text)' }}>{t('claims.denialReasonLabel')}</strong> {openClaim.denialReasons.join(', ')}
                     </p>
                   )}
                   {openClaim.adjudicationNotes && (
-                    <p className="bl-modal-sub" style={{ margin: '8px 0 0' }}><strong>{t('ui.notes')}</strong> {openClaim.adjudicationNotes}</p>
+                    <p className="bl-modal-sub" style={{ margin: '8px 0 0' }}><strong>{t('claims.notesLabel')}</strong> {openClaim.adjudicationNotes}</p>
                   )}
                   {openClaim.appealNote && (
-                    <p className="bl-modal-sub" style={{ margin: '8px 0 0' }}><strong>{t('ui.appeal')}</strong> {openClaim.appealNote}</p>
+                    <p className="bl-modal-sub" style={{ margin: '8px 0 0' }}><strong>{t('claims.appealLabel')}</strong> {openClaim.appealNote}</p>
                   )}
                 </div>
               )}
             </div>
 
-            <div className="px-5 py-3 border-t flex items-center gap-2 flex-wrap" style={{ borderColor: 'var(--ehr-border, #E2E6EB)' }}>
+            <div className="px-5 py-3 border-t flex items-center gap-2 flex-wrap" style={{ borderColor: 'var(--border-light)' }}>
               {openClaim.patientId && !openClaim.patientId.startsWith('demo-') && !openClaim.patientId.includes('_demo') && (
                 <button
                   type="button"
@@ -472,7 +475,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                   className="bl-btn bl-btn--outline"
                   onClick={() => { setAppealNote(''); setAppealFor(openClaim); setOpenClaim(null); }}
                 >
-                  {t('ui.appealDenial')}
+                  {t('claims.appealAction')}
                 </button>
               )}
               {(openClaim.status === 'accepted' && !!openClaim.payerReceipt) && (
@@ -511,7 +514,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10,
                     padding: '10px 12px', borderRadius: 6,
-                    border: '1px solid var(--ehr-border, #E2E6EB)', background: 'var(--ehr-page-bg, #F5F8FB)',
+                    border: '1px solid var(--border-light)', background: 'var(--bg-app)',
                   }}
                 >
                   <span className={`bl-chip ${CLAIM_STATUS_CHIP[adjPreview]}`}>{t(`claims.status_${adjPreview}`)}</span>
@@ -569,29 +572,29 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
       {/* Appeal modal — denied claim → appealed, with a note for the payer. */}
       {appealFor && (
         <FormSlider
-          title={<>{t('ui.appealClaim')} {appealFor.claimNumber}</>}
+          title={t('claims.appealTitle', { number: appealFor.claimNumber || '' })}
           width={440}
           onClose={() => !lifecycleBusy && setAppealFor(null)}
           footer={<>
               <button type="button" className="btn btn-secondary" disabled={lifecycleBusy} onClick={() => setAppealFor(null)}>{t('action.cancel')}</button>
               <button type="button" className="btn btn-primary" disabled={lifecycleBusy || !appealNote.trim()} onClick={handleAppeal}>
-                {lifecycleBusy ? 'Submitting…' : 'Submit appeal'}
+                {lifecycleBusy ? t('claims.submittingAppeal') : t('claims.submitAppeal')}
               </button>
           </>}
         >
           <div className="bl-root">
             <p className="bl-modal-sub">
-              {t('ui.deniedBy')} {appealFor.payerName} {t('ui.billed')} {formatMoney(appealFor.totalBilled || 0, { currency: appealFor.currency || defaultCurrency(), decimals: 2 })}
-              {appealFor.denialReasons?.length ? ` · reason: ${appealFor.denialReasons.join(', ')}` : ''}
+              {t('claims.appealSummary', { payer: appealFor.payerName, amount: formatMoney(appealFor.totalBilled || 0, { currency: appealFor.currency || defaultCurrency(), decimals: 2 }) })}
+              {appealFor.denialReasons?.length ? ` · ${t('claims.appealReason', { reason: appealFor.denialReasons.join(', ') })}` : ''}
             </p>
             <div className="bl-field">
-              <label htmlFor="appeal-note">{t('ui.appealNote')}</label>
+              <label htmlFor="appeal-note">{t('claims.appealNoteLabel')}</label>
               <textarea
                 id="appeal-note"
                 rows={3}
                 value={appealNote}
                 onChange={e => setAppealNote(e.target.value)}
-                placeholder={t('ui.whyTheDenialShouldBe')}
+                placeholder={t('claims.appealPlaceholder')}
                 autoFocus
               />
             </div>
@@ -603,7 +606,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
           (or a manual amount), then submit through the real claims service. */}
       {newClaimOpen && (
         <FormSlider
-          title={t('ui.newInsuranceClaim')}
+          title={t('claims.newTitle')}
           width={480}
           onClose={() => !submittingClaim && resetNewClaim()}
           busy={submittingClaim}
@@ -624,17 +627,17 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
             {newClaim.patientId ? (
               <div className="bl-id-tag" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '8px 12px' }}>
                 <strong>{patientFullName(patients.find(p => p._id === newClaim.patientId) || { firstName: 'Unknown', surname: '' } as never)}</strong>
-                <button type="button" className="bl-link" onClick={() => setNewClaim(EMPTY_CLAIM)}>{t('consultation.change')}</button>
+                <button type="button" className="bl-link" onClick={() => setNewClaim(EMPTY_CLAIM)}>{t('claims.change')}</button>
               </div>
             ) : (
               <div className="bl-field">
-                <label htmlFor="claim-patient-search">{t('appointments.labelPatient')}</label>
+                <label htmlFor="claim-patient-search">{t('claims.colPatientName')}</label>
                 <input
                   id="claim-patient-search"
                   type="text"
                   value={patientSearch}
                   onChange={e => setPatientSearch(e.target.value)}
-                  placeholder={t('nurse.searchPatientPlaceholder')}
+                  placeholder={t('claims.patientSearchPlaceholder')}
                   autoFocus
                 />
                 {patientSearch.trim().length >= 2 && (
@@ -663,20 +666,20 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
             {newClaim.patientId && (
               patientPolicies.length === 0 ? (
                 <p className="bl-muted" style={{ fontSize: 12.5 }}>
-                  {t('ui.thisPatientHasNoInsurance')}
+                  {t('claims.noPolicy')}
                 </p>
               ) : (
                 <div className="bl-field">
-                  <label htmlFor="claim-policy">{t('ui.insurancePolicy')}</label>
+                  <label htmlFor="claim-policy">{t('claims.policyLabel')}</label>
                   <Select
                     id="claim-policy"
                     value={newClaim.policyId}
                     onChange={e => setNewClaim(f => ({ ...f, policyId: e.target.value }))}
                   >
-                    <option value="">{t('ui.selectPolicy')}</option>
+                    <option value="">{t('claims.selectPolicy')}</option>
                     {patientPolicies.map(pol => (
                       <option key={pol._id} value={pol._id}>
-                        {pol.payerName}{pol.memberId ? ` · ${pol.memberId}` : ''}{pol.isPrimary ? ' (primary)' : ''}
+                        {pol.payerName}{pol.memberId ? ` · ${pol.memberId}` : ''}{pol.isPrimary ? ` (${t('claims.primarySuffix')})` : ''}
                       </option>
                     ))}
                   </Select>
@@ -688,16 +691,16 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
             {newClaim.patientId && patientPolicies.length > 0 && (
               <>
                 <div className="bl-field">
-                  <label htmlFor="claim-bill">{t('ui.billToClaimAgainst')}</label>
+                  <label htmlFor="claim-bill">{t('claims.billLabel')}</label>
                   <Select
                     id="claim-bill"
                     value={newClaim.billingId}
                     onChange={e => setNewClaim(f => ({ ...f, billingId: e.target.value }))}
                   >
-                    <option value="">{t('ui.noLinkedBillEnterAmount')}</option>
+                    <option value="">{t('claims.noLinkedBill')}</option>
                     {patientBills.map(b => (
                       <option key={b._id} value={b._id}>
-                        {formatMoney(b.balanceDue ?? 0, { currency: b.currency, decimals: 2 })} {t('ui.outstanding')} {(b.encounterDate || b.createdAt || '').slice(0, 10)}
+                        {t('claims.billOutstanding', { amount: formatMoney(b.balanceDue ?? 0, { currency: b.currency, decimals: 2 }) })} · {(b.encounterDate || b.createdAt || '').slice(0, 10)}
                       </option>
                     ))}
                   </Select>
@@ -708,7 +711,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                     <Select id="claim-currency" value={newClaim.currency} onChange={e => setNewClaim(f => ({ ...f, currency: e.target.value }))}>
                       {offeredCurrencies().map(currency => <option key={currency} value={currency}>{currency}</option>)}
                     </Select>
-                    <label htmlFor="claim-amount">{t('ui.claimAmount')}</label>
+                    <label htmlFor="claim-amount">{t('claims.claimAmount')}</label>
                     <NumberInput
                       id="claim-amount" step="any"
                       min="0"
