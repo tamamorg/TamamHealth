@@ -267,16 +267,16 @@
 
 /* Secondary / outline buttons keep their shape and ground; text and border
    take the accent instead of steel grey. Danger buttons are separate classes
-   and stay red. Not the buttons of a slider's action bar: there the
+   and stay red. Not the buttons of a dialog or slider action bar: there the
    secondary sits on the dark --action-secondary fill with white type, and
    accent text on it was all but invisible. */
-:root:not([data-theme="dark"]) :is(.btn-secondary, .btn-ghost, .cn-btn-neutral, .labord-btn--ghost, .sa-btn:not(.primary)):not(.tm-slider .tm-dialog__foot *):not(.tm-slider div:has(> .btn-primary) > *) {
+:root:not([data-theme="dark"]) :is(.btn-secondary, .btn-ghost, .cn-btn-neutral, .labord-btn--ghost, .sa-btn:not(.primary)):not(.tm-dialog__foot *):not(.tm-slider div:has(> .btn-primary) > *) {
   color: var(--accent-primary);
 }
-:root:not([data-theme="dark"]) :is(.btn-secondary, .sa-btn:not(.primary)):not(.tm-slider .tm-dialog__foot *):not(.tm-slider div:has(> .btn-primary) > *) {
+:root:not([data-theme="dark"]) :is(.btn-secondary, .sa-btn:not(.primary)):not(.tm-dialog__foot *):not(.tm-slider div:has(> .btn-primary) > *) {
   border-color: color-mix(in srgb, var(--accent-primary) 40%, var(--border-medium));
 }
-:root:not([data-theme="dark"]) :is(.btn-secondary, .btn-ghost, .cn-btn-neutral, .labord-btn--ghost, .sa-btn:not(.primary)):not(.tm-slider .tm-dialog__foot *):not(.tm-slider div:has(> .btn-primary) > *) :is(svg, svg.lucide) {
+:root:not([data-theme="dark"]) :is(.btn-secondary, .btn-ghost, .cn-btn-neutral, .labord-btn--ghost, .sa-btn:not(.primary)):not(.tm-dialog__foot *):not(.tm-slider div:has(> .btn-primary) > *) :is(svg, svg.lucide) {
   color: currentColor !important;
   stroke: currentColor !important;
 }
