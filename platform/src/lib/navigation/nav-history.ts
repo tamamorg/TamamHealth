@@ -43,8 +43,14 @@ function loadUrls(): void {
   try { urls = JSON.parse(window.sessionStorage.getItem(URLS_KEY) || '{}') as Record<number, string>; } catch { urls = {}; }
 }
 
+/** Search text can be a patient's name: it is not kept with the address. */
+const PRIVATE_PARAMS = ['q', 'search', 'query'];
+
 function rememberUrl(): void {
-  urls[current] = window.location.pathname + window.location.search;
+  const params = new URLSearchParams(window.location.search);
+  for (const name of PRIVATE_PARAMS) params.delete(name);
+  const query = params.toString();
+  urls[current] = window.location.pathname + (query ? `?${query}` : '');
   try { window.sessionStorage.setItem(URLS_KEY, JSON.stringify(urls)); } catch { /* storage full or blocked */ }
 }
 
@@ -103,12 +109,13 @@ export function observeLocation(): void {
  * The most recent page behind this one that is not `pathname` itself: where
  * the user was before they opened it. Null when this tab has no such page.
  */
-export function originBefore(pathname: string): string | null {
+export function originBefore(pathname: string, skip?: (path: string) => boolean): string | null {
   if (typeof window === 'undefined') return null;
   install();
   for (let i = current - 1; i >= 0; i--) {
     const url = urls[i];
-    if (url && url.split('?')[0] !== pathname) return url;
+    const path = url?.split('?')[0];
+    if (url && path !== pathname && !skip?.(path!)) return url;
   }
   return null;
 }

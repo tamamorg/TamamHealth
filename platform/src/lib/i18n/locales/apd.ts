@@ -1531,6 +1531,8 @@ const apd: TranslationMap = {
   'acct.pinHint': 'بيفتح الجهاز بعد ما يتقفل.',
   'acct.save': 'احفظ التغييرات',
   'acct.saving': 'بيحفظ…',
+  'facilityQueue.kpiPending': 'إجازات منتظرة',
+  'facilityQueue.kpiAvailable': 'موظفين متاحين هسع',
   'common.cancel': 'إلغاء',
   'common.retry': 'جرّب تاني',
   'common.done': 'خلص',

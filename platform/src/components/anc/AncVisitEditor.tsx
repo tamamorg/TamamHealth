@@ -76,15 +76,15 @@ export default function AncVisitEditor({ visit, onClose, onSaved }: {
             </div>
             <div>
               <label>{t('ancChart.weight')}</label>
-              <NumberInput step="0.1" value={draft.weight || ''} onChange={e => setDraft({ ...draft, weight: parseFloat(e.target.value) })} />
+              <NumberInput step="0.1" min={20} max={250} value={draft.weight || ''} onChange={e => setDraft({ ...draft, weight: parseFloat(e.target.value) })} />
             </div>
             <div>
               <label>{t('ancChart.hb')}</label>
-              <NumberInput step="0.1" value={draft.hemoglobin || ''} onChange={e => setDraft({ ...draft, hemoglobin: parseFloat(e.target.value) })} />
+              <NumberInput step="0.1" min={2} max={25} value={draft.hemoglobin || ''} onChange={e => setDraft({ ...draft, hemoglobin: parseFloat(e.target.value) })} />
             </div>
             <div>
               <label>{t('ancChart.fhr')}</label>
-              <NumberInput step="1" value={draft.fetalHeartRate || ''} onChange={e => setDraft({ ...draft, fetalHeartRate: parseInt(e.target.value, 10) })} />
+              <NumberInput step="1" min={40} max={250} value={draft.fetalHeartRate || ''} onChange={e => setDraft({ ...draft, fetalHeartRate: parseInt(e.target.value, 10) })} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">

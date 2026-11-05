@@ -90,3 +90,13 @@ describe('describeError in Juba Arabic', () => {
     expect(describeError(new Error('patientId is required'), 'الموعد ما اتحدّث.')).toBe('الموعد ما اتحدّث.');
   });
 });
+
+describe('isUserFacingText — Juba Arabic', () => {
+  it('keeps a translated sentence thrown in apd instead of falling back to the generic one', () => {
+    expect(isUserFacingText('الصورة ما اتحفظت. جرّب تاني.')).toBe(true);
+  });
+
+  it('still refuses technical text whatever the script', () => {
+    expect(isUserFacingText('patient_id is undefined')).toBe(false);
+  });
+});

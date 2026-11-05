@@ -18,9 +18,15 @@ export function FormError({ message, title }: {
   onDismiss?: () => void;
   className?: string;
 }) {
-  const { showToast } = useToast();
+  const { showToast, dismissToast } = useToast();
+  // Held up for as long as the form holds the error, and taken down when it
+  // clears or the form closes. A 10-second notice faded while the error stayed
+  // in state, so a second failed Save set the same message, nothing changed,
+  // and the user faced a dead button with nothing on screen.
   useEffect(() => {
-    if (message) showToast(message, 'error', { title });
-  }, [message, title, showToast]);
+    if (!message) return;
+    const id = showToast(message, 'error', { title, sticky: true });
+    return () => { if (typeof id === 'number') dismissToast?.(id); };
+  }, [message, title, showToast, dismissToast]);
   return null;
 }

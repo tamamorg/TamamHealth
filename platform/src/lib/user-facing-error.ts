@@ -113,7 +113,10 @@ const DEVELOPER_TEXT = /^(Invalid|Malformed|Unsupported)\b|^(Internal server err
 export function isUserFacingText(message: string): boolean {
   const text = message.trim();
   if (text.length < 8 || text.length > 300) return false;
-  if (!/^[A-Z"'‘“0-9]/.test(text) || !/\s/.test(text)) return false;
+  // A sentence opens with a capital, a quote or a number — or, in Juba
+  // Arabic, an Arabic letter (the script has no capitals). Without the last,
+  // every translated message thrown in apd fell back to the generic sentence.
+  if (!/^[A-Z"'‘“0-9\p{Script=Arabic}]/u.test(text) || !/\s/.test(text)) return false;
   // camelCase identifiers (patientId, orgId) are a case-sensitive check.
   if (/\b[a-z]+[A-Z][A-Za-z]*\b/.test(text)) return false;
   return !TECHNICAL.test(text) && !DEVELOPER_TEXT.test(text);

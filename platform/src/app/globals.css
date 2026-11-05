@@ -36358,6 +36358,18 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
   outline-offset: -2px;
 }
 
+/* A field marked invalid keeps its red signal through this layer: the
+   underline turns danger and a danger outline frames it, focused or not.
+   Without it the !important border and box-shadow above erased the platform's
+   aria-invalid styling, and an empty required field looked like a filled one.
+   The layer's own focus outline must not repaint it blue either. */
+:is(.modal-portal-dialog, .sadb-regpage-form, .tm-form) :is(input, select, textarea)[aria-invalid="true"]:not(:where(.o3f, .o3f-multi, .cn-editor, [data-form-look="off"]) *),
+:is(.modal-portal-dialog, .sadb-regpage-form, .tm-form) :is(input, select, textarea)[aria-invalid="true"]:focus-visible:not(:where(.o3f, .o3f-multi, .cn-editor, [data-form-look="off"]) *) {
+  border-bottom-color: var(--color-danger) !important;
+  outline: 2px solid var(--color-danger) !important;
+  outline-offset: -2px;
+}
+
 /* A popup body that holds a form becomes the grey surface, and its fields
    turn white on it, exactly as in the chart's drawer. */
 .modal-portal-dialog .tm-dialog__body:has(:is(input:not([type="checkbox"]):not([type="radio"]):not([type="search"]):not([type="hidden"]), select, textarea):not(:where(.o3f, .cn-editor, [data-form-look="off"]) *)) {
