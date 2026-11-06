@@ -117,7 +117,7 @@ body .tamam-root .tamam-header {
 body .tamam-root .tamam-avatar {
   width: 64px;
   height: 64px;
-  border-radius: 4px;
+  border-radius: 0;
   background: var(--accent-primary);
   color: #fff;
   font-size: 24px;

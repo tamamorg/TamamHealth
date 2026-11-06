@@ -6,7 +6,7 @@
   margin-top: 14px;
   padding: 12px 14px;
   border: 1px solid var(--border-light);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--bg-card-solid, #FFFFFF);
 }
 .pslip-offer-title {
@@ -55,7 +55,7 @@
   margin: 0;
   padding: 14px 16px;
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--overlay-subtle);
   font-size: 13.5px;
 }

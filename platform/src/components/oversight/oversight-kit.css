@@ -10,7 +10,7 @@ body main[data-surface="management"] .ov-fields {
   padding: 12px 16px;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
-  border-radius: 4px;
+  border-radius: 0;
 }
 
 body main[data-surface="management"] .ov-field {
@@ -57,7 +57,7 @@ body main[data-surface="management"] .ov-multi-trigger {
   color: var(--text-primary);
   background: var(--bg-card-solid);
   border: 1px solid var(--border-medium);
-  border-radius: 4px;
+  border-radius: 0;
   cursor: pointer;
 }
 body main[data-surface="management"] .ov-multi-trigger:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
@@ -74,7 +74,7 @@ body main[data-surface="management"] .ov-multi-menu {
   overflow-y: auto;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
-  border-radius: 4px;
+  border-radius: 0;
   box-shadow: var(--card-shadow-lg);
 }
 body main[data-surface="management"] .ov-multi-item {

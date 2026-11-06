@@ -23,7 +23,7 @@
   min-height: calc(100svh - var(--ehr-top-rail-height, 0px));
   background: var(--ehr-panel, #fff);
   border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 8px;
+  border-radius: 0;
   /* Do not make the chart shell a scroll container. The page container owns
      vertical scrolling so the patient header can remain sticky while chart
      sections move beneath it. `clip` preserves the rounded shell clipping
@@ -59,7 +59,7 @@
 
 .tamam-rail-card {
   border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--ehr-panel, #fff);
   overflow: hidden;
   margin-bottom: 12px;
@@ -126,7 +126,7 @@
   margin: 0;
   padding: 9px 10px;
   border: none;
-  border-radius: 6px;
+  border-radius: 0;
   background: transparent;
   text-align: left;
   font-size: 13px;
@@ -255,7 +255,7 @@
 .tamam-activity-filters button {
   padding: 5px 8px;
   border: 1px solid transparent;
-  border-radius: 5px;
+  border-radius: 0;
   background: transparent;
   color: var(--ehr-muted, #5D728B);
   font-size: 10px;
@@ -339,7 +339,7 @@
   display: inline-block;
   padding: 2px 7px;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: 0;
   font-size: 10px;
   font-weight: 700;
   font-style: normal;
@@ -470,7 +470,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   flex-shrink: 0;
   width: 72px;
   height: 72px;
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
   position: relative;
   display: flex;
@@ -579,7 +579,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   max-width: 100%;
   padding: 3px 9px 3px 7px;
   border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 5px;
+  border-radius: 0;
   background: var(--ehr-page-bg, #F5F8FB);
   font-family: inherit;
   font-size: 12px;
@@ -678,7 +678,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   gap: 6px;
   padding: 3px 9px 3px 7px;
   border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 5px;
+  border-radius: 0;
   background: var(--ehr-page-bg, #F5F8FB);
   font-family: inherit;
   font-size: 12px;
@@ -765,7 +765,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   font-size: 12.5px;
   font-weight: 600;
   padding: 6px 11px;
-  border-radius: 6px;
+  border-radius: 0;
   border: 1px solid var(--ehr-border, var(--border-light));
   background: var(--ehr-panel, #fff);
   color: var(--ehr-text-body, #3C5574);
@@ -782,7 +782,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: 0;
   border: 1px solid var(--ehr-border, var(--border-light));
   background: var(--ehr-panel, #fff);
   color: var(--ehr-text-body, #3C5574);
@@ -796,7 +796,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   right: 0;
   z-index: 5;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: 0;
   background: var(--tm-ink, #1b2a3a);
   color: #fff;
   font-size: 11.5px;
@@ -828,7 +828,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   width: 200px;
   background: var(--ehr-panel, #fff);
   border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: 0 8px 24px rgba(17, 48, 85, 0.14);
   z-index: 30;
   overflow: hidden;
@@ -846,7 +846,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   color: var(--ehr-text-body, #3C5574);
   background: transparent;
   border: none;
-  border-radius: 5px;
+  border-radius: 0;
   text-align: left;
   cursor: pointer;
 }
@@ -948,7 +948,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
 .tamam-vitals-cell {
   background: var(--ehr-page-bg, #F5F8FB);
   border: 1px solid var(--ehr-border-soft, var(--border-light));
-  border-radius: 7px;
+  border-radius: 0;
   padding: 8px 10px;
   min-width: 0;
 }
@@ -1083,7 +1083,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
 .tamam-section {
   background: var(--ehr-panel, #fff);
   border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 6px;
+  border-radius: 0;
   overflow: hidden;
 }
 
@@ -1135,7 +1135,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   color: var(--accent-text);
   background: var(--ehr-panel, #fff);
   border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 6px;
+  border-radius: 0;
   cursor: pointer;
   padding: 7px 10px;
 }
@@ -1153,7 +1153,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   color: var(--ehr-text-body, #3C5574);
   background: var(--ehr-page-bg, #F5F8FB);
   border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 6px;
+  border-radius: 0;
   padding: 5px 9px;
   cursor: pointer;
 }
@@ -1237,7 +1237,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   min-height: 36px;
   padding: 0 12px;
   border: 1px solid var(--ehr-border, #CFD6DD);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--ehr-panel, #fff);
   color: var(--ehr-text-body, #3C5574);
   font-size: 12px;
@@ -1261,7 +1261,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   margin-top: 5px;
   padding: 0 8px;
   border: 1px solid var(--ehr-border, #CFD6DD);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--ehr-panel, #fff);
   color: var(--ehr-text-body, #3C5574);
   font-size: 11px;
@@ -1305,7 +1305,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   height: 38px;
   padding: 0 12px;
   border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--ehr-panel, #fff);
   color: var(--accent-text);
 }
@@ -1371,7 +1371,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   align-items: center;
   justify-content: center;
   border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 5px;
+  border-radius: 0;
   background: var(--ehr-panel, #fff);
   color: var(--ehr-text-body, #3C5574);
   cursor: pointer;
@@ -1654,7 +1654,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
 .tamam-panel-search {
   width: 100%;
   border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 6px;
+  border-radius: 0;
   padding: 7px 9px;
   font-size: 12.5px;
   color: var(--ehr-text, #113055);
@@ -1673,7 +1673,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   justify-content: space-between;
   gap: 8px;
   padding: 8px 10px;
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--tamam-teal-soft);
   border: 1px solid var(--tamam-teal-border);
   font-size: 12px;
@@ -1951,7 +1951,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   font-size: 12px;
   font-weight: 600;
   padding: 7px 14px;
-  border-radius: 6px;
+  border-radius: 0;
   border: none;
   cursor: pointer;
 }
@@ -2304,7 +2304,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   padding: 9px 12px;
   border: 1px solid var(--ehr-border, var(--border-light));
   border-left: 3px solid var(--ehr-success-text, var(--color-success-border));
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--ehr-panel, #fff);
   font-size: 12.5px;
   line-height: 1.5;
@@ -2334,12 +2334,12 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   justify-content: space-between;
   gap: 10px;
   padding: 8px 10px;
-  border-radius: 7px;
+  border-radius: 0;
 }
 .tebra-triage-snapshot__priority strong { font-size: 12px; }
 .tebra-triage-snapshot__priority span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; font-weight: 600; }
 .tebra-triage-snapshot__abcc { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 6px; }
-.tebra-triage-snapshot__abcc > span { display: flex; flex-direction: column; gap: 2px; padding: 6px 7px; border: 1px solid var(--ehr-border); border-radius: 6px; background: var(--ehr-soft); }
+.tebra-triage-snapshot__abcc > span { display: flex; flex-direction: column; gap: 2px; padding: 6px 7px; border: 1px solid var(--ehr-border); border-radius: 0; background: var(--ehr-soft); }
 .tebra-triage-snapshot__abcc small { color: var(--ehr-muted); font-size: 8.5px; font-weight: 800; text-transform: uppercase; }
 .tebra-triage-snapshot__abcc strong { font-size: 10.5px; text-transform: capitalize; }
 .tebra-triage-snapshot__abcc > span[data-tone='normal'] { color: var(--acuity-green); background: var(--acuity-green-bg); }
@@ -2492,7 +2492,7 @@ body .tamam-root .tamam-table.tamam-table--referrals td.tamam-num,
   max-width: min(72%, 560px);
   padding: 8px 12px;
   border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--bg-card-solid, #fff);
   color: var(--text-primary);
   font-size: 13px;
@@ -2520,7 +2520,7 @@ body .tamam-root .tamam-table.tamam-table--referrals td.tamam-num,
   resize: vertical;
   padding: 8px 10px;
   border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--bg-card-solid, #fff);
   color: var(--text-primary);
   font: inherit;
@@ -2603,7 +2603,7 @@ body .tamam-root .tamam-table.tamam-table--referrals td.tamam-num,
   min-height: 36px;
   padding: 0 12px;
   border: 1px solid var(--tamam-btn-bg);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--tamam-btn-bg);
   color: var(--tamam-btn-ink);
   font-size: 12px;
@@ -2669,7 +2669,7 @@ body .tamam-root .tamam-table.tamam-table--referrals td.tamam-num,
   min-height: 36px;
   padding: 0 12px;
   border: 1px solid var(--tamam-btn-outline-ink);
-  border-radius: 6px;
+  border-radius: 0;
   background: transparent;
   color: var(--tamam-btn-outline-ink);
   font-size: 12px;
@@ -2988,7 +2988,7 @@ body .tamam-root .tamam-table.tamam-table--referrals td.tamam-num,
   grid-auto-flow: column;
   grid-auto-columns: minmax(96px, 1fr);
   border: 1px solid color-mix(in srgb, var(--accent-primary) 45%, transparent);
-  border-radius: 4px;
+  border-radius: 0;
   overflow: hidden;
 }
 
@@ -3184,7 +3184,7 @@ body .tamam-root .tamam-table.tamam-table--referrals td.tamam-num,
 .tamam-root .tamam-icon-toggle {
   display: inline-flex;
   border: 1px solid color-mix(in srgb, var(--accent-primary) 45%, transparent);
-  border-radius: 4px;
+  border-radius: 0;
   overflow: hidden;
 }
 .tamam-root .tamam-icon-toggle button {
@@ -3340,7 +3340,7 @@ html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-drawer {
 .tamam-doc-retracted li { padding: 2px 0; }
 
 /* What a sending hospital knew, on the chart of a patient transferred here. */
-.tamam-transfer-records { margin-block-end: 12px; padding: 12px 16px; border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-primary); color: var(--text-primary); }
+.tamam-transfer-records { margin-block-end: 12px; padding: 12px 16px; border: 1px solid var(--border-light); border-radius: 0; background: var(--bg-primary); color: var(--text-primary); }
 .tamam-root .tamam-transfer-records h3 { margin: 0; font-family: inherit; font-size: 14px; font-weight: 600; letter-spacing: normal; text-transform: none; }
 .tamam-transfer-records p { margin: 2px 0 12px; font-size: 12px; color: var(--text-secondary); }
 .tamam-transfer-records .tamam-transfer-records-warn { color: var(--color-warning-text); font-weight: 600; }

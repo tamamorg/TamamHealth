@@ -31,7 +31,7 @@
   margin: 0;
   padding: 10px 12px;
   border: 1px solid var(--border-light);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--bg-secondary);
   font-size: 13px;
   font-weight: 500;

@@ -57,7 +57,7 @@
   height: 24px;
   padding: 0;
   border: 0;
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--color-slate-400, #8d8d8d);
   cursor: pointer;
 }
