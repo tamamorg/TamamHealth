@@ -108,6 +108,45 @@ export function usePrescriptions(patientId?: string) {
     return result;
   }, [loadPrescriptions]);
 
+  /**
+   * Reverse a dispense (return to stock). Mirrors `dispense`: the API when
+   * online and not a standalone demo, the local transaction otherwise, and an
+   * ambiguous network failure never falls back locally.
+   */
+  const reverseDispense = useCallback(async (
+    input: import('../services/dispensing-service').ReverseDispenseInput,
+  ) => {
+    if (typeof navigator !== 'undefined' && navigator.onLine && !isStandaloneDemoDeployment()) {
+      const { apiFetch } = await import('../api-fetch');
+      let response: Response;
+      try {
+        response = await apiFetch(`/api/prescriptions/${encodeURIComponent(input.prescription._id)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'reverse_dispense',
+            reason: input.reason,
+            quantity: input.quantity,
+            witnessId: input.witnessId,
+            witnessName: input.witnessName,
+          }),
+        });
+      } catch {
+        throw new Error('The reversal could not be confirmed. Refresh the order and check the stock before trying again.');
+      }
+      const body = await response.json().catch(() => ({})) as Record<string, unknown>;
+      if (!response.ok) {
+        throw new Error((body.error as string) || 'Not reversed. Refresh the order and try again.');
+      }
+      await loadPrescriptions();
+      return body as unknown as import('../services/dispensing-service').ReverseDispenseResult;
+    }
+    const { reverseDispense: reverseLocal } = await import('../services/dispensing-service');
+    const result = await reverseLocal(input);
+    await loadPrescriptions();
+    return result;
+  }, [loadPrescriptions]);
+
   /** Record a prescription that could not be filled (stock-out or held for
    *  prescriber clarification). Both keep the order active. */
   const markUnfilled = useCallback(async (
@@ -184,5 +223,5 @@ export function usePrescriptions(patientId?: string) {
     return result;
   }, [loadPrescriptions]);
 
-  return { prescriptions, loading, error: error && t(error), create, dispense, markUnfilled, administer, voidAdministration, advance, discontinue, reload: loadPrescriptions };
+  return { prescriptions, loading, error: error && t(error), create, dispense, reverseDispense, markUnfilled, administer, voidAdministration, advance, discontinue, reload: loadPrescriptions };
 }

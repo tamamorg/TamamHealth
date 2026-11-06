@@ -19,6 +19,7 @@ import { getSettings } from '../settings/settings-store';
 
 export type LabOrderStatus =
   | 'ordered'
+  | 'cancelled'
   | 'specimen_collected'
   | 'received_at_lab'
   | 'rejected_needs_recollection'
@@ -29,7 +30,10 @@ export type LabOrderStatus =
   | 'communicated_to_patient';
 
 export const LAB_ORDER_TRANSITIONS: Readonly<Record<LabOrderStatus, readonly LabOrderStatus[]>> = {
-  ordered: ['specimen_collected'],
+  // `cancelled` is reachable ONLY from `ordered`: once a specimen is collected
+  // the bench handles it (reject / recollect), it is not withdrawn.
+  ordered: ['specimen_collected', 'cancelled'],
+  cancelled: [],
   specimen_collected: ['received_at_lab', 'rejected_needs_recollection'],
   rejected_needs_recollection: ['specimen_collected'],
   received_at_lab: ['in_process'],

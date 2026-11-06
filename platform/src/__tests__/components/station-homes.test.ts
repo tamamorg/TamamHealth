@@ -130,6 +130,18 @@ describe('assemblePharmacyWorklist', () => {
     expect(outstanding[0]).toMatchObject({ label: 'Safety review', count: 1 });
   });
 
+  it('counts the ring in patient rows, the same as the lanes', () => {
+    const { patients, counts } = assemblePharmacyWorklist({
+      currentUser: { _id: 'u-rx' },
+      patients: [patient('p1'), patient('p2')],
+      prescriptions: [rx('r1', 'p1', 'Metformin'), rx('r2', 'p1', 'Amlodipine'), rx('r3', 'p1', 'Paracetamol'), rx('r4', 'p2', 'Zinc')],
+      labels: rxLabels,
+      now: NOW,
+    });
+    expect(counts).toEqual({ queued: 2, working: 0, dispensed: 0 });
+    expect(patients.filter(p => p.station?.lane === 'scheduled')).toHaveLength(counts.queued);
+  });
+
   it('leaves scripts for an outside pharmacy off the counter', () => {
     const outside = rx('r1', 'p1', 'Insulin', { fulfilment: 'external' } as Partial<PrescriptionDoc>);
     const { patients } = assemblePharmacyWorklist({ currentUser: { _id: 'u-rx' }, patients: [patient('p1')], prescriptions: [outside], labels: rxLabels, now: NOW });

@@ -37,7 +37,9 @@ describe('StationActionPill', () => {
 
 describe('what a row offers', () => {
   it('lab: the next step, rejection only once a specimen is in hand, nothing after a result', () => {
-    expect(benchActions('ordered', t).map(a => a.value)).toEqual(['next']);
+    // Before collection the order can also be withdrawn.
+    expect(benchActions('ordered', t).map(a => a.value)).toEqual(['next', 'cancel']);
+    expect(benchActions('cancelled', t)).toEqual([]);
     expect(benchActions('specimen_collected', t).map(a => a.value)).toEqual(['next', 'reject']);
     expect(benchActions('in_process', t)[0].label).toBe('labFlow.nextResult');
     for (const stage of ['resulted', 'reviewed_by_clinician', 'acted_upon', 'communicated_to_patient'] as const) {

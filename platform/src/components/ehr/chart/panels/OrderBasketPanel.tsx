@@ -24,6 +24,9 @@ import { useFacilityName } from '@/lib/hooks/useFacilityName';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { useConfirmPrompt } from '@/components/ConfirmDialog';
 import RowActionsMenu from '@/components/RowActionsMenu';
+import { usePermissions } from '@/lib/hooks/usePermissions';
+import { isOpenLabOrder } from '@/lib/services/lab-service';
+import { canCancelLabOrder, useCancelLabOrder } from '@/components/lab/useCancelLabOrder';
 import { useToast } from '@/components/Toast';
 import { FORMULARY, hasUsLabel, offFormularyDrug } from '@/lib/data/formulary';
 import { catalogFor, searchCatalog, toOrderedTest } from '@/components/lab/order/lab-order-catalog';
@@ -118,8 +121,10 @@ export default function OrderBasketPanel({
   // facility's orders.
   const { prescriptions } = usePrescriptions(patient._id);
   const { results } = useLabResults(patient._id);
+  const { canEnterLabResults } = usePermissions();
+  const cancelLabOrder = useCancelLabOrder();
   const activeDrugOrders = (prescriptions || []).filter(rx => rx.patientId === patient._id && rx.status === 'pending');
-  const activeLabOrders = (results || []).filter(l => l.patientId === patient._id && l.status !== 'completed');
+  const activeLabOrders = (results || []).filter(l => l.patientId === patient._id && isOpenLabOrder(l));
   const activeMedications = useMemo(
     () => (prescriptions || []).filter(rx => rx.status !== 'discontinued').map(rx => rx.medication),
     [prescriptions],
@@ -495,11 +500,16 @@ export default function OrderBasketPanel({
                 <div className="obk-draft-line">
                   <p className="obk-line"><strong>{l.testName}</strong> — {l.specimen}{l.tier ? ` · ${l.tier}` : ''}</p>
                   <span className="obk-draft-actions">
-                    {/* A sent test has no cancel: the lab lifecycle has no
-                        cancelled stage, so the bench is told directly. */}
+                    {/* A sent test can be withdrawn only until the specimen is
+                        collected; after that the bench rejects it. */}
                     <RowActionsMenu
                       ariaLabel={t('chart.orderRowActions', { name: l.testName })}
-                      actions={[{ key: 'open', label: t('chart.orderOpenResult'), onClick: () => openOrder('labs', l._id) }]}
+                      actions={[
+                        { key: 'open', label: t('chart.orderOpenResult'), onClick: () => openOrder('labs', l._id) },
+                        ...(canCancelLabOrder(l) && (canOrderLabs || canEnterLabResults)
+                          ? [{ key: 'cancel-order', label: t('lab.cancelOrder'), tone: 'danger' as const, onClick: () => void cancelLabOrder(l) }]
+                          : []),
+                      ]}
                     />
                   </span>
                 </div>

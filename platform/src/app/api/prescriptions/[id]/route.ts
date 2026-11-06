@@ -134,6 +134,39 @@ async function patchHandler(
       }
     }
 
+    // ── Reverse a dispense: medicine returned to stock ──
+    // Same guarded-transaction shape as the dispense above; pharmacist-only,
+    // same-day, reason required, witness for controlled medicines — all
+    // enforced inside reverseDispense().
+    if (body.action === 'reverse_dispense') {
+      const { reverseDispense, DispenseError } = await import('@/lib/services/dispensing-service');
+      try {
+        const result = await reverseDispense({
+          prescription: existingRx,
+          reason: typeof body.reason === 'string' ? body.reason : '',
+          quantity: body.quantity === undefined ? undefined : Number(body.quantity),
+          actorId: auth.sub,
+          actorName: auth.name,
+          actorRole: auth.role,
+          facilityId: existingRx.hospitalId || auth.hospitalId || '',
+          facilityName: existingRx.hospitalName,
+          orgId: existingRx.orgId ?? auth.orgId,
+          witnessId: typeof body.witnessId === 'string' ? body.witnessId : undefined,
+          witnessName: typeof body.witnessName === 'string' ? body.witnessName : undefined,
+        });
+        return NextResponse.json(result);
+      } catch (err) {
+        if (err instanceof DispenseError) {
+          const status = err.code === 'NOT_DISPENSED' || err.code === 'WINDOW_CLOSED'
+            || err.code === 'NO_BATCH' ? 409
+            : err.code === 'NOT_AUTHORISED' ? 403
+            : 400;
+          return NextResponse.json({ error: err.message, code: err.code }, { status });
+        }
+        throw err;
+      }
+    }
+
     // ── Unfilled outcomes: stock-out referral, or held for prescriber
     // clarification. Both keep the order active. ──
     if (body.action === 'stock_out' || body.action === 'request_clarification') {

@@ -11,6 +11,8 @@
  * warning, the stock gate, the second signature on controlled medicines, payment.
  */
 
+import { useState } from 'react';
+import { isWithinReversalWindow } from '@/lib/pharmacy/reversal-window';
 import { CheckCircle2, AlertTriangle, ShieldAlert } from '@/components/icons/lucide';
 import { ObfQuestion, ObfSection, ObfSelectField, ObfTextField, ObfValue } from '@/components/ehr/chart/panels/order-basket/ObfFields';
 import InlineBanner from '@/components/overlay/InlineBanner';
@@ -27,7 +29,7 @@ import '@/components/lab/workflow/lab-workflow.css';
 import NumberInput from '@/components/forms/NumberInput';
 
 /** Picked from the row's dropdown: this form sends it back, or records it cannot be filled. */
-export type RxIntent = 'hold' | 'stockout';
+export type RxIntent = 'hold' | 'stockout' | 'reverse';
 
 /** Computed for the pharmacist to read, never auto-actioned. */
 function SafetyLines({ ctrl }: { ctrl: PharmacyWorkflowController }) {
@@ -87,6 +89,9 @@ export default function PharmacyWorkflowPanel({
   const { rx, dispenseDraft: draft, setDispenseDraft: setDraft } = ctrl;
   const conflicts = useUnreviewedConflicts(rx);
   const filled = isFilled(ctrl.stage);
+  // Same Juba day as the handover — the service enforces it; this only hides the form.
+  const reversible = filled && isWithinReversalWindow(rx.dispensedAt) && (rx.quantityDispensed ?? 0) > 0;
+  const [reverseDraft, setReverseDraft] = useState({ quantity: rx.quantityDispensed || 1, reason: '', witnessId: '', witnessName: '' });
 
   const finish = async (fn: () => Promise<boolean>, successKey: string, closes = true) => {
     const ok = await fn();
@@ -143,7 +148,35 @@ export default function PharmacyWorkflowPanel({
         </>)}
       </>
     ),
-  }] : intent === 'hold' ? [prescription, {
+  }, ...(canWork && reversible ? [{
+    id: 'reverse',
+    label: t('rxFlow.actionReverseDispense'),
+    body: (
+      <>
+        <p className="labord-help">{t('rxFlow.reverseHelp')}</p>
+        <ObfQuestion label={t('rxFlow.reverseQuantity')} htmlFor="rx-reverse-qty" required>
+          <NumberInput
+            id="rx-reverse-qty" step="any" min={1} max={rx.quantityDispensed || undefined}
+            value={reverseDraft.quantity}
+            onChange={e => setReverseDraft({ ...reverseDraft, quantity: Number(e.target.value) })}
+          />
+        </ObfQuestion>
+        <ObfTextField id="rx-reverse-reason" label={t('rxFlow.reverseReason')} required value={reverseDraft.reason} onChange={reason => setReverseDraft({ ...reverseDraft, reason })} />
+        {rx.controlledLogId && (<>
+          <p className="labord-required rx-line">{t('rxFlow.witnessRequired')}</p>
+          <ObfTextField id="rx-reverse-witness-id" label={t('rxFlow.witnessId')} required value={reverseDraft.witnessId} onChange={witnessId => setReverseDraft({ ...reverseDraft, witnessId })} />
+          <ObfTextField id="rx-reverse-witness-name" label={t('rxFlow.witnessName')} value={reverseDraft.witnessName} onChange={witnessName => setReverseDraft({ ...reverseDraft, witnessName })} />
+        </>)}
+        <button
+          type="button" className="labord-btn" style={{ color: 'var(--color-danger-text)', borderColor: 'var(--color-danger-text)' }} data-testid="rx-reverse-submit"
+          disabled={ctrl.busy || reverseDraft.quantity <= 0 || reverseDraft.reason.trim().length < 3 || (Boolean(rx.controlledLogId) && !reverseDraft.witnessId.trim())}
+          onClick={() => void finish(() => ctrl.reverse(reverseDraft), 'rxFlow.okReversed')}
+        >
+          {t('rxFlow.actionReverseDispense')}
+        </button>
+      </>
+    ),
+  }] : [])] : intent === 'hold' ? [prescription, {
     id: 'hold',
     label: t('rxFlow.actionHold'),
     body: (

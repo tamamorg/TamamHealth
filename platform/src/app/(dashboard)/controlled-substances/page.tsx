@@ -31,6 +31,7 @@ const MOVEMENT_TONE: Record<ControlledSubstanceLogDoc['movement'], BadgeTone> = 
   waste: 'danger',
   reconciliation: 'accent',
   transfer: 'warning',
+  return: 'success',
 };
 
 /** Turn a free-typed witness name into a stable id so it differs from the operator. */

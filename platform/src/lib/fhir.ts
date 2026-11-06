@@ -96,7 +96,9 @@ export interface FhirObservation {
 }
 
 export function toFhirObservation(lab: LabResultDoc): FhirObservation {
-  const status = lab.status === 'completed'
+  const status = lab.status === 'cancelled'
+    ? 'cancelled'
+    : lab.status === 'completed'
     ? 'final'
     : lab.status === 'in_progress'
       ? 'preliminary'

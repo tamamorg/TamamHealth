@@ -11,7 +11,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import { newPostConsultHandoff } from '@/modules/post-consult';
 import { assertDischargeAllowed, DISCHARGE_STATUSES } from '@/modules/post-consult/services/discharge-service';
-import { encountersDB } from '../db';
+import { VISIT_VOID_ROLES } from '../clinical-flow/visit-permissions';
+import { encountersDB, getDB, medicalRecordsDB, labResultsDB, prescriptionsDB, proceduresDB, billingDB } from '../db';
 import type { EncounterDoc, UserRole } from '../db-types';
 import {
   canTransition, stageOf, isTerminal, TERMINAL_STATUSES, type EncounterStatus,
@@ -109,8 +110,11 @@ export async function getEncounter(id: string): Promise<EncounterDoc | null> {
   }
 }
 
-export async function getAllEncounters(scope?: DataScope): Promise<EncounterDoc[]> {
-  const rows = await findByType<EncounterDoc>(encountersDB(), 'clinical_encounter', {}, { indexFields: ['type'] });
+export async function getAllEncounters(scope?: DataScope, opts: { includeVoided?: boolean } = {}): Promise<EncounterDoc[]> {
+  const found = await findByType<EncounterDoc>(encountersDB(), 'clinical_encounter', {}, { indexFields: ['type'] });
+  // A visit opened in error is not a visit: worklists, queues and analytics
+  // read this list, so it leaves them here, once, rather than in each consumer.
+  const rows = opts.includeVoided ? found : found.filter(e => e.status !== 'voided');
   rows.sort((a, b) => (b.updatedAt || b.createdAt || '').localeCompare(a.updatedAt || a.createdAt || ''));
   return scope ? filterByScope(rows, scope) : rows;
 }
@@ -128,6 +132,7 @@ export async function getEncountersInRange(
   ]);
   const unique = new Map([...byStart, ...byCreated].map(encounter => [encounter._id, encounter]));
   const rows = [...unique.values()].filter(encounter => {
+    if (encounter.status === 'voided') return false;
     const at = encounter.startedAt || encounter.createdAt;
     return !!at && at >= range.from && at < range.to;
   });
@@ -316,7 +321,9 @@ export async function transitionEncounter(
   updated._rev = resp.rev;
   await logAuditSafe('TRANSITION_ENCOUNTER', opts?.actorId ?? existing.clinicianId, undefined, `Encounter ${id}: ${existing.status} → ${to}`);
   emitSyncEvent({ resourceType: 'clinical_encounter', resourceId: id, operation: 'update', resourceVersion: updated._rev, orgId: updated.orgId, hospitalId: updated.hospitalId });
-  if (updated.appointmentId) {
+  // A void frees its appointment explicitly (voidEncounter), under the rules for
+  // who may cancel one; the generic projection must not write that cancellation.
+  if (updated.appointmentId && to !== 'voided') {
     const repairId = `repair-encounter-projection-${updated._id}`;
     try {
       const { getAppointmentById, updateAppointmentStatus } = await import('./appointment-service');
@@ -429,7 +436,8 @@ export async function hasClosedEncounterForPatient(patientId: string): Promise<b
   const rows = await findByType<EncounterDoc>(
     encountersDB(), 'clinical_encounter', { patientId }, { indexFields: ['type', 'patientId'] },
   );
-  return rows.some(e => isTerminal(e.status));
+  // A voided visit never happened: it must not turn a first attendance into a repeat.
+  return rows.some(e => isTerminal(e.status) && e.status !== 'voided');
 }
 
 export interface CreateArrivalEncounterInput {
@@ -1022,4 +1030,197 @@ export async function escalateEncounterToEmergency(
     (opts?.reason ? '; reason recorded on the visit' : ''),
   );
   return updated;
+}
+
+
+// ===== Void a visit opened in error =====
+
+export class EncounterVoidError extends Error {
+  constructor(
+    message: string,
+    public readonly code:
+      | 'NOT_FOUND'
+      | 'REASON_REQUIRED'
+      | 'ROLE_NOT_ALLOWED'
+      | 'NOT_VOIDABLE_STATUS'
+      | 'HAS_CLINICAL_CONTENT',
+  ) {
+    super(message);
+    this.name = 'EncounterVoidError';
+  }
+}
+
+export { VISIT_VOID_ROLES };
+
+export async function getEncountersByPatient(patientId: string, scope: DataScope): Promise<EncounterDoc[]> {
+  const rows = await findByType<EncounterDoc>(
+    encountersDB(), 'clinical_encounter', { patientId }, { indexFields: ['type', 'patientId'] },
+  );
+  const visible = filterByScope(rows, scope);
+  return visible.sort((a, b) => (b.startedAt || b.createdAt || '').localeCompare(a.startedAt || a.createdAt || ''));
+}
+
+/**
+ * What stops a visit from being voided: the first piece of clinical or
+ * financial record found against it, in the clinician's words. Null means
+ * nothing is attached and the visit may be voided.
+ */
+export async function findVoidBlocker(enc: EncounterDoc): Promise<string | null> {
+  if (enc.triageId) return 'A triage assessment was recorded for this visit.';
+  if (enc.medicalRecordId) return 'A consultation record is attached to this visit.';
+  if (enc.labOrderIds?.length) return 'Lab orders were placed on this visit.';
+  const q = { patientId: enc.patientId };
+  const idx = { indexFields: ['type', 'patientId'] };
+  const onVisit = (rows: Array<{ encounterId?: string }>) => rows.some(r => r.encounterId === enc._id);
+
+  // A draft is not a signed note: only a signed/amended/awaiting-cosign note blocks.
+  const notes = await findByType<{ encounterId?: string; status?: string }>(getDB('tamamhealth_clinical_notes'), 'clinical_note', q, idx);
+  if (notes.some(n => n.encounterId === enc._id && n.status !== 'draft')) return 'A note was signed on this visit.';
+
+  const records = await findByType<{ encounterId?: string; documentStatus?: string }>(medicalRecordsDB(), 'medical_record', q, idx);
+  if (records.some(r => r.encounterId === enc._id && r.documentStatus && r.documentStatus !== 'draft')) return 'A consultation record was signed on this visit.';
+
+  if (onVisit(await findByType(labResultsDB(), 'lab_result', q, idx))) return 'Lab or imaging orders were placed on this visit.';
+  if (onVisit(await findByType(prescriptionsDB(), 'prescription', q, idx))) return 'Prescriptions were written on this visit.';
+  if (onVisit(await findByType(proceduresDB(), 'procedure', q, idx))) return 'A procedure was recorded on this visit.';
+  const bills = await findByType<{ encounterId?: string; status?: string }>(billingDB(), 'billing', q, idx);
+  if (bills.some(b => b.encounterId === enc._id && b.status !== 'cancelled')) return 'A bill was raised on this visit.';
+  return null;
+}
+
+/**
+ * Void a visit that was opened in error (wrong patient, duplicate check-in).
+ *
+ * Allowed only while nothing clinical or financial hangs off the visit
+ * (`findVoidBlocker`) and the visit has not left the pre-close ladder
+ * (`voided` is legal from the arrival, triage, rooming and consultation
+ * statuses only). The visit is kept, never deleted: status `voided`, reason,
+ * who and when are stamped on it and on its trail, and an audit row is written.
+ *
+ * The linked booking is freed as cancelled when the actor's role may cancel a
+ * booking (front desk, scheduling, admins — the validator refuses a clinician's
+ * cancel at sync). For other roles the visit is voided and the booking is left
+ * for the desk with an open repair record, so the desk board never silently
+ * disagrees; `appointmentFreed` tells the caller which happened.
+ */
+export async function voidEncounter(
+  id: string,
+  reason: string,
+  actor: { id?: string; name?: string; role?: UserRole },
+): Promise<{ encounter: EncounterDoc; appointmentFreed: boolean }> {
+  const why = reason.trim();
+  if (!why) throw new EncounterVoidError('Give a reason for voiding this visit.', 'REASON_REQUIRED');
+  if (!actor.role || !VISIT_VOID_ROLES.includes(actor.role)) {
+    throw new EncounterVoidError('Your role cannot void a visit.', 'ROLE_NOT_ALLOWED');
+  }
+  const enc = await getEncounter(id);
+  if (!enc) throw new EncounterVoidError('Visit not found. Reload the chart.', 'NOT_FOUND');
+  if (enc.status === 'voided') return { encounter: enc, appointmentFreed: true };
+  if (!canTransition(enc.status, 'voided')) {
+    throw new EncounterVoidError('This visit has moved too far along to be voided. Close it from its current stage instead.', 'NOT_VOIDABLE_STATUS');
+  }
+  const blocker = await findVoidBlocker(enc);
+  if (blocker) throw new EncounterVoidError(`${blocker} A visit with a clinical record cannot be voided.`, 'HAS_CLINICAL_CONTENT');
+
+  const moved = await transitionEncounter(id, 'voided', { actorId: actor.id, reason: why });
+  const now = moved.closedAt || new Date().toISOString();
+  const stamped = await updateEncounter(id, {
+    voidedAt: now, voidedBy: actor.id, voidedByName: actor.name, voidReason: why,
+  } as Partial<EncounterDoc>) ?? moved;
+
+  let appointmentFreed = !stamped.appointmentId;
+  if (stamped.appointmentId) {
+    try {
+      const { getAppointmentById, updateAppointmentStatus } = await import('./appointment-service');
+      const { canRoleMoveAppointment } = await import('../appointment-status');
+      const { APPOINTMENT_CLOSED_STATUSES } = await import('../appointment-status');
+      const appt = await getAppointmentById(stamped.appointmentId);
+      if (!appt || APPOINTMENT_CLOSED_STATUSES.includes(appt.status)) {
+        appointmentFreed = true;
+      } else if (canRoleMoveAppointment(actor.role, appt.status, 'cancelled')) {
+        const done = await updateAppointmentStatus(appt._id, 'cancelled', {
+          actorId: actor.id, actorRole: actor.role, actorName: actor.name,
+          cancelledReason: `Visit voided: ${why}`, cancelledBy: actor.id, cancelledByName: actor.name,
+          note: 'Visit opened in error',
+        });
+        appointmentFreed = Boolean(done);
+      }
+      if (!appointmentFreed) {
+        const { upsertWorkflowRepair } = await import('./workflow-repair-service');
+        await upsertWorkflowRepair(`repair-void-appointment-${stamped._id}`, {
+          workflow: 'encounter_projection',
+          patientId: stamped.patientId,
+          appointmentId: stamped.appointmentId,
+          encounterId: stamped._id,
+          hospitalId: stamped.hospitalId,
+          orgId: stamped.orgId,
+          status: 'open',
+          currentStep: 'cancel_appointment_after_void',
+          lastError: 'The visit was voided. Its booking is still open: the front desk must cancel it.',
+        });
+      }
+    } catch (err) {
+      console.warn('[encounter] visit voided, but its booking could not be freed:', err);
+    }
+  }
+
+  await logAuditSafe(
+    'ENCOUNTER_VOIDED', actor.id, actor.name,
+    `Visit ${id} for patient ${stamped.patientId} voided (opened in error); reason recorded on the visit`,
+  );
+  return { encounter: stamped, appointmentFreed };
+}
+
+/**
+ * Put an encounter that an admission closed (`admitted`, terminal) back where it
+ * came from, when that admission is cancelled in error. The state machine has
+ * no edge out of a terminal status — and must not gain one, or any caller
+ * could reopen a closed visit — so this is the single sanctioned exit, used
+ * only by `cancelAdmission`. Returns null (and changes nothing) when the visit
+ * is not sitting at `admitted`, or when the patient already has a newer open
+ * visit at the facility that a reopened one would collide with.
+ */
+export async function reopenEncounterAfterAdmissionCancelled(
+  encounterId: string,
+  opts: { actorId?: string; actorRole?: UserRole; reason: string },
+): Promise<EncounterDoc | null> {
+  const db = encountersDB();
+  const existing = await getEncounter(encounterId);
+  if (!existing || existing.status !== 'admitted') return null;
+  const newer = await findOpenEncounterForPatient(existing.patientId, existing.hospitalId);
+  if (newer && newer._id !== existing._id) return null;
+
+  const hop = [...(existing.statusHistory ?? [])].reverse().find(h => h.to === 'admitted');
+  // Back to the stage it came from; the desk crossroads when the trail is unknown.
+  const target: EncounterStatus = hop?.from && !isTerminal(hop.from) ? hop.from : 'awaiting_next_station';
+  const now = new Date().toISOString();
+  const reopened: EncounterDoc = {
+    ...existing,
+    status: target,
+    stageKey: stageOf(target),
+    closedAt: undefined,
+    statusHistory: [
+      ...(existing.statusHistory ?? []),
+      { from: 'admitted', to: target, at: now, byUserId: opts.actorId ?? existing.clinicianId, reason: opts.reason },
+    ],
+    updatedAt: now,
+  };
+  const resp = await db.put(reopened as unknown as Record<string, unknown>);
+  reopened._rev = resp.rev;
+  await logAuditSafe('ENCOUNTER_REOPENED_ADMISSION_CANCELLED', opts.actorId, undefined, `Encounter ${encounterId}: admitted → ${target} (admission cancelled in error)`);
+  emitSyncEvent({ resourceType: 'clinical_encounter', resourceId: encounterId, operation: 'update', resourceVersion: reopened._rev, orgId: reopened.orgId, hospitalId: reopened.hospitalId });
+
+  if (reopened.appointmentId) {
+    try {
+      const { getAppointmentById, updateAppointmentStatus } = await import('./appointment-service');
+      const appt = await getAppointmentById(reopened.appointmentId);
+      const projected = appointmentStatusForEncounter(target);
+      if (appt && appt.status === 'completed' && projected !== 'completed') {
+        await updateAppointmentStatus(appt._id, projected, { actorId: opts.actorId, actorRole: opts.actorRole, note: 'Admission cancelled in error; visit reopened' });
+      }
+    } catch {
+      // The visit is reopened; the board self-corrects on the next stage move.
+    }
+  }
+  return reopened;
 }

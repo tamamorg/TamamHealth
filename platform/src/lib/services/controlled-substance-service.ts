@@ -63,7 +63,9 @@ export async function recordMovement(input: RecordMovementInput): Promise<Contro
     throw new ControlledSubstanceError('Enter a quantity greater than zero.', 'BAD_INPUT');
   }
 
-  const direction = input.movement === 'intake' ? 1 : -1;
+  // `return` (a reversed dispense) raises the balance like an intake; every
+  // other movement, including a `reconciliation` counter-entry, lowers it.
+  const direction = input.movement === 'intake' || input.movement === 'return' ? 1 : -1;
   const afterBalance = input.beforeBalance + direction * input.quantity;
   if (afterBalance < 0) {
     throw new ControlledSubstanceError(
@@ -152,6 +154,9 @@ export async function dailyReconciliation(date: string, scope?: DataScope): Prom
     if (m.movement === 'dispense') { slot.dispenses += m.quantity; slot.netChange -= m.quantity; }
     if (m.movement === 'waste') { slot.wastes += m.quantity; slot.netChange -= m.quantity; }
     if (m.movement === 'transfer') { slot.transfers += m.quantity; slot.netChange -= m.quantity; }
+    // A reversed dispense: the units are back on the shelf, so it offsets the
+    // day's dispenses rather than being counted as stock received.
+    if (m.movement === 'return') { slot.dispenses -= m.quantity; slot.netChange += m.quantity; }
   }
   return { date, movementsByMedication: byMed };
 }

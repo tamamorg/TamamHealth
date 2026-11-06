@@ -67,7 +67,7 @@ export function usePharmacyWorkflow(
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const scope = useDataScope();
-  const { prescriptions, advance, dispense, markUnfilled } = usePrescriptions(rxFromList.patientId);
+  const { prescriptions, advance, dispense, reverseDispense, markUnfilled } = usePrescriptions(rxFromList.patientId);
   // The script as this workflow last saved it: a step must not wait for the
   // list behind the slider to catch up.
   const rx = prescriptions?.find(other => other._id === rxFromList._id) ?? rxFromList;
@@ -278,6 +278,24 @@ export function usePharmacyWorkflow(
     });
   }), [advance, dispenseDraft.note, rx._id, run]);
 
+  /** Take a dispensed medicine back into stock (same Juba day; see reverseDispense). */
+  const reverse = useCallback((draft: { quantity: number; reason: string; witnessId: string; witnessName: string }) => run(async () => {
+    if (draft.reason.trim().length < 3) throw new Error('rxFlow.errReverseReason');
+    await reverseDispense({
+      prescription: rx,
+      reason: draft.reason.trim(),
+      quantity: draft.quantity,
+      actorId: currentUser?._id || 'pharmacy',
+      actorName: currentUser?.name || 'Pharmacy',
+      actorRole: currentUser?.role,
+      facilityId: rx.hospitalId || currentUser?.hospitalId || '',
+      facilityName: currentUser?.hospitalName,
+      orgId: currentUser?.orgId || rx.orgId,
+      witnessId: draft.witnessId.trim() || undefined,
+      witnessName: draft.witnessName.trim() || undefined,
+    });
+  }), [currentUser, reverseDispense, rx, run]);
+
   return {
     rx,
     stage,
@@ -288,7 +306,7 @@ export function usePharmacyWorkflow(
     stock, short, needsWitness,
     reviewDraft, setReviewDraft,
     dispenseDraft, setDispenseDraft,
-    fill, hold, recordStockOut, recall,
+    fill, hold, recordStockOut, recall, reverse,
   };
 }
 

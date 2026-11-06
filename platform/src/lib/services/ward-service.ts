@@ -18,6 +18,9 @@ import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
 import { getAllAdmissions } from './admission-query-service';
+import { findUndoDischargeBlocker } from '../ward-reversal-rules';
+export { findUndoDischargeBlocker };
+import { roleCan, WARD_DISCHARGE_ROLES } from '../clinical-flow/ward-permissions';
 
 export { getAllAdmissions, getActiveAdmissions } from './admission-query-service';
 
@@ -125,6 +128,9 @@ export class WardWorkflowError extends Error {
       | 'ADMISSION_NOT_ACTIVE'
       | 'DUPLICATE_ADMISSION'
       | 'DISCHARGE_INCOMPLETE'
+      | 'ROLE_NOT_ALLOWED'
+      | 'REASON_REQUIRED'
+      | 'NOT_REVERSIBLE'
       | 'WORKFLOW_CONFLICT',
   ) {
     super(message);
@@ -882,6 +888,212 @@ export async function dischargePatient(
     }
     throw error;
   }
+}
+
+/** An admission can be cancelled as an error only this soon after it was made. */
+export const CANCEL_ADMISSION_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+type WardActor = { id?: string; name?: string; role?: UserRole };
+
+function assertCanReverse(actor: WardActor, reason: string): string {
+  if (!roleCan(actor.role, WARD_DISCHARGE_ROLES)) {
+    throw new WardWorkflowError('Only a clinician can reverse an admission step.', 'ROLE_NOT_ALLOWED');
+  }
+  const why = reason.trim();
+  if (!why) throw new WardWorkflowError('Give a reason first.', 'REASON_REQUIRED');
+  return why;
+}
+
+/**
+ * Why an admission can no longer be cancelled as an error, or null when it can.
+ *
+ * The admission must be active, recent (CANCEL_ADMISSION_WINDOW_MS), and carry
+ * nothing clinical beyond the admit itself: no medication given or dispensed
+ * against it, no deposit money held. Open inpatient orders are not clinical
+ * activity on their own; cancelling stops them.
+ */
+export async function findCancelAdmissionBlocker(admission: AdmissionDoc): Promise<string | null> {
+  if (admission.status !== 'admitted') return 'This admission is no longer active. Refresh the ward board.';
+  if (Date.now() - new Date(admission.admissionDate).getTime() > CANCEL_ADMISSION_WINDOW_MS) {
+    return 'This admission is more than a day old. Discharge the patient instead.';
+  }
+  const { getAdministrationEvents } = await import('./medication-administration-service');
+  const events = (await getAdministrationEvents()).filter(e => e.admissionId === admission._id);
+  const voided = new Set(events.map(e => e.voidsAdministrationId).filter(Boolean));
+  if (events.some(e => e.eventKind === 'administration' && !voided.has(e._id))) {
+    return 'Medication has been recorded on the MAR for this admission. Discharge the patient instead.';
+  }
+  const { getPrescriptionsByPatient } = await import('./prescription-service');
+  const orders = (await getPrescriptionsByPatient(admission.patientId)).filter(o => o.admissionId === admission._id);
+  if (orders.some(o => o.status === 'dispensed' || o.dispensedAt || o.orderStatus === 'dispensed')) {
+    return 'Medication was dispensed for this admission. Discharge the patient instead.';
+  }
+  if ((admission.admissionDepositPaid ?? 0) > (admission.admissionDepositRefunded ?? 0)) {
+    return 'A deposit was collected for this admission. Refund it before cancelling.';
+  }
+  return null;
+}
+
+/**
+ * Cancel an admission made in error: the stay never happened. Frees the bed
+ * straight to available (nobody lay in it), stops any open inpatient orders,
+ * cancels an unpaid deposit bill, puts the visit back where it came from, and
+ * stamps who/when/why. The admission is kept with status `cancelled`.
+ */
+export async function cancelAdmission(
+  admissionId: string,
+  reason: string,
+  actor: WardActor,
+): Promise<AdmissionDoc> {
+  const why = assertCanReverse(actor, reason);
+  const db = wardDB();
+  const admission = await db.get(admissionId).catch(() => null) as AdmissionDoc | null;
+  if (!admission) throw new WardWorkflowError('Admission not found. Refresh the ward board before trying again.', 'ADMISSION_NOT_FOUND');
+  const blocker = await findCancelAdmissionBlocker(admission);
+  if (blocker) {
+    throw new WardWorkflowError(blocker, admission.status === 'admitted' ? 'NOT_REVERSIBLE' : 'ADMISSION_NOT_ACTIVE');
+  }
+
+  const now = new Date().toISOString();
+  const { getPrescriptionsByPatient, updatePrescription } = await import('./prescription-service');
+  for (const order of (await getPrescriptionsByPatient(admission.patientId))
+    .filter(o => o.admissionId === admissionId && o.status !== 'discontinued')) {
+    await updatePrescription(order._id, {
+      status: 'discontinued', stoppedAt: now, stoppedReason: 'Admission cancelled in error',
+      stoppedBy: actor.id, stoppedByName: actor.name, stoppedSource: 'clinician',
+    });
+  }
+
+  const updated = withPendingOfflineSync({
+    ...admission,
+    status: 'cancelled' as const,
+    cancelledAt: now,
+    cancelledBy: actor.id,
+    cancelledByName: actor.name,
+    cancelReason: why,
+    updatedAt: now,
+  }, now);
+  const response = await db.put(updated);
+  updated._rev = response.rev;
+
+  if (admission.bedId) await releaseBedIfOwned(admission.bedId, admissionId);
+  await updateWardOccupancy(admission.wardId);
+
+  if (admission.admissionDepositBillId) {
+    try {
+      const { cancelBill } = await import('./billing-service');
+      await cancelBill(admission.admissionDepositBillId, actor.id || 'unknown', actor.name || '', 'Admission cancelled in error');
+    } catch (err) {
+      console.warn('[ward] admission cancelled, but its deposit bill could not be cancelled:', err);
+    }
+  }
+
+  if (admission.encounterId) {
+    try {
+      const { reopenEncounterAfterAdmissionCancelled } = await import('./encounter-service');
+      await reopenEncounterAfterAdmissionCancelled(admission.encounterId, { actorId: actor.id, actorRole: actor.role, reason: why });
+    } catch (err) {
+      console.warn('[ward] admission cancelled, but its visit could not be reopened:', err);
+      try {
+        const { upsertWorkflowRepair } = await import('./workflow-repair-service');
+        await upsertWorkflowRepair(`repair:admission-cancel-encounter:${admissionId}`, {
+          workflow: 'encounter_projection', patientId: admission.patientId, patientName: admission.patientName,
+          encounterId: admission.encounterId, admissionId, hospitalId: admission.facilityId, orgId: admission.orgId,
+          status: 'open', currentStep: 'reopen_encounter_after_cancel',
+          lastError: err instanceof Error ? err.message : 'Visit could not be reopened',
+        });
+      } catch { /* the console line above is the fallback */ }
+    }
+  }
+
+  await logAuditSafe('ADMISSION_CANCELLED', actor.id, actor.name,
+    `Cancelled admission ${admissionId} of patient ${admission.patientId} in ${admission.wardName}; reason recorded on the admission`);
+  emitSyncEvent({ resourceType: 'admission', resourceId: updated._id, operation: 'update', resourceVersion: updated._rev, orgId: updated.orgId, hospitalId: updated.facilityId });
+  return updated;
+}
+
+/**
+ * Undo a discharge made today: reopen the admission in the same bed when it is
+ * still free (the bed is only awaiting cleaning), otherwise in `newBed`. What
+ * was reversed is kept on `dischargeReversals`. The visit needs no change — an
+ * admission discharge never moves the encounter, which stays `admitted`.
+ * Inpatient orders stopped at discharge stay stopped: the clinician re-orders.
+ */
+export async function undoDischarge(
+  admissionId: string,
+  reason: string,
+  actor: WardActor,
+  newBed?: { wardId: string; wardName: string; bedId: string; bedNumber: string },
+): Promise<AdmissionDoc> {
+  const why = assertCanReverse(actor, reason);
+  const db = wardDB();
+  const admission = await db.get(admissionId).catch(() => null) as AdmissionDoc | null;
+  if (!admission) throw new WardWorkflowError('Admission not found. Refresh the ward board before trying again.', 'ADMISSION_NOT_FOUND');
+  const blocker = findUndoDischargeBlocker(admission);
+  if (blocker) throw new WardWorkflowError(blocker, 'NOT_REVERSIBLE');
+
+  const active = (await getAllAdmissions()).find(a =>
+    a.patientId === admission.patientId && a.facilityId === admission.facilityId && a.status === 'admitted');
+  if (active) {
+    throw new WardWorkflowError(`${admission.patientName} already has an active admission in ${active.wardName}.`, 'DUPLICATE_ADMISSION');
+  }
+
+  // Same bed when nobody else holds it (released to cleaning/available at
+  // discharge, no admission on it); otherwise the caller must name a free bed.
+  let target = { wardId: admission.wardId, wardName: admission.wardName, bedId: admission.bedId, bedNumber: admission.bedNumber };
+  const original = admission.bedId ? await db.get(admission.bedId).catch(() => null) as BedDoc | null : null;
+  const originalFree = Boolean(original && !original.currentAdmissionId && (original.status === 'cleaning' || original.status === 'available'));
+  if (!originalFree) {
+    if (!newBed) {
+      throw new WardWorkflowError('The bed has been taken since the discharge. Choose another bed to reopen the admission.', 'BED_NOT_AVAILABLE');
+    }
+    target = newBed;
+  }
+
+  if (target.bedId) {
+    // The original bed is only awaiting cleaning (nobody lay in it since the
+    // patient left), so take it back as it is; marking it available would
+    // falsely stamp it as cleaned.
+    if (originalFree && target.bedId === admission.bedId && original?.status === 'cleaning') {
+      await restoreBedClaimIfUnassigned(target.bedId, admission);
+    } else {
+      await updateBedStatus(target.bedId, 'occupied', admission.patientId, admission.patientName, admissionId);
+    }
+  }
+  const now = new Date().toISOString();
+  const reversal = {
+    at: now, by: actor.id, byName: actor.name, reason: why,
+    reversed: {
+      dischargeDate: admission.dischargeDate, dischargeType: admission.dischargeType,
+      dischargeDiagnosis: admission.dischargeDiagnosis, dischargeIcd11: admission.dischargeIcd11,
+      dischargeSummary: admission.dischargeSummary, dischargedBy: admission.dischargedBy,
+      dischargedByName: admission.dischargedByName,
+    },
+  };
+  const reopened = withPendingOfflineSync({
+    ...admission,
+    status: 'admitted' as const,
+    wardId: target.wardId, wardName: target.wardName, bedId: target.bedId, bedNumber: target.bedNumber,
+    dischargeDate: undefined, dischargeType: undefined, dischargeDiagnosis: undefined, dischargeIcd11: undefined,
+    dischargeSummary: undefined, dischargedBy: undefined, dischargedByName: undefined,
+    followUpRequired: false, followUpDate: undefined, followUpInstructions: undefined,
+    medicationReconciled: undefined, medicationReconciledAt: undefined, lengthOfStay: undefined,
+    dischargeReversals: [...(admission.dischargeReversals ?? []), reversal],
+    updatedAt: now,
+  }, now);
+  try {
+    const response = await db.put(reopened);
+    reopened._rev = response.rev;
+  } catch (error) {
+    if (target.bedId) { try { await releaseBedIfOwned(target.bedId, admissionId); } catch { /* surface the original error */ } }
+    throw error;
+  }
+  if (target.wardId !== admission.wardId) await updateWardOccupancy(admission.wardId);
+  await updateWardOccupancy(target.wardId);
+  await logAuditSafe('DISCHARGE_UNDONE', actor.id, actor.name,
+    `Reopened admission ${admissionId} of patient ${admission.patientId} in ${target.wardName}${target.bedNumber ? ` (${target.bedNumber})` : ''}; reason recorded on the admission`);
+  emitSyncEvent({ resourceType: 'admission', resourceId: reopened._id, operation: 'update', resourceVersion: reopened._rev, orgId: reopened.orgId, hospitalId: reopened.facilityId });
+  return reopened;
 }
 
 /** Close the active bed episode after the death register is the source of truth. */

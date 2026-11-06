@@ -8,12 +8,18 @@ import type { DataScope } from './data-scope';
 import { filterByScope, orgOnlyScope } from './data-scope';
 import { findByType } from './db-query';
 import { resolveRegisterOrgId } from './register-org';
+import { VitalVoidError, type VitalVoidActor } from './birth-service';
 import { jubaYearMonth, jubaIsInMonth, isInRange } from '../time-juba';
 
-export async function getAllDeaths(scope?: DataScope): Promise<DeathRegistrationDoc[]> {
+/**
+ * Registered deaths, newest first. Voided registrations are left out unless
+ * `includeVoided` is set, so statistics, exports and the duplicate check in
+ * `createDeath` all ignore them.
+ */
+export async function getAllDeaths(scope?: DataScope, opts: { includeVoided?: boolean } = {}): Promise<DeathRegistrationDoc[]> {
   const db = deathsDB();
   const all = (await findByType<DeathRegistrationDoc>(db, 'death'))
-    .filter(d => d && d.isDeleted !== true)
+    .filter(d => d && d.isDeleted !== true && (opts.includeVoided === true || !d.voidedAt))
     .sort((a, b) => new Date(b.dateOfDeath || '').getTime() - new Date(a.dateOfDeath || '').getTime());
   return scope ? filterByScope(all, scope) : all;
 }
@@ -140,6 +146,53 @@ export async function updateDeath(id: string, data: Partial<DeathRegistrationDoc
   } catch {
     return null;
   }
+}
+
+/**
+ * Strike a death registration out (entered in error / duplicate). Hidden and
+ * counted nowhere; the document is kept. A reason is required.
+ *
+ * The patient's deceased status (isDeceased, followUpStatus 'died', isActive
+ * false) and any admission/encounter closed by the death are deliberately NOT
+ * reverted: the prior values are not recorded, and reopening a closed
+ * admission is a clinical decision, not a side effect of a register correction.
+ * Staff are told so in the UI and the audit row says so.
+ */
+export async function voidDeath(id: string, reason: string, actor: VitalVoidActor): Promise<DeathRegistrationDoc | null> {
+  const why = (reason || '').trim();
+  if (!why) throw new VitalVoidError('Give a reason for voiding this death record.');
+  const db = deathsDB();
+  let existing: DeathRegistrationDoc;
+  try {
+    existing = await db.get(id) as DeathRegistrationDoc;
+  } catch {
+    return null;
+  }
+  if (existing.voidedAt) throw new VitalVoidError('This death record is already voided.');
+  const now = new Date().toISOString();
+  const voided: DeathRegistrationDoc = {
+    ...existing,
+    voidedAt: now,
+    voidedBy: actor.userId,
+    voidedByName: actor.userName,
+    voidReason: why,
+    updatedAt: now,
+  };
+  const resp = await db.put(voided);
+  voided._rev = resp.rev;
+  await logAuditSafe(
+    'VOID_DEATH', actor.userId, actor.userName,
+    `Voided death ${id} (${existing.certificateNumber}): ${why}${existing.patientId ? `. Patient ${existing.patientId} deceased status NOT reverted.` : ''}`,
+  );
+  emitSyncEvent({
+    resourceType: 'death',
+    resourceId: id,
+    operation: 'update',
+    resourceVersion: voided._rev,
+    orgId: voided.orgId,
+    hospitalId: voided.facilityId,
+  });
+  return voided;
 }
 
 export async function deleteDeath(id: string): Promise<boolean> {

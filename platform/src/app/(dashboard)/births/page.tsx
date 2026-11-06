@@ -32,7 +32,8 @@ const blankForm = () => ({
 });
 
 export default function BirthsPage() {
-  const { births, loading, register, correct } = useBirths();
+  const { births, voidedBirths, loading, register, correct, voidRecord } = useBirths();
+  const [showVoided, setShowVoided] = useState(false);
   const { hospitals } = useHospitals();
   const { patients } = usePatients();
 
@@ -73,10 +74,12 @@ export default function BirthsPage() {
     attendedBy: '', registeredBy: '', state: '', county: '', certificateNumber: '',
   });
 
-  const filtered = (births || []).filter(b =>
+  const matchesSearch = (b: BirthRegistrationDoc) =>
     (!search || `${b.childFirstName} ${b.childSurname}`.toLowerCase().includes(search.toLowerCase()) ||
-    (b.motherName || '').toLowerCase().includes(search.toLowerCase()) || (b.certificateNumber || '').toLowerCase().includes(search.toLowerCase()))
-  );
+    (b.motherName || '').toLowerCase().includes(search.toLowerCase()) || (b.certificateNumber || '').toLowerCase().includes(search.toLowerCase()));
+  // Print/export use `filtered` only: a voided record never leaves in a register copy.
+  const filtered = (births || []).filter(matchesSearch);
+  const tableRows = showVoided ? [...filtered, ...(voidedBirths || []).filter(matchesSearch)] : filtered;
 
   // Header stat chips — computed from data already loaded on this page,
   // unaffected by the search box (same as the patients header).
@@ -157,7 +160,7 @@ export default function BirthsPage() {
     }
   };
 
-  const selectedBirth = selectedBirthId ? (births || []).find(b => b._id === selectedBirthId) ?? null : null;
+  const selectedBirth = selectedBirthId ? [...(births || []), ...(voidedBirths || [])].find(b => b._id === selectedBirthId) ?? null : null;
 
   return (
     <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
@@ -176,6 +179,11 @@ export default function BirthsPage() {
               <button type="button" onClick={() => setPrintOpen(true)} className="btn tm-ghost-btn">
                 <Printer className="w-4 h-4" /> {t('vital.print')}
               </button>
+              {(voidedBirths || []).length > 0 && (
+                <button type="button" className="btn tm-ghost-btn" aria-pressed={showVoided} onClick={() => setShowVoided(v => !v)}>
+                  {showVoided ? t('vital.hideVoided') : t('vital.showVoided', { count: voidedBirths.length })}
+                </button>
+              )}
               {canRecordVitalEvents && (
                 <button data-tour="register-birth-btn" onClick={() => { if (editingId) setForm(blankForm()); setEditingId(null); setShowForm(true); }} className="btn btn-primary flex items-center gap-2" style={{ whiteSpace: 'nowrap' }}>
                   <Plus className="w-4 h-4" /> {t('births.registerBirth')}
@@ -216,7 +224,7 @@ export default function BirthsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(b => (
+                {tableRows.map(b => (
                   <tr
                     key={b._id}
                     className="cursor-pointer hover:bg-[var(--table-row-hover)]"
@@ -225,7 +233,7 @@ export default function BirthsPage() {
                     onClick={() => setSelectedBirthId(b._id)}
                     onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setSelectedBirthId(b._id); } }}
                   >
-                    <td className="font-mono text-xs">{b.certificateNumber}</td>
+                    <td className="font-mono text-xs">{b.certificateNumber}{b.voidedAt && <span className="badge text-[10px] ml-2" style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)' }}>{t('vital.voided')}</span>}</td>
                     <td className="font-semibold text-sm">{b.childFirstName} {b.childSurname}</td>
                     <td><span className="badge text-[10px]" style={{ background: b.childGender === 'Male' ? 'var(--accent-light)' : 'var(--color-danger-bg)', color: b.childGender === 'Male' ? 'var(--accent-primary)' : 'var(--color-danger-text)' }}>{b.childGender}</span></td>
                     <td className="text-xs font-mono">{b.dateOfBirth}</td>
@@ -263,7 +271,11 @@ export default function BirthsPage() {
             birth={selectedBirth}
             motherChartId={selectedBirth.motherPatientId || motherChartId(selectedBirth.motherName)}
             onClose={() => setSelectedBirthId(null)}
-            onCorrect={canRecordVitalEvents ? () => startCorrection(selectedBirth) : undefined}
+            onCorrect={canRecordVitalEvents && !selectedBirth.voidedAt ? () => startCorrection(selectedBirth) : undefined}
+            onVoid={canRecordVitalEvents && !selectedBirth.voidedAt ? async (reason) => {
+              await voidRecord(selectedBirth._id, reason, { userId: currentUser?._id, userName: currentUser?.name || currentUser?.username || 'Staff' });
+              showToast(t('vital.voidedToast'), 'success');
+            } : undefined}
           />
         )}
 

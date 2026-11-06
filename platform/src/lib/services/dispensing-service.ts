@@ -28,7 +28,7 @@
  */
 import { pharmacyInventoryDB, prescriptionsDB } from '../db';
 import type {
-  PharmacyInventoryDoc, PrescriptionDoc, DispenseAllocation, UserRole,
+  PharmacyInventoryDoc, PrescriptionDoc, DispenseAllocation, DispenseReversal, UserRole,
 } from '../db-types';
 import { findByType } from './db-query';
 import { recordMovement } from './controlled-substance-service';
@@ -38,6 +38,7 @@ import { holdsVisitAtPharmacy } from '../pharmacy-workflow';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import { jubaDate } from '../time-juba';
+import { isWithinReversalWindow } from '../pharmacy/reversal-window';
 import { orgOnlyScope } from './data-scope';
 import { SAFETY_REASON_MIN_LENGTH } from '../pharmacy/rx-safety';
 import { getUserById } from '@/modules/identity/services/user-service';
@@ -56,7 +57,11 @@ export type DispenseErrorCode =
   | 'REGISTER_FAILED'
   | 'WRITE_FAILED'
   | 'ALLERGY_REVIEW_REQUIRED'
-  | 'NOT_AUTHORISED';
+  | 'NOT_AUTHORISED'
+  | 'NOT_DISPENSED'
+  | 'REASON_REQUIRED'
+  | 'WINDOW_CLOSED'
+  | 'NO_BATCH';
 
 export class DispenseError extends Error {
   constructor(
@@ -111,6 +116,13 @@ export interface DispenseResult {
 
 /** Stages from which a dispense is legal — mirrors PRESCRIPTION_TRANSITIONS. */
 const DISPENSABLE_STAGES = new Set(['cleared_for_dispensing']);
+/** Stages from which a dispense may be reversed — the medicine is out with the patient. */
+const REVERSIBLE_STAGES = new Set([
+  'dispensed', 'counseled', 'complete',
+  // A partly-dispensed order (partial fill, or the remainder after a partial
+  // reversal) still has units out; reverseDispense also requires quantityDispensed > 0.
+  'cleared_for_dispensing', 'stockout_partial_referred',
+]);
 
 /** Roles allowed to actually move stock. Every UI surface that offers a
  *  dispense action is a courtesy in front of this — the real gate is here,
@@ -126,12 +138,19 @@ interface DispenseClaim {
 }
 
 /** Atomically claim a cleared prescription before any stock moves. */
-async function claimPrescriptionForDispense(id: string, dispenserId: string): Promise<DispenseClaim> {
+async function claimPrescriptionForDispense(
+  id: string,
+  dispenserId: string,
+  mode: 'dispense' | 'reverse' = 'dispense',
+): Promise<DispenseClaim> {
   const db = prescriptionsDB();
+  const stages = mode === 'reverse' ? REVERSIBLE_STAGES : DISPENSABLE_STAGES;
   for (let attempt = 0; attempt < 5; attempt++) {
     const existing = await db.get(id) as PrescriptionDoc;
-    if (!DISPENSABLE_STAGES.has(effectivePrescriptionStatus(existing)) || existing.status === 'discontinued') {
-      throw new DispenseError('This order is no longer cleared for dispensing.', 'NOT_CLEARED');
+    if (!stages.has(effectivePrescriptionStatus(existing)) || existing.status === 'discontinued') {
+      throw mode === 'reverse'
+        ? new DispenseError('This order is not dispensed, so there is nothing to reverse.', 'NOT_DISPENSED')
+        : new DispenseError('This order is no longer cleared for dispensing.', 'NOT_CLEARED');
     }
 
     const nowMs = Date.now();
@@ -193,7 +212,9 @@ async function completeClaimedDispense(
   prescriptionId: string,
   claimId: string,
   data: Partial<PrescriptionDoc>,
+  mode: 'dispense' | 'reverse' = 'dispense',
 ): Promise<PrescriptionDoc | null> {
+  const stages = mode === 'reverse' ? REVERSIBLE_STAGES : DISPENSABLE_STAGES;
   const db = prescriptionsDB();
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
@@ -201,7 +222,7 @@ async function completeClaimedDispense(
       if (existing.dispenseLock?.id !== claimId) return null;
       // A prescriber may discontinue the order while the pharmacy is reading
       // stock. The lock survives that update, but discontinuation wins.
-      if (!DISPENSABLE_STAGES.has(effectivePrescriptionStatus(existing)) || existing.status === 'discontinued') {
+      if (!stages.has(effectivePrescriptionStatus(existing)) || existing.status === 'discontinued') {
         return null;
       }
       const updated: PrescriptionDoc = withPendingOfflineSync({
@@ -512,7 +533,10 @@ async function reverseControlledEntries(
         inventoryId: batch._id,
         medicationName: batch.medicationName,
         schedule: batch.controlledSchedule || 'II',
-        movement: 'reconciliation',
+        // 'return' RAISES the balance: the failed dispense's units go back on
+        // the shelf. This was 'reconciliation', which LOWERS it, so a rolled-
+        // back dispense counted the units out twice (found 2026-11-06).
+        movement: 'return',
         quantity: allocation.quantity,
         unit: batch.unit,
         // The balance with this dispense's units still out of the lot — the
@@ -943,6 +967,403 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
     controlledLogId,
     ...(controlledLogIds.length > 0 ? { controlledLogIds } : {}),
   };
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Reverse a dispense (return to stock)
+// ───────────────────────────────────────────────────────────────────────────
+
+export interface ReverseDispenseInput {
+  prescription: PrescriptionDoc;
+  /** Why the medicine came back. Required; it lands on the order, the register and the audit row. */
+  reason: string;
+  /** Units to put back. Defaults to everything dispensed. */
+  quantity?: number;
+  actorId: string;
+  actorName: string;
+  /** Trusted only when the directory has no account for `actorId` (same rule as dispensing). */
+  actorRole?: UserRole;
+  facilityId: string;
+  facilityName?: string;
+  orgId?: string;
+  /** Required when any returned batch is a controlled schedule. */
+  witnessId?: string;
+  witnessName?: string;
+}
+
+export interface ReverseDispenseResult {
+  prescription: PrescriptionDoc;
+  /** Where each returned unit went. */
+  returns: DispenseReversal['returns'];
+  quantityReturned: number;
+  controlledLogIds?: string[];
+  /**
+   * True when the dispense recorded no batches (older record) and the units
+   * went to the earliest-expiring matching batch instead of their own.
+   */
+  approximateBatch: boolean;
+  /**
+   * The pharmacy charge is raised when the order is written and the order goes
+   * back to ready-to-fill, so the charge still stands and is NOT touched here.
+   * If the patient will not take the medicine, sending the order outside or
+   * stopping it withdraws the charge (and a paid one is left as a credit for
+   * the cashier to refund).
+   */
+  billing: 'charge_stands';
+}
+
+export { isWithinReversalWindow };
+
+/** Put units back on a batch, retrying on revision conflict. */
+async function applyBatchReturn(
+  inventoryId: string,
+  quantity: number,
+): Promise<{ batchNumber: string; beforeBalance: number; afterBalance: number; batch: PharmacyInventoryDoc }> {
+  const db = pharmacyInventoryDB();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const batch = await db.get(inventoryId) as PharmacyInventoryDoc;
+    const before = batch.stockLevel || 0;
+    const now = new Date().toISOString();
+    const updated: PharmacyInventoryDoc = {
+      ...batch,
+      stockLevel: before + quantity,
+      // Only unwind today's counter; yesterday's dispense is not today's.
+      dispensedToday: batch.dispensedTodayDate === jubaDate()
+        ? Math.max(0, (batch.dispensedToday || 0) - quantity)
+        : (batch.dispensedToday || 0),
+      updatedAt: now,
+    };
+    try {
+      const resp = await db.put(updated);
+      emitSyncEvent({
+        resourceType: 'pharmacy_inventory', resourceId: updated._id, operation: 'update',
+        resourceVersion: resp.rev, orgId: updated.orgId, hospitalId: updated.hospitalId,
+      });
+      return { batchNumber: batch.batchNumber, beforeBalance: before, afterBalance: updated.stockLevel, batch };
+    } catch (err: unknown) {
+      if ((err as { status?: number }).status === 409 && attempt < 4) continue;
+      throw err;
+    }
+  }
+  throw new DispenseError('Stock is busy on another workstation. Wait a moment, refresh, and try again.', 'WRITE_FAILED');
+}
+
+/** Take a returned quantity back off a batch — compensation for a failed reversal. */
+async function undoBatchReturn(inventoryId: string, quantity: number, batchNumber: string): Promise<void> {
+  const db = pharmacyInventoryDB();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const batch = await db.get(inventoryId) as PharmacyInventoryDoc;
+      const now = new Date().toISOString();
+      const resp = await db.put({
+        ...batch,
+        stockLevel: Math.max(0, (batch.stockLevel || 0) - quantity),
+        dispensedToday: batch.dispensedTodayDate === jubaDate()
+          ? (batch.dispensedToday || 0) + quantity
+          : (batch.dispensedToday || 0),
+        updatedAt: now,
+      } as PharmacyInventoryDoc);
+      emitSyncEvent({
+        resourceType: 'pharmacy_inventory', resourceId: inventoryId, operation: 'update',
+        resourceVersion: resp.rev, orgId: batch.orgId, hospitalId: batch.hospitalId,
+      });
+      return;
+    } catch (err: unknown) {
+      if ((err as { status?: number }).status === 409 && attempt < 4) continue;
+      await logAuditSafe('PHARMACY_ROLLBACK_FAILED', undefined, undefined,
+        `Could not take back ${quantity} from batch ${batchNumber} (${inventoryId}) after a failed reversal. Physical count required.`,
+      ).catch(() => {});
+      return;
+    }
+  }
+}
+
+/**
+ * Reverse a dispense: return medicine to stock and put the order back to
+ * ready-to-fill.
+ *
+ * Decisions (also in the task report):
+ *  - Who: pharmacists only, resolved directory-first like dispensing.
+ *  - When: only on a dispensed order (dispensed/counseled/complete), and only
+ *    on the Juba day it was handed over. After that the medicine has left the
+ *    building long enough that "return to stock" is no longer a safe claim
+ *    (cold chain, handling); a later correction is a stock adjustment/waste.
+ *  - Where: each unit goes back to the batch it came from (`dispenseAllocations`),
+ *    newest allocation first. An older record with no batches goes to the
+ *    earliest-expiring matching batch and the result says so.
+ *  - Controlled: a witness is required and a `return` entry is APPENDED to the
+ *    register for each controlled batch. Nothing in the register is edited.
+ *  - Order: back to `cleared_for_dispensing` (a deliberate shortcut past the
+ *    recall edges — the clearance still stands), with the history kept in
+ *    `dispenseReversals`. Outside-pharmacy and patient-copy state is untouched.
+ *  - Billing: the charge belongs to the order, not the dispense, and the order
+ *    is live again, so it stands (`billing: 'charge_stands'`).
+ * Compensating rollback mirrors dispenseMedication: stock first, then the
+ * register, then the order; a later failure undoes the earlier steps.
+ */
+export async function reverseDispense(input: ReverseDispenseInput): Promise<ReverseDispenseResult> {
+  const { prescription: inputRx } = input;
+  if (inputRx.fulfilment === 'external') {
+    throw new DispenseError(OUTSIDE_PHARMACY_REFUSAL, 'NOT_DISPENSED');
+  }
+  const reason = (input.reason || '').trim();
+  if (reason.length < 3) {
+    throw new DispenseError('Write why the medicine is being returned.', 'REASON_REQUIRED');
+  }
+
+  // Who: directory-first, exactly like dispenseMedication.
+  const actorDoc = await getUserById(input.actorId);
+  let actorRole: UserRole | undefined;
+  if (actorDoc) {
+    if (actorDoc.isActive === false) {
+      throw new DispenseError('Your account is inactive, so you cannot reverse a dispense. Contact your administrator.', 'NOT_AUTHORISED');
+    }
+    actorRole = actorDoc.role;
+  } else {
+    actorRole = input.actorRole;
+  }
+  if (!actorRole || !DISPENSING_ROLES.includes(actorRole)) {
+    throw new DispenseError('Only a pharmacist may reverse a dispense.', 'NOT_AUTHORISED');
+  }
+  if (actorDoc) {
+    const entitled = new Set([actorDoc.hospitalId, ...(actorDoc.facilityIds ?? [])].filter((id): id is string => Boolean(id)));
+    if (!entitled.has(input.facilityId)) {
+      throw new DispenseError('You are not assigned to this facility, so you cannot reverse a dispense here.', 'NOT_AUTHORISED');
+    }
+    if (input.orgId && actorDoc.orgId && actorDoc.orgId !== input.orgId) {
+      throw new DispenseError('You are not part of this organization, so you cannot reverse a dispense here.', 'NOT_AUTHORISED');
+    }
+  }
+
+  const checkDispensed = (rx: PrescriptionDoc) => {
+    if (rx.status === 'discontinued' || !REVERSIBLE_STAGES.has(effectivePrescriptionStatus(rx)) || !(rx.quantityDispensed && rx.quantityDispensed > 0)) {
+      throw new DispenseError('This order is not dispensed, so there is nothing to reverse.', 'NOT_DISPENSED');
+    }
+    if (!isWithinReversalWindow(rx.dispensedAt)) {
+      throw new DispenseError(
+        'A dispense can only be reversed on the day it was handed over. Record the returned medicine as a stock adjustment instead.',
+        'WINDOW_CLOSED',
+      );
+    }
+  };
+  checkDispensed(inputRx);
+
+  const claim = await claimPrescriptionForDispense(inputRx._id, input.actorId, 'reverse');
+  const rx = claim.prescription;
+  const fail = async (err: DispenseError): Promise<never> => {
+    await releaseDispenseClaim(rx._id, claim.id);
+    throw err;
+  };
+
+  try { checkDispensed(rx); } catch (err) { return fail(err as DispenseError); }
+
+  const dispensed = rx.quantityDispensed || 0;
+  const quantity = input.quantity ?? dispensed;
+  if (!Number.isFinite(quantity) || quantity <= 0 || quantity > dispensed) {
+    return fail(new DispenseError(`Enter a quantity between 1 and ${dispensed}.`, 'BAD_QUANTITY'));
+  }
+
+  // Plan: newest allocation first, so a partial return unwinds the latest fill.
+  const allocations = rx.dispenseAllocations || [];
+  const plan: Array<{ inventoryId: string; quantity: number; allocIndex: number }> = [];
+  let remaining = quantity;
+  for (let i = allocations.length - 1; i >= 0 && remaining > 0; i--) {
+    const take = Math.min(allocations[i].quantity, remaining);
+    if (take > 0) { plan.push({ inventoryId: allocations[i].inventoryId, quantity: take, allocIndex: i }); remaining -= take; }
+  }
+  let approximateBatch = false;
+  if (remaining > 0) {
+    // No batch record for these units: earliest-expiring matching batch, flagged.
+    const rows = await findByType<PharmacyInventoryDoc>(pharmacyInventoryDB(), 'pharmacy_inventory');
+    const candidates = rows
+      .filter(r => medicationMatches(rx.medication, r.medicationName))
+      .filter(r => !input.facilityId || r.hospitalId === input.facilityId)
+      .sort((a, b) => (a.expiryDate || '9999').localeCompare(b.expiryDate || '9999'));
+    if (candidates.length === 0) {
+      return fail(new DispenseError(`${rx.medication} has no stock line at this facility to return to. Receive it as new stock instead.`, 'NO_BATCH'));
+    }
+    plan.push({ inventoryId: candidates[0]._id, quantity: remaining, allocIndex: -1 });
+    approximateBatch = true;
+  }
+
+  // Every batch must still exist; controlled ones need a verified witness.
+  const batchDocs = new Map<string, PharmacyInventoryDoc>();
+  for (const p of plan) {
+    try {
+      batchDocs.set(p.inventoryId, await pharmacyInventoryDB().get(p.inventoryId) as PharmacyInventoryDoc);
+    } catch {
+      return fail(new DispenseError('A batch this medicine came from is no longer in inventory. Record a stock adjustment instead.', 'NO_BATCH'));
+    }
+  }
+  const controlled = plan.some(p => {
+    const b = batchDocs.get(p.inventoryId)!;
+    return Boolean(b.controlledSchedule || b.requiresWitness);
+  });
+  let witness: { id: string; name: string } | undefined;
+  if (controlled) {
+    if (!input.witnessId || input.witnessId === input.actorId) {
+      return fail(new DispenseError(`${rx.medication} is a controlled substance. Select a different witness.`, 'WITNESS_REQUIRED'));
+    }
+    const witnessDoc = await getUserById(input.witnessId);
+    if (!witnessDoc || witnessDoc.isActive === false) {
+      return fail(new DispenseError('The witness could not be verified. Select an active staff member.', 'WITNESS_INVALID'));
+    }
+    const wf = new Set([witnessDoc.hospitalId, ...(witnessDoc.facilityIds ?? [])].filter((id): id is string => Boolean(id)));
+    if (input.facilityId && !wf.has(input.facilityId)) {
+      return fail(new DispenseError('The witness must be staff at the dispensing facility.', 'WITNESS_INVALID'));
+    }
+    if (input.orgId && witnessDoc.orgId && witnessDoc.orgId !== input.orgId) {
+      return fail(new DispenseError('The witness must belong to this organization.', 'WITNESS_INVALID'));
+    }
+    witness = { id: witnessDoc._id, name: witnessDoc.name };
+  }
+
+  // ── Apply: stock back on the shelf, remembering each for rollback. ──
+  const applied: Array<{ inventoryId: string; batchNumber: string; quantity: number; beforeBalance: number; afterBalance: number; batch: PharmacyInventoryDoc }> = [];
+  const rollbackStock = async () => {
+    for (const a of applied) await undoBatchReturn(a.inventoryId, a.quantity, a.batchNumber);
+    await releaseDispenseClaim(rx._id, claim.id);
+  };
+  try {
+    for (const p of plan) {
+      const r = await applyBatchReturn(p.inventoryId, p.quantity);
+      applied.push({ inventoryId: p.inventoryId, quantity: p.quantity, ...r });
+    }
+  } catch (err) {
+    await rollbackStock();
+    throw err;
+  }
+
+  // ── Register: APPEND a `return` per controlled batch; never edit. ──
+  const written: Array<{ logId: string; a: (typeof applied)[number] }> = [];
+  for (const a of applied) {
+    if (!(a.batch.controlledSchedule || a.batch.requiresWitness)) continue;
+    try {
+      const entry = await recordMovement({
+        inventoryId: a.inventoryId,
+        medicationName: a.batch.medicationName,
+        schedule: a.batch.controlledSchedule || 'II',
+        movement: 'return',
+        quantity: a.quantity,
+        unit: a.batch.unit,
+        beforeBalance: a.beforeBalance,
+        patientId: rx.patientId,
+        patientName: rx.patientName,
+        prescriptionId: rx._id,
+        operatorId: input.actorId,
+        operatorName: input.actorName,
+        witnessId: witness!.id,
+        witnessName: witness!.name,
+        reason: `Dispense reversed — ${reason}`,
+        facilityId: input.facilityId,
+        facilityName: input.facilityName || '',
+        orgId: input.orgId,
+      });
+      written.push({ logId: entry._id, a });
+    } catch (err) {
+      await counterEntryReturns(written, input, witness!);
+      await rollbackStock();
+      throw new DispenseError(
+        err instanceof Error ? err.message : 'Not reversed. The controlled-substance register entry was not saved. Try again.',
+        'REGISTER_FAILED',
+      );
+    }
+  }
+  const controlledLogIds = written.map(w => w.logId);
+
+  // ── Order: back to ready-to-fill, history kept. ──
+  const now = new Date().toISOString();
+  const newAllocations = allocations.map((a, i) => {
+    const taken = plan.find(p => p.allocIndex === i)?.quantity ?? 0;
+    return taken ? { ...a, quantity: a.quantity - taken, afterBalance: a.afterBalance + taken } : a;
+  }).filter(a => a.quantity > 0);
+  const left = dispensed - quantity;
+  const returns: DispenseReversal['returns'] = applied.map(a => ({
+    inventoryId: a.inventoryId, batchNumber: a.batchNumber, quantity: a.quantity,
+    beforeBalance: a.beforeBalance, afterBalance: a.afterBalance,
+  }));
+  const reversal: DispenseReversal = {
+    at: now, byId: input.actorId, byName: input.actorName, reason, quantity, returns,
+    ...(controlledLogIds.length ? { controlledLogIds } : {}),
+    ...(witness ? { witnessId: witness.id, witnessName: witness.name } : {}),
+  };
+
+  let updated: PrescriptionDoc | null = null;
+  try {
+    updated = await completeClaimedDispense(rx._id, claim.id, {
+      status: 'pending',
+      orderStatus: 'cleared_for_dispensing',
+      quantityDispensed: left,
+      dispenseAllocations: newAllocations,
+      dispenseReversals: [...(rx.dispenseReversals || []), reversal],
+      ...(left > 0 ? { dispenseOutcome: 'partial' as const } : {
+        dispenseOutcome: undefined,
+        dispensedAt: undefined,
+        dispensedBy: undefined,
+        dispensedByName: undefined,
+        counselledAt: undefined,
+        counselledBy: undefined,
+        counselledPoints: undefined,
+        controlledLogId: undefined,
+      }),
+    }, 'reverse');
+  } catch {
+    updated = null;
+  }
+  if (!updated) {
+    await counterEntryReturns(written, input, witness);
+    await rollbackStock();
+    throw new DispenseError('Reversal not recorded. The stock was not changed. Try again.', 'WRITE_FAILED');
+  }
+
+  await logAuditSafe('PRESCRIPTION_DISPENSE_REVERSED', input.actorId, input.actorName,
+    `Returned ${quantity} ${applied[0]?.batch.unit || 'unit(s)'} of ${rx.medication} to stock for patient ${rx.patientId} `
+    + `(batch ${applied.map(a => a.batchNumber).join(', ')}; Rx: ${rx._id})${approximateBatch ? ' — original batch not recorded' : ''}; reason recorded on the order`);
+
+  return {
+    prescription: updated,
+    returns,
+    quantityReturned: quantity,
+    ...(controlledLogIds.length ? { controlledLogIds } : {}),
+    approximateBatch,
+    billing: 'charge_stands',
+  };
+}
+
+/** Counter-entry `return` movements that landed for a reversal that then failed. */
+async function counterEntryReturns(
+  written: Array<{ logId: string; a: { inventoryId: string; quantity: number; afterBalance: number; batchNumber: string; batch: PharmacyInventoryDoc } }>,
+  input: ReverseDispenseInput,
+  witness: { id: string; name: string } | undefined,
+): Promise<void> {
+  if (!witness) return;
+  for (const { logId, a } of written) {
+    try {
+      // `reconciliation` lowers the balance, which undoes a `return`.
+      await recordMovement({
+        inventoryId: a.inventoryId,
+        medicationName: a.batch.medicationName,
+        schedule: a.batch.controlledSchedule || 'II',
+        movement: 'reconciliation',
+        quantity: a.quantity,
+        unit: a.batch.unit,
+        beforeBalance: a.afterBalance,
+        prescriptionId: input.prescription._id,
+        operatorId: input.actorId,
+        operatorName: input.actorName,
+        witnessId: witness.id,
+        witnessName: witness.name,
+        reason: `Reversal of ${logId} — the dispense reversal could not be completed.`,
+        facilityId: input.facilityId,
+        facilityName: input.facilityName || '',
+        orgId: input.orgId,
+      });
+    } catch {
+      await logAuditSafe('CONTROLLED_REVERSAL_FAILED', input.actorId, input.actorName,
+        `Could not counter-entry register movement ${logId} for batch ${a.batchNumber}. Manual register reconciliation required.`,
+      ).catch(() => {});
+    }
+  }
 }
 
 /**

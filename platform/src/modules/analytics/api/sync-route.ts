@@ -1387,6 +1387,15 @@ export async function POST(request: NextRequest) {
             continue;
           }
           const table = resolved || baseTable;
+          // A voided civil registration (entered in error / duplicate) must not
+          // reach, or stay in, the national projection. The CouchDB copy is
+          // kept; only the analytics row is removed.
+          if ((table === 'births' || table === 'deaths') && (change.doc as { voidedAt?: unknown }).voidedAt) {
+            await deleteDocument(table, change.id);
+            processed++;
+            lastSeq = change.seq;
+            continue;
+          }
           const mapper = FIELD_MAPPERS[table];
           if (!mapper) {
             throw new Error(`No field mapper for table: ${table} (db ${db}, doc ${change.id})`);

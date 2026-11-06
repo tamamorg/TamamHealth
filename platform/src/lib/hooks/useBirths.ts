@@ -9,6 +9,8 @@ import { useDataScope } from './useDataScope';
 
 export function useBirths() {
   const [births, setBirths] = useState<BirthRegistrationDoc[]>([]);
+  /** Voided registrations: kept for the register's "Show voided" view, counted nowhere. */
+  const [voidedBirths, setVoidedBirths] = useState<BirthRegistrationDoc[]>([]);
   const [stats, setStats] = useState<Awaited<ReturnType<typeof import('../services/birth-service').getBirthStats>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,12 +18,13 @@ export function useBirths() {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
-    if (!scope) { setBirths([]); setLoading(false); return; }
+    if (!scope) { setBirths([]); setVoidedBirths([]); setLoading(false); return; }
     try {
       setError(null);
       const { getAllBirths, getBirthStats } = await import('../services/birth-service');
-      const [data, s] = await Promise.all([getAllBirths(scope), getBirthStats(scope)]);
-      setBirths(data);
+      const [data, s] = await Promise.all([getAllBirths(scope, { includeVoided: true }), getBirthStats(scope)]);
+      setBirths(data.filter(r => !r.voidedAt));
+      setVoidedBirths(data.filter(r => r.voidedAt));
       setStats(s);
     } catch (err) {
       console.error('Failed to load births', err);
@@ -54,5 +57,16 @@ export function useBirths() {
     return saved;
   }, [load, scope, births]);
 
-  return { births, stats, loading, error: error && t(error), register, correct, reload: load };
+  /** Strike a record out (entered in error / duplicate). Only a record in this caller's scope. */
+  const voidRecord = useCallback(async (id: string, reason: string, actor: { userId?: string; userName: string }) => {
+    if (!scope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
+    if (![...births, ...voidedBirths].some(r => r._id === id)) throw new Error('This birth record is not available to your account.');
+    const { voidBirth } = await import('../services/birth-service');
+    const saved = await voidBirth(id, reason, actor);
+    if (!saved) throw new Error('Birth record not voided.');
+    await load();
+    return saved;
+  }, [load, scope, births, voidedBirths]);
+
+  return { births, voidedBirths, stats, loading, error: error && t(error), register, correct, voidRecord, reload: load };
 }

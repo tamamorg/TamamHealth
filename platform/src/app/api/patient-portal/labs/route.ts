@@ -10,10 +10,10 @@ export async function GET(req: NextRequest) {
   // Both paths go through the same allow-list and release rule
   // (lib/patient-portal-labs): only the fields a patient should see, and the
   // result itself only once a clinician has reviewed it.
-  const { toPortalLabResult } = await import('@/lib/patient-portal-labs');
+  const { toPortalLabResult, isPortalVisibleLab } = await import('@/lib/patient-portal-labs');
   try {
     const { getLabResultsByPatient } = await import('@/lib/services/lab-service');
-    const results = (await getLabResultsByPatient(auth.sub)).map(toPortalLabResult);
+    const results = (await getLabResultsByPatient(auth.sub)).filter(isPortalVisibleLab).map(toPortalLabResult);
     return NextResponse.json({ results });
   } catch (err) {
     if (demoFallbackEnabled()) {

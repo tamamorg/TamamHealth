@@ -124,3 +124,4 @@
 .vt-facts dd { margin: 0; padding: 10px 12px; font-size: 14px; overflow-wrap: anywhere; }
 
 .vt-empty { color: var(--text-secondary); text-align: center; padding: 32px 16px !important; }
+.vt-voided { color: var(--color-text-muted, #6b7280); font-style: italic; }

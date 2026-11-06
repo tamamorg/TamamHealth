@@ -210,6 +210,19 @@ export async function chargeForServices(ctx: ChargeContext, lines: ChargeLineReq
   }
   if (items.length === 0) return null;
 
+  // A charge raised with no visit named (a prescription signed from the chart
+  // without one) joins the patient's open visit here, as lab ordering does.
+  // Left unlinked it landed on a day line of its own, beside the visit's line.
+  let encounterId = ctx.encounterId;
+  if (!encounterId && ctx.facilityId) {
+    try {
+      const { findOpenEncounterForPatient } = await import('./encounter-service');
+      encounterId = (await findOpenEncounterForPatient(ctx.patientId, ctx.facilityId))?._id;
+    } catch {
+      /* no open visit found: the charge stands unlinked */
+    }
+  }
+
   const input: CreateBillInput = {
     patientId: ctx.patientId,
     patientName: ctx.patientName,
@@ -218,7 +231,7 @@ export async function chargeForServices(ctx: ChargeContext, lines: ChargeLineReq
     facilityName: ctx.facilityName,
     facilityLevel: ctx.facilityLevel,
     encounterDate: new Date().toISOString(),
-    encounterId: ctx.encounterId,
+    encounterId,
     appointmentId: ctx.appointmentId,
     items,
     currency: ctx.currency || defaultCurrency(),
@@ -252,7 +265,7 @@ export async function chargeForServices(ctx: ChargeContext, lines: ChargeLineReq
     /* no policy / lookup failed — bill as cash */
   }
 
-  input.exemptReason = await exemptionReason(ctx);
+  input.exemptReason = await exemptionReason({ ...ctx, encounterId });
   return createBill(input);
 }
 

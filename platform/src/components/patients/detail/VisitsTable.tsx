@@ -7,11 +7,21 @@
  * clinical Visit Summary, or show what happened that day. A row expands to what happened that
  * day. "All encounters" keeps the event-by-event timeline.
  */
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useCallback, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ChevronDown } from '@/components/icons/lucide';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { useConfirmPrompt } from '@/components/ConfirmDialog';
+import { useToast } from '@/components/Toast';
+import { useAuth } from '@/lib/context';
+import { useDataScope } from '@/lib/hooks/useDataScope';
+import { usePouchLiveReload } from '@/lib/hooks/usePouchLiveReload';
+import { encountersDB } from '@/lib/db';
+import { describeError } from '@/lib/user-facing-error';
+import { canTransition } from '@/lib/clinical-flow/encounter-journey';
+import { VISIT_VOID_ROLES } from '@/lib/clinical-flow/visit-permissions';
+import type { EncounterDoc } from '@/lib/db-types';
 import { openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalVisitSummaryHtml, visitDiagnoses } from '@/lib/clinical-visit-summary';
 import { formatDate } from '@/lib/format-utils';
@@ -48,6 +58,24 @@ export default function VisitsTable(props: VisitsTableProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState<Set<string>>(new Set());
+  const { currentUser } = useAuth();
+  const scope = useDataScope();
+  const { showToast } = useToast();
+  const confirmPrompt = useConfirmPrompt();
+  const canVoid = Boolean(currentUser?.role && VISIT_VOID_ROLES.includes(currentUser.role));
+
+  // The patient's visits as the encounter records know them. The table's days
+  // come from notes, triage and bookings; this is what lets a day be voided
+  // (an opened-in-error visit) or shown muted as voided.
+  const [encounters, setEncounters] = useState<EncounterDoc[]>([]);
+  const loadEncounters = useCallback(async () => {
+    if (!scope) return;
+    try {
+      const { getEncountersByPatient } = await import('@/lib/services/encounter-service');
+      setEncounters(await getEncountersByPatient(props.patient._id, scope));
+    } catch { setEncounters([]); }
+  }, [scope, props.patient._id]);
+  usePouchLiveReload({ load: loadEncounters, database: encountersDB });
 
   const days = useMemo(() => {
     const set = new Set<string>();
@@ -57,9 +85,34 @@ export default function VisitsTable(props: VisitsTableProps) {
     props.appointments
       .filter(a => a.status === 'checked_in' || a.status === 'completed' || a.status === 'in_progress')
       .forEach(a => set.add(a.appointmentDate));
+    encounters.forEach(e => set.add(dayOf(e.startedAt || e.createdAt)));
     set.delete('');
     return [...set].sort((a, b) => b.localeCompare(a));
-  }, [props.records, props.notes, props.triages, props.appointments]);
+  }, [props.records, props.notes, props.triages, props.appointments, encounters]);
+
+  const voidableOn = (day: string) => encounters.find(e => dayOf(e.startedAt || e.createdAt) === day && canTransition(e.status, 'voided'));
+  const voidedOn = (day: string) => encounters.some(e => dayOf(e.startedAt || e.createdAt) === day && e.status === 'voided')
+    && !encounters.some(e => dayOf(e.startedAt || e.createdAt) === day && e.status !== 'voided');
+
+  const voidVisit = async (encounter: EncounterDoc) => {
+    const reason = await confirmPrompt({
+      title: t('visits.voidTitle'),
+      message: t('visits.voidMessage'),
+      inputLabel: t('visits.voidReason'),
+      inputRequired: true,
+      confirmLabel: t('visits.voidConfirm'),
+      tone: 'danger',
+    });
+    if (!reason?.trim()) return;
+    try {
+      const { voidEncounter } = await import('@/lib/services/encounter-service');
+      const result = await voidEncounter(encounter._id, reason, { id: currentUser?._id, name: currentUser?.name, role: currentUser?.role });
+      showToast(t(result.appointmentFreed ? 'visits.voidedToast' : 'visits.voidedDeskToast'), 'success');
+      await loadEncounters();
+    } catch (err) {
+      showToast(describeError(err, t('visits.voidFailed')), 'error');
+    }
+  };
 
   const visitType = (day: string) => {
     const rec = props.records.find(r => dayOf(r.consultedAt || r.visitDate || r.createdAt) === day && r.recordKind !== 'nursing_vitals');
@@ -122,7 +175,10 @@ export default function VisitsTable(props: VisitsTableProps) {
                     </button>
                   </td>
                   <td className="vt-date">{formatDate(day)}</td>
-                  <td>{visitType(day)}</td>
+                  <td>
+                    {visitType(day)}
+                    {voidedOn(day) && <span className="vt-voided" title={encounters.find(e => e.status === 'voided')?.voidReason}> · {t('visits.voidedBadge')}</span>}
+                  </td>
                   <td>
                     <div className="vt-chips">
                       {dx.map((d, i) => (
@@ -142,6 +198,9 @@ export default function VisitsTable(props: VisitsTableProps) {
                         ] : []),
                         { key: 'details', label: isOpen ? t('visits.collapse') : t('visits.expand'), onClick: () => toggle(day) },
                         { key: 'print', label: t('visits.print'), onClick: () => print(day) },
+                        ...(canVoid && voidableOn(day) ? [
+                          { key: 'void', label: t('visits.void'), tone: 'danger' as const, group: 'danger', onClick: () => void voidVisit(voidableOn(day)!) },
+                        ] : []),
                       ]}
                     />
                   </td>

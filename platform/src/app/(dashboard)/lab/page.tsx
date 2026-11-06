@@ -18,6 +18,8 @@ import LabIntakeSlider from '@/components/lab/order/LabIntakeSlider';
 import LabBenchSlider from '@/components/lab/workflow/LabBenchSlider';
 import StationActionPill from '@/components/ehr/StationActionPill';
 import { benchActions } from '@/components/lab/workflow/lab-workflow-types';
+import { isOpenLabOrder, isCancelledLabOrder } from '@/lib/services/lab-service';
+import { useCancelLabOrder } from '@/components/lab/useCancelLabOrder';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import { evaluateCritical } from '@/lib/services/lab-critical-flag';
 import { matchAnalyzerResult, parseInstrumentPayload, type ParsedInstrumentResult } from '@/lib/services/instrument-intake-service';
@@ -25,6 +27,7 @@ import { usePatients } from '@/lib/hooks/usePatients';
 import { useUi } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
+import { accessionDay } from '@/lib/accession-date';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { LabOrderStatus } from '@/lib/clinical-flow/order-lifecycles';
 import { useSettings } from '@/lib/settings/SettingsProvider';
@@ -37,6 +40,7 @@ import { useNow } from '@/lib/hooks/useNow';
 // Human labels for the granular diagnostics lifecycle (Stage 6).
 const ORDER_STAGE_LABEL: Record<LabOrderStatus, string> = {
   ordered: 'Ordered',
+  cancelled: 'Cancelled',
   specimen_collected: 'Specimen collected',
   received_at_lab: 'Received at lab',
   rejected_needs_recollection: 'Needs re-collection',
@@ -52,6 +56,7 @@ const ORDER_STAGE_LABEL: Record<LabOrderStatus, string> = {
    review takes the attention amber, closed stages go green, rejection red. */
 const STAGE_PILL_CLASS: Record<LabOrderStatus, string> = {
   ordered: 'status-scheduled',
+  cancelled: 'status-cancelled',
   specimen_collected: 'status-checked-in',
   received_at_lab: 'status-checked-in',
   rejected_needs_recollection: 'status-cancelled',
@@ -79,8 +84,9 @@ const STAGE_CHANGED_AT: Partial<Record<LabOrderStatus, (o: LabResultDoc) => stri
 };
 
 // Derive the granular stage for an order, defaulting older orders from status.
-function effOrderStatus(o: { orderStatus?: LabOrderStatus; status: 'pending' | 'in_progress' | 'completed' }): LabOrderStatus {
+function effOrderStatus(o: { orderStatus?: LabOrderStatus; status: LabResultDoc['status'] }): LabOrderStatus {
   if (o.orderStatus) return o.orderStatus;
+  if (o.status === 'cancelled') return 'cancelled';
   if (o.status === 'completed') return 'resulted';
   if (o.status === 'in_progress') return 'in_process';
   return 'ordered';
@@ -99,7 +105,7 @@ function effOrderStatus(o: { orderStatus?: LabOrderStatus; status: 'pending' | '
  * the same as not recording them at all.
  */
 function isOpenSendOut(o: LabResultDoc): boolean {
-  return o.processing === 'send_out' && o.status !== 'completed';
+  return o.processing === 'send_out' && isOpenLabOrder(o);
 }
 
 /** A scheduled draw is "due" once its datetime has passed and it is still open. */
@@ -115,11 +121,7 @@ function isCollectionDue(o: LabResultDoc): boolean {
 
 function fallbackAccessionNumber(order: Pick<LabResultDoc, '_id' | 'accessionNumber' | 'orderedAt'>): string {
   if (order.accessionNumber) return order.accessionNumber;
-  const ordered = new Date(order.orderedAt || Date.now());
-  const day = Number.isNaN(ordered.getTime())
-    ? new Date().toISOString().slice(2, 10).replace(/-/g, '')
-    : ordered.toISOString().slice(2, 10).replace(/-/g, '');
-  return `ACC-${day}-${order._id.replace(/^lab-/, '').slice(0, 5).toUpperCase()}`;
+  return `ACC-${accessionDay(order.orderedAt || Date.now())}-${order._id.replace(/^lab-/, '').slice(0, 5).toUpperCase()}`;
 }
 
 export default function LabPage() {
@@ -147,7 +149,10 @@ export default function LabPage() {
   // the applied count is still this page's business.
   const headerFilterCount = [colFilters.test, colFilters.status, colFilters.worklist].filter(Boolean).length;
   const { globalSearch } = useUi();
-  const { results: labResults, loading: labLoading, reload: reloadLabs } = useLabResults();
+  const { results: allLabResults, loading: labLoading, reload: reloadLabs } = useLabResults();
+  // A cancelled order is withdrawn work: it leaves the worklist and its counts.
+  const labResults = useMemo(() => allLabResults.filter(o => !isCancelledLabOrder(o)), [allLabResults]);
+  const cancelLabOrder = useCancelLabOrder();
   const { patients } = usePatients();
   const patientById = useMemo(() => new Map(patients.map(patient => [patient._id, patient])), [patients]);
   const { canEnterLabResults, canOrderLabs } = usePermissions();
@@ -399,7 +404,7 @@ export default function LabPage() {
                 const stage = effOrderStatus(order);
                 const changedAt = STAGE_CHANGED_AT[stage]?.(order);
                 const orderedAt = new Date(order.orderedAt || order.createdAt || '').getTime();
-                const turnaroundOverdue = order.status !== 'completed'
+                const turnaroundOverdue = isOpenLabOrder(order)
                   && Number.isFinite(orderedAt)
                   && now - orderedAt > labTatMinutes * 60_000;
                 const openChart = () => {
@@ -457,7 +462,10 @@ export default function LabPage() {
                         className={STAGE_PILL_CLASS[stage]}
                         actions={canEnterLabResults ? benchActions(stage, t) : []}
                         ariaLabel={`Next step for ${order.testName}`}
-                        onPick={action => setBench({ id: order._id, intent: action === 'reject' ? 'reject' : undefined })}
+                        onPick={action => {
+                          if (action === 'cancel') { void cancelLabOrder(order).then(done => { if (done) void reloadLabs(); }); return; }
+                          setBench({ id: order._id, intent: action === 'reject' ? 'reject' : undefined });
+                        }}
                         onOpen={canEnterLabResults ? () => setBench({ id: order._id }) : undefined}
                       />
                       {turnaroundOverdue

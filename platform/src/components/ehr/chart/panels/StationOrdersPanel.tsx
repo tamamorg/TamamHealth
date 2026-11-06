@@ -27,7 +27,7 @@ import { EhrPatientOrderList } from '@/components/ehr/EhrPatientOrders';
 import LabWorkflowPanel from '@/components/lab/workflow/LabWorkflowPanel';
 import LabIntakeSlider from '@/components/lab/order/LabIntakeSlider';
 import { benchActionLabel } from '@/components/lab/workflow/lab-workflow-types';
-import { effectiveOrderStatus } from '@/lib/services/lab-service';
+import { effectiveOrderStatus, isOpenLabOrder } from '@/lib/services/lab-service';
 import PharmacyWorkflowPanel from '@/components/pharmacy/workflow/PharmacyWorkflowPanel';
 import { counterActions } from '@/components/pharmacy/workflow/pharmacy-workflow-types';
 import { hasSafetyWarning } from '@/lib/pharmacy/rx-safety';
@@ -47,12 +47,12 @@ export function LabOrdersPanel({ patient, focusId }: StationOrdersPanelProps) {
   const { results } = useLabResults(patient._id);
   const tests = useMemo(
     () => results
-      .filter(r => r.patientId === patient._id && !isImagingStudy(r))
+      .filter(r => r.patientId === patient._id && !isImagingStudy(r) && r.status !== 'cancelled')
       .sort((a, b) => (LAB_STAGE_RANK[a.status] ?? 3) - (LAB_STAGE_RANK[b.status] ?? 3)
         || (b.orderedAt || '').localeCompare(a.orderedAt || '')),
     [results, patient._id],
   );
-  const open = tests.filter(r => r.status !== 'completed');
+  const open = tests.filter(isOpenLabOrder);
   const [picked, setPicked] = useState<string | null | undefined>(undefined);
   const [intakeOpen, setIntakeOpen] = useState(false);
   // Until the technician picks (or goes back to the list), the panel opens on

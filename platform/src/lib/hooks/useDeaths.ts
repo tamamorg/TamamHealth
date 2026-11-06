@@ -9,6 +9,8 @@ import { useDataScope } from './useDataScope';
 
 export function useDeaths() {
   const [deaths, setDeaths] = useState<DeathRegistrationDoc[]>([]);
+  /** Voided registrations: kept for the register's "Show voided" view, counted nowhere. */
+  const [voidedDeaths, setVoidedDeaths] = useState<DeathRegistrationDoc[]>([]);
   const [stats, setStats] = useState<Awaited<ReturnType<typeof import('../services/death-service').getDeathStats>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,12 +18,13 @@ export function useDeaths() {
   const scope = useDataScope();
 
   const load = useCallback(async () => {
-    if (!scope) { setDeaths([]); setLoading(false); return; }
+    if (!scope) { setDeaths([]); setVoidedDeaths([]); setLoading(false); return; }
     try {
       setError(null);
       const { getAllDeaths, getDeathStats } = await import('../services/death-service');
-      const [data, s] = await Promise.all([getAllDeaths(scope), getDeathStats(scope)]);
-      setDeaths(data);
+      const [data, s] = await Promise.all([getAllDeaths(scope, { includeVoided: true }), getDeathStats(scope)]);
+      setDeaths(data.filter(r => !r.voidedAt));
+      setVoidedDeaths(data.filter(r => r.voidedAt));
       setStats(s);
     } catch (err) {
       console.error('Failed to load deaths', err);
@@ -55,5 +58,16 @@ export function useDeaths() {
     return saved;
   }, [load, scope, deaths]);
 
-  return { deaths, stats, loading, error: error && t(error), register, correct, reload: load };
+  /** Strike a record out (entered in error / duplicate). Only a record in this caller's scope. */
+  const voidRecord = useCallback(async (id: string, reason: string, actor: { userId?: string; userName: string }) => {
+    if (!scope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
+    if (![...deaths, ...voidedDeaths].some(r => r._id === id)) throw new Error('This death record is not available to your account.');
+    const { voidDeath } = await import('../services/death-service');
+    const saved = await voidDeath(id, reason, actor);
+    if (!saved) throw new Error('Death record not voided.');
+    await load();
+    return saved;
+  }, [load, scope, deaths, voidedDeaths]);
+
+  return { deaths, voidedDeaths, stats, loading, error: error && t(error), register, correct, voidRecord, reload: load };
 }

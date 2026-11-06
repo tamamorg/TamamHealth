@@ -36,7 +36,8 @@ import { patientDisplayName, patientAge, shortenPersonName } from '@/lib/patient
 import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
 import { localClockOf, localDayOf, toIsoDate } from '@/lib/date-utils';
 import { agoLabel, durationLabel, shortDayLabel } from '@/lib/station-time';
-import { effectiveOrderStatus } from '@/lib/services/lab-service';
+import { effectiveOrderStatus, isOpenLabOrder } from '@/lib/services/lab-service';
+import { useCancelLabOrder } from '@/components/lab/useCancelLabOrder';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { benchActionLabel, benchActions } from '@/components/lab/workflow/lab-workflow-types';
 import LabBenchSlider from '@/components/lab/workflow/LabBenchSlider';
@@ -103,9 +104,9 @@ export function assembleLabWorklist({
 }: LabWorklistInput): LabWorklistResult {
   const today = toIsoDate(now);
   const patientById = new Map(patients.map(p => [p._id, p]));
-  const tests = results.filter(r => !isImagingStudy(r));
+  const tests = results.filter(r => !isImagingStudy(r) && r.status !== 'cancelled');
   const open = tests
-    .filter(r => r.status !== 'completed')
+    .filter(isOpenLabOrder)
     .sort((a, b) => Number(b.critical) - Number(a.critical)
       || STAGE_RANK[labBenchStage(a)] - STAGE_RANK[labBenchStage(b)]
       || (a.orderedAt || '').localeCompare(b.orderedAt || ''));
@@ -226,7 +227,7 @@ export function assembleLabWorklist({
   });
   const toCollect = open.filter(r => labBenchStage(r) === 'collect');
   const onBench = open.filter(r => labBenchStage(r) === 'bench');
-  const critical = tests.filter(r => r.critical && (r.status !== 'completed' || localDayOf(r.completedAt) === today));
+  const critical = tests.filter(r => r.critical && (isOpenLabOrder(r) || (r.status === 'completed' && localDayOf(r.completedAt) === today)));
   const assignedToMe = patients.filter(p => p.stationAssignments?.lab?.staffId === currentUser._id);
 
   const outstanding: OutstandingItem[] = [
@@ -281,6 +282,7 @@ export default function LabHomeView({ onBatchEntry }: { onBatchEntry?: () => voi
   const { appointments } = useAppointments();
   const { results } = useLabResults();
   const { canEnterLabResults } = usePermissions();
+  const cancelOrder = useCancelLabOrder();
   // The test open in the slider, by id so it follows the record step to step.
   const [bench, setBench] = useState<{ id: string; intent?: 'reject' } | null>(null);
   const [intake, setIntake] = useState<{ patientId?: string } | null>(null);
@@ -310,7 +312,7 @@ export default function LabHomeView({ onBatchEntry }: { onBatchEntry?: () => voi
   // way into it on the bench. Open tests and today's results only.
   const stationDetail = (patientId: string): ReactNode => {
     const mine = results.filter(r => r.patientId === patientId && !isImagingStudy(r)
-      && (r.status !== 'completed' || localDayOf(r.completedAt) === today));
+      && (isOpenLabOrder(r) || (r.status === 'completed' && localDayOf(r.completedAt) === today)));
     if (!mine.length) {
       // Sent here by the desk with nothing ordered: the lab takes the request.
       return canEnterLabResults ? (
@@ -384,7 +386,14 @@ export default function LabHomeView({ onBatchEntry }: { onBatchEntry?: () => voi
         )}
         stationDetail={stationDetail}
         railAction={canEnterLabResults ? { label: t('labIntake.title'), icon: Plus, run: () => setIntake({}) } : undefined}
-        onStationOpen={(id, action) => setBench({ id, intent: action === 'reject' ? 'reject' : undefined })}
+        onStationOpen={(id, action) => {
+          if (action === 'cancel') {
+            const target = results.find(r => r._id === id);
+            if (target) void cancelOrder(target);
+            return;
+          }
+          setBench({ id, intent: action === 'reject' ? 'reject' : undefined });
+        }}
         canWriteNotes={false}
         extraHeaderActions={headerActions.length ? headerActions : undefined}
         missionTitle={t('mission.lab.title')}
