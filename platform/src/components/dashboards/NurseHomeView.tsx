@@ -442,7 +442,7 @@ export default function NurseHomeView() {
           entries: postConsult.error ? [{ id: 'post-consult-error', title: t('postConsult.error'), tone: 'danger' }] : postConsult.rows.map(encounter => ({
             id: encounter._id, title: encounter.patientName,
             subtitle: t('postConsult.status.pending'),
-            href: `/patients/${encodeURIComponent(encounter.patientId)}?tab=careChecklist#post-consult`,
+            href: `/patients/${encodeURIComponent(encounter.patientId)}?tab=notes#nurse-review`,
           })),
         }]}
         activityItems={worklist.activity}

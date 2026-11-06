@@ -159,7 +159,7 @@ export async function evaluateCheckoutGate(
   }
   push('post_consult_handoff', handoffReady,
     !handoffReady ? 'Nursing review after the consultation is not finished, or the care record changed since.' : undefined,
-    encounter ? `/patients/${encodeURIComponent(patientId)}?tab=careChecklist#post-consult` : undefined);
+    encounter ? `/patients/${encodeURIComponent(patientId)}?tab=notes#nurse-review` : undefined);
 
   // ── All clinic visits closed ──────────────────────────────────────────
   // Derived from the encounter's own stage rather than a tick box: a visit

@@ -9,9 +9,9 @@ import { resolveOperationalVisitState } from '@/lib/clinical-flow/visit-state';
 
 const ready = { status: 'ready_for_clinic_checkout' } as const;
 
-test('a ready-for-checkout visit with nursing open reads as post-consultation nursing', () => {
+test('a ready-for-checkout visit with nursing open reads as nurse review', () => {
   const state = resolveOperationalVisitState({ status: 'in_progress' }, ready, { nursingReviewOpen: true });
-  expect(state.label).toBe('Post-consultation nursing');
+  expect(state.label).toBe('Nurse review');
   expect(state.i18nKey).toBe('postConsult.title');
 });
 
@@ -21,5 +21,5 @@ test('without open nursing it is ready for checkout', () => {
 
 test('open nursing does not relabel a visit that is still with the clinician', () => {
   const state = resolveOperationalVisitState({ status: 'in_progress' }, { status: 'with_clinician' }, { nursingReviewOpen: true });
-  expect(state.label).not.toBe('Post-consultation nursing');
+  expect(state.label).not.toBe('Nurse review');
 });

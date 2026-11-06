@@ -1,18 +1,21 @@
-.ehr-post-consult label { display: block; text-transform: none; letter-spacing: normal; font-size: 13px; margin-block: 8px; }
-.ehr-post-consult textarea, .ehr-post-consult select, .ehr-post-consult input:not([type="checkbox"]) { width: 100%; max-width: 560px; display: block; padding: 8px; border: 1px solid var(--border-light); border-radius: 0; background: var(--bg-card); color: var(--text-primary); }
-.ehr-post-consult textarea { min-height: 64px; }
-.ehr-post-consult fieldset { border: 0; padding: 8px; margin: 0; }
-.ehr-post-consult summary { cursor: pointer; padding-block: 6px; }
-.ehr-post-consult h2 { font-size: 20px; margin: 0 0 8px; }
-.ehr-post-consult h3 { font-size: 16px; margin: 6px 0; }
-.ehr-post-consult p { font-size: 13px; margin-block: 6px; overflow-wrap: anywhere; }
-.cn-editor > .ehr-post-consult { max-height: 40vh; overflow: auto; flex-shrink: 0; }
-.ehr-post-consult-visit { padding-block: 16px; border-top: 1px solid var(--border-light); }
-.ehr-post-consult-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-.ehr-post-consult-status { padding: 4px 10px; border: 1px solid var(--border-light); border-radius: 0; font-size: 13px; font-weight: 600; }
-.ehr-post-consult-warning { padding: 12px; margin-block: 12px; border-inline-start: 3px solid #a15c00; background: var(--bg-card-hover); }
-.ehr-post-consult-transfer { margin-block: 12px; }
-.ehr-post-consult nav { padding-block: 8px 12px; }
-.ehr-post-consult summary { min-height: 44px; display: list-item; }
-.ehr-post-consult :is(button, a, summary, input, select, textarea):focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
-.ehr-post-consult fieldset { border-inline-start: 2px solid var(--border-light); padding-inline-start: 16px; }
+/* Nurse review under the patient's notes (NurseReviewPanel). Drawn like a
+   chart table section: a blue section title, rows on hairline dividers, a
+   status word on the right, square everything. */
+.ehr-nurse-review { padding: 16px 18px; border: 1px solid var(--color-slate-300); background: var(--bg-card-solid); }
+.ehr-nurse-review-title { margin: 0 0 8px; font-size: 16px; font-weight: 600; color: var(--accent-primary); text-transform: none; letter-spacing: normal; }
+.ehr-nurse-review-list { list-style: none; margin: 0; padding: 0; }
+.ehr-nurse-review-item { padding: 10px 0; border-top: 1px solid var(--border-light); }
+.ehr-nurse-review-item:first-child { border-top: 0; }
+.ehr-nurse-review-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.ehr-nurse-review-label { font-size: 14px; color: var(--text-primary); }
+.ehr-nurse-review-status { flex: none; font-size: 12px; font-weight: 600; }
+.ehr-nurse-review-status.is-pending { color: var(--color-warning-text, var(--text-secondary)); }
+.ehr-nurse-review-status.is-done { color: var(--color-success-text, var(--text-secondary)); }
+.ehr-nurse-review-status.is-deferred { color: var(--text-secondary); }
+.ehr-nurse-review-muted { margin: 4px 0 0; font-size: 13px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.ehr-nurse-review-entry { display: flex; gap: 8px; margin-top: 8px; }
+.ehr-nurse-review-entry input { flex: 1 1 auto; min-width: 0; height: 36px; padding: 0 12px; border: 0; border-bottom: 1px solid var(--color-slate-400); border-radius: 0; background: var(--bg-app); font-size: 14px; color: var(--text-primary); }
+.ehr-nurse-review-entry input:focus { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+.ehr-nurse-review-changed { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; padding: 8px 12px; border-inline-start: 3px solid var(--color-warning-text, var(--accent-primary)); background: var(--bg-app); font-size: 13px; }
+.ehr-nurse-review-notneeded { margin-top: 10px; font-size: 13px; color: var(--text-secondary); }
+.ehr-nurse-review-notneeded summary { cursor: pointer; }
