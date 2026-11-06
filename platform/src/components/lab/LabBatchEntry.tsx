@@ -97,6 +97,12 @@ export default function LabBatchEntry({ onClose }: { onClose: () => void }) {
         const ref = getRefRange(order.testName);
         await update(order._id, {
           status: 'completed' as const,
+          // Set the granular lifecycle stage too, not just the coarse status:
+          // effectiveOrderStatus only derives 'resulted' from status when
+          // orderStatus is unset, so on a modern order a stale orderStatus hid
+          // the result from the critical-result task, review SLA, checkout gate
+          // and portal release. A batch-entered result IS resulted.
+          orderStatus: 'resulted' as const,
           result: entry.resultValue,
           unit: ref?.unit || order.unit,
           referenceRange: ref?.referenceStr || order.referenceRange,

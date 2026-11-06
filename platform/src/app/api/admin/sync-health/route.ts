@@ -81,16 +81,24 @@ export async function GET(request: NextRequest) {
 
     const { getSyncEventStats } = await import('@/lib/services/sync-event-service');
     const { syncEventsDB } = await import('@/lib/db');
+    const { buildScopeFromAuth, filterByScope } = await import('@/lib/services/data-scope');
+    // Scope the whole report to the caller's tenant: super_admin / government see
+    // every org, an org-level admin only their own. Without this both the outbox
+    // stats and the per-facility rollup leaked every org's facilities.
+    const scope = buildScopeFromAuth(auth);
 
-    const stats = await getSyncEventStats();
+    const stats = await getSyncEventStats(scope);
 
     // Per-facility rollup (last 24h)
     const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
     const db = syncEventsDB();
     const all = await db.allDocs({ include_docs: true });
-    const recent = all.rows
-      .map((r) => r.doc as SyncEventDoc)
-      .filter((d) => d && d.type === 'sync_event' && d.occurredAt >= since);
+    const recent = filterByScope(
+      all.rows
+        .map((r) => r.doc as SyncEventDoc)
+        .filter((d) => d && d.type === 'sync_event' && d.occurredAt >= since),
+      scope,
+    );
 
     const perFacility: Record<string, { total: number; pending: number; failed: number; lastSeen?: string }> = {};
     for (const ev of recent) {

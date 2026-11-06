@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { DataScope } from './data-scope';
 import { filterByScope, orgOnlyScope } from './data-scope';
 import { logAuditSafe } from './audit-service';
+import { reconcileStructuredAllergens } from './allergy-service';
 import { emitSyncEvent } from './sync-event-service';
 import { findByType } from './db-query';
 import { jubaDate } from '../time-juba';
@@ -350,10 +351,18 @@ async function applyTriageAllergiesToPatient(
         );
         return;
       }
+      // Record the triage allergens as STRUCTURED entries, not only the legacy
+      // mirror: the prescribing/dispensing allergy checks read
+      // structuredAllergies and ignore the legacy list once any structured
+      // entry exists, so a triage allergen was invisible to them before.
+      const recon = reconcileStructuredAllergens(patient, merged);
+      const allergyPatch = recon
+        ? { structuredAllergies: recon.structuredAllergies, allergies: recon.allergies }
+        : { allergies: merged };
       try {
         await db.put(withPendingOfflineSync({
           ...patient,
-          allergies: merged,
+          ...allergyPatch,
           // A real allergen contradicts a standing "no known drug
           // allergies" attestation — clear it rather than letting the chart
           // claim both at once.

@@ -2518,7 +2518,13 @@ export interface FollowUpDoc extends BaseDoc {
   facilityLevel: FacilityLevel;
   scheduledDate: string;
   completedDate?: string;
+  /** The clinical instructions set when the follow-up was created ("repeat
+   *  chest X-ray, check SpO2"). Never overwritten at completion. */
   notes?: string;
+  /** What happened at the follow-up visit, recorded at completion. Kept
+   *  separate from `notes` so completing a follow-up cannot erase its
+   *  instructions (security/data audit 2026-11-05, §2.1 #14). */
+  completionNotes?: string;
   state: string;
   county: string;
   sourceVisitId?: string;

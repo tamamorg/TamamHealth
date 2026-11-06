@@ -119,7 +119,16 @@ export default function NutritionScreeningPanel({ patient, currentUser, onClose 
   const setFollowUp = async (screening: NutritionScreeningDoc, action: NutritionFollowUpAction) => {
     try {
       await update(screening._id, { followUpAction: action });
-      if (action === 'referred') router.push(`/referrals?patient=${encodeURIComponent(screening.patientName)}`);
+      // Pre-filter the referrals list by the patient's id, never their name: a
+      // name in the URL lands in browser history as patient-identifying data
+      // (security/data audit 2026-11-05, §2.1 #20). The referrals filter matches
+      // on patientId too, and this mirrors the other chart deep-links
+      // (PatientDocumentsTab / PatientCoordinationTab).
+      if (action === 'referred') {
+        router.push(screening.patientId
+          ? `/referrals?patient=${encodeURIComponent(screening.patientId)}`
+          : '/referrals');
+      }
     } catch (err) {
       showToast(describeError(err, t('screenings.errFailed')), 'error');
     }

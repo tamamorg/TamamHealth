@@ -135,10 +135,21 @@ export function priceFromFees(
   category: ChargeCategory,
   serviceCode?: string,
 ): FeeScheduleDoc | null {
+  // Callers pass the service's CODE or, for lab/imaging/drug lines, its NAME
+  // (e.g. `serviceCode: test.name`). Matching only `serviceCode` meant a name
+  // never matched, so every lab test fell through to the category fallback —
+  // the FIRST lab fee — and was billed at one test's price (a Malaria RDT billed
+  // at the Full Blood Count price). Match the key against the code OR the name.
   if (serviceCode) {
-    const exact = fees.find(f => f.serviceCode === serviceCode);
-    if (exact) return exact;
+    const key = serviceCode.trim().toLowerCase();
+    const match = fees.find(f =>
+      (f.serviceCode || '').trim().toLowerCase() === key
+      || (f.serviceName || '').trim().toLowerCase() === key,
+    );
+    if (match) return match;
   }
+  // Only reached for a line with no catalogued service of its own (the builder
+  // skips a null, so nothing is billed at a wrong price for a matched service).
   return fees.find(f => f.category === category) || null;
 }
 

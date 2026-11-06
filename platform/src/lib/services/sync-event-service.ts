@@ -13,6 +13,7 @@
 import { syncEventsDB } from '../db';
 import type { SyncEventDoc } from '../db-types';
 import { findByType } from './db-query';
+import { filterByScope, type DataScope } from './data-scope';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface SyncEventInput {
@@ -136,7 +137,7 @@ export async function getPendingSyncEvents(limit = 500): Promise<SyncEventDoc[]>
 /**
  * Aggregate stats for sync-health UI.
  */
-export async function getSyncEventStats(): Promise<{
+export async function getSyncEventStats(scope: DataScope): Promise<{
   total: number;
   pending: number;
   syncing: number;
@@ -146,7 +147,12 @@ export async function getSyncEventStats(): Promise<{
   newestEvent?: string;
 }> {
   const db = syncEventsDB();
-  const docs = await findByType<SyncEventDoc>(db, 'sync_event');
+  const all = await findByType<SyncEventDoc>(db, 'sync_event');
+  // Scope the roll-up to the caller's tenant. filterByScope lets super_admin
+  // and government see every org; org_admin / medical_superintendent / hrio are
+  // restricted to their own. Without this, /api/admin/sync-health returned a
+  // cross-tenant per-facility stat to an org-level admin.
+  const docs = filterByScope(all, scope);
 
   const stats = {
     total: docs.length,

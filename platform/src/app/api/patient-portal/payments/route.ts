@@ -98,6 +98,7 @@ export async function POST(req: NextRequest) {
       resourceVersion: doc._rev,
       userId: auth.sub,
       username: auth.name,
+      orgId: doc.orgId,
       hospitalId: doc.facilityId,
     });
 

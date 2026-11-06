@@ -66,8 +66,10 @@ async function postHandler(request: NextRequest) {
         { status: 400 }
       );
     }
-    body.attendedBy = body.attendedBy || auth.sub;
-    body.attendedByRole = body.attendedByRole || auth.role;
+    // Attribution is stamped from the verified auth claim, never trusted from
+    // the client: the person recorded as having attended cannot be forged.
+    body.attendedBy = auth.sub;
+    body.attendedByRole = auth.role;
     // Tenancy is stamped from the verified auth claim, never trusted from the
     // client -- a non-admin must not inject records into another org's tenant DB.
     // Platform/national admins may still target a specific org explicitly.

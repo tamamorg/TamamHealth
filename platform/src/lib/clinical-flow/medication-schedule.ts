@@ -7,6 +7,12 @@ export function isPrnFrequency(frequency: string): boolean {
   return value.includes('prn') || value.includes('as needed') || value.includes('as required');
 }
 
+/** A STAT / immediate order: one dose, given now. */
+export function isStatFrequency(frequency: string): boolean {
+  const value = (frequency || '').trim().toLowerCase();
+  return /\bstat\b/.test(value) || value.includes('immediately');
+}
+
 function jubaClock(iso?: string): { hour: number; minute: number } {
   if (!iso) return { hour: 0, minute: 0 };
   const date = new Date(iso);
@@ -25,6 +31,14 @@ export function scheduleForFrequency(frequency: string, anchorIso?: string): str
   const value = (frequency || '').trim().toLowerCase();
   if (!value) return [];
   if (isPrnFrequency(value)) return ['PRN'];
+  // STAT: one immediate dose at the ordering time. The chart's own label is
+  // "STAT (Immediately)", which previously matched nothing and produced no MAR
+  // row at all (a stat dose was invisible to the nurse). doseExpansionCutoff
+  // caps it to the order day so the single slot does not repeat.
+  if (isStatFrequency(value)) {
+    const a = jubaClock(anchorIso);
+    return [`${String(a.hour).padStart(2, '0')}:${String(a.minute).padStart(2, '0')}`];
+  }
   // Most specific first. "Three times daily" and "Twice daily" both contain
   // "daily": checked before them, the generic once-daily rule gave the
   // prescribe form's own sigs ("Twice daily with food", "Three times daily
@@ -32,8 +46,8 @@ export function scheduleForFrequency(frequency: string, anchorIso?: string): str
   if (value === 'qds' || value === 'qid' || value.includes('four times')) return ['00:00', '06:00', '12:00', '18:00'];
   if (value === 'tds' || value === 'tid' || value.includes('three times') || value.includes('thrice')) return ['08:00', '14:00', '22:00'];
   if (value === 'bd' || value === 'bid' || value.includes('twice')) return ['08:00', '20:00'];
-  if (value === 'od' || value === 'qd' || value.includes('once') || value.includes('daily') || value.includes('at bedtime') || value === 'nocte') {
-    return value.includes('bedtime') || value === 'nocte' ? ['22:00'] : ['08:00'];
+  if (value === 'od' || value === 'qd' || value.includes('once') || value.includes('daily') || value.includes('at bedtime') || value.includes('nocte') || value.includes('at night')) {
+    return value.includes('bedtime') || value.includes('nocte') || value.includes('at night') ? ['22:00'] : ['08:00'];
   }
   // "q8h", "q 8 h", and the form's "Every 8 hours" / "8 hourly".
   const intervalMatch = value.match(/(?:q|every)\s*(\d+)\s*(?:h\b|hours?\b|hrs?\b)|(\d+)\s*hourly/);
@@ -70,13 +84,16 @@ export function statedDurationDays(duration: string): number | null {
   return null;
 }
 
-export function doseExpansionCutoff(rx: Pick<PrescriptionDoc, 'stoppedAt' | 'createdAt' | 'effectiveOn' | 'duration'>): number | null {
+export function doseExpansionCutoff(rx: Pick<PrescriptionDoc, 'stoppedAt' | 'createdAt' | 'effectiveOn' | 'duration' | 'frequency'>): number | null {
   if (rx.stoppedAt) {
     const stopped = new Date(rx.stoppedAt).getTime();
     if (Number.isFinite(stopped)) return stopped;
   }
   const days = statedDurationDays(rx.duration);
   const start = rx.effectiveOn ? new Date(clinicalInstant(rx.effectiveOn)).getTime() : new Date(rx.createdAt).getTime();
+  // A STAT order with no stated course is one dose on the order day — cap it at
+  // 24h so it does not keep producing a daily slot forever.
+  if (days === null && isStatFrequency(rx.frequency || '') && Number.isFinite(start)) return start + 86_400_000;
   return days !== null && Number.isFinite(start) ? start + days * 86_400_000 : null;
 }
 

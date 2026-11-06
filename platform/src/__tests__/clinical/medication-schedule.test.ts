@@ -26,6 +26,24 @@ describe('medication schedule', () => {
   it('stops generating doses after the stated course', () => {
     expect(isScheduledDoseAllowed(rx, scheduledForIso('2026-08-27', '08:00'))).toBe(false);
   });
+
+  // The chart's Prescribe form writes the labelled frequencies "Nocte (At
+  // night)" and "STAT (Immediately)". Both matched no rule and returned [], so
+  // the dose produced no MAR row at all — a night or stat dose was invisible to
+  // the nurse (patient-safety bug found 2026-11-05).
+  it('schedules "Nocte (At night)" as one evening dose', () => {
+    expect(scheduleForFrequency('Nocte (At night)')).toEqual(['22:00']);
+    expect(scheduleForFrequency('nocte')).toEqual(['22:00']);
+  });
+
+  it('schedules a STAT order as a single dose at the ordering time, not repeating', () => {
+    // createdAt 06:00 UTC = 08:00 in the Juba clinical day.
+    expect(scheduleForFrequency('STAT (Immediately)', rx.createdAt)).toEqual(['08:00']);
+    const statRx = { ...rx, frequency: 'STAT (Immediately)', duration: '' } as PrescriptionDoc;
+    expect(isScheduledDoseAllowed(statRx, scheduledForIso('2026-08-24', '08:00'))).toBe(true);
+    // The next day's slot must NOT be generated — STAT is given once.
+    expect(isScheduledDoseAllowed(statRx, scheduledForIso('2026-08-25', '08:00'))).toBe(false);
+  });
 });
 
 describe('the prescribe form\'s own sigs', () => {

@@ -156,8 +156,10 @@ async function postHandler(request: NextRequest) {
         return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
       }
     }
-    body.referredBy = body.referredBy || auth.sub;
-    body.referredByName = body.referredByName || auth.name;
+    // Attribution is stamped from the verified auth claim, never trusted from
+    // the client: the person recorded as having made this record cannot be forged.
+    body.referredBy = auth.sub;
+    body.referredByName = auth.name;
     if (!body.fromHospitalId && auth.hospitalId) body.fromHospitalId = auth.hospitalId;
     // Tenancy is stamped from the verified auth claim, never trusted from the
     // client — a caller who belongs to an org always gets that org on the

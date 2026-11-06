@@ -14,7 +14,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useUsers } from '@/lib/hooks/useUsers';
-import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
@@ -22,9 +21,8 @@ import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/component
 import type { AuditLogDoc, RiskResolutionDoc } from '@/lib/db-types';
 import { FilterSelect } from '@/components/filters';
 import { X } from '@/components/icons/lucide';
-import {
-  getRiskResolutions, indexResolutions, reopenRisk, resolveRisk,
-} from '@/lib/services/risk-resolution-service';
+import { getRiskResolutions, indexResolutions } from '@/lib/services/risk-resolution-service';
+import { reopenRisk, resolveRisk } from '@/lib/services/risk-resolution-client';
 import { SaTable, classifyAuditRisk, formatWhen, type SaSeverity } from '@/components/admin/sa-ui';
 import { SadbPage, SadbCard, SadbChip, SadbSearch, SadbKvRow, SEVERITY_CHIP } from '@/components/admin/sadb-ui';
 import { todayIso } from '@/lib/date-utils';
@@ -61,7 +59,6 @@ function csvCell(v: string): string {
 export default function AuditLogsPage() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { currentUser } = useAuth();
   const scope = useDataScope();
   const { showToast } = useToast();
   const { organizations } = useOrganizations();
@@ -116,7 +113,6 @@ export default function AuditLogsPage() {
   }, [logs]);
 
   const resolutionIndex = useMemo(() => indexResolutions(resolutions), [resolutions]);
-  const actor = { _id: currentUser?._id, username: currentUser?.username, name: currentUser?.name };
 
   const orgNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -393,7 +389,7 @@ export default function AuditLogsPage() {
                 source: 'Audit',
                 signal: selected.log.action,
                 note,
-              }, actor);
+              });
               setResolutions(await getRiskResolutions());
               showToast(t('msg.entryResolvedAndRemovedFrom'), 'success');
             } catch (err) {
@@ -403,7 +399,7 @@ export default function AuditLogsPage() {
           }}
           onReopen={async () => {
             try {
-              await reopenRisk(`audit-${selected.log._id}`, actor);
+              await reopenRisk(`audit-${selected.log._id}`);
               setResolutions(await getRiskResolutions());
               showToast(t('msg.entryReopenedAndReturnedTo'), 'success');
             } catch (err) {

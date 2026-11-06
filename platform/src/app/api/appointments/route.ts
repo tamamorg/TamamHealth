@@ -212,8 +212,10 @@ async function postHandler(request: NextRequest) {
     // doesn't cover this — past slots never overlap a future scheduled one.
     const dateErr = validateFutureDate(body.appointmentDate as string, body.appointmentTime as string);
     if (dateErr) return NextResponse.json({ error: dateErr }, { status: 400 });
-    body.bookedBy = body.bookedBy || auth.sub;
-    body.bookedByName = body.bookedByName || auth.name;
+    // Attribution is stamped from the verified auth claim, never trusted from
+    // the client: the person recorded as having booked this cannot be forged.
+    body.bookedBy = auth.sub;
+    body.bookedByName = auth.name;
     // Tenancy is stamped from the verified auth claim, never trusted from the
     // client — see the matching comment in /api/referrals for the rationale.
     if (auth.orgId) {

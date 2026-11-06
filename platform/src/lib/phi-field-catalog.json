@@ -108,7 +108,7 @@
         "antecedentICD11_2", "underlyingICD11", "contributingICD11", "mannerOfDeath"
       ]
     },
-    "follow_up": { "fields": ["patientName", "condition", "notes", "outcome"] },
+    "follow_up": { "fields": ["patientName", "condition", "notes", "completionNotes", "outcome"] },
     "admission": {
       "fields": [
         "patientName", "admittingDiagnosis", "dischargeDiagnosis", "dischargeSummary", "dietaryRequirements",

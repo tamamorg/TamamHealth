@@ -19,7 +19,6 @@ import { useBackupStatus } from '@/lib/hooks/useBackupStatus';
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import InlineBanner from '@/components/overlay/InlineBanner';
 import Select from '@/components/Select';
@@ -39,9 +38,10 @@ import {
 } from '@/components/admin/risk-signals';
 import { useOpenConflicts } from '@/lib/hooks/useOpenConflicts';
 import {
-  getRiskResolutions, indexResolutions, isRiskResolved, reopenRisk, resolveRisks,
+  getRiskResolutions, indexResolutions, isRiskResolved,
   type ResolveRiskInput,
 } from '@/lib/services/risk-resolution-service';
+import { reopenRisk, resolveRisks } from '@/lib/services/risk-resolution-client';
 import { SadbPage, SadbCard, SadbSearch, SadbChip, SEVERITY_CHIP } from '@/components/admin/sadb-ui';
 import { humanizeStatus } from '@/lib/format-utils';
 import { useUrlView } from '@/lib/navigation/use-url-view';
@@ -92,7 +92,6 @@ const MAX_BULK_RESOLVE = 200;
 
 export default function RiskCenterPage() {
   const router = useRouter();
-  const { currentUser } = useAuth();
   const scope = useDataScope();
   /* The console is otherwise English throughout, but the explanation block is
      the one part of it meant to be READ rather than scanned — so it is carried
@@ -131,6 +130,7 @@ export default function RiskCenterPage() {
   useEffect(() => {
     let mounted = true;
     (async () => {
+      if (!scope) return;
       try {
         const [{ getRecentAuditLogs }, { getSyncEventStats, getPendingSyncEvents }] = await Promise.all([
           import('@/lib/services/audit-service'),
@@ -138,7 +138,7 @@ export default function RiskCenterPage() {
         ]);
         const [logs, stats, saved] = await Promise.all([
           getRecentAuditLogs(1000, scope),
-          getSyncEventStats(),
+          getSyncEventStats(scope),
           getRiskResolutions(),
         ]);
         if (!mounted) return;
@@ -245,7 +245,6 @@ export default function RiskCenterPage() {
     [filteredResolved, pageStart],
   );
 
-  const actor = { _id: currentUser?._id, username: currentUser?.username, name: currentUser?.name };
 
   const confirmResolve = async () => {
     if (!resolving) return;
@@ -259,7 +258,7 @@ export default function RiskCenterPage() {
         signal: r.signal,
         note,
       }));
-      const { resolved, failed } = await resolveRisks(inputs, actor);
+      const { resolved, failed } = await resolveRisks(inputs);
       await reloadResolutions();
       setResolving(null);
       setNote('');
@@ -280,7 +279,7 @@ export default function RiskCenterPage() {
     if (!reopening) return;
     setReopenBusy(true);
     try {
-      await reopenRisk(reopening.riskId, actor);
+      await reopenRisk(reopening.riskId);
       await reloadResolutions();
       setReopening(null);
       showToast(t('msg.riskSignalReopened'), 'success');

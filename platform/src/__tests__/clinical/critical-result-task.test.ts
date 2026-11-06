@@ -80,6 +80,21 @@ describe('critical result → ordering clinician task', () => {
     expect(tasks[0].patientId).toBe('pat-00001');
   });
 
+  it('a batch result must set orderStatus=resulted, not only status=completed, to reach the clinician', async () => {
+    await seedUser('user-dr-wani', 'Dr. Wani');
+    // A modern order carries an explicit granular orderStatus.
+    const order = await createLabResult(baseOrder({ orderedById: 'user-dr-wani', orderStatus: 'in_process' }) as never);
+
+    // The OLD LabBatchEntry wrote status=completed but left orderStatus stale,
+    // so effectiveOrderStatus stayed 'in_process' and no critical task fired.
+    await updateLabResult(order._id, { critical: true, abnormal: true, status: 'completed', result: '7.2', unit: 'mmol/L' });
+    expect(await getTasks('user-dr-wani')).toHaveLength(0);
+
+    // The fix: batch entry now also sets orderStatus='resulted'.
+    await updateLabResult(order._id, { orderStatus: 'resulted', critical: true, abnormal: true, status: 'completed', result: '7.2', unit: 'mmol/L' });
+    expect(await getTasks('user-dr-wani')).toHaveLength(1);
+  });
+
   it('resolves a legacy name-only order against the user directory', async () => {
     await seedUser('user-dr-wani', 'Dr. Wani');
     await seedUser('user-dr-achol', 'Dr. Achol');

@@ -886,7 +886,7 @@ export async function updateTransferLogistics(
       updatedAt: new Date().toISOString(),
     } satisfies BedDoc);
     const response = await wardDb.put(reserved);
-    await emitSyncEvent({ resourceType: 'bed', resourceId: bed._id, operation: 'update', resourceVersion: response.rev, hospitalId: bed.facilityId });
+    await emitSyncEvent({ resourceType: 'bed', resourceId: bed._id, operation: 'update', resourceVersion: response.rev, orgId: bed.orgId, hospitalId: bed.facilityId });
   }
   const before = transferProgress(doc);
   doc.physicalStatus = patch.physicalStatus && transferProgressRank(patch.physicalStatus) > transferProgressRank(before)

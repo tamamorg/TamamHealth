@@ -140,3 +140,28 @@ test('home_care disposition from pending still reaches "discharged", unaffected 
 
   expect(result.status).toBe('discharged');
 });
+
+test('home_care closes the linked encounter WITH the actor role (else assertDischargeAllowed refuses)', async () => {
+  // The encounter close is a discharge: assertDischargeAllowed throws
+  // DISCHARGE_FORBIDDEN when no actorRole is passed, which used to fail the
+  // whole home-care handoff for every role. The role must reach
+  // transitionEncounter (security/data audit 2026-11-05).
+  mockGetEncounter.mockResolvedValue({ _id: 'enc-home', status: 'awaiting_triage' });
+  const created = await createTriage(triageInput({ encounterId: 'enc-home' }), { scope: TEST_SCOPE });
+
+  await completeTriageHandoff({ scope: TEST_SCOPE,
+    triageId: created._id,
+    patientId: created.patientId,
+    patientName: created.patientName,
+    disposition: 'home_care',
+    actorId: 'user-doc',
+    actorName: 'Dr Achol',
+    actorRole: 'doctor',
+  });
+
+  expect(mockTransitionEncounter).toHaveBeenCalledWith(
+    'enc-home',
+    'dismissed_without_formal_checkout',
+    expect.objectContaining({ actorId: 'user-doc', actorRole: 'doctor' }),
+  );
+});

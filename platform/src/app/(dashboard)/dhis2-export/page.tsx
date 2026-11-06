@@ -18,10 +18,11 @@ import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { downloadFile, safeFilenamePart } from '@/lib/export-file';
 import {
-  getDhis2SyncLog, recordDhis2SyncResult, appendDhis2LogEntry,
+  getDhis2SyncLog,
   isDhis2Configured, getDhis2BaseUrlHost, groupDhis2DataValues, getMetric,
   type Dhis2SyncLogDoc,
 } from '@/lib/services/dhis2-sync-log-service';
+import { recordDhis2SyncResult, appendDhis2LogEntry } from '@/lib/services/dhis2-sync-log-client';
 import Select from '@/components/Select';
 import { useUrlView } from '@/lib/navigation/use-url-view';
 

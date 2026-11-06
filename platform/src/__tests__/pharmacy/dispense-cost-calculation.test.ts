@@ -143,10 +143,14 @@ describe('chargeForServices — cost auto-calculation', () => {
     expect(bill!.subtotal).toBe(1000);
     expect(bill!.insuranceProvider).toBe('Nile Assurance');
     // coverageFraction = (100-20)/100 = 0.8; insurancePays = 1000*0.8 - 50 = 750
-    // insuranceCoveragePercent = 750/1000 * 100 = 75
+    // insuranceCoveragePercent = 750/1000 * 100 = 75 — still RECORDED as the
+    // expected split for the claim...
     expect(bill!.insuranceCoveragePercent).toBe(75);
-    expect(bill!.amountPaid).toBe(750);
-    expect(bill!.balanceDue).toBe(250);
+    // ...but NOT credited at creation. Insurance posts to the bill only when a
+    // claim is settled, so the balance is the full amount until then
+    // (security/data audit 2026-11-05, §2.1 #6 — credit-at-settlement).
+    expect(bill!.amountPaid).toBe(0);
+    expect(bill!.balanceDue).toBe(1000);
   });
 
   it('bills as cash (no insurance fields) when the patient has no active policy', async () => {
