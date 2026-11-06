@@ -206,11 +206,13 @@ export async function createBill(data: CreateBillInput): Promise<BillingDoc> {
   const taxRate = data.taxRate || 0;
   const { subtotal, taxAmount, totalAmount } = calculateTotals(items, discount, taxRate);
 
-  // Calculate insurance portion
-  let amountPaid = 0;
-  if (data.insuranceCoveragePercent && data.insuranceCoveragePercent > 0) {
-    amountPaid = Math.round(totalAmount * (data.insuranceCoveragePercent / 100) * 100) / 100;
-  }
+  // Insurance is NOT credited at bill creation. The expected coverage percent
+  // is still recorded (below) so the claim workflow and the UI can show the
+  // split, but the insurer's share posts to the bill only when a claim is
+  // actually settled (recordClaimSettlement). Crediting it here double-counted
+  // once a claim settled against the same bill, and a denied claim never put
+  // the balance back on the patient (security/data audit 2026-11-05, §2.1 #6).
+  const amountPaid = 0;
 
   const invoiceNumber = await generateInvoiceNumber();
 
@@ -241,7 +243,7 @@ export async function createBill(data: CreateBillInput): Promise<BillingDoc> {
     insurancePolicyNumber: data.insurancePolicyNumber,
     insuranceCoveragePercent: data.insuranceCoveragePercent,
     insuranceClaimStatus: 'none',
-    status: data.exemptReason ? 'waived' : amountPaid >= totalAmount ? 'paid' : 'pending',
+    status: data.exemptReason ? 'waived' : 'pending',
     generatedBy: data.generatedBy,
     generatedByName: data.generatedByName,
     invoiceNumber,
@@ -265,11 +267,12 @@ export async function createBill(data: CreateBillInput): Promise<BillingDoc> {
 
   // Mirror the bill into the append-only ledger so patient balances, the
   // front-desk checkout gate, and Collect-Payment — all of which read the
-  // ledger, not the billing store — reflect this charge. We post the gross as
-  // a `charge` debit and, when insurance covers part of it, an
-  // `insurance_payment` credit, so the patient's running balance nets to their
-  // own responsibility (balanceDue). Best-effort: a ledger write must never
-  // abort bill creation.
+  // ledger, not the billing store — reflect this charge. We post the gross as a
+  // `charge` debit only; no insurance credit is posted here. The insurer's
+  // share is credited when a claim is settled (recordClaimSettlement posts the
+  // matching `insurance_payment`), so the patient's balance stays at the full
+  // amount until insurance actually pays. Best-effort: a ledger write must
+  // never abort bill creation.
   try {
     const { createLedgerEntry } = await import('./ledger-service');
     await createLedgerEntry({
@@ -285,21 +288,6 @@ export async function createBill(data: CreateBillInput): Promise<BillingDoc> {
       orgId: doc.orgId,
       createdBy: doc.generatedBy,
     });
-    if (doc.amountPaid > 0) {
-      await createLedgerEntry({
-        patientId: doc.patientId,
-        encounterId: doc.encounterId,
-        entryType: 'insurance_payment',
-        amount: -doc.amountPaid,
-        description: `Insurance coverage — ${invoiceNumber}`,
-        referenceId: doc._id,
-        referenceType: 'billing',
-        currency: doc.currency,
-        facilityId: doc.facilityId,
-        orgId: doc.orgId,
-        createdBy: doc.generatedBy,
-      });
-    }
   } catch (err) {
     console.warn('[billing] ledger mirror failed for', doc._id, err);
   }
@@ -764,10 +752,9 @@ export async function updateBillItems(
     bill.subtotal = subtotal;
     bill.taxAmount = taxAmount;
     bill.totalAmount = totalAmount;
-    // Insurance-covered portion tracks the new total when coverage applies.
-    if (bill.insuranceCoveragePercent && bill.insuranceCoveragePercent > 0) {
-      bill.amountPaid = Math.round(totalAmount * (bill.insuranceCoveragePercent / 100) * 100) / 100;
-    }
+    // amountPaid reflects only real payments and settled insurance claims — it
+    // is never recomputed from the coverage percent (that double-counted once a
+    // claim settled; audit §2.1 #6). Editing the items only re-nets the balance.
     bill.balanceDue = Math.round((totalAmount - bill.amountPaid) * 100) / 100;
     bill.updatedAt = new Date().toISOString();
     const resp = await db.put(bill);
