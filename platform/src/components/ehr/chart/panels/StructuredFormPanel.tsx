@@ -17,6 +17,7 @@ import O3Form, { CHECK_SEPARATOR, UNSPECIFIED, o3MissingRequired, o3WithComputed
 import NoticeToast from '@/components/overlay/NoticeToast';
 import { useToast } from '@/components/Toast';
 import { buildLabObservations, summarizeLabObservations, type LabResultProfile } from '@/components/lab/workflow/lab-result-catalog';
+import { evaluateCriticalObservations, flagLabResult } from '@/lib/services/lab-critical-flag';
 import { LAB_RESULT_PROFILES, STRUCTURED_FORMS, type StructuredFormId } from '@/lib/forms/o3-form-definitions';
 import type { NoteTypeId } from '@/lib/clinical-notes/note-catalog';
 import { localClockOf, todayIso } from '@/lib/date-utils';
@@ -96,6 +97,14 @@ export default function StructuredFormPanel({ formId, patient, currentUser, enco
         }
         const { createLabResult } = await import('@/lib/services/lab-service');
         for (const { profile, observations } of filled) {
+          // Flag the panel through the same critical-value table the lab
+          // dashboard uses, so a deranged analyte entered from the chart raises
+          // the critical-result task, the review SLA and the portal-release
+          // gate instead of nothing (security/data audit 2026-11-05, §2.1 #4).
+          // Critical is unit-aware (evaluateCriticalObservations); abnormal is
+          // best-effort per analyte and always true when the panel is critical.
+          const critical = evaluateCriticalObservations(observations).isCriticalValue;
+          const abnormal = critical || observations.some(o => flagLabResult(o.label, o.value).abnormal);
           await createLabResult({
             ...base,
             hospitalNumber: patient.hospitalNumber,
@@ -108,8 +117,8 @@ export default function StructuredFormPanel({ formId, patient, currentUser, enco
             observations,
             unit: '',
             referenceRange: '',
-            abnormal: false,
-            critical: false,
+            abnormal,
+            critical,
             orderedBy: currentUser.name,
             orderedById: currentUser._id,
             orderedAt: now,
