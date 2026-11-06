@@ -163,8 +163,15 @@ export async function completeTriageHandoff(input: CompleteTriageHandoffInput) {
   }
 
   if (encounter && input.disposition === 'home_care') {
+    // assertDischargeAllowed refuses a dismissal with no actorRole
+    // (DISCHARGE_FORBIDDEN), so omitting it here made the home-care encounter
+    // close throw for EVERY role — the triage write had already landed, the
+    // whole handoff then failed, and a retry was blocked as a duplicate
+    // (security/data audit 2026-11-05). Pass the role as the sibling
+    // appointment/encounter transitions above already do.
     await transitionEncounter(encounter._id, 'dismissed_without_formal_checkout', {
       actorId: input.actorId,
+      actorRole: input.actorRole,
       reason: 'Triage disposition: home care',
     });
     if (appointmentId) {
