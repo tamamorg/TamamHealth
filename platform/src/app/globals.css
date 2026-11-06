@@ -36761,12 +36761,12 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
 .patient-registration-page .tamam-reg textarea {
   background-color: var(--bg-app);
 }
-/* ═══════════════ SHARP EDGES — dashboard list-item exception ═══════════════
-   App-wide corners are square: the --radius-* tokens and the Tailwind
-   borderRadius theme are 0 (--radius-pill / `rounded-full` stay for circular
-   avatars, dots and pills), and literal radii were swept to 0. The one place
-   that keeps rounding, by request, is the dashboard worklist LIST ITEM. Its
-   outer panel (.ehr-worklist-panel) and every other card stay square. */
+/* ═══════════════════ SHARP EDGES — list surfaces ═══════════════════
+   Operational lists are continuous work surfaces, not stacks of cards. Keep
+   the shared row used by dashboard schedules, laboratory, pharmacy and other
+   module worklists square. Patient registry cells and `.ehr-list-scroll`
+   tables follow the same rule above. Pills, avatars and overlay controls keep
+   their purpose-specific shapes. */
 .appointment-card-row.ehr-appointment-row {
-  border-radius: 12px;
+  border-radius: 0;
 }
