@@ -186,7 +186,7 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
             </DialogBody>
             <DialogFooter>
               <button className="btn btn-secondary" disabled={busy} onClick={() => setRemovingEntry(null)}>{t('action.cancel')}</button>
-              <button className="btn" disabled={busy || removalReason.trim().length === 0} onClick={() => run(async () => { const svc = await import('@/lib/services/allergy-service'); await svc.removeAllergy(patient._id, needScope(), removingEntry.id, removalReason); }, () => setRemovingEntry(null))} style={{ background: 'var(--color-danger)', color: '#fff', borderRadius: 8, padding: '6px 16px', fontSize: 13 }}>{t('ui.confirmRemoval')}</button>
+              <button className="btn" disabled={busy || removalReason.trim().length === 0} onClick={() => run(async () => { const svc = await import('@/lib/services/allergy-service'); await svc.removeAllergy(patient._id, needScope(), removingEntry.id, removalReason); }, () => setRemovingEntry(null))} style={{ background: 'var(--color-danger)', color: '#fff', borderRadius: 0, padding: '6px 16px', fontSize: 13 }}>{t('ui.confirmRemoval')}</button>
             </DialogFooter>
           </DialogFrame>
         </Modal>

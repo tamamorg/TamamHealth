@@ -495,7 +495,7 @@ export default function MARPage() {
               <span
                 className="inline-block"
                 style={{
-                  width: 12, height: 12, borderRadius: 4,
+                  width: 12, height: 12, borderRadius: 0,
                   background: STATUS_TINT[s].bg,
                   border: `1px solid ${STATUS_TINT[s].ring}`,
                 }}

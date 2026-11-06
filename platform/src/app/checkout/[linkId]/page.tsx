@@ -176,7 +176,7 @@ export default function CheckoutPage() {
               ? 'If prompted on your phone, approve the mobile-money request to complete the transaction.'
               : 'The facility will confirm receipt shortly.'}
           </p>
-          <div style={{ padding: 16, borderRadius: 10, background: 'var(--overlay-subtle)', border: '1px solid var(--border-medium)', textAlign: 'start', marginBottom: 16 }}>
+          <div style={{ padding: 16, borderRadius: 0, background: 'var(--overlay-subtle)', border: '1px solid var(--border-medium)', textAlign: 'start', marginBottom: 16 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
                 <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('billing.activityColumn.reference')}</p>
@@ -227,7 +227,7 @@ export default function CheckoutPage() {
       {/* Amount banner */}
       <div style={{
         background: 'linear-gradient(135deg, #015697 0%, #2191D0 60%, #2191D0 100%)',
-        borderRadius: 14, padding: '22px 24px', color: '#fff', marginBottom: 16, position: 'relative', overflow: 'hidden',
+        borderRadius: 0, padding: '22px 24px', color: '#fff', marginBottom: 16, position: 'relative', overflow: 'hidden',
       }}>
         <div style={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
         <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.7, marginBottom: 6 }}>{t('ui.amountDue')}</p>
@@ -246,11 +246,11 @@ export default function CheckoutPage() {
           {PAYMENT_METHODS.map(m => (
             <button key={m.key} type="button" onClick={() => setMethod(m.key)} style={{
               display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 16px',
-              borderRadius: 10, border: method === m.key ? `2px solid ${m.color}` : '1px solid var(--border-medium)',
+              borderRadius: 0, border: method === m.key ? `2px solid ${m.color}` : '1px solid var(--border-medium)',
               background: method === m.key ? `${m.color}08` : 'var(--bg-card-solid)',
               cursor: 'pointer', textAlign: 'start', transition: 'all 0.15s',
             }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: `${m.color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 0, background: `${m.color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <m.icon size={20} style={{ color: m.color }} />
               </div>
               <div style={{ flex: 1 }}>
@@ -270,13 +270,13 @@ export default function CheckoutPage() {
               value={payerPhone}
               onChange={e => setPayerPhone(e.target.value)}
               placeholder={t('ui.eG2119xxXxx')}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-card-solid)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: 0, border: '1px solid var(--border-medium)', background: 'var(--bg-card-solid)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }}
             />
           </div>
         )}
 
         {selected && (
-          <div style={{ padding: 10, borderRadius: 8, background: `${selected.color}10`, border: `1px solid ${selected.color}20`, marginBottom: 14 }}>
+          <div style={{ padding: 10, borderRadius: 0, background: `${selected.color}10`, border: `1px solid ${selected.color}20`, marginBottom: 14 }}>
             <p style={{ fontSize: 11, color: selected.color, fontWeight: 600 }}>
               {isMobileMoney(method)
                 ? 'After you confirm, approve the payment prompt on your phone to complete the transaction.'
@@ -296,7 +296,7 @@ export default function CheckoutPage() {
           onClick={() => { void submit(); }}
           disabled={!method || submitting}
           style={{
-            width: '100%', padding: '12px 0', borderRadius: 8, border: 'none',
+            width: '100%', padding: '12px 0', borderRadius: 0, border: 'none',
             background: method ? 'var(--accent-primary)' : 'var(--border-medium)',
             color: '#fff', fontSize: 14, fontWeight: 700,
             cursor: method && !submitting ? 'pointer' : 'not-allowed',

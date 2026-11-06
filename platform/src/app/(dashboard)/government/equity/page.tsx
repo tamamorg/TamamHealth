@@ -228,7 +228,7 @@ export default function EquityPlanningPage() {
                           if (!active || !payload?.length) return null;
                           const p = payload[0].payload as StateRow;
                           return (
-                            <div style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)', borderRadius: 4, padding: '8px 10px', fontSize: 12 }}>
+                            <div style={{ background: 'var(--bg-card-solid)', border: '1px solid var(--border-light)', borderRadius: 0, padding: '8px 10px', fontSize: 12 }}>
                               <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.state}</div>
                               <div style={{ color: 'var(--text-secondary)' }}>{t('govEquity.tipCases', { n: p.activeCases.toLocaleString() })}</div>
                               <div style={{ color: 'var(--text-secondary)' }}>{t('govEquity.tipCompleteness', { n: p.avgCompleteness ?? 0 })}</div>

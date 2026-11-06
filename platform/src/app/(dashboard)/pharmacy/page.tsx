@@ -29,6 +29,7 @@ import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
 import { formatPrintedAt } from '@/lib/print-identity';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
+import { escapeCsvCell } from '@/lib/csv';
 import { useRoleChoice } from '@/lib/settings/useRoleSetting';
 import { stopsClickPropagation } from '@/lib/a11y';
 import PatientMedHistoryModal from '@/components/pharmacy/PatientMedHistoryModal';
@@ -111,7 +112,7 @@ export default function PharmacyPage() {
   // patients registry) — no per-column funnels.
   // Field style for the selects inside the header's Filters popover (mirrors
   // the patients registry's Filters panel fields).
-  const popoverFieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 8, minWidth: 0 } as const;
+  const popoverFieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 0, minWidth: 0 } as const;
   const statusFilterRelevant = activeTab === 'inventory' || activeTab === 'reorder' || activeTab === 'expiry';
   const headerFilterCount = (categoryFilter !== 'all' ? 1 : 0) + (statusFilterRelevant && statusFilter !== 'all' ? 1 : 0);
 
@@ -494,7 +495,7 @@ export default function PharmacyPage() {
         break;
     }
     const csv = [header, ...rows]
-      .map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .map(r => r.map(escapeCsvCell).join(','))
       .join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
@@ -592,7 +593,7 @@ export default function PharmacyPage() {
                   maxWidth: 320,
                   flexShrink: 0,
                   // 8px, matching the square icon buttons beside it.
-                  borderRadius: 8,
+                  borderRadius: 0,
                   padding: '0 14px',
                   fontSize: 13,
                   fontWeight: 600,

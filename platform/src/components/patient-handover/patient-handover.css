@@ -4,7 +4,7 @@
 
 .ph-stack { display: flex; flex-direction: column; gap: var(--space-4, 16px); }
 
-.ph-list { margin: 0; padding: 0; list-style: none; border: 1px solid var(--border-light); border-radius: 6px; }
+.ph-list { margin: 0; padding: 0; list-style: none; border: 1px solid var(--border-light); border-radius: 0; }
 .ph-list > li { padding: 10px 12px; }
 .ph-list > li + li { border-top: 1px solid var(--border-light); }
 

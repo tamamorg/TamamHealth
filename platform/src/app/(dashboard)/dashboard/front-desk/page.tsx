@@ -1907,7 +1907,7 @@ export default function FrontDeskDashboardPage() {
                     <button
                       type="button"
                       onClick={() => void closeStaleVisitAsLwbs(encounter)}
-                      style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-card)', color: 'var(--color-danger-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      style={{ padding: '6px 12px', borderRadius: 0, border: '1px solid var(--border-medium)', background: 'var(--bg-card)', color: 'var(--color-danger-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
                     >
                       {t('ui.closeAsLwbs')}
                     </button>
@@ -1917,7 +1917,7 @@ export default function FrontDeskDashboardPage() {
                   <button
                     type="button"
                     onClick={() => { setCloseoutOpen(false); router.push(`/patients/${encounter.patientId}`); }}
-                    style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-card)', color: 'var(--accent-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    style={{ padding: '6px 12px', borderRadius: 0, border: '1px solid var(--border-medium)', background: 'var(--bg-card)', color: 'var(--accent-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
                   >
                     {t('appointments.openChart')}
                   </button>
@@ -1958,14 +1958,14 @@ export default function FrontDeskDashboardPage() {
                   <button
                     type="button"
                     onClick={() => { setUnbookedOpen(false); setBookingPatientId(p._id); setBookingOpen(true); }}
-                    style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--accent-primary)', background: 'var(--accent-primary)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    style={{ padding: '6px 12px', borderRadius: 0, border: '1px solid var(--accent-primary)', background: 'var(--accent-primary)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
                   >
                     {t('frontDesk.bookThisPatient')}
                   </button>
                   <button
                     type="button"
                     onClick={() => { setUnbookedOpen(false); router.push(`/patients/${p._id}`); }}
-                    style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-card)', color: 'var(--accent-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    style={{ padding: '6px 12px', borderRadius: 0, border: '1px solid var(--border-medium)', background: 'var(--bg-card)', color: 'var(--accent-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
                   >
                     {t('frontDesk.openChart')}
                   </button>
@@ -2020,7 +2020,7 @@ export default function FrontDeskDashboardPage() {
                   onClick={() => { void runSyncNow(); }}
                   disabled={syncNowBusy}
                   aria-busy={syncNowBusy}
-                  style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-card)', color: 'var(--accent-text)', fontSize: 12, fontWeight: 600, cursor: syncNowBusy ? 'progress' : 'pointer', opacity: syncNowBusy ? 0.7 : 1 }}
+                  style={{ padding: '6px 12px', borderRadius: 0, border: '1px solid var(--border-medium)', background: 'var(--bg-card)', color: 'var(--accent-text)', fontSize: 12, fontWeight: 600, cursor: syncNowBusy ? 'progress' : 'pointer', opacity: syncNowBusy ? 0.7 : 1 }}
                 >
                   {syncNowBusy ? t('frontDesk.syncNowRunning') : t('frontDesk.syncNow')}
                 </button>
@@ -2161,7 +2161,7 @@ export default function FrontDeskDashboardPage() {
                 onChange={event => setCancelReason(event.target.value)}
                 rows={2}
                 placeholder={t('ui.eGPatientCalledTo')}
-                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', resize: 'vertical' }}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 0, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', resize: 'vertical' }}
               />
           </FormSlider>
         )}

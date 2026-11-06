@@ -300,7 +300,7 @@ export function BillingTab({ patient, sessionToken }: { patient: PatientDoc; ses
               : t('patientPortal.successBankTransfer')}
           </p>
           {failedCount > 0 && (
-            <div style={{ padding: 10, borderRadius: 8, marginBottom: 14, background: 'rgba(158, 27, 20,0.06)', border: '1px solid rgba(158, 27, 20,0.3)' }}>
+            <div style={{ padding: 10, borderRadius: 0, marginBottom: 14, background: 'rgba(158, 27, 20,0.06)', border: '1px solid rgba(158, 27, 20,0.3)' }}>
               <p style={{ margin: 0, fontSize: 12, color: 'var(--color-danger-text)', fontWeight: 600 }}>
                 {t('patientPortal.billsNotUpdated', { count: failedCount })}
               </p>
@@ -369,12 +369,12 @@ export function BillingTab({ patient, sessionToken }: { patient: PatientDoc; ses
             ))}
           </div>
           {(payMethod === 'mpesa' || payMethod === 'mtn' || payMethod === 'airtel') && (
-            <div style={{ padding: 10, borderRadius: 8, background: 'var(--color-info-bg)', border: '1px solid var(--color-info-border)', marginBottom: 14 }}>
+            <div style={{ padding: 10, borderRadius: 0, background: 'var(--color-info-bg)', border: '1px solid var(--color-info-border)', marginBottom: 14 }}>
               <p style={{ margin: 0, fontSize: 11.5, color: 'var(--text-primary)', fontWeight: 600 }}>{t('patientPortal.paymentPromptNotice', { phone: payPhone })}</p>
             </div>
           )}
           {payError && (
-            <div style={{ padding: 10, borderRadius: 8, background: 'rgba(158, 27, 20,0.06)', border: '1px solid rgba(158, 27, 20,0.3)', marginBottom: 14 }}>
+            <div style={{ padding: 10, borderRadius: 0, background: 'rgba(158, 27, 20,0.06)', border: '1px solid rgba(158, 27, 20,0.3)', marginBottom: 14 }}>
               <p style={{ margin: 0, fontSize: 12, color: 'var(--color-danger-text)', fontWeight: 600 }}>{payError}</p>
             </div>
           )}
@@ -402,12 +402,12 @@ export function BillingTab({ patient, sessionToken }: { patient: PatientDoc; ses
               return (
                 <button key={m.key} type="button" onClick={() => setPayMethod(m.key)} style={{
                   display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '12px 14px',
-                  borderRadius: 8, border: on ? '1px solid var(--accent-primary)' : '1px solid var(--border-light)',
+                  borderRadius: 0, border: on ? '1px solid var(--accent-primary)' : '1px solid var(--border-light)',
                   boxShadow: on ? 'inset 0 0 0 1px var(--accent-primary)' : 'none',
                   background: on ? 'var(--color-info-bg)' : 'var(--bg-card-solid)',
                   cursor: 'pointer', textAlign: 'start', fontFamily: 'var(--font-platform)',
                 }}>
-                  <span style={{ width: 34, height: 34, borderRadius: 8, background: `color-mix(in srgb, ${m.color} 12%, transparent)`, display: 'grid', placeItems: 'center', flexShrink: 0, color: m.color }}>
+                  <span style={{ width: 34, height: 34, borderRadius: 0, background: `color-mix(in srgb, ${m.color} 12%, transparent)`, display: 'grid', placeItems: 'center', flexShrink: 0, color: m.color }}>
                     <m.icon size={16} />
                   </span>
                   <span style={{ flex: 1, minWidth: 0 }}>
@@ -423,7 +423,7 @@ export function BillingTab({ patient, sessionToken }: { patient: PatientDoc; ses
             <div style={{ marginBottom: 16 }}>
               <p className="pp-field-label" style={{ margin: '0 0 4px' }}>{t('patientPortal.phoneNumber')}</p>
               <input type="tel" value={payPhone} onChange={e => setPayPhone(e.target.value)} placeholder={t('patientPortal.payPhonePlaceholder')}
-                style={{ width: '100%', height: 38, padding: '0 13px', borderRadius: 8, border: '1px solid var(--border-light)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 13, outline: 'none', fontFamily: 'var(--font-platform)' }} />
+                style={{ width: '100%', height: 38, padding: '0 13px', borderRadius: 0, border: '1px solid var(--border-light)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 13, outline: 'none', fontFamily: 'var(--font-platform)' }} />
             </div>
           )}
           <button type="button" className="pp-btn pp-btn-primary" style={{ width: '100%' }} onClick={() => payMethod && setStep('confirm')} disabled={!payMethod}>
@@ -551,7 +551,7 @@ export function BillingTab({ patient, sessionToken }: { patient: PatientDoc; ses
           <div className="pp-card-head"><h2>{t('portal.acceptedPaymentMethods')}</h2></div>
           {paymentMethods.map(m => (
             <div key={m.key} className="pp-row">
-              <span style={{ flex: 'none', width: 34, height: 34, display: 'grid', placeItems: 'center', background: 'var(--color-info-bg)', borderRadius: 8, color: 'var(--accent-text)' }}>
+              <span style={{ flex: 'none', width: 34, height: 34, display: 'grid', placeItems: 'center', background: 'var(--color-info-bg)', borderRadius: 0, color: 'var(--accent-text)' }}>
                 <m.icon size={16} strokeWidth={1.7} />
               </span>
               <div className="pp-row-main">

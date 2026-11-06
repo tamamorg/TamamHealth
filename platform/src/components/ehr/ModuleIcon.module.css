@@ -5,7 +5,7 @@
   flex: 0 0 auto;
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   border: 1px solid color-mix(in srgb, var(--module-tone) 22%, var(--bg-card-solid));
   color: var(--module-tone);
@@ -20,7 +20,7 @@
   stroke-width: 1.8;
 }
 
-.compact { width: 32px; height: 32px; border-radius: 9px; }
+.compact { width: 32px; height: 32px; border-radius: 0; }
 .tile.tile.tile { background: var(--bg-card-solid) !important; }
 .compact.compact.compact svg { width: 19px; height: 19px; }
 

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { headers } from 'next/headers';
+import { publicBookingOrigin } from '@/lib/booking/public-base-url';
 import ProviderProfile from '@/components/booking/ProviderProfile';
 import type { ProviderPayload } from '@/lib/booking/public-client';
 import T from '@/components/T';
@@ -14,11 +14,8 @@ export const dynamic = 'force-dynamic';
  * also reachable directly and the guard keeps the 404 honest.
  */
 async function loadProvider(practice: string, provider: string): Promise<ProviderPayload | null> {
-  const h = await headers();
-  const host = h.get('host');
-  const proto = h.get('x-forwarded-proto') || 'http';
   try {
-    const url = `${proto}://${host}/api/booking/provider/${encodeURIComponent(provider)}`
+    const url = `${publicBookingOrigin()}/api/booking/provider/${encodeURIComponent(provider)}`
       + `?practice=${encodeURIComponent(practice)}`;
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) return null;

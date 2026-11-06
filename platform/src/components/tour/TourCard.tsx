@@ -112,7 +112,7 @@ export default function TourCard({
             top: rect.top - 6,
             width: rect.width + 12,
             height: rect.height + 12,
-            borderRadius: 10,
+            borderRadius: 0,
             pointerEvents: 'none',
             zIndex: 9998,
             transition: 'left .35s ease, top .35s ease, width .35s ease, height .35s ease',
@@ -179,14 +179,14 @@ export default function TourCard({
             between "I'll finish this" and "I'll skip it". */}
         <div
           aria-hidden
-          style={{ height: 3, borderRadius: 2, background: 'var(--overlay-subtle)', overflow: 'hidden', marginBottom: 12 }}
+          style={{ height: 3, borderRadius: 0, background: 'var(--overlay-subtle)', overflow: 'hidden', marginBottom: 12 }}
         >
           <div
             style={{
               height: '100%',
               width: `${((index + 1) / Math.max(total, 1)) * 100}%`,
               background: 'var(--accent-primary)',
-              borderRadius: 2,
+              borderRadius: 0,
               transition: 'width .25s ease',
             }}
           />
@@ -225,7 +225,7 @@ export default function TourCard({
                         style={{
                           display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'start',
                           background: isCurrent ? 'var(--accent-light)' : 'transparent',
-                          border: 'none', borderRadius: 6, padding: '4px 6px', cursor: onJumpTo ? 'pointer' : 'default',
+                          border: 'none', borderRadius: 0, padding: '4px 6px', cursor: onJumpTo ? 'pointer' : 'default',
                         }}
                       >
                         <span
@@ -275,7 +275,7 @@ export default function TourCard({
             type="button"
             onClick={onNext}
             style={{
-              background: 'var(--accent-primary)', color: '#fff', border: 'none', borderRadius: 8,
+              background: 'var(--accent-primary)', color: '#fff', border: 'none', borderRadius: 0,
               padding: '7px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
             }}
           >

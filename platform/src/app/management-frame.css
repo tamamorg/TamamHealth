@@ -108,7 +108,7 @@ body main[data-surface="management"] :is(
 ) {
   background: var(--bg-card-solid) !important;
   border: 1px solid var(--border-light) !important;
-  border-radius: 4px !important;
+  border-radius: 0 !important;
   box-shadow: none !important;
 }
 
@@ -175,7 +175,7 @@ body main[data-surface="management"] :is(.sadb-kpi-row, .kpi-grid, .epi-stat-row
   gap: 1px !important;
   background: var(--border-light) !important;
   border: 1px solid var(--border-light) !important;
-  border-radius: 4px;
+  border-radius: 0;
   overflow: hidden;
 }
 
@@ -442,7 +442,7 @@ body main[data-surface="management"] .sadb-tabs {
   gap: 0;
   padding: 0;
   border: 1px solid color-mix(in srgb, var(--accent-primary) 45%, transparent);
-  border-radius: 4px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   overflow: hidden;
 }
@@ -485,7 +485,7 @@ body main[data-surface="management"] button.sadb-queue-row:hover { background: v
 /* ── Search fields: the chart's section search ───────────────────────────── */
 body main[data-surface="management"] .sadb-search {
   min-height: 36px;
-  border-radius: 4px;
+  border-radius: 0;
   font-size: 14px;
 }
 body main[data-surface="management"] .sadb-search input { font-size: 14px; font-weight: 500; }
@@ -518,8 +518,8 @@ body main[data-surface="management"] .gov-map-layers:not(.epi-filter-panel .gov-
   font-size: 14px;
   font-weight: 500;
 }
-body main[data-surface="management"] .gov-map-layers:not(.epi-filter-panel .gov-map-layers) button:first-child { margin-inline-start: 0; border-start-start-radius: 4px; border-end-start-radius: 4px; }
-body main[data-surface="management"] .gov-map-layers:not(.epi-filter-panel .gov-map-layers) button:last-child { border-start-end-radius: 4px; border-end-end-radius: 4px; }
+body main[data-surface="management"] .gov-map-layers:not(.epi-filter-panel .gov-map-layers) button:first-child { margin-inline-start: 0; border-start-start-radius: 0; border-end-start-radius: 0; }
+body main[data-surface="management"] .gov-map-layers:not(.epi-filter-panel .gov-map-layers) button:last-child { border-start-end-radius: 0; border-end-end-radius: 0; }
 body main[data-surface="management"] .gov-map-layers:not(.epi-filter-panel .gov-map-layers) button:hover { background: var(--bg-app); color: var(--text-primary); }
 body main[data-surface="management"] .gov-map-layers:not(.epi-filter-panel .gov-map-layers) button.is-active {
   position: relative;
@@ -565,7 +565,7 @@ body main[data-surface="management"] .sadb-setting-sub { font-size: 12px; font-w
 body main[data-surface="management"] .orgh {
   padding: 12px 20px 16px;
   border: 1px solid var(--border-light);
-  border-radius: 4px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--accent-primary) 7%, var(--bg-card-solid));
   color: var(--text-primary);
   box-shadow: none;

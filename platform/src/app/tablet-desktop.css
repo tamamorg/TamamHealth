@@ -347,7 +347,7 @@
   .appointment-card-row .ehr-patient-icon {
     width: 32px;
     height: 32px;
-    border-radius: 9px;
+    border-radius: 0;
     font-size: 10px;
   }
 

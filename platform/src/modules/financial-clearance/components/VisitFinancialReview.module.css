@@ -3,12 +3,12 @@
 .heading h3 { margin: 0; font-size: 18px; }
 .review p { max-width: 78ch; margin: 8px 0; line-height: 1.5; }
 .heading p, .safety { color: var(--ehr-muted, #5d728b); }
-.refresh { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border: 1px solid var(--ehr-border, #dce4ed); border-radius: 6px; background: var(--bg-primary); color: var(--accent-text, #075b94); }
+.refresh { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border: 1px solid var(--ehr-border, #dce4ed); border-radius: 0; background: var(--bg-primary); color: var(--accent-text, #075b94); }
 .refresh:disabled { opacity: .5; }
 .selection { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-block: 16px; }
 .selection label { text-transform: none; letter-spacing: normal; margin: 0; }
-.selection select { flex: 1 1 280px; min-width: 0; max-width: 100%; padding: 10px; border: 1px solid var(--ehr-border, #dce4ed); border-radius: 6px; color: inherit; background: var(--bg-primary); }
-.status { padding: 6px 12px; border-radius: 5px; background: var(--bg-secondary); font-weight: 600; }
+.selection select { flex: 1 1 280px; min-width: 0; max-width: 100%; padding: 10px; border: 1px solid var(--ehr-border, #dce4ed); border-radius: 0; color: inherit; background: var(--bg-primary); }
+.status { padding: 6px 12px; border-radius: 0; background: var(--bg-secondary); font-weight: 600; }
 .status[data-status="payment_verified"] { color: var(--success); background: color-mix(in srgb, var(--success) 12%, transparent); }
 .status[data-status="awaiting_payment"], .status[data-status="awaiting_authorization"], .status[data-status="review_required"] { color: var(--warning-text, var(--text-primary)); background: color-mix(in srgb, var(--warning) 12%, transparent); }
 .tableWrap { overflow-x: auto; }

@@ -45,7 +45,7 @@ export default function BalanceBanner({ patientId, compact, onPayClick }: Balanc
     return (
       <span style={{
         display: 'inline-flex', alignItems: 'center', gap: 6,
-        padding: '3px 10px', borderRadius: 16, fontSize: 12, fontWeight: 600,
+        padding: '3px 10px', borderRadius: 0, fontSize: 12, fontWeight: 600,
         color: bannerColor,
         background: `color-mix(in srgb, ${bannerColor} 10%, transparent)`,
       }}>
@@ -59,7 +59,7 @@ export default function BalanceBanner({ patientId, compact, onPayClick }: Balanc
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
-      padding: '12px 16px', borderRadius: 12,
+      padding: '12px 16px', borderRadius: 0,
       background: `color-mix(in srgb, ${bannerColor} 6%, var(--bg-card))`,
       border: `1px solid color-mix(in srgb, ${bannerColor} 20%, transparent)`,
     }}>
@@ -98,7 +98,7 @@ export default function BalanceBanner({ patientId, compact, onPayClick }: Balanc
           onClick={onPayClick}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
-            padding: '6px 16px', borderRadius: 20, border: 'none',
+            padding: '6px 16px', borderRadius: 0, border: 'none',
             background: bannerColor, color: '#fff',
             fontSize: 12, fontWeight: 600, cursor: 'pointer',
           }}

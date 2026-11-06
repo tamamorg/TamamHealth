@@ -37,12 +37,12 @@
   --section-spacing: 80px;
   --section-spacing-medium: 56px;
   --section-spacing-small: 40px;
-  --btn-radius: 10px;
+  --btn-radius: 0px;
   /* 8px, per the Clinical App design — its cards, buttons and popovers sit on
      a tighter radius than the 14px the app used, which is what made the old
      surfaces read as consumer-soft next to the design's clinical squareness. */
-  --card-radius: 8px;
-  --input-radius: 10px;
+  --card-radius: 0px;
+  --input-radius: 0px;
   --sidebar-width: 220px;
   --sidebar-collapsed: 72px;
   /* Barlow, per the Clinical App design — the same voice tamamhealth.org
@@ -278,8 +278,8 @@
      tabs, 6/8px in the notes module — so navigation that sits inches apart
      did not look related. Controls take --radius-control, surfaces that hold
      them take --radius-card. */
-  --radius-control: 6px;
-  --radius-card: 8px;
+  --radius-control: 0px;
+  --radius-card: 0px;
   --radius-pill: 999px;
 
   /* ═══════════════════════════════════════════════════════════════════════
@@ -306,14 +306,14 @@
   /* ── Radius ── one ladder, named by role. Controls stay on the clinical
      6px; floating surfaces round a step more so they read as lifted off the
      page rather than cut out of it. */
-  --radius-xs: 4px;
+  --radius-xs: 0px;
   --radius-sm: var(--radius-control);
   --radius-md: var(--radius-card);
-  --radius-lg: 10px;
-  --radius-xl: 12px;
-  --radius-overlay: 10px;   /* dialogs, drawers' free corners */
-  --radius-menu: 10px;      /* menus, popovers */
-  --radius-tooltip: 6px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-overlay: 0px;   /* dialogs, drawers' free corners */
+  --radius-menu: 0px;      /* menus, popovers */
+  --radius-tooltip: 0px;
 
   /* ── Elevation ── shadows are the ONLY thing that separates a floating
      surface from the page (no glass, no glow). Inked in the palette's ink
@@ -1113,7 +1113,7 @@ a, button, input, select, textarea, .card, .card-elevated, .btn, .nav-item, .bad
 .show-scrollbar { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent; }
 .show-scrollbar::-webkit-scrollbar { display: block; width: 7px; height: 7px; }
 .show-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.show-scrollbar::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 10px; }
+.show-scrollbar::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 0; }
 .show-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 
 .scrollbar-none { scrollbar-width: none; }
@@ -1205,7 +1205,7 @@ a, button, input, select, textarea, .card, .card-elevated, .btn, .nav-item, .bad
 .mobile-calendar-list::-webkit-scrollbar-thumb,
 .mobile-inbox::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
-  border-radius: 10px;
+  border-radius: 0;
 }
 /* Inline-styled scrollers (style={{ overflowY: 'auto' }}) — matched via the
    style attribute (both the SSR "overflow-y:auto" and the hydrated
@@ -1237,7 +1237,7 @@ a, button, input, select, textarea, .card, .card-elevated, .btn, .nav-item, .bad
 [style*="overflow: auto"]::-webkit-scrollbar-thumb,
 [style*="overflow:auto"]::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
-  border-radius: 10px;
+  border-radius: 0;
 }
 [style*="overflow-y: auto"]::-webkit-scrollbar-thumb:hover,
 [style*="overflow-y:auto"]::-webkit-scrollbar-thumb:hover,
@@ -1492,8 +1492,8 @@ svg.lucide:not([style*="color"]) {
   text-transform: uppercase;
   cursor: pointer;
 }
-.th-tabs > button:first-child { border-inline-start-width: 1px; border-radius: 8px 0 0 8px; }
-.th-tabs > button:last-child { border-radius: 0 8px 8px 0; }
+.th-tabs > button:first-child { border-inline-start-width: 1px; border-radius: 0; }
+.th-tabs > button:last-child { border-radius: 0; }
 .th-tabs > button[aria-selected="true"],
 .th-tabs > button.is-active {
   background: var(--accent-primary);
@@ -1761,7 +1761,7 @@ a.link-accent:hover {
   inset-inline-start: 0; inset-inline-end: 0;
   height: 3px;
   background: var(--accent-primary);
-  border-radius: 3px 3px 0 0;
+  border-radius: 0;
 }
 
 /* ============ Badges ============ */
@@ -2154,8 +2154,8 @@ small,
   color: var(--accent-text) !important;
 }
 
-.btn-sm { padding: 7px 16px; font-size: 0.78rem; border-radius: 6px; }
-.btn-lg { padding: 14px 32px; font-size: 0.95rem; border-radius: 10px; }
+.btn-sm { padding: 7px 16px; font-size: 0.78rem; border-radius: 0; }
+.btn-lg { padding: 14px 32px; font-size: 0.95rem; border-radius: 0; }
 
 /* ============ Focus visible — keyboard accessibility ============ */
 :focus-visible {
@@ -2165,7 +2165,7 @@ small,
 button:focus-visible, .btn:focus-visible, a:focus-visible, .nav-item:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 0;
 }
 
 .btn:disabled {
@@ -2191,8 +2191,8 @@ button:focus-visible, .btn:focus-visible, a:focus-visible, .nav-item:focus-visib
   border-bottom: 1px solid var(--border-light);
   font-family: var(--font-condensed);
 }
-.data-table thead th:first-child { border-radius: 4px 0 0 0; }
-.data-table thead th:last-child { border-radius: 0 4px 0 0; }
+.data-table thead th:first-child { border-radius: 0; }
+.data-table thead th:last-child { border-radius: 0; }
 .data-table tbody td {
   padding: 12px 16px;
   font-size: 0.82rem;
@@ -2497,7 +2497,7 @@ thead th {
   gap: 11px;
   padding: 0 13px;
   height: 40px;
-  border-radius: 10px;
+  border-radius: 0;
   font-size: 14px;
   font-weight: 700;
   color: var(--nav-text);
@@ -2517,7 +2517,7 @@ thead th {
   background: var(--nav-active-bg) !important;
   font-weight: 700;
   font-size: 15px;
-  border-radius: 12px;
+  border-radius: 0;
   border-inline-start: none;
   box-shadow: none;
 }
@@ -2549,7 +2549,7 @@ thead th {
   background: var(--accent-primary);
   color: var(--color-white);
 }
-.step-line { width: 48px; height: 2px; background: var(--border-medium); border-radius: 1px; }
+.step-line { width: 48px; height: 2px; background: var(--border-medium); border-radius: 0; }
 .step-line-active { background: var(--accent-primary); }
 .step-line-completed { background: var(--accent-primary); }
 
@@ -2579,7 +2579,7 @@ thead th {
   gap: 6px;
   min-height: 36px;
   padding: 0 10px;
-  border-radius: 8px;
+  border-radius: 0;
   color: var(--tamamhealth-blue);
   font-size: 0.85rem;
   font-weight: 700;
@@ -2768,7 +2768,7 @@ thead th {
   align-items: flex-start;
   justify-content: center;
   padding: 14px;
-  border-radius: 10px;
+  border-radius: 0;
   text-align: start;
   transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
 }
@@ -2801,7 +2801,7 @@ thead th {
 .registration-info-note {
   padding: 14px 16px;
   border: 1px solid rgba(33,145,208,0.15);
-  border-radius: 10px;
+  border-radius: 0;
   background: rgba(33,145,208,0.06);
 }
 
@@ -2902,7 +2902,7 @@ thead th {
   grid-area: icon;
   width: 28px;
   height: 28px;
-  border-radius: 4px;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3146,7 +3146,7 @@ html:has(.mobile-shell-offline-banner) {
   color: var(--accent-text);
   font-weight: 700;
   text-decoration: none;
-  border-radius: 4px;
+  border-radius: 0;
 }
 
 .route-context-back svg,
@@ -3245,7 +3245,7 @@ html:has(.mobile-shell-offline-banner) {
     min-width: 0;
     min-height: 44px;
     border: 0;
-    border-radius: 13px;
+    border-radius: 0;
     background: transparent;
     color: var(--text-muted);
     font-size: 10.5px;
@@ -3271,7 +3271,7 @@ html:has(.mobile-shell-offline-banner) {
   .ehr-mobile-tabbar-fab {
     width: 50px;
     height: 50px;
-    border-radius: 17px;
+    border-radius: 0;
     background: var(--accent-primary);
     color: #fff;
     display: flex;
@@ -3407,7 +3407,7 @@ html:has(.mobile-shell-offline-banner) {
 .mobile-shell-tabbar-fab {
   width: 48px;
   height: 48px;
-  border-radius: 16px;
+  border-radius: 0;
   background: var(--accent-primary);
   color: #fff;
   display: flex;
@@ -3474,7 +3474,7 @@ html:has(.mobile-shell-offline-banner) {
   min-height: 64px;
   padding: 10px 12px;
   border: 1px solid var(--border-light);
-  border-radius: 14px;
+  border-radius: 0;
   background: var(--bg-card);
   box-shadow: 0 1px 2px rgba(0, 29, 63, 0.04);
   cursor: pointer;
@@ -3495,7 +3495,7 @@ html:has(.mobile-shell-offline-banner) {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 0;
   color: #fff;
   font-size: 11px;
   font-weight: 800;
@@ -3542,7 +3542,7 @@ html:has(.mobile-shell-offline-banner) {
 
 .mobile-outstanding-card {
   border: 1px solid var(--border-light);
-  border-radius: 16px;
+  border-radius: 0;
   background: var(--bg-card);
   padding: 14px;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.04);
@@ -3603,7 +3603,7 @@ html:has(.mobile-shell-offline-banner) {
   height: 40px;
   margin: 10px 14px;
   padding: 0 14px;
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--bg-card);
   border: 1px solid var(--border-light);
   color: var(--text-muted);
@@ -3638,7 +3638,7 @@ html:has(.mobile-shell-offline-banner) {
   min-height: 64px;
   padding: 10px 12px;
   border: 1px solid var(--border-light);
-  border-radius: 14px;
+  border-radius: 0;
   background: var(--bg-card);
   text-align: start;
   box-shadow: 0 1px 2px rgba(0, 29, 63, 0.04);
@@ -3650,7 +3650,7 @@ html:has(.mobile-shell-offline-banner) {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 0;
   color: #fff;
   font-size: 11px;
   font-weight: 800;
@@ -3704,7 +3704,7 @@ html:has(.mobile-shell-offline-banner) {
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 10px;
+  border-radius: 0;
   background: transparent;
   color: #fff;
 }
@@ -3715,7 +3715,7 @@ html:has(.mobile-shell-offline-banner) {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 0;
   color: #fff;
   font-size: 13px;
   font-weight: 800;
@@ -3785,7 +3785,7 @@ html:has(.mobile-shell-offline-banner) {
 
 .mobile-chart-card {
   border: 1px solid var(--border-light);
-  border-radius: 16px;
+  border-radius: 0;
   background: var(--bg-card);
   padding: 14px;
 }
@@ -3853,7 +3853,7 @@ html:has(.mobile-shell-offline-banner) {
 
 .mobile-vitals-tile {
   border: 1px solid var(--border-light);
-  border-radius: 12px;
+  border-radius: 0;
   padding: 8px;
   text-align: center;
 }
@@ -3899,7 +3899,7 @@ html:has(.mobile-shell-offline-banner) {
   flex: 1;
   min-height: 44px;
   border: 1px solid var(--accent-primary);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--bg-card);
   color: var(--accent-text);
   font-size: 13px;
@@ -3924,7 +3924,7 @@ html:has(.mobile-shell-offline-banner) {
   margin: 12px 14px 0;
   padding: 12px;
   border: 1px solid var(--border-light);
-  border-radius: 16px;
+  border-radius: 0;
   background: var(--bg-card);
 }
 
@@ -3966,7 +3966,7 @@ html:has(.mobile-shell-offline-banner) {
   gap: 2px;
   padding: 8px 0;
   border: 1px solid var(--border-light);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--bg-card);
 }
 
@@ -4038,7 +4038,7 @@ html:has(.mobile-shell-offline-banner) {
   gap: 12px;
   padding: 12px;
   border: 1px solid var(--border-light);
-  border-radius: 14px;
+  border-radius: 0;
   background: var(--bg-card);
   text-align: start;
   box-shadow: 0 1px 2px rgba(0, 29, 63, 0.04);
@@ -4106,7 +4106,7 @@ html:has(.mobile-shell-offline-banner) {
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 10px;
+  border-radius: 0;
   background: transparent;
   color: #fff;
 }
@@ -4133,7 +4133,7 @@ html:has(.mobile-shell-offline-banner) {
   display: flex;
   flex-direction: column;
   background: var(--bg-app, #F5F8FB);
-  border-radius: 24px;
+  border-radius: 0;
   overflow: hidden;
   box-shadow: 0 18px 48px rgba(17, 48, 85, 0.25);
 }
@@ -4198,7 +4198,7 @@ html:has(.mobile-shell-offline-banner) {
   min-height: 84px;
   padding: 14px;
   border: 1px solid var(--border-light);
-  border-radius: 16px;
+  border-radius: 0;
   background: var(--bg-card);
   text-align: start;
 }
@@ -4215,7 +4215,7 @@ html:has(.mobile-shell-offline-banner) {
   height: 34px;
   display: grid;
   place-items: center;
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--accent-light, #F2FCFF);
   color: var(--accent-text);
 }
@@ -4242,7 +4242,7 @@ html:has(.mobile-shell-offline-banner) {
   min-height: 76px;
   padding: 12px 6px;
   border: 1px solid var(--border-light);
-  border-radius: 14px;
+  border-radius: 0;
   background: var(--bg-card);
   color: var(--text-secondary);
   font-size: 11.5px;
@@ -4276,7 +4276,7 @@ html:has(.mobile-shell-offline-banner) {
   width: 154px;
   height: 42px;
   padding: 0 8px;
-  border-radius: 6px;
+  border-radius: 0;
   background: transparent;
   border: 0;
   cursor: pointer;
@@ -4476,7 +4476,7 @@ html:has(.mobile-shell-offline-banner) {
   flex-direction: column;
   overflow: visible;
   border: 1px solid var(--ehr-border);
-  border-radius: 0 0 8px 8px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   color: var(--text-primary);
   box-shadow: 0 18px 40px rgba(0, 29, 63, 0.2);
@@ -4512,7 +4512,7 @@ html:has(.mobile-shell-offline-banner) {
 .notifications-popover-count {
   flex-shrink: 0;
   padding: 3px 7px;
-  border-radius: 6px;
+  border-radius: 0;
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
@@ -4523,7 +4523,7 @@ html:has(.mobile-shell-offline-banner) {
   height: 32px;
   min-width: 32px;
   padding: 7px;
-  border-radius: 8px;
+  border-radius: 0;
   justify-content: center;
 }
 .ehr-top-actions .notifications-popover-header .notifications-popover-action svg.lucide {
@@ -4578,7 +4578,7 @@ html:has(.mobile-shell-offline-banner) {
   width: 100%;
   height: auto;
   display: flex;
-  border-radius: 0 0 8px 8px;
+  border-radius: 0;
 }
 
 .ehr-top-actions .notifications-popover button svg.lucide {
@@ -4618,7 +4618,7 @@ html:has(.mobile-shell-offline-banner) {
   width: 32px;
   height: 32px;
   margin-top: 2px;
-  border-radius: 6px;
+  border-radius: 0;
 }
 /* The rail paints every icon near-white and only gives it back on hover; on
    these pale tiles that hid the icon until the pointer reached the row. */
@@ -4735,7 +4735,7 @@ html:has(.mobile-shell-offline-banner) {
   max-height: min(560px, calc(100vh - var(--ehr-top-rail-height) - 16px));
   overflow: hidden;
   border: 1px solid var(--ehr-border);
-  border-radius: 0 0 12px 12px;
+  border-radius: 0;
   background: var(--ehr-panel);
   color: var(--ehr-text);
   box-shadow: 0 14px 30px rgba(0, 29, 63, 0.16);
@@ -4766,7 +4766,7 @@ html:has(.mobile-shell-offline-banner) {
   min-height: 34px;
   padding: 0 8px;
   border: 1px solid var(--ehr-border);
-  border-radius: 7px;
+  border-radius: 0;
   background: var(--ehr-page-bg);
 }
 
@@ -4831,7 +4831,7 @@ html:has(.mobile-shell-offline-banner) {
   justify-content: flex-start;
   gap: 9px;
   padding: 0 8px;
-  border-radius: 7px;
+  border-radius: 0;
   color: var(--nav-text);
   font-size: 12.5px;
   font-weight: 700;
@@ -4945,7 +4945,7 @@ html:has(.mobile-shell-offline-banner) {
   width: 22px;
   height: 22px;
   border: 0;
-  border-radius: 4px;
+  border-radius: 0;
   background: transparent;
   color: var(--accent-text);
 }
@@ -4961,7 +4961,7 @@ html:has(.mobile-shell-offline-banner) {
   overflow: hidden;
   background: var(--ehr-panel);
   border: 1px solid var(--ehr-border);
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: none;
   color: var(--ehr-text);
 }
@@ -5096,7 +5096,7 @@ html:has(.mobile-shell-offline-banner) {
   max-width: calc(100vw - 24px);
   overflow: hidden;
   border: 1px solid var(--ehr-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--ehr-panel);
   color: var(--ehr-text);
   box-shadow: none;
@@ -5196,7 +5196,7 @@ html:has(.mobile-shell-offline-banner) {
   margin: 8px 8px 6px;
   padding: 10px 12px;
   border: 1px solid var(--ehr-border);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--ehr-panel);
   color: var(--ehr-text);
 }
@@ -5267,13 +5267,13 @@ html:has(.mobile-shell-offline-banner) {
 }
 
 .tamam-ehr-app .hero-banner {
-  border-radius: 6px !important;
+  border-radius: 0 !important;
   background-color: var(--color-brand-700) !important;
   border: 1px solid var(--ehr-border);
 }
 
 .tamam-ehr-app .hero-banner button {
-  border-radius: 6px !important;
+  border-radius: 0 !important;
 }
 
 .tamam-ehr-app .card-elevated:hover,
@@ -5290,7 +5290,7 @@ html:has(.mobile-shell-offline-banner) {
 .tamam-ehr-app input,
 .tamam-ehr-app select,
 .tamam-ehr-app textarea {
-  border-radius: 4px !important;
+  border-radius: 0 !important;
 }
 
 .tamam-ehr-app .page-container:has(> .ehr-schedule-shell) {
@@ -5469,7 +5469,7 @@ html:has(.mobile-shell-offline-banner) {
   min-height: 36px;
   padding: 0 14px;
   border: 1px solid var(--ehr-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--ehr-panel);
   color: var(--text-strong);
   font-size: 13px;
@@ -5498,10 +5498,10 @@ html:has(.mobile-shell-offline-banner) {
 }
 .ehr-segmented button:first-child {
   border-inline-start-width: 1px;
-  border-radius: 8px 0 0 8px;
+  border-radius: 0;
 }
-.ehr-segmented button:last-child { border-radius: 0 8px 8px 0; }
-.ehr-segmented.ehr-segmented-single button { border-inline-start-width: 1px; border-radius: 8px; }
+.ehr-segmented button:last-child { border-radius: 0; }
+.ehr-segmented.ehr-segmented-single button { border-inline-start-width: 1px; border-radius: 0; }
 
 .ehr-schedule-actions button:not(.primary):hover {
   border-color: var(--ehr-blue);
@@ -5610,7 +5610,7 @@ html:has(.mobile-shell-offline-banner) {
 .ehr-worklist-panel,
 .ehr-center-panel {
   border: 1px solid var(--ehr-border);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--ehr-panel);
 }
 
@@ -5641,7 +5641,7 @@ html:has(.mobile-shell-offline-banner) {
 .ehr-mini-calendar {
   padding: 12px 12px 14px;
   border: 1px solid var(--ehr-border);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--ehr-panel);
 }
 
@@ -5944,10 +5944,10 @@ html:has(.mobile-shell-offline-banner) {
 }
 .ehr-day-tabs button:not(.ehr-mobile-day-check):first-child {
   border-inline-start-width: 1px;
-  border-radius: 8px 0 0 8px;
+  border-radius: 0;
 }
 .ehr-day-tabs button:not(.ehr-mobile-day-check):last-child {
-  border-radius: 0 8px 8px 0;
+  border-radius: 0;
 }
 
 .ehr-day-tabs button:hover:not(.ehr-mobile-day-check):not(.active) {
@@ -6065,7 +6065,7 @@ html:has(.mobile-shell-offline-banner) {
   height: 40px;
   display: grid;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--color-slate-100);
   color: var(--accent-text);
   font-size: 12px;
@@ -6089,7 +6089,7 @@ html:has(.mobile-shell-offline-banner) {
 .ehr-patient-icon--sm {
   width: 32px;
   height: 32px;
-  border-radius: 10px;
+  border-radius: 0;
   font-size: 10px;
   flex-shrink: 0;
 }
@@ -6404,7 +6404,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   height: 34px;
   padding: 0 30px 0 12px;
   border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--ehr-panel, #fff);
   color: var(--ehr-text, var(--text-primary));
   font-size: 12px;
@@ -6446,7 +6446,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   flex-direction: column;
   gap: 8px;
   padding: 10px 6px;
-  border-radius: 16px;
+  border-radius: 0;
   background: var(--bg-secondary);
 }
 
@@ -6454,7 +6454,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   width: 100%;
   min-height: 64px;
   border: 1px solid var(--ehr-border);
-  border-radius: 14px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   box-shadow: none;
   color: var(--text-strong);
@@ -6616,7 +6616,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   text-align: start;
   background: var(--ehr-surface-2, rgba(148, 162, 179, 0.08));
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 0;
   cursor: pointer;
   transition: background .12s, border-color .12s;
 }
@@ -7027,7 +7027,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   gap: 10px;
   padding: 0 10px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 0;
   background: transparent;
   color: var(--text-strong);
   font-size: 13px;
@@ -7121,7 +7121,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-care-row .ehr-care-avatar {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: 0;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.3px;
@@ -7393,7 +7393,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   margin: -4px 16px 12px 70px;
   padding: 12px;
   border: 1px solid var(--ehr-border);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--bg-card-solid);
 }
 
@@ -7464,7 +7464,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   margin: 10px 0 0;
   padding: 8px;
   border: 1px solid rgba(224, 49, 39, 0.15);
-  border-radius: 6px;
+  border-radius: 0;
   background: rgba(224, 49, 39, 0.06);
   color: var(--color-danger-text);
   font-size: 12px;
@@ -7737,17 +7737,17 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-finance-dialog__header > div { min-width: 0; }
 .ehr-finance-dialog__header h3 { font-size: 20px !important; line-height: 1.3; }
 .ehr-finance-dialog__header p { margin-top: 6px !important; font-size: 13px !important; line-height: 1.4; }
-.ehr-finance-dialog__close { width: 40px !important; height: 40px !important; flex: 0 0 40px; border-radius: 6px !important; display: grid !important; place-items: center; }
+.ehr-finance-dialog__close { width: 40px !important; height: 40px !important; flex: 0 0 40px; border-radius: 0 !important; display: grid !important; place-items: center; }
 .ehr-finance-dialog__close svg { width: 20px; height: 20px; }
-.ehr-finance-dialog__primary { min-height: 44px; background: var(--accent-primary) !important; color: #fff !important; border-radius: 6px !important; }
+.ehr-finance-dialog__primary { min-height: 44px; background: var(--accent-primary) !important; color: #fff !important; border-radius: 0 !important; }
 .ehr-finance-dialog__terms > button[aria-pressed="true"] { border: 2px solid var(--accent-text) !important; background: color-mix(in srgb, var(--accent-primary) 10%, transparent) !important; }
 .ehr-finance-dialog__terms > button[aria-pressed="true"] > div { color: var(--accent-text) !important; }
 .ehr-finance-dialog__body { padding: 20px var(--dialog-gutter) !important; }
 .ehr-finance-dialog :is(label, .pp-field-label) { text-transform: none !important; letter-spacing: normal !important; font-size: 13px !important; line-height: 1.4; }
-.ehr-finance-dialog :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) { min-width: 0; box-sizing: border-box; font-size: 14px !important; border-radius: 6px !important; }
+.ehr-finance-dialog :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) { min-width: 0; box-sizing: border-box; font-size: 14px !important; border-radius: 0 !important; }
 .ehr-finance-dialog :is(input:not([type="checkbox"]):not([type="radio"]), select) { min-height: 44px; }
 .ehr-finance-dialog__footer { padding: 16px var(--dialog-gutter) !important; gap: 12px !important; align-items: center; }
-.ehr-finance-dialog :is(.ehr-finance-dialog__footer, .ehr-finance-dialog__actions) > button { min-height: 44px; border-radius: 6px !important; }
+.ehr-finance-dialog :is(.ehr-finance-dialog__footer, .ehr-finance-dialog__actions) > button { min-height: 44px; border-radius: 0 !important; }
 .ehr-finance-dialog button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
 .ehr-finance-dialog button:disabled { cursor: not-allowed !important; opacity: .55; }
 .ehr-finance-dialog--padded { padding: var(--dialog-gutter); }
@@ -7804,7 +7804,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--ehr-border);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--ehr-panel);
 }
 
@@ -7840,7 +7840,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   flex: 0 0 auto;
   place-items: center;
   border: 1px solid var(--ehr-border);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   color: var(--ehr-text);
 }
@@ -7882,7 +7882,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   flex: 0 0 auto;
   place-items: center;
   border: 1px solid var(--ehr-border);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--ehr-panel, #fff);
   color: var(--accent-text);
 }
@@ -7954,7 +7954,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-checkin-section {
   padding: 14px;
   border: 1px solid var(--ehr-border);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--bg-card-solid);
 }
 
@@ -8095,7 +8095,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
     height: 38px;
     padding: 0 8px;
     overflow: visible;
-    border-radius: 6px;
+    border-radius: 0;
   }
 
   .ehr-top-brand img {
@@ -8320,7 +8320,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
     height: 38px;
     padding: 0 8px;
     overflow: visible;
-    border-radius: 6px;
+    border-radius: 0;
   }
 
   .ehr-top-brand-logo-full {
@@ -8437,7 +8437,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .ehr-consult-patient-picker {
-  border-radius: 6px !important;
+  border-radius: 0 !important;
   padding: 0 !important;
   margin-bottom: 8px !important;
   overflow: visible !important;
@@ -8456,7 +8456,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   gap: 12px;
   padding: 8px 10px 8px 14px;
   border: 1px solid var(--ehr-border);
-  border-radius: 6px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--ehr-blue) 5%, var(--ehr-panel));
 }
 
@@ -8486,7 +8486,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   min-width: 76px;
   margin-inline-start: auto;
   border: 1px solid var(--ehr-border);
-  border-radius: 5px;
+  border-radius: 0;
   background: var(--ehr-panel);
   color: var(--text-strong);
   font-size: 12px;
@@ -8507,7 +8507,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   margin-bottom: 10px;
   padding: 10px 12px;
   border: 1px solid var(--ehr-border);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--ehr-panel);
 }
 
@@ -8659,7 +8659,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   justify-content: center;
   gap: 2px;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px dashed var(--border-medium);
   background: var(--overlay-subtle);
 }
@@ -8844,7 +8844,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   display: flex;
   flex-direction: column;
   min-height: 100%;
-  border-radius: 6px !important;
+  border-radius: 0 !important;
 }
 
 .ehr-consult-progress-list {
@@ -8865,7 +8865,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   gap: 12px;
   padding: 7px 12px;
   border: 1px solid var(--ehr-border);
-  border-radius: 6px;
+  border-radius: 0;
 }
 
 .ehr-soap-scroll label {
@@ -8897,7 +8897,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   flex-direction: column;
   gap: 12px;
   padding: 16px !important;
-  border-radius: 6px !important;
+  border-radius: 0 !important;
 }
 
 .ehr-chart-details {
@@ -9067,7 +9067,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   height: 100%;
   padding: 8px 12px;
   border: 1px solid var(--ehr-border);
-  border-radius: 3px;
+  border-radius: 0;
   background: var(--ehr-panel);
 }
 
@@ -9649,7 +9649,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   height: 100%;
   padding: 16px 18px;
   border: 1px solid var(--border-light);
-  border-radius: 2px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   box-shadow: none;
   cursor: pointer;
@@ -9865,7 +9865,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   min-width: 96px;
   height: 28px;
   border: 1px solid var(--border-light);
-  border-radius: 3px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   color: var(--text-secondary);
   font-size: 12px;
@@ -9885,7 +9885,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   height: 30px;
   display: grid;
   place-items: center;
-  border-radius: 3px;
+  border-radius: 0;
   background: var(--color-slate-150);
   color: var(--text-secondary);
   font-size: 11px;
@@ -10384,7 +10384,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .billing-card-action {
   min-height: 34px;
   padding: 0 12px;
-  border-radius: 6px !important;
+  border-radius: 0 !important;
   white-space: nowrap;
 }
 
@@ -10471,7 +10471,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-checkin-form-actions .btn-lg {
   padding: 8px 18px;
   font-size: 0.84rem;
-  border-radius: 7px;
+  border-radius: 0;
 }
 
 .ehr-chart-page input,
@@ -10479,7 +10479,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-chart-page textarea {
   min-height: 36px;
   border: 1px solid var(--ehr-border) !important;
-  border-radius: 3px !important;
+  border-radius: 0 !important;
   background: var(--bg-card-solid) !important;
   color: var(--ehr-text) !important;
 }
@@ -10504,7 +10504,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .ehr-encounter-card {
   border: 1px solid var(--ehr-border) !important;
-  border-radius: 4px !important;
+  border-radius: 0 !important;
   background: var(--bg-card-solid) !important;
   box-shadow: none !important;
 }
@@ -10533,7 +10533,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .tebra-panel {
-  border-radius: 4px;
+  border-radius: 0;
   background: var(--bg-card-solid);
 }
 
@@ -10564,7 +10564,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .tebra-demo-tabs button {
   background: var(--ehr-panel-soft);
-  border-radius: 4px 4px 0 0;
+  border-radius: 0;
 }
 
 .tebra-demo-tabs button.active {
@@ -10986,7 +10986,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   max-width: min(220px, 52vw);
   height: 30px;
   border: 1px solid var(--border-light);
-  border-radius: 7px;
+  border-radius: 0;
   background: var(--bg-secondary);
   color: var(--text-strong);
   font-size: 12px;
@@ -11015,7 +11015,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 /* ── Patient header banner: rounded, aligned, single-line ── */
-/* The blanket `.ehr-chart-page .card-elevated { border-radius: 0 }` squares
+/* The blanket `.ehr-chart-page .card-elevated { border-radius: 0}` squares
    every chart card; the banner is the page's headline card and reads better
    rounded (higher specificity, so it wins over the blanket rule). */
 .ehr-chart-page .card-elevated.ehr-patient-banner {
@@ -11188,7 +11188,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   gap: 10px;
   padding: 12px 14px;
   border: 1px solid var(--ehr-border-soft);
-  border-radius: 4px;
+  border-radius: 0;
   background: var(--bg-card-solid);
 }
 
@@ -11227,7 +11227,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   gap: 8px;
   padding: 0 10px;
   border: 1px solid var(--ehr-border-soft);
-  border-radius: 4px;
+  border-radius: 0;
   color: var(--ehr-text);
   font-size: var(--type-size-caption);
   font-weight: var(--type-weight-medium);
@@ -11355,7 +11355,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 .ehr-chart-content .record-signature-bar {
   border-color: var(--ehr-ledger-border) !important;
   background: var(--ehr-ledger-soft) !important;
-  border-radius: 4px !important;
+  border-radius: 0 !important;
 }
 
 .ehr-chart-content .tebra-demo-tabs {
@@ -11411,11 +11411,11 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 
 .ehr-chart-subtabs button:first-child {
   border-inline-start-width: 1px;
-  border-radius: 8px 0 0 8px;
+  border-radius: 0;
 }
 
 .ehr-chart-subtabs button:last-child {
-  border-radius: 0 8px 8px 0;
+  border-radius: 0;
 }
 
 .ehr-chart-subtabs button:hover:not(.is-active),
@@ -11594,7 +11594,7 @@ html, body { overflow-x: hidden; max-width: 100vw; }
 /* -- Responsive card padding -- */
 @media (max-width: 639px) {
   .card, .card-elevated, .card-glass, .glass-section {
-    border-radius: 10px;
+    border-radius: 0;
   }
   .glass-section-body {
     padding: 12px;
@@ -11764,7 +11764,7 @@ canvas {
   background: var(--overlay-light);
   background-size: auto;
   animation: shimmer 1.5s ease-in-out infinite;
-  border-radius: 4px;
+  border-radius: 0;
 }
 
 /* ============ Focus visible ============ */
@@ -11983,7 +11983,7 @@ svg circle {
   background: var(--bg-card) !important;
   color: var(--text-secondary) !important;
   border: 1px solid var(--border-panel) !important;
-  border-radius: 4px !important;
+  border-radius: 0 !important;
   padding: 3px 8px !important;
   font-size: 10px !important;
   font-family: var(--font-platform) !important;
@@ -12009,7 +12009,7 @@ svg circle {
 .leaflet-control-attribution {
   background: var(--overlay-subtle) !important;
   font-size: 9px !important;
-  border-radius: 3px !important;
+  border-radius: 0 !important;
 }
 
 /* ============ Hide scrollbar ============ */
@@ -12154,7 +12154,7 @@ svg circle {
 .page-header__icon {
   width: 48px;
   height: 48px;
-  border-radius: 6px;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -12239,7 +12239,7 @@ svg circle {
 .dash-stat__icon {
   width: 36px;
   height: 36px;
-  border-radius: 4px;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -12297,7 +12297,7 @@ svg circle {
 .data-tile {
   background: var(--bg-tinted, #F1F3F5);
   border: 1px solid var(--border-light);
-  border-radius: 4px;
+  border-radius: 0;
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
@@ -12370,7 +12370,7 @@ svg circle {
 }
 .data-row:last-child { border-bottom: none; }
 .data-row__icon {
-  width: 32px; height: 32px; border-radius: 4px;
+  width: 32px; height: 32px; border-radius: 0;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
   background: var(--accent-light);
@@ -12425,7 +12425,7 @@ span:has(> svg:only-child) {
 .icon-box {
   width: 32px;
   height: 32px;
-  border-radius: 4px;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -12435,7 +12435,7 @@ span:has(> svg:only-child) {
 .icon-box-sm {
   width: 28px;
   height: 28px;
-  border-radius: 3px;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -12445,7 +12445,7 @@ span:has(> svg:only-child) {
 .icon-box-lg {
   width: 36px;
   height: 36px;
-  border-radius: 4px;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -12530,7 +12530,7 @@ span:has(> svg:only-child) {
   overflow: hidden;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-medium);
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: 0 18px 48px rgba(0, 29, 63, 0.18);
 }
 
@@ -12559,7 +12559,7 @@ span:has(> svg:only-child) {
   width: 32px;
   height: 32px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 0;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -12772,14 +12772,14 @@ span:has(> svg:only-child) {
   flex-direction: column;
   overflow: hidden;
   padding: 0;
-  border-radius: 6px;
+  border-radius: 0;
   box-shadow: -8px 0 24px rgba(8, 87, 58, 0.14);
   animation: none;
 }
 .appointment-detail-panel--clinical {
   height: auto;
   max-height: min(680px, calc(100vh - 32px));
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   box-shadow: 0 24px 60px rgba(8, 87, 58, 0.28);
 }
@@ -12814,7 +12814,7 @@ span:has(> svg:only-child) {
   margin-top: 14px;
   padding: 14px;
   border: 1px solid var(--ehr-border-soft);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--ehr-panel-soft);
 }
 .appointment-doctor-next h3 {
@@ -12907,11 +12907,11 @@ span:has(> svg:only-child) {
   flex: 1 1 0;
 }
 .ehr-right-rail-overlay .appointment-detail-modal__split-main {
-  border-radius: 7px;
+  border-radius: 0;
   padding: 0;
 }
 .ehr-right-rail-overlay .appointment-detail-modal__more-toggle {
-  border-radius: 7px;
+  border-radius: 0;
   padding: 0;
   gap: 2px;
 }
@@ -13122,7 +13122,7 @@ span:has(> svg:only-child) {
   width: 44px;
   min-width: 44px;
   height: 24px;
-  border-radius: 12px;
+  border-radius: 0;
   border: none;
   outline: none;
   cursor: pointer;
@@ -13239,7 +13239,7 @@ span:has(> svg:only-child) {
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 7px;
+  border-radius: 0;
   background: transparent;
   color: var(--color-white);
   cursor: pointer;
@@ -13405,7 +13405,7 @@ span:has(> svg:only-child) {
   gap: 6px;
   min-height: 34px;
   padding: 0 12px;
-  border-radius: 7px;
+  border-radius: 0;
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
@@ -13425,7 +13425,7 @@ span:has(> svg:only-child) {
   gap: 6px;
   min-height: 34px;
   padding: 0 10px;
-  border-radius: 7px 0 0 7px;
+  border-radius: 0;
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
@@ -13450,12 +13450,12 @@ span:has(> svg:only-child) {
 
 .appointment-detail-modal__split-toggle {
   border-inline-start: 0;
-  border-radius: 0 7px 7px 0;
+  border-radius: 0;
 }
 
 .appointment-detail-modal__more-toggle {
   flex: 1 1 0;
-  border-radius: 7px;
+  border-radius: 0;
 }
 
 .appointment-detail-modal__split-toggle:hover,
@@ -13472,7 +13472,7 @@ span:has(> svg:only-child) {
   display: flex;
   flex-direction: column;
   padding: 6px;
-  border-radius: 10px;
+  border-radius: 0;
   border: 1px solid var(--border-medium);
   background: var(--bg-card-solid);
   box-shadow: 0 12px 28px rgba(0, 29, 63, 0.18);
@@ -13489,7 +13489,7 @@ span:has(> svg:only-child) {
   gap: 8px;
   padding: 8px 10px;
   border: 0;
-  border-radius: 7px;
+  border-radius: 0;
   background: transparent;
   color: var(--text-strong);
   font-size: 12.5px;
@@ -13827,7 +13827,7 @@ span:has(> svg:only-child) {
   .ehr-module-trigger {
     width: 34px !important;
     height: 34px !important;
-    border-radius: 10px;
+    border-radius: 0;
   }
 
   .ehr-mobile-search-trigger {
@@ -14125,7 +14125,7 @@ span:has(> svg:only-child) {
 /* ── Events: week / day slots ── */
 .rbc-tamam .rbc-day-slot .rbc-event {
   padding: 5px 8px 5px 13px;
-  border-radius: 8px !important;
+  border-radius: 0 !important;
   border: none !important;
   overflow: hidden;
   display: flex;
@@ -14149,8 +14149,8 @@ span:has(> svg:only-child) {
   bottom: 0;
   width: 4px;
   background: var(--gcal-accent, rgba(255, 255, 255, 0.55));
-  border-start-start-radius: 8px;
-  border-end-start-radius: 8px;
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
 }
 /* RBC's own time label is hidden — the block renders its own, so that the
    short-visit case can fold the time onto the title's line. */
@@ -14278,7 +14278,7 @@ span:has(> svg:only-child) {
 
 /* ── Events: month view (compact pill) ── */
 .rbc-tamam .rbc-row-segment .rbc-event {
-  border-radius: 4px !important;
+  border-radius: 0 !important;
   border: none !important;
   padding: 1px 6px;
   margin: 1px 3px;
@@ -14314,7 +14314,7 @@ span:has(> svg:only-child) {
 .rbc-tamam .rbc-month-view .rbc-event,
 .rbc-tamam .rbc-month-view .rbc-event.rbc-selected {
   padding: 1px 6px 1px 4px;
-  border-radius: 4px;
+  border-radius: 0;
   background: transparent;
   box-shadow: none;
 }
@@ -14455,7 +14455,7 @@ span:has(> svg:only-child) {
   width: 100%;
   padding: 1px 6px 1px 4px;
   border: none;
-  border-radius: 4px;
+  border-radius: 0;
   background: transparent;
   text-align: start;
   cursor: pointer;
@@ -14484,7 +14484,7 @@ span:has(> svg:only-child) {
 .rbc-tamam .rbc-slot-selection {
   background: var(--accent-light);
   border: 1px solid var(--accent-border);
-  border-radius: 4px;
+  border-radius: 0;
   color: var(--accent-text);
   font-size: 12px;
   font-weight: 600;
@@ -15012,7 +15012,7 @@ span:has(> svg:only-child) {
   .tamam-ehr-app .card,
   .tamam-ehr-app .dash-card,
   .tamam-ehr-app .card-elevated {
-    border-radius: 6px !important;
+    border-radius: 0 !important;
   }
 
   .tamam-ehr-app table,
@@ -15182,7 +15182,7 @@ span:has(> svg:only-child) {
   .ehr-clinical-dashboard-header .ehr-schedule-actions > button {
     width: 36px;
     min-width: 36px;
-    border-radius: 16px;
+    border-radius: 0;
   }
 
   .ehr-clinical-dashboard-header .ehr-schedule-actions > button::after {
@@ -15217,7 +15217,7 @@ span:has(> svg:only-child) {
   .ehr-clinical-strip button {
     width: 100%;
     flex-direction: row;
-    border-radius: 16px;
+    border-radius: 0;
   }
 }
 
@@ -15386,7 +15386,7 @@ span:has(> svg:only-child) {
   height: 26px;
   padding: 0 9px;
   border: 1px solid var(--ehr-ledger-border, var(--border-light));
-  border-radius: 4px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   color: var(--accent-text);
   font-size: 12px;
@@ -15585,7 +15585,7 @@ span:has(> svg:only-child) {
     gap: 2px;
     padding: 10px 12px;
     border: 1px solid var(--border-light);
-    border-radius: 12px;
+    border-radius: 0;
     background: var(--bg-card);
     box-shadow: var(--card-shadow) !important;
     text-align: start;
@@ -15734,7 +15734,7 @@ span:has(> svg:only-child) {
     gap: 8px;
     padding: 0 12px;
     border: 1px solid var(--border-light);
-    border-radius: 12px;
+    border-radius: 0;
     background: var(--bg-card);
     color: var(--accent-text);
     box-shadow: none;
@@ -16161,7 +16161,7 @@ span:has(> svg:only-child) {
 
 /* Assigned patients: reference-style clinical worklist. */
 .ehr-worklist-panel {
-  border-radius: 18px;
+  border-radius: 0;
   border-color: var(--ehr-border);
   background: var(--bg-card-solid);
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.04) !important;
@@ -16192,7 +16192,7 @@ span:has(> svg:only-child) {
   min-width: 200px;
   max-width: 440px;
   margin-inline: auto;
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--ehr-head);
 }
 
@@ -16314,7 +16314,7 @@ span:has(> svg:only-child) {
 .ehr-worklist-row .ehr-patient-icon--sm {
   width: 42px;
   height: 42px;
-  border-radius: 10px;
+  border-radius: 0;
   font-size: 13px;
   font-weight: 800;
 }
@@ -16480,7 +16480,7 @@ span:has(> svg:only-child) {
 .ehr-side-card,
 .ehr-worklist-panel {
   border: 1px solid var(--ehr-border);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   box-shadow: none !important;
 }
@@ -16501,7 +16501,7 @@ span:has(> svg:only-child) {
 .ehr-filter-group {
   padding: 12px;
   border: 1px solid var(--ehr-border);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--ehr-panel);
 }
 
@@ -16554,7 +16554,7 @@ span:has(> svg:only-child) {
   height: 22px;
   padding: 0;
   border: 1px solid var(--ehr-border);
-  border-radius: 7px;
+  border-radius: 0;
   background: transparent;
   color: var(--ehr-muted);
   line-height: 0;
@@ -16670,7 +16670,7 @@ span:has(> svg:only-child) {
 .ehr-week-activity-bars button:focus-visible {
   outline: 2px solid var(--ehr-blue);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 0;
 }
 
 .ehr-week-activity-track {
@@ -16692,12 +16692,12 @@ span:has(> svg:only-child) {
 
 .ehr-week-seg-out {
   background: #CC6600;
-  border-radius: 2px 2px 0 0;
+  border-radius: 0;
 }
 
 .ehr-week-seg-in {
   background: #015697;
-  border-radius: 2px 2px 0 0;
+  border-radius: 0;
 }
 
 .ehr-week-activity-days {
@@ -16730,7 +16730,7 @@ span:has(> svg:only-child) {
   width: 100%;
   max-height: min(86vh, 920px);
   background: var(--bg-card-solid);
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
 }
 
@@ -16787,7 +16787,7 @@ span:has(> svg:only-child) {
   width: 30px;
   height: 30px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 0;
   background: transparent;
   color: var(--ehr-muted);
 }
@@ -16821,7 +16821,7 @@ span:has(> svg:only-child) {
   gap: 10px;
   padding: 10px 12px;
   border: 1px solid var(--ehr-border);
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--bg-card-solid);
 }
 
@@ -16849,7 +16849,7 @@ span:has(> svg:only-child) {
 
 .ehr-handoff-section {
   border: 1px solid var(--ehr-border);
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   overflow: hidden;
 }
@@ -16920,7 +16920,7 @@ span:has(> svg:only-child) {
 .ehr-handoff-card {
   padding: 10px 12px;
   border: 1px solid var(--ehr-border);
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--bg-card-solid);
 }
 
@@ -16994,7 +16994,7 @@ textarea.ehr-handoff-input {
   min-height: 34px;
   padding: 6px 10px;
   border: 1px solid var(--ehr-border);
-  border-radius: 8px !important;
+  border-radius: 0 !important;
   background: var(--bg-card-solid);
   color: var(--ehr-text);
   font-size: 13px;
@@ -17567,7 +17567,7 @@ textarea.ehr-handoff-input {
   gap: 7px !important;
   padding: 0 10px !important;
   border: 0 !important;
-  border-radius: 6px !important;
+  border-radius: 0 !important;
   background: transparent !important;
   color: var(--nav-text, var(--ehr-muted)) !important;
   font-size: 12px !important;
@@ -17842,12 +17842,12 @@ textarea.ehr-handoff-input {
 
 .ehr-chart-content .data-table tbody td:first-child,
 .ehr-chart-content table:not(.tamam-table) tbody td:first-child {
-  border-radius: 10px 0 0 10px;
+  border-radius: 0;
 }
 
 .ehr-chart-content .data-table tbody td:last-child,
 .ehr-chart-content table:not(.tamam-table) tbody td:last-child {
-  border-radius: 0 10px 10px 0;
+  border-radius: 0;
 }
 
 .ehr-chart-content .data-table tbody tr:hover td,
@@ -17902,7 +17902,7 @@ textarea.ehr-handoff-input {
   gap: 8px;
   padding: 8px 12px;
   border: 1px solid var(--border-light);
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--bg-secondary, var(--bg-card-solid));
   color: var(--text-primary);
   font-size: 13px;
@@ -17914,7 +17914,7 @@ textarea.ehr-handoff-input {
   min-height: 30px;
   padding: 5px 10px;
   font-size: 12px;
-  border-radius: 8px;
+  border-radius: 0;
 }
 
 .popup-select-trigger:hover {
@@ -18153,7 +18153,7 @@ textarea.ehr-handoff-input {
   gap: 12px;
   background: var(--ehr-panel);
   border: 1px solid var(--ehr-border);
-  border-radius: 16px;
+  border-radius: 0;
   padding: 18px;
   box-shadow: 0 18px 40px rgba(8, 87, 58, 0.25);
 }
@@ -18181,7 +18181,7 @@ textarea.ehr-handoff-input {
   gap: 10px;
   padding: 10px 12px;
   border: 1px solid var(--ehr-border);
-  border-radius: 16px;
+  border-radius: 0;
   background: var(--ehr-panel);
 }
 
@@ -18198,7 +18198,7 @@ textarea.ehr-handoff-input {
   height: 32px;
   padding: 0 8px;
   border: 1px solid var(--ehr-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--ehr-panel);
   color: var(--text-strong);
   font-size: 12px;
@@ -18217,7 +18217,7 @@ textarea.ehr-handoff-input {
   padding: 0 13px;
   margin: 0 auto;
   border: 1px solid var(--ehr-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--ehr-panel, #FFFFFF);
   flex: 1 1 220px;
   margin-top: 0;
@@ -18265,7 +18265,7 @@ textarea.ehr-handoff-input {
   min-height: 56px;
   padding: 8px 10px;
   border: 1px solid var(--ehr-border);
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   box-shadow: none;
   color: var(--ehr-text);
@@ -18376,7 +18376,7 @@ textarea.ehr-handoff-input {
   flex: 0 0 auto;
   width: 38px;
   height: 38px;
-  border-radius: 10px;
+  border-radius: 0;
 }
 
 /* Acuity avatars are soft semantic tints (not solid triage colors), matching
@@ -18571,7 +18571,7 @@ textarea.ehr-handoff-input {
   width: 30px;
   height: 30px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 0;
   color: var(--ehr-muted);
   transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }
@@ -18646,7 +18646,7 @@ textarea.ehr-handoff-input {
 .ehr-care-list--no-actions .ehr-queue-card {
   min-height: 62px;
   padding: 8px 15px;
-  border-radius: 8px;
+  border-radius: 0;
 }
 
 .ehr-care-list--no-actions .ehr-queue-cell,
@@ -18699,10 +18699,10 @@ textarea.ehr-handoff-input {
 }
 .ehr-daybar .ehr-day-tabs button:not(.ehr-mobile-day-check):first-child {
   border-inline-start-width: 1px;
-  border-radius: 8px 0 0 8px;
+  border-radius: 0;
 }
 .ehr-daybar .ehr-day-tabs button:not(.ehr-mobile-day-check):last-child {
-  border-radius: 0 8px 8px 0;
+  border-radius: 0;
 }
 
 .ehr-daybar .ehr-day-tabs button:hover:not(.ehr-mobile-day-check):not(.active) {
@@ -18811,7 +18811,7 @@ textarea.ehr-handoff-input {
 .ehr-queue-card--mar {
   min-height: 64px;
   padding: 9px var(--ehr-queue-side-pad);
-  border-radius: 10px;
+  border-radius: 0;
 }
 
 .ehr-care-list--no-actions .ehr-queue-guide span,
@@ -18840,7 +18840,7 @@ textarea.ehr-handoff-input {
 }
 
 .ehr-queue-card--mar {
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: none !important;
 }
 
@@ -18917,7 +18917,7 @@ textarea.ehr-handoff-input {
 .ehr-queue-move-comment textarea {
   padding: 8px 10px;
   border: 1px solid var(--ehr-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--ehr-panel);
   color: var(--ehr-text);
   font-size: 13px;
@@ -18985,7 +18985,7 @@ textarea.ehr-handoff-input {
   margin: 0;
   padding: 10px 12px;
   border-inline-start: 3px solid var(--color-danger);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--color-danger-bg);
   color: var(--ehr-text);
   font-size: 13px;
@@ -18997,7 +18997,7 @@ textarea.ehr-handoff-input {
   margin: 0;
   padding: 10px 12px;
   border-inline-start: 3px solid var(--accent-primary);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--accent-light);
   color: var(--ehr-text);
   line-height: 1.45;
@@ -19128,7 +19128,7 @@ textarea.ehr-handoff-input {
   justify-content: center;
   width: 30px;
   height: 30px;
-  border-radius: 9px;
+  border-radius: 0;
   color: var(--ehr-muted);
 }
 
@@ -19324,7 +19324,7 @@ textarea.ehr-handoff-input {
   gap: 8px;
   padding: 9px 12px;
   border: 1px solid var(--ehr-border);
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--ehr-panel);
   color: var(--ehr-muted);
 }
@@ -19367,7 +19367,7 @@ textarea.ehr-handoff-input {
   width: 100%;
   padding: 8px 10px;
   border: none;
-  border-radius: 10px;
+  border-radius: 0;
   background: none;
   cursor: pointer;
   text-align: start;
@@ -19449,7 +19449,7 @@ textarea.ehr-handoff-input {
 .listpage-header-icon {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -19464,7 +19464,7 @@ textarea.ehr-handoff-input {
 .listpage-service-select {
   border: 1px solid var(--border-light);
   background: var(--bg-card-solid);
-  border-radius: 8px;
+  border-radius: 0;
   padding: 8px 12px;
   font-size: 13px;
   color: var(--text-primary);
@@ -19515,7 +19515,7 @@ textarea.ehr-handoff-input {
   min-width: 0;
   border: 1px solid var(--border-light);
   background: var(--bg-card-solid);
-  border-radius: 8px;
+  border-radius: 0;
   padding: 8px 12px;
 }
 .listpage-table-search input {
@@ -19530,7 +19530,7 @@ textarea.ehr-handoff-input {
 .listpage-status-select {
   border: 1px solid var(--border-light);
   background: var(--bg-card-solid);
-  border-radius: 8px;
+  border-radius: 0;
   padding: 8px 12px;
   font-size: 13px;
   color: var(--text-primary);
@@ -19602,7 +19602,7 @@ textarea.ehr-handoff-input {
   gap: 12px;
   min-height: 64px;
   padding: 9px 4px;
-  border-radius: 14px;
+  border-radius: 0;
   box-shadow: none;
 }
 
@@ -20053,7 +20053,7 @@ textarea.ehr-handoff-input {
   gap: 12px;
   padding: 12px;
   border: 1px solid var(--border-light);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--overlay-subtle);
 }
 
@@ -20070,7 +20070,7 @@ textarea.ehr-handoff-input {
   min-height: 44px;
   padding: 0 10px 0 12px;
   border: 1px solid var(--border-light);
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 }
@@ -20147,7 +20147,7 @@ textarea.ehr-handoff-input {
   min-width: 0;
   padding: 6px 8px;
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--bg-card-solid);
 }
 
@@ -20257,7 +20257,7 @@ textarea.ehr-handoff-input {
 .ehr-center-panel .ehr-appointment-row,
 .appointment-card-row.ehr-appointment-row {
   border: 1px solid var(--ehr-border);
-  border-radius: 12px;
+  border-radius: 0;
   box-shadow: none !important;
 }
 
@@ -20347,7 +20347,7 @@ textarea.ehr-handoff-input {
 
 .tamam-ehr-app .ehr-worklist-row {
   border-bottom: 0 !important;
-  border-radius: 14px;
+  border-radius: 0;
   margin: 0 0 8px;
 }
 
@@ -20359,7 +20359,7 @@ textarea.ehr-handoff-input {
   min-width: 0;
   border: 1px solid var(--border-light);
   background: var(--bg-card-solid);
-  border-radius: 8px;
+  border-radius: 0;
   padding: 8px 12px;
   font-size: 13px;
   color: var(--text-primary);
@@ -20377,7 +20377,7 @@ textarea.ehr-handoff-input {
   flex-shrink: 0;
   border: 1px solid var(--border-light);
   background: var(--bg-card-solid);
-  border-radius: 8px;
+  border-radius: 0;
   color: var(--accent-text);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, filter 0.15s;
@@ -20416,7 +20416,7 @@ textarea.ehr-handoff-input {
   flex-shrink: 0;
   border: 1px solid var(--border-light);
   background: var(--bg-card-solid);
-  border-radius: 8px;
+  border-radius: 0;
   color: var(--accent-text);
   cursor: pointer;
 }
@@ -20585,7 +20585,7 @@ textarea.ehr-handoff-input {
   .tamam-ehr-app .ehr-queue-card--triage .ehr-patient-icon {
     width: 32px;
     height: 32px;
-    border-radius: 8px;
+    border-radius: 0;
     font-size: 11px;
   }
 
@@ -20841,7 +20841,7 @@ textarea.ehr-handoff-input {
   min-height: 138px;
   padding: 20px;
   border: 1px solid rgba(1, 86, 151, 0.18);
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
   background:
     linear-gradient(135deg, rgba(1, 86, 151, 0.98), rgba(33, 145, 208, 0.92)),
@@ -20868,7 +20868,7 @@ textarea.ehr-handoff-input {
   min-height: 88px;
   padding: 16px;
   border: 1px solid rgba(255, 255, 255, 0.20);
-  border-radius: 10px;
+  border-radius: 0;
   background: rgba(255, 255, 255, 0.10);
 }
 
@@ -20926,7 +20926,7 @@ textarea.ehr-handoff-input {
   gap: 7px;
   padding: 16px;
   border: 1px solid var(--ehr-border);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
@@ -21004,7 +21004,7 @@ textarea.ehr-handoff-input {
 .ehr-set-identity {
   background: var(--bg-card-solid);
   border: 1px solid var(--ehr-border);
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
 }
 
@@ -21025,7 +21025,7 @@ textarea.ehr-handoff-input {
   height: 40px;
   display: grid;
   place-items: center;
-  border-radius: 11px;
+  border-radius: 0;
   color: #fff;
   font-size: 13px;
   font-weight: 800;
@@ -21195,7 +21195,7 @@ textarea.ehr-handoff-input {
   min-width: 0;
   padding: 9px 11px;
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--overlay-subtle);
 }
 
@@ -21275,7 +21275,7 @@ textarea.ehr-handoff-input {
   height: 48px;
   display: grid;
   place-items: center;
-  border-radius: 13px;
+  border-radius: 0;
   color: #fff;
   font-size: 15px;
   font-weight: 800;
@@ -21338,7 +21338,7 @@ textarea.ehr-handoff-input {
 .ehr-set-nav {
   background: var(--bg-card-solid);
   border: 1px solid var(--ehr-border);
-  border-radius: 12px;
+  border-radius: 0;
   padding: 6px;
   display: flex;
   flex-direction: column;
@@ -21353,7 +21353,7 @@ textarea.ehr-handoff-input {
   min-height: 36px;
   padding: 0 10px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 0;
   background: transparent;
   color: var(--text-secondary);
   font-size: 13px;
@@ -21431,7 +21431,7 @@ textarea.ehr-handoff-input {
 .ehr-set-scope {
   padding: 14px;
   border: 1px solid var(--ehr-border);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
@@ -21457,7 +21457,7 @@ textarea.ehr-handoff-input {
   gap: 8px;
   padding: 14px;
   border: 1px solid var(--ehr-border);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
@@ -21506,7 +21506,7 @@ textarea.ehr-handoff-input {
   align-items: center;
   padding: 12px;
   border: 1px solid var(--ehr-border);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   text-align: start;
   color: var(--ehr-text);
@@ -21525,7 +21525,7 @@ textarea.ehr-handoff-input {
   height: 34px;
   display: grid;
   place-items: center;
-  border-radius: 9px;
+  border-radius: 0;
   background: rgba(33, 145, 208, 0.10);
   color: var(--tb-blue-800, #113055);
 }
@@ -21572,7 +21572,7 @@ textarea.ehr-handoff-input {
 .ehr-set-section {
   background: var(--bg-card-solid);
   border: 1px solid var(--ehr-border);
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
   scroll-margin-top: 4px;
   box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
@@ -21595,7 +21595,7 @@ textarea.ehr-handoff-input {
   height: 34px;
   display: grid;
   place-items: center;
-  border-radius: 9px;
+  border-radius: 0;
   background: rgba(33, 145, 208, 0.10);
   color: var(--tb-blue-800, #113055);
 }
@@ -21714,7 +21714,7 @@ textarea.ehr-handoff-input {
   max-width: 260px;
   padding: 6px 30px 6px 12px;
   border: 1px solid var(--ehr-border);
-  border-radius: 8px !important;
+  border-radius: 0 !important;
   background: var(--bg-card-solid);
   color: var(--text-strong);
   font-size: 12.5px;
@@ -21751,7 +21751,7 @@ textarea.ehr-handoff-input {
   max-width: 100%;
   padding: 6px 12px;
   border: 1px solid var(--ehr-border);
-  border-radius: 8px !important;
+  border-radius: 0 !important;
   background: var(--bg-card-solid);
   color: var(--text-strong);
   font-size: 12.5px;
@@ -21770,7 +21770,7 @@ textarea.ehr-handoff-input {
   align-items: center;
   gap: 6px;
   padding: 5px 11px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--color-slate-75);
   color: var(--text-secondary);
   font-size: 11.5px;
@@ -21879,7 +21879,7 @@ textarea.ehr-handoff-input {
   min-height: 30px;
   padding: 0 12px;
   border: 1px solid var(--accent-primary);
-  border-radius: 7px;
+  border-radius: 0;
   background: var(--accent-primary);
   color: #fff;
   font-family: var(--font-condensed);
@@ -22004,7 +22004,7 @@ textarea.ehr-handoff-input {
   height: 32px;
   display: grid;
   place-items: center;
-  border-radius: 9px;
+  border-radius: 0;
   color: #fff;
   font-size: 11px;
   font-weight: 800;
@@ -22196,7 +22196,7 @@ textarea.ehr-handoff-input {
   place-items: center;
   width: 34px;
   height: 34px;
-  border-radius: 9px;
+  border-radius: 0;
   background: rgba(33, 145, 208, 0.10);
   color: var(--tb-blue-800, #113055);
 }
@@ -22262,7 +22262,7 @@ textarea.ehr-handoff-input {
   margin: 0 18px;
   padding: 10px 12px;
   border: 1px solid var(--border-light);
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--color-info-bg);
   color: var(--text-secondary);
 }
@@ -22297,7 +22297,7 @@ textarea.ehr-handoff-input {
 .org-set-card {
   min-width: 0;
   border: 1px solid var(--ehr-border);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   overflow: hidden;
   box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
@@ -22397,7 +22397,7 @@ textarea.ehr-handoff-input {
   min-height: 88px;
   padding: 13px 14px;
   border: 1px solid var(--ehr-border);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--bg-card-solid);
 }
 
@@ -22506,7 +22506,7 @@ textarea.ehr-handoff-input {
   gap: 11px;
   padding: 12px;
   border: 1px solid var(--ehr-border);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--bg-card-solid);
 }
 
@@ -22652,7 +22652,7 @@ textarea.ehr-handoff-input {
   gap: 6px;
   padding: 6px;
   border: 1px solid var(--ehr-border);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
@@ -22664,7 +22664,7 @@ textarea.ehr-handoff-input {
   min-height: 34px;
   padding: 0 12px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 0;
   background: transparent;
   color: var(--ehr-muted);
   font-size: 12.5px;
@@ -22707,7 +22707,7 @@ textarea.ehr-handoff-input {
 .settings-manage-shell select,
 .settings-manage-shell textarea {
   border-color: var(--ehr-border) !important;
-  border-radius: 8px !important;
+  border-radius: 0 !important;
   background-color: var(--bg-card-solid) !important;
 }
 
@@ -22754,7 +22754,7 @@ textarea.ehr-handoff-input {
   padding: 6px;
   background: var(--bg-card-solid);
   border: 1px solid var(--ehr-border);
-  border-radius: 12px;
+  border-radius: 0;
   box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
 
@@ -22793,7 +22793,7 @@ textarea.ehr-handoff-input {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 0;
   background: transparent;
   font-family: var(--font-condensed);
   font-size: 13px;
@@ -22866,7 +22866,7 @@ textarea.ehr-handoff-input {
   padding: 10px 12px;
   background: var(--bg-card-solid);
   border: 1px solid var(--ehr-border);
-  border-radius: 12px;
+  border-radius: 0;
   box-shadow: 0 1px 0 rgba(17, 48, 85, 0.03);
 }
 
@@ -22874,7 +22874,7 @@ textarea.ehr-handoff-input {
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: 9px;
+  border-radius: 0;
   background: rgba(33, 145, 208, 0.10);
   color: var(--tb-blue-800, #113055);
   font-family: var(--font-condensed);
@@ -22958,7 +22958,7 @@ textarea.ehr-handoff-input {
   margin-bottom: 14px;
   padding: 9px 12px;
   border: 1px solid var(--color-warning-border);
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--color-warning-bg);
   font-size: 12.5px;
   line-height: 1.5;
@@ -22972,7 +22972,7 @@ textarea.ehr-handoff-input {
 .fs-input {
   width: 100%;
   padding: 9px 12px;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid var(--border-medium);
   background: var(--bg-secondary);
   color: var(--text-primary);
@@ -23148,7 +23148,7 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
      inset moves onto the head below, which is opaque and sticky, so it now
      masks everything that scrolls beneath it. */
   padding: 0 10px 10px;
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   overflow: auto;
 }
@@ -23216,7 +23216,7 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  border-radius: 0;
   border: 1px solid var(--accent-border);
   background: var(--accent-light);
   color: var(--accent-primary);
@@ -23345,12 +23345,12 @@ table.patient-data-table.patient-data-table {
 
 .patient-data-row .patient-data-cell:first-child {
   border-inline-start: 1px solid var(--ehr-border);
-  border-radius: 14px 0 0 14px;
+  border-radius: 0;
 }
 
 .patient-data-row .patient-data-cell:last-child {
   border-inline-end: 1px solid var(--ehr-border);
-  border-radius: 0 14px 14px 0;
+  border-radius: 0;
 }
 
 .patient-data-row:hover .patient-data-cell,
@@ -23573,14 +23573,14 @@ table.patient-data-table.patient-data-table {
    invisible on a transparent cell, so this only shows as the tint's shape. */
 .tamam-ehr-app .ehr-list-scroll .data-table tbody td:first-child,
 .ehr-list-scroll .data-table tbody td:first-child {
-  border-start-start-radius: 14px;
-  border-end-start-radius: 14px;
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
 }
 
 .tamam-ehr-app .ehr-list-scroll .data-table tbody td:last-child,
 .ehr-list-scroll .data-table tbody td:last-child {
-  border-start-end-radius: 14px;
-  border-end-end-radius: 14px;
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
 }
 
 /* The whole row lights up, not just the cell under the cursor — the tint has
@@ -23734,7 +23734,7 @@ table.patient-data-table.patient-data-table {
   flex-direction: column;
   min-width: 0;
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
   overflow: hidden;
@@ -23804,7 +23804,7 @@ table.patient-data-table.patient-data-table {
   padding: 0 9px;
   border: 1px solid var(--border-light);
   /* Rectangular, with .sadb-chip: the two stamps appear in the same lists. */
-  border-radius: 3px;
+  border-radius: 0;
   background: var(--ehr-head);
   color: var(--text-muted);
   font-family: var(--font-condensed);
@@ -23928,7 +23928,7 @@ table.patient-data-table.patient-data-table {
   height: 30px;
   padding: 0 12px;
   border: 1px solid var(--ehr-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   color: var(--text-strong);
   font-size: 12px;
@@ -23979,7 +23979,7 @@ table.patient-data-table.patient-data-table {
   height: 30px;
   padding: 0 9px;
   border: 1px solid var(--ehr-border);
-  border-radius: 8px !important;
+  border-radius: 0 !important;
   background: var(--bg-card-solid);
   color: var(--text-strong);
   font-size: 12.5px;
@@ -24002,7 +24002,7 @@ table.patient-data-table.patient-data-table {
   height: 30px;
   padding: 0 10px;
   border: 1px solid var(--ehr-border);
-  border-radius: 8px !important;
+  border-radius: 0 !important;
   font-size: 12.5px;
   font-weight: 700;
 }
@@ -24011,7 +24011,7 @@ table.patient-data-table.patient-data-table {
   height: 30px;
   padding: 0 8px;
   border: 1px solid var(--ehr-border);
-  border-radius: 8px !important;
+  border-radius: 0 !important;
   background: var(--bg-card-solid);
   color: var(--text-secondary);
   font-size: 12px;
@@ -24064,7 +24064,7 @@ table.patient-data-table.patient-data-table {
 .gov-page-head .btn {
   min-height: 36px;
   gap: 7px;
-  border-radius: 8px;
+  border-radius: 0;
   white-space: nowrap;
 }
 .gov-page-head .btn-secondary { background: var(--bg-card-solid); border-color: var(--ehr-border); }
@@ -24127,7 +24127,7 @@ table.patient-data-table.patient-data-table {
   flex-direction: column;
   background: var(--bg-card-solid);
   border: 1px solid var(--ehr-border);
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
   overflow: hidden;
 }
@@ -24190,7 +24190,7 @@ table.patient-data-table.patient-data-table {
   font-weight: 600;
   color: var(--text-muted);
 }
-.gov-map-legend { padding: 10px 12px; background: var(--color-slate-50); border-radius: 8px; }
+.gov-map-legend { padding: 10px 12px; background: var(--color-slate-50); border-radius: 0; }
 .gov-map-legend .gov-legend-title {
   margin: 0 0 6px;
   font-family: var(--font-condensed);
@@ -24204,7 +24204,7 @@ table.patient-data-table.patient-data-table {
 .gov-map-selected {
   padding: 10px 12px;
   border: 1px solid var(--ehr-border);
-  border-radius: 8px;
+  border-radius: 0;
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -24227,7 +24227,7 @@ table.patient-data-table.patient-data-table {
 .gov-map-hint {
   padding: 10px 12px;
   border: 1px dashed var(--border-light);
-  border-radius: 8px;
+  border-radius: 0;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.5;
@@ -24295,7 +24295,7 @@ table.patient-data-table.patient-data-table {
   height: 6px;
   margin-top: 4px;
   background: var(--color-slate-75);
-  border-radius: 3px;
+  border-radius: 0;
   overflow: hidden;
 }
 .gov-rank-row .gov-rank-track > div { height: 100%; }
@@ -24325,7 +24325,7 @@ table.patient-data-table.patient-data-table {
   padding: 12px 14px;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: var(--card-shadow);
   min-width: 0;
 }
@@ -24380,10 +24380,10 @@ table.patient-data-table.patient-data-table {
   width: 120px;
   height: 6px;
   background: var(--border-light);
-  border-radius: 3px;
+  border-radius: 0;
   flex: none;
 }
-.epi-meter-fill { position: absolute; inset: 0 auto 0 0; border-radius: 3px; }
+.epi-meter-fill { position: absolute; inset: 0 auto 0 0; border-radius: 0; }
 .epi-meter-tick {
   position: absolute;
   top: -3px;
@@ -24541,7 +24541,7 @@ table.patient-data-table.patient-data-table {
    the row and what dropped out of it — no doubled hairlines. */
 .ehr-appointment-group.is-expanded {
   border: 1px solid var(--ehr-border);
-  border-radius: 14px;
+  border-radius: 0;
   overflow: hidden;
   box-shadow: var(--card-shadow, 0 1px 2px rgba(17, 48, 85, 0.05));
   margin: 4px 0 10px;
@@ -24625,7 +24625,7 @@ table.patient-data-table.patient-data-table {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin: 0;
   border: 1px solid var(--ehr-border);
-  border-radius: 10px;
+  border-radius: 0;
   overflow: hidden;
   background: var(--bg-card-solid);
 }
@@ -24761,7 +24761,7 @@ table.patient-data-table.patient-data-table {
 .ehr-visit-pop-tabs .ehr-visit-pop-icon:hover {
   padding: 0;
   border: 1px solid var(--ehr-border, var(--border-light));
-  border-radius: 6px;
+  border-radius: 0;
   font-size: 0;
 }
 
@@ -24787,7 +24787,7 @@ table.patient-data-table.patient-data-table {
   justify-content: center;
   width: 30px;
   height: 30px;
-  border-radius: 6px;
+  border-radius: 0;
   border: 1px solid var(--ehr-border, var(--border-light));
   background: var(--bg-card-solid);
   color: var(--text-secondary);
@@ -24849,7 +24849,7 @@ table.patient-data-table.patient-data-table {
   margin-top: 4px;
   padding: 10px 12px;
   border: 1px solid var(--border-light);
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--overlay-subtle);
 }
 
@@ -25076,7 +25076,7 @@ table.patient-data-table.patient-data-table {
   gap: 16px;
   padding: 18px 20px 20px;
   background: var(--bg-card-solid, var(--bg-card));
-  border-radius: 14px;
+  border-radius: 0;
 }
 
 .appt-edit-head {
@@ -25164,7 +25164,7 @@ table.patient-data-table.patient-data-table {
   min-height: 40px;
   padding: 9px 11px;
   border: 1px solid var(--border-medium, var(--border-light));
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--bg-card-solid, #FFFFFF);
   color: var(--text-strong);
   font-size: 13.5px;
@@ -25342,7 +25342,7 @@ table.patient-data-table.patient-data-table {
 .appt-edit-shell.is-inline .appt-edit-col {
   padding: 12px 14px 14px;
   border: 1px solid var(--border-light);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--bg-card-solid, #FFFFFF);
 }
 
@@ -25390,7 +25390,7 @@ table.patient-data-table.patient-data-table {
   margin: 4px 0 0;
   padding: 8px 10px;
   border: 1px solid rgba(217, 43, 32, 0.28);
-  border-radius: 8px;
+  border-radius: 0;
   background: rgba(217, 43, 32, 0.06);
 }
 
@@ -25398,7 +25398,7 @@ table.patient-data-table.patient-data-table {
 .appt-edit-shell.is-inline .appointment-billing-panel {
   padding: 10px 12px;
   border: 1px solid var(--accent-border, rgba(33, 145, 208, 0.22));
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--accent-light, rgba(33, 145, 208, 0.06));
 }
 
@@ -26169,7 +26169,7 @@ table.patient-data-table.patient-data-table {
   background-color: var(--tamam-field-01);
   border: none;
   border-bottom: 1px solid var(--tamam-ui-04);
-  /* `.tamam-ehr-app input { border-radius: 4px !important }` also matches
+  /* `.tamam-ehr-app input { border-radius: 0 !important}` also matches
      here; Carbon fields are square, so this has to out-shout it. */
   border-radius: 0 !important;
   font-size: 14px;
@@ -26340,7 +26340,7 @@ table.patient-data-table.patient-data-table {
 .registration-contact-remove {
   padding: 6px;
   border: none;
-  border-radius: 8px;
+  border-radius: 0;
   background: none;
   color: var(--color-danger);
   cursor: pointer;
@@ -26700,7 +26700,7 @@ table.patient-data-table.patient-data-table {
   font-size: 0.85rem;
   font-weight: 700;
   border: 1px solid var(--border-medium);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   color: var(--text-primary);
 }
@@ -26996,7 +26996,7 @@ table.patient-data-table.patient-data-table {
 .tamam-reg-reviewavatar {
   width: 60px;
   height: 60px;
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
   flex-shrink: 0;
   border: 1px solid var(--border-light);
@@ -27018,7 +27018,7 @@ table.patient-data-table.patient-data-table {
 .reg-dup {
   margin-top: 18px;
   border: 1px solid var(--color-warning-600);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--orange-50);
   padding: 14px;
 }
@@ -27068,7 +27068,7 @@ table.patient-data-table.patient-data-table {
   flex-wrap: wrap;
   padding: 10px 12px;
   border: 1px solid var(--border-light, var(--border-light));
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--bg-card-solid, #FFFFFF);
 }
 
@@ -27110,7 +27110,7 @@ table.patient-data-table.patient-data-table {
 
 .tamam-reg-reviewgroup {
   border: 1px solid var(--border-light, var(--border-light));
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
   background: var(--bg-card-solid, #FFFFFF);
 }
@@ -27396,7 +27396,7 @@ table.patient-data-table.patient-data-table {
    is not a popup — it keeps the plain white header it always had. */
 .modal-portal-backdrop .ehr-handoff-modal > .ehr-handoff-head {
   border-bottom-color: transparent;
-  border-radius: 12px 12px 0 0;
+  border-radius: 0;
   background: var(--accent-primary);
   color: #FFFFFF;
 }
@@ -27633,7 +27633,7 @@ table.patient-data-table.patient-data-table {
 .ehr-rail-menu-trigger-primary {
   height: 38px;
   padding: 0 14px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--accent-primary);
   color: #fff;
 }
@@ -27689,7 +27689,7 @@ table.patient-data-table.patient-data-table {
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--border-medium);
-  border-radius: 14px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   box-shadow: 0 16px 40px rgba(0, 29, 63, 0.20);
 }
@@ -27744,7 +27744,7 @@ table.patient-data-table.patient-data-table {
   display: flex;
   flex-direction: column;
   border: 1px solid var(--ehr-border);
-  border-radius: 0 0 10px 10px;
+  border-radius: 0;
   background: var(--ehr-panel);
   color: var(--ehr-text);
   box-shadow: 0 10px 22px rgba(0, 29, 63, 0.14);
@@ -27765,7 +27765,7 @@ table.patient-data-table.patient-data-table {
   overflow: hidden;
   padding: 5px 9px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 0;
   background: transparent;
   color: var(--nav-text);
   font-size: 12.5px;
@@ -27902,7 +27902,7 @@ table.patient-data-table.patient-data-table {
 .ehr-care-row .ehr-appointment-avatar {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: 0;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.3px;
@@ -28349,7 +28349,7 @@ table.patient-data-table.patient-data-table {
   padding: 0 10px;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
-  border-radius: 6px;
+  border-radius: 0;
   color: var(--text-primary);
   font-family: var(--font-condensed) !important; /* the app-wide button reset re-fonts this otherwise */
   font-size: 14px;
@@ -28460,7 +28460,7 @@ table.patient-data-table.patient-data-table {
   min-height: 0;
   background: var(--bg-card-solid);
   border: 1px solid var(--ehr-border);
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
 }
 .msgs-panel--list { flex: 0 0 320px; width: 320px; }
@@ -28488,7 +28488,7 @@ table.patient-data-table.patient-data-table {
   width: 28px;
   height: 28px;
   border: 1px solid var(--ehr-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: transparent;
   color: var(--accent-text);
   cursor: pointer;
@@ -28503,7 +28503,7 @@ table.patient-data-table.patient-data-table {
   margin: 0 16px 10px;
   padding: 0 12px;
   border: 1px solid var(--ehr-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--bg-card-solid);
 }
 .msgs-search:focus-within { border-color: var(--accent-primary); }
@@ -28653,7 +28653,7 @@ table.patient-data-table.patient-data-table {
   padding: 4px 0;
   background: var(--bg-card-solid);
   border: 1px solid var(--ehr-border);
-  border-radius: 10px;
+  border-radius: 0;
   box-shadow: 0 8px 24px rgba(17, 48, 85, 0.10);
 }
 .msgs-me-menu button {
@@ -28705,7 +28705,7 @@ table.patient-data-table.patient-data-table {
   width: 32px;
   height: 32px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 0;
   background: transparent;
   color: var(--ehr-muted);
   cursor: pointer;
@@ -28722,7 +28722,7 @@ table.patient-data-table.patient-data-table {
   padding: 4px 0;
   background: var(--bg-card-solid);
   border: 1px solid var(--ehr-border);
-  border-radius: 10px;
+  border-radius: 0;
   box-shadow: 0 8px 24px rgba(17, 48, 85, 0.10);
 }
 .msgs-menu button {
@@ -28774,7 +28774,7 @@ table.patient-data-table.patient-data-table {
 
 .msgs-bubble {
   padding: 10px 14px;
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--ehr-info-bg);
   font-size: 13.5px;
   font-weight: 600;
@@ -28809,7 +28809,7 @@ table.patient-data-table.patient-data-table {
   margin-top: 4px;
   padding: 8px 10px;
   border-inline-start: 2px solid var(--ehr-border);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--ehr-head);
   font-size: 12.5px;
   line-height: 1.5;
@@ -28844,7 +28844,7 @@ table.patient-data-table.patient-data-table {
   white-space: nowrap;
   text-overflow: ellipsis;
   border-inline-start: 2px solid var(--accent-primary);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--ehr-head);
   font-size: 11px;
   font-weight: 700;
@@ -28868,7 +28868,7 @@ table.patient-data-table.patient-data-table {
   width: 24px;
   height: 24px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 0;
   background: transparent;
   color: var(--ehr-muted);
   font-size: 12px;
@@ -28912,7 +28912,7 @@ table.patient-data-table.patient-data-table {
 .msgs-edit-box textarea {
   padding: 8px 12px;
   border: 1px solid var(--ehr-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   outline: none;
   resize: none;
@@ -28945,7 +28945,7 @@ table.patient-data-table.patient-data-table {
   width: 100%;
   padding: 8px 12px;
   border: 1px solid var(--ehr-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   outline: none;
   font-family: var(--font-platform);
@@ -28969,7 +28969,7 @@ table.patient-data-table.patient-data-table {
   min-height: 46px;
   padding: 12px 18px;
   border: 1px solid var(--ehr-border);
-  border-radius: 23px;
+  border-radius: 0;
   background: var(--bg-card-solid);
 }
 .msgs-input:focus-within { border-color: var(--accent-primary); }
@@ -29011,7 +29011,7 @@ table.patient-data-table.patient-data-table {
   margin-bottom: 8px;
   padding: 6px 12px;
   border-inline-start: 2px solid var(--accent-primary);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--ehr-head);
   font-size: 11.5px;
   font-weight: 700;
@@ -29116,7 +29116,7 @@ table.patient-data-table.patient-data-table {
   height: 36px;
   padding: 0 12px;
   border: 1px solid var(--set-line, var(--border-light));
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--set-band, #F5F7F8);
   color: var(--set-muted, #5D728B);
   font-size: 12px;
@@ -29129,7 +29129,7 @@ table.patient-data-table.patient-data-table {
 .ehr-set-btn {
   min-height: 36px;
   border-color: var(--set-line, var(--border-light));
-  border-radius: 8px;
+  border-radius: 0;
   color: var(--set-ink, #113055);
   font-family: var(--font-condensed);
   font-size: 13.5px;
@@ -29147,13 +29147,13 @@ table.patient-data-table.patient-data-table {
 /* ── Nav: flat white card, tinted active row, quiet neutral badges ── */
 .ehr-set-nav {
   border-color: var(--set-line, var(--border-light));
-  border-radius: 8px;
+  border-radius: 0;
   padding: 8px;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
 }
 .ehr-set-nav button {
   min-height: 34px;
-  border-radius: 7px;
+  border-radius: 0;
   color: var(--set-ink, #113055);
   font-size: 13px;
   font-weight: 700;
@@ -29196,7 +29196,7 @@ table.patient-data-table.patient-data-table {
 .ehr-set-nav button:focus-visible {
   outline: 2px solid var(--set-accent, #015697);
   outline-offset: -2px;
-  border-radius: 7px;
+  border-radius: 0;
 }
 .ehr-set-nav button.active b.is-badge {
   background: var(--bg-card-solid);
@@ -29222,7 +29222,7 @@ table.patient-data-table.patient-data-table {
 /* ── Sections: flat cards with #F5F7F8 head bands, caps titles, right meta ── */
 .ehr-set-section {
   border-color: var(--set-line, var(--border-light));
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
 }
 .ehr-set-section-head {
@@ -29289,7 +29289,7 @@ table.patient-data-table.patient-data-table {
   min-height: 30px;
   padding: 4px 28px 4px 11px;
   border-color: var(--set-line, var(--border-light));
-  border-radius: 6px !important;
+  border-radius: 0 !important;
   background-color: var(--set-band, #F5F7F8);
   color: var(--set-ink, #113055);
   font-size: 12.5px;
@@ -29301,7 +29301,7 @@ table.patient-data-table.patient-data-table {
 .tamam-ehr-app input.ehr-set-input {
   min-height: 30px;
   border-color: var(--set-line, var(--border-light));
-  border-radius: 6px !important;
+  border-radius: 0 !important;
   background: var(--set-band, #F5F7F8);
   color: var(--set-ink, #113055);
   font-size: 12.5px;
@@ -29365,7 +29365,7 @@ table.patient-data-table.patient-data-table {
   height: 30px;
   padding: 0 12px;
   border: 1px solid rgba(158, 27, 20, 0.45);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   color: var(--color-danger-text);
   font-family: var(--font-condensed);
@@ -29401,7 +29401,7 @@ table.patient-data-table.patient-data-table {
   color: var(--text-primary);
 }
 .org-set-head small { font-size: 11px; font-weight: 700; color: var(--text-muted); }
-.org-set-card { border-radius: 8px; box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05); }
+.org-set-card { border-radius: 0; box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05); }
 .org-set-card-head {
   padding: 10px 14px;
   background: var(--color-slate-50);
@@ -29417,7 +29417,7 @@ table.patient-data-table.patient-data-table {
 }
 .org-set-link-btn {
   min-height: 28px;
-  border-radius: 6px;
+  border-radius: 0;
   border-color: var(--border-light);
   color: var(--accent-text);
   font-family: var(--font-condensed);
@@ -29431,7 +29431,7 @@ table.patient-data-table.patient-data-table {
 /* Facility settings + management console buttons: 8px corners, condensed. */
 .fs-section .btn,
 .settings-manage-shell .btn {
-  border-radius: 8px;
+  border-radius: 0;
   font-family: var(--font-condensed);
   font-size: 13.5px;
   font-weight: 600;
@@ -29486,7 +29486,7 @@ table.patient-data-table.patient-data-table {
   height: 28px;
   padding: 0 11px;
   border-color: var(--border-light);
-  border-radius: 6px;
+  border-radius: 0;
   color: var(--accent-text);
   font-family: var(--font-condensed);
   font-size: 11px;
@@ -29508,7 +29508,7 @@ table.patient-data-table.patient-data-table {
 }
 .ehr-set-account-head b { font-size: 14px; font-weight: 700; color: var(--text-primary); }
 .ehr-set-account-head small { font-size: 11.5px; font-weight: 700; color: var(--text-muted); }
-.ehr-set-account-head > span { border-radius: 12px; font-weight: 700; }
+.ehr-set-account-head > span { border-radius: 0; font-weight: 700; }
 .ehr-set-account-gear {
   border-color: var(--border-light);
   background: var(--bg-card-solid);
@@ -29529,13 +29529,13 @@ table.patient-data-table.patient-data-table {
 /* Scope card + "You control" chips onto the design's card and chip shapes. */
 .ehr-set-scope {
   border-color: var(--border-light);
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
 }
 .ehr-set-scope b { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
 .ehr-set-chips {
   border-color: var(--border-light);
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
 }
 .ehr-set-chips > span {
@@ -29562,12 +29562,12 @@ table.patient-data-table.patient-data-table {
 /* Shortcut tiles: white on hairlines, tint on hover, condensed labels. */
 .ehr-set-shortcuts button {
   border-color: var(--border-light);
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
 }
 .ehr-set-shortcuts button:hover { border-color: var(--border-accent); background: var(--color-info-bg); }
 .ehr-set-shortcuts button > span {
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--color-info-bg);
   color: var(--accent-text);
 }
@@ -29577,8 +29577,8 @@ table.patient-data-table.patient-data-table {
 .ehr-set-acct-readonly { border-color: var(--border-light); background: var(--color-slate-50); }
 
 /* Management-console tab strip onto the design's nav treatment. */
-.settings-tab-strip { border-color: var(--border-light); border-radius: 8px; box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05); }
-.settings-tab-strip button { border-radius: 7px; color: var(--text-primary); font-weight: 700; }
+.settings-tab-strip { border-color: var(--border-light); border-radius: 0; box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05); }
+.settings-tab-strip button { border-radius: 0; color: var(--text-primary); font-weight: 700; }
 .settings-tab-strip button:hover { background: var(--color-slate-50); color: var(--text-primary); }
 .settings-tab-strip button.active { background: var(--color-info-bg); color: var(--text-primary); font-weight: 700; }
 
@@ -29683,7 +29683,7 @@ table.patient-data-table.patient-data-table {
   z-index: 80;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
-  border-radius: 10px;
+  border-radius: 0;
   box-shadow: 0 14px 40px rgba(17, 48, 85, 0.25);
   overflow: hidden;
   padding: 5px;
@@ -29695,7 +29695,7 @@ table.patient-data-table.patient-data-table {
   padding: 8px 10px;
   background: transparent;
   border: 0;
-  border-radius: 7px;
+  border-radius: 0;
   text-align: start;
   cursor: pointer;
 }
@@ -29753,7 +29753,7 @@ table.patient-data-table.patient-data-table {
   padding: 8px 10px;
   background: transparent;
   border: 0;
-  border-radius: 7px;
+  border-radius: 0;
   color: var(--text-primary);
   font-family: var(--font-platform);
   font-size: 13px;
@@ -29800,7 +29800,7 @@ table.patient-data-table.patient-data-table {
   padding: 10px 12px;
   background: transparent;
   border: 0;
-  border-radius: 8px;
+  border-radius: 0;
   color: var(--text-primary);
   font-family: var(--font-platform);
   font-size: 13.5px;
@@ -29871,7 +29871,7 @@ table.patient-data-table.patient-data-table {
   gap: 7px;
   min-height: 38px;
   padding: 0 16px;
-  border-radius: 8px;
+  border-radius: 0;
   font-family: var(--font-condensed);
   font-size: 14px;
   font-weight: 700;
@@ -29895,7 +29895,7 @@ table.patient-data-table.patient-data-table {
   gap: 5px;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
-  border-radius: 6px;
+  border-radius: 0;
   color: var(--accent-text);
   font-family: var(--font-condensed);
   font-size: 11px;
@@ -29914,7 +29914,7 @@ table.patient-data-table.patient-data-table {
   padding: 0 12px;
   background: var(--accent-primary);
   border: 0;
-  border-radius: 6px;
+  border-radius: 0;
   color: #ffffff;
   font-family: var(--font-condensed);
   font-size: 11px;
@@ -29929,7 +29929,7 @@ table.patient-data-table.patient-data-table {
 .pp-card {
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
-  border-radius: 12px;
+  border-radius: 0;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
   overflow: hidden;
 }
@@ -30017,7 +30017,7 @@ table.patient-data-table.patient-data-table {
 .pp-row-detail { padding: 2px 16px 14px; }
 .pp-row-detail-box {
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--color-slate-50);
   border: 1px solid var(--border-light);
 }
@@ -30054,7 +30054,7 @@ table.patient-data-table.patient-data-table {
 .pp-tile {
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
-  border-radius: 12px;
+  border-radius: 0;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
   padding: 14px 16px;
 }
@@ -30100,7 +30100,7 @@ table.patient-data-table.patient-data-table {
   height: 30px;
   display: grid;
   place-items: center;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--color-info-bg);
   color: var(--accent-text);
 }
@@ -30122,7 +30122,7 @@ table.patient-data-table.patient-data-table {
   text-align: center;
   padding: 5px 0;
   background: var(--color-info-bg);
-  border-radius: 8px;
+  border-radius: 0;
 }
 .pp-date-plate b {
   display: block;
@@ -30171,7 +30171,7 @@ table.patient-data-table.patient-data-table {
 .pp-bubble {
   max-width: 72%;
   padding: 9px 13px;
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--color-slate-75);
   color: var(--text-primary);
   font-size: 13px;
@@ -30193,7 +30193,7 @@ table.patient-data-table.patient-data-table {
   padding: 0 13px;
   background: var(--color-slate-50);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: 0;
   outline: none;
   font-family: var(--font-platform);
   font-size: 13px;
@@ -30271,7 +30271,7 @@ table.patient-data-table.patient-data-table {
   padding: clamp(18px, 2.2vw, 28px);
   background: var(--accent-primary);
   color: #ffffff;
-  border-radius: 14px;
+  border-radius: 0;
 }
 .pp-hero-date { margin: 0; font-family: var(--font-condensed); font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.78); }
 .pp-hero h1 { margin: 4px 0 0; font-family: var(--font-condensed); font-size: clamp(26px, 3vw, 36px); font-weight: 800; letter-spacing: -0.015em; line-height: 1.1; color: #ffffff; }
@@ -30286,7 +30286,7 @@ table.patient-data-table.patient-data-table {
   padding: 0 16px;
   background: rgba(255, 255, 255, 0.14);
   border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 10px;
+  border-radius: 0;
   color: #ffffff;
   font-family: var(--font-condensed);
   font-size: 14.5px;
@@ -30304,7 +30304,7 @@ table.patient-data-table.patient-data-table {
 .pp-hero-btn--solid { background: var(--color-white); border-color: var(--color-white); color: var(--tm-navy); }
 .pp-hero-btn--solid:hover { background: color-mix(in srgb, var(--color-white) 90%, var(--accent-primary)); }
 .pp-hero .pp-hero-btn--solid svg.lucide, .pp-hero .pp-hero-btn--solid svg.lucide * { color: var(--tm-navy); stroke: var(--tm-navy); }
-.pp-hero-next { display: flex; flex-direction: column; gap: 10px; padding: 16px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 12px; }
+.pp-hero-next { display: flex; flex-direction: column; gap: 10px; padding: 16px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 0; }
 .pp-hero-next-label { display: flex; align-items: center; gap: 6px; margin: 0; font-family: var(--font-condensed); font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.8); }
 .pp-hero-next-body { display: flex; align-items: center; gap: 14px; padding: 0; background: none; border: 0; text-align: start; cursor: pointer; color: #ffffff; font-family: var(--font-platform); }
 .pp-hero-next-body .pp-date-plate { width: 56px; padding: 8px 0; background: var(--color-white); }
@@ -30359,7 +30359,7 @@ table.patient-data-table.patient-data-table {
 .pp-cards > .pp-row, .pp-cards > .pp-item {
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
-  border-radius: 12px;
+  border-radius: 0;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
   overflow: hidden;
 }
@@ -30382,7 +30382,7 @@ table.patient-data-table.patient-data-table {
 .pp-bk-close { margin-inline-end: -10px; }
 .pp-bk-facility { margin: 0 0 10px; font-size: 12.5px; color: var(--text-secondary); }
 .pp-bk-steps { display: flex; gap: 6px; margin-bottom: 16px; }
-.pp-bk-steps i { flex: 1; height: 4px; border-radius: 2px; background: var(--border-light); }
+.pp-bk-steps i { flex: 1; height: 4px; border-radius: 0; background: var(--border-light); }
 .pp-bk-steps i.on { background: var(--accent-primary); }
 .pp-bk-q { margin: 0 0 10px; font-size: 15px; font-weight: 700; color: var(--text-primary); }
 .pp-bk-label { display: block; margin: 0 0 6px; padding: 0; font-size: 12.5px; font-weight: 700; color: var(--text-secondary); text-transform: none; letter-spacing: normal; }
@@ -30392,9 +30392,9 @@ table.patient-data-table.patient-data-table {
 .pp-bk-hint { margin: 4px 0 0; font-size: 12px; color: var(--text-muted); }
 .pp-bk-loading { display: flex; align-items: center; gap: 6px; }
 .pp-bk-wide { width: 100%; min-height: 48px; }
-.pp-bk-callme { margin-top: 14px; padding: 14px; border: 1px solid var(--border-light); border-radius: 10px; }
+.pp-bk-callme { margin-top: 14px; padding: 14px; border: 1px solid var(--border-light); border-radius: 0; }
 .pp-bk-reasons { display: flex; flex-direction: column; gap: 8px; }
-.pp-bk-reason { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 60px; padding: 10px 14px; background: var(--bg-card-solid); border: 1px solid var(--border-light); border-radius: 10px; text-align: start; cursor: pointer; color: var(--text-primary); font-family: var(--font-platform); }
+.pp-bk-reason { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 60px; padding: 10px 14px; background: var(--bg-card-solid); border: 1px solid var(--border-light); border-radius: 0; text-align: start; cursor: pointer; color: var(--text-primary); font-family: var(--font-platform); }
 .pp-bk-reason:hover { border-color: var(--border-accent); background: var(--color-info-bg); }
 .pp-bk-reason-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .pp-bk-reason-text b { font-size: 14.5px; }
@@ -30405,13 +30405,13 @@ table.patient-data-table.patient-data-table {
 .pp-bk-nav { min-height: 44px; min-width: 44px; padding: 0; }
 .pp-bk-day { margin-bottom: 14px; }
 .pp-bk-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
-.pp-bk-slot { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; min-height: 54px; padding: 6px 12px; background: var(--bg-card-solid); border: 1px solid var(--border-light); border-radius: 10px; cursor: pointer; color: var(--text-primary); font-family: var(--font-platform); text-align: start; }
+.pp-bk-slot { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; min-height: 54px; padding: 6px 12px; background: var(--bg-card-solid); border: 1px solid var(--border-light); border-radius: 0; cursor: pointer; color: var(--text-primary); font-family: var(--font-platform); text-align: start; }
 .pp-bk-slot:hover { border-color: var(--accent-primary); background: var(--color-info-bg); }
 .pp-bk-slot b { font-size: 15px; font-variant-numeric: tabular-nums; }
 .pp-bk-slot small { font-size: 12px; color: var(--text-secondary); overflow-wrap: anywhere; }
 .pp-bk-link { min-height: 44px; margin-top: 6px; }
 .pp-bk-form { display: flex; flex-direction: column; gap: 14px; }
-.pp-bk-summary { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; background: var(--color-info-bg); border: 1px solid var(--color-info-border); border-radius: 10px; }
+.pp-bk-summary { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; background: var(--color-info-bg); border: 1px solid var(--color-info-border); border-radius: 0; }
 .pp-bk-summary b { font-size: 15px; }
 .pp-bk-summary span { font-size: 13.5px; font-weight: 700; }
 .pp-bk-summary small { font-size: 12.5px; color: var(--text-secondary); }
@@ -30525,7 +30525,7 @@ table.patient-data-table.patient-data-table {
   min-width: 0;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
   overflow: hidden;
 }
@@ -30541,8 +30541,8 @@ table.patient-data-table.patient-data-table {
   /* A shade off white so the head reads as a head and the card reads as a
      card. White-on-white left every heading floating over its own content. */
   background: var(--overlay-subtle);
-  border-start-start-radius: 8px;
-  border-start-end-radius: 8px;
+  border-start-start-radius: 0;
+  border-start-end-radius: 0;
 }
 .sadb-card-title {
   margin: 0;
@@ -30579,7 +30579,7 @@ table.patient-data-table.patient-data-table {
   height: 32px;
   padding: 0;
   border: 1px solid var(--border-light);
-  border-radius: 7px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   color: var(--accent-text);
   cursor: pointer;
@@ -30646,7 +30646,7 @@ table.patient-data-table.patient-data-table {
   padding: 13px 15px 14px;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
   min-width: 0;
 }
@@ -30654,8 +30654,8 @@ table.patient-data-table.patient-data-table {
 /* ── Mobile: cards read more like app cards — a softer corner and more room
    to breathe — while staying flat (no lift or glow, per the design). ── */
 @media (max-width: 639px) {
-  .sadb-card { border-radius: 13px; }
-  .sadb-kpi { border-radius: 13px; padding: 14px 16px; }
+  .sadb-card { border-radius: 0; }
+  .sadb-kpi { border-radius: 0; padding: 14px 16px; }
   .sadb-page { gap: 12px; }
 }
 
@@ -30698,7 +30698,7 @@ button.sadb-kpi:hover { border-color: var(--brand-300); background: var(--tb-blu
   padding: 0 9px;
   /* Rectangles, not pills. A status is a stamp on a dense console row; at
      22px the 999px pill read as a button, and softened the whole console. */
-  border-radius: 3px;
+  border-radius: 0;
   white-space: nowrap;
   line-height: 1;
   font-family: var(--font-condensed);
@@ -30732,7 +30732,7 @@ button.sadb-kpi:hover { border-color: var(--brand-300); background: var(--tb-blu
   width: fit-content;
   padding: 2px 9px;
   border: 1px solid var(--border-light);
-  border-radius: 3px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   font-family: var(--font-condensed);
   font-weight: 700;
@@ -30793,7 +30793,7 @@ button.sadb-kpi:hover { border-color: var(--brand-300); background: var(--tb-blu
   width: 100%;
   text-align: start;
   padding: 7px 10px;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid transparent;
 }
 button.sadb-signal { cursor: pointer; }
@@ -30844,7 +30844,7 @@ button.sadb-signal { cursor: pointer; }
 .sadb-risk-explain {
   margin: 0 0 14px;
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--overlay-subtle);
   border: 1px solid var(--border-light);
 }
@@ -30989,7 +30989,7 @@ button.sadb-signal { cursor: pointer; }
   min-width: 0;
   background: var(--ehr-head);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: 0;
   text-transform: none;
 }
 .sadb-search:focus-within { border-color: var(--brand-400); }
@@ -31151,7 +31151,7 @@ button.sadb-signal { cursor: pointer; }
   padding: 8px 10px;
   background: transparent;
   border: 0;
-  border-radius: 7px;
+  border-radius: 0;
   color: var(--text-primary);
   font-family: var(--font-platform);
   font-size: 13px;
@@ -31271,7 +31271,7 @@ button.sadb-signal { cursor: pointer; }
   padding: 0 11px;
   background: var(--ehr-head);
   border: 1px solid var(--border-light);
-  border-radius: 6px;
+  border-radius: 0;
   color: var(--text-primary);
   font-family: var(--font-platform);
   font-size: 12.5px;
@@ -31326,7 +31326,7 @@ button.sadb-signal { cursor: pointer; }
   padding: 0 11px;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
-  border-radius: 6px;
+  border-radius: 0;
   color: var(--accent-text);
   font-family: var(--font-condensed);
   font-weight: 700;
@@ -31370,7 +31370,7 @@ button.sadb-signal { cursor: pointer; }
   min-width: 0;
   background: var(--bg-card-solid);
   border: 1px solid rgba(158, 27, 20, 0.35);
-  border-radius: 8px;
+  border-radius: 0;
   overflow: hidden;
 }
 .sadb-danger-head {
@@ -31399,7 +31399,7 @@ button.sadb-signal { cursor: pointer; }
    viewport). */
 .sadb-modal { display: flex; flex-direction: column; padding: 15px 18px 16px; min-height: 0; overflow-y: auto; }
 .sadb-modal--page { padding: 0; overflow: visible; }
-.sadb-modal--danger { border-top: 3px solid var(--color-danger-800); border-radius: 6px; }
+.sadb-modal--danger { border-top: 3px solid var(--color-danger-800); border-radius: 0; }
 .sadb-modal-copy { margin-bottom: 12px; }
 .sadb-modal-title {
   margin: 0;
@@ -31417,7 +31417,7 @@ button.sadb-signal { cursor: pointer; }
   padding: 8px 12px;
   background: var(--bg-card-solid);
   border: 1px solid var(--brand-300);
-  border-radius: 8px;
+  border-radius: 0;
   font-family: var(--font-platform);
   font-size: 14px;
   color: var(--text-primary);
@@ -31442,7 +31442,7 @@ button.sadb-signal { cursor: pointer; }
   gap: 18px;
   margin: -15px -18px 16px;
   padding: 15px 14px 14px 18px;
-  border-radius: 6px 6px 0 0;
+  border-radius: 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.18);
   background: var(--accent-primary, #015697);
   color: #FFFFFF;
@@ -31486,7 +31486,7 @@ button.sadb-signal { cursor: pointer; }
   height: 32px;
   padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 8px;
+  border-radius: 0;
   background: rgba(255, 255, 255, 0.11);
   color: #FFFFFF;
   cursor: pointer;
@@ -31524,7 +31524,7 @@ button.sadb-signal { cursor: pointer; }
 .fac-head {
   background: var(--bg-card-solid, #FFFFFF);
   border: 1px solid var(--border-light);
-  border-radius: 10px;
+  border-radius: 0;
   padding: 12px 14px 0;
   margin-bottom: 14px;
 }
@@ -31540,7 +31540,7 @@ button.sadb-signal { cursor: pointer; }
   flex: none;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--accent-light, #F2FCFF);
 }
 .fac-head-icon svg { width: 17px; height: 17px; color: var(--accent-text); }
@@ -31643,7 +31643,7 @@ button.sadb-signal { cursor: pointer; }
   gap: 6px;
   height: 28px;
   padding: 0 9px 0 10px;
-  border-radius: 7px;
+  border-radius: 0;
   border: 1px solid var(--border-medium);
   background: var(--bg-card-solid);
   color: var(--text-primary);
@@ -31666,7 +31666,7 @@ button.sadb-signal { cursor: pointer; }
   top: calc(100% + 5px);
   min-width: 190px;
   padding: 4px;
-  border-radius: 9px;
+  border-radius: 0;
   border: 1px solid var(--border-light);
   background: var(--bg-card-solid);
   box-shadow: var(--shadow-md, 0 6px 18px rgb(0 0 0 / 0.10));
@@ -31681,7 +31681,7 @@ button.sadb-signal { cursor: pointer; }
   width: 100%;
   padding: 7px 9px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 0;
   background: transparent;
   color: var(--text-secondary);
   font-size: 12.5px;
@@ -31717,7 +31717,7 @@ button.sadb-signal { cursor: pointer; }
 .sadb-usercard-id .sadb-modal-sub { margin-top: 3px; }
 .sadb-usercard-rows {
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: 0;
   overflow: hidden;
 }
 .sadb-usercard-row {
@@ -31783,7 +31783,7 @@ button.sadb-signal { cursor: pointer; }
   flex: none;
   height: 30px;
   padding: 0 12px;
-  border-radius: 6px;
+  border-radius: 0;
   border: 1px solid var(--border-light);
   background: var(--bg-card-solid);
   color: var(--accent-text);
@@ -31834,7 +31834,7 @@ button.sadb-signal { cursor: pointer; }
   gap: 6px;
   height: 32px;
   padding: 0 12px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--ehr-head);
   border: 1px solid var(--border-light);
   font-size: 12px;
@@ -31902,7 +31902,7 @@ button.sadb-signal { cursor: pointer; }
 .sadb-subrow-link:focus-visible {
   outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 0;
 }
 
 .sadb-subrow-name { display: block; font-size: 12.5px; font-weight: 600; color: var(--text-primary); }
@@ -31930,7 +31930,7 @@ button.sadb-signal { cursor: pointer; }
 .fac-head {
   background: var(--bg-card-solid, #FFFFFF);
   border: 1px solid var(--border-light);
-  border-radius: 10px;
+  border-radius: 0;
   padding: 12px 14px 0;
   margin-bottom: 14px;
 }
@@ -31946,7 +31946,7 @@ button.sadb-signal { cursor: pointer; }
   flex: none;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--accent-light, #F2FCFF);
 }
 .fac-head-icon svg { width: 17px; height: 17px; color: var(--accent-text); }
@@ -32062,7 +32062,7 @@ button.sadb-signal { cursor: pointer; }
   width: 30px;
   height: 30px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 0;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -32078,7 +32078,7 @@ button.sadb-signal { cursor: pointer; }
 .sadb-usercard-id .sadb-modal-sub { margin-top: 3px; }
 .sadb-usercard-rows {
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: 0;
   overflow: hidden;
 }
 .sadb-usercard-row {
@@ -32130,7 +32130,7 @@ button.sadb-signal { cursor: pointer; }
   gap: 6px;
   height: 32px;
   padding: 0 12px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--ehr-head);
   border: 1px solid var(--border-light);
   font-size: 12px;
@@ -32170,7 +32170,7 @@ button.sadb-signal { cursor: pointer; }
 .sadb-facrow-open:focus-visible {
   outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 0;
 }
 
 /* Raised above the row's stretched hit area so it keeps its own click. */
@@ -32214,7 +32214,7 @@ button.sadb-signal { cursor: pointer; }
   max-height: 264px;
   overflow: auto;
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--bg-card-solid);
 }
 
@@ -32312,7 +32312,7 @@ button.sadb-signal { cursor: pointer; }
   gap: 12px;
   flex: 0 0 auto;
   padding: 9px 14px;
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
 }
@@ -32351,7 +32351,7 @@ button.sadb-signal { cursor: pointer; }
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 7px;
+  border-radius: 0;
   border: 1px solid var(--border-medium);
   background: var(--bg-card-solid);
   color: var(--text-secondary);
@@ -32373,7 +32373,7 @@ button.sadb-signal { cursor: pointer; }
   height: 28px;
   max-width: 190px;
   font-size: 11.5px;
-  border-radius: 7px;
+  border-radius: 0;
   border: 1px solid var(--border-medium);
   background: var(--bg-card-solid);
   color: var(--text-primary);
@@ -32388,7 +32388,7 @@ button.sadb-signal { cursor: pointer; }
   padding: 0 11px;
   font-size: 11.5px;
   font-weight: 600;
-  border-radius: 7px;
+  border-radius: 0;
   border: 1px solid var(--border-medium);
   background: var(--bg-card-solid);
   color: var(--text-secondary);
@@ -32415,7 +32415,7 @@ button.sadb-signal { cursor: pointer; }
   gap: 3px;
   min-width: 0;
   padding: 11px 14px 12px;
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
 }
@@ -32469,7 +32469,7 @@ button.sadb-signal { cursor: pointer; }
 .rpt-rail {
   display: flex;
   flex-direction: column;
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
   overflow: hidden;
@@ -32519,7 +32519,7 @@ button.sadb-signal { cursor: pointer; }
   gap: 6px;
   padding: 0 8px;
   border: 1px solid var(--border-light);
-  border-radius: 7px;
+  border-radius: 0;
   background: var(--bg-input, var(--bg-card-solid));
 }
 .rpt-rail-search svg { flex: none; color: var(--text-muted); }
@@ -32549,7 +32549,7 @@ button.sadb-signal { cursor: pointer; }
   height: 28px;
   padding: 0 6px;
   border: 1px solid var(--border-light);
-  border-radius: 7px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   font-size: 11px;
   color: var(--text-primary);
@@ -32583,7 +32583,7 @@ button.sadb-signal { cursor: pointer; }
 }
 .rpt-rail-note {
   margin-bottom: 4px;
-  border-radius: 7px;
+  border-radius: 0;
   background: var(--overlay-subtle);
 }
 .rpt-rail-empty { text-align: center; }
@@ -32633,7 +32633,7 @@ button.sadb-signal { cursor: pointer; }
   gap: 6px;
   padding: 6px 8px;
   border: 1px solid var(--border-light);
-  border-radius: 7px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   cursor: pointer;
   font-size: 11px;
@@ -32657,7 +32657,7 @@ button.sadb-signal { cursor: pointer; }
   margin: 0 8px 10px;
   padding: 7px 8px;
   border: 1px solid var(--border-light);
-  border-radius: 7px;
+  border-radius: 0;
   font-size: 11.5px;
   font-weight: 600;
   color: var(--text-primary);
@@ -32712,7 +32712,7 @@ button.sadb-signal { cursor: pointer; }
   width: 100%;
   padding: 7px 8px;
   border: none;
-  border-radius: 7px;
+  border-radius: 0;
   background: none;
   text-align: start;
   cursor: pointer;
@@ -32764,7 +32764,7 @@ button.sadb-signal { cursor: pointer; }
   flex-direction: column;
   flex: 1 1 58%;
   min-height: 220px;
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
   overflow: hidden;
@@ -32796,7 +32796,7 @@ button.sadb-signal { cursor: pointer; }
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
   overflow: hidden;
@@ -32914,7 +32914,7 @@ button.sadb-signal { cursor: pointer; }
   display: inline-flex;
   gap: 2px;
   padding: 2px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--overlay-subtle);
   flex: 0 0 auto;
 }
@@ -32925,7 +32925,7 @@ button.sadb-signal { cursor: pointer; }
   width: 28px;
   height: 24px;
   border: none;
-  border-radius: 6px;
+  border-radius: 0;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -32950,7 +32950,7 @@ button.sadb-signal { cursor: pointer; }
   font-size: 11.5px;
   font-weight: 600;
   white-space: nowrap;
-  border-radius: 7px;
+  border-radius: 0;
   border: 1px solid var(--accent-primary);
   background: var(--accent-primary);
   color: var(--color-white);
@@ -32973,7 +32973,7 @@ button.sadb-signal { cursor: pointer; }
   flex-direction: column;
   flex: 1 1 42%;
   min-height: 140px;
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
   overflow: hidden;
@@ -33244,7 +33244,7 @@ button.sadb-signal { cursor: pointer; }
   flex-direction: column;
   gap: 14px;
   padding: 16px 18px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--rail-bg);
   color: #fff;
   box-shadow: 0 1px 2px rgba(17, 48, 85, 0.05);
@@ -33301,7 +33301,7 @@ button.sadb-signal { cursor: pointer; }
   gap: 6px;
   height: 32px;
   padding: 0 14px;
-  border-radius: 6px;
+  border-radius: 0;
   border: 1px solid transparent;
   background: var(--bg-card-solid);
   color: var(--tm-navy);
@@ -33429,7 +33429,7 @@ button.sadb-signal { cursor: pointer; }
 .sadb-viewswitch-tab:focus-visible {
   outline: 2px solid var(--brand-400);
   outline-offset: 2px;
-  border-radius: 3px;
+  border-radius: 0;
 }
 
 /* ============ Facility performance meter ===============================
@@ -33476,7 +33476,7 @@ button.sadb-signal { cursor: pointer; }
 .fac-assess {
   padding: 14px 16px 16px;
   border: 1px solid var(--ehr-border);
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   margin-bottom: 14px;
 }
@@ -33535,7 +33535,7 @@ button.sadb-signal { cursor: pointer; }
   display: inline-flex;
   align-items: center;
   padding: 2px 7px;
-  border-radius: 5px;
+  border-radius: 0;
   background: var(--ehr-head);
   border: 1px solid var(--border-light);
   color: var(--text-secondary);
@@ -33596,7 +33596,7 @@ button.sadb-signal { cursor: pointer; }
   align-items: center;
   gap: 4px;
   padding: 2px 7px;
-  border-radius: 5px;
+  border-radius: 0;
   background: var(--ehr-head);
   border: 1px solid var(--border-light);
   color: var(--text-secondary);
@@ -33678,7 +33678,7 @@ button.sadb-signal { cursor: pointer; }
   width: 100%;
   height: 38px;
   padding: 0 12px;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid var(--border-medium);
   background: var(--bg-card-solid);
   color: var(--text-primary);
@@ -33716,7 +33716,7 @@ button.sadb-signal { cursor: pointer; }
 .uf-error { font-size: 12px; font-weight: 600; color: var(--color-danger-text); }
 .uf-nofacility {
   padding: 11px 12px;
-  border-radius: 9px;
+  border-radius: 0;
   border: 1px solid var(--border-light);
   background: var(--overlay-subtle);
   font-size: 12px;
@@ -33997,7 +33997,7 @@ button.sadb-signal { cursor: pointer; }
 .chart-loading-state > span {
   width: clamp(12px, 6%, 24px);
   height: var(--chart-loading-height, 45%);
-  border-radius: 4px 4px 0 0;
+  border-radius: 0;
   background: var(--overlay-light);
   animation: chart-loading-pulse 1.2s ease-in-out infinite alternate;
 }
@@ -34161,7 +34161,7 @@ button.sadb-signal { cursor: pointer; }
   width: 30px;
   height: 30px;
   border: none;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--overlay-subtle);
   color: var(--text-secondary);
   cursor: pointer;
@@ -34209,7 +34209,7 @@ button.sadb-signal { cursor: pointer; }
   gap: 9px;
   padding: 10px;
   border: 1px solid var(--border-light);
-  border-radius: 9px;
+  border-radius: 0;
   background: var(--bg-card-solid);
   color: var(--accent-text);
   text-align: start;
@@ -34285,7 +34285,7 @@ button.sadb-signal { cursor: pointer; }
   gap: 10px;
   padding: 11px;
   border: 1px solid var(--border-light);
-  border-radius: 9px;
+  border-radius: 0;
   background: var(--overlay-subtle);
 }
 @media (max-width: 520px) {
@@ -34385,7 +34385,7 @@ button.sadb-signal { cursor: pointer; }
     width: 100%;
     padding: 11px 10px;
     border: 0;
-    border-radius: 9px;
+    border-radius: 0;
     background: transparent;
     color: var(--text-primary);
     font-size: 14px;
@@ -34810,7 +34810,7 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 .tm-tooltip__kbd {
   margin-inline-start: 8px;
   padding: 1px 5px;
-  border-radius: 4px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--tooltip-ink) 14%, transparent);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -34835,7 +34835,7 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   background-size: 200% 100%;
   animation: tmShimmer 1.4s var(--ease-standard) infinite;
 }
-.tm-skeleton--text { height: 0.85em; margin-block: 0.3em; border-radius: 3px; }
+.tm-skeleton--text { height: 0.85em; margin-block: 0.3em; border-radius: 0; }
 .tm-skeleton--circle { border-radius: 50%; }
 .tm-skeleton--block { border-radius: var(--radius-md); }
 .tm-skeleton-stack { display: flex; flex-direction: column; gap: var(--space-2); }
@@ -35415,7 +35415,7 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   justify-content: space-between;
   gap: 8px;
   padding: 8px 10px;
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--accent-light);
   border: 1px solid var(--border-light);
   font-size: 13px;
@@ -35803,7 +35803,7 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
     max-height: none !important;
     border: 1px solid var(--border-light);
     border-bottom: 0;
-    border-radius: 12px 12px 0 0 !important;
+    border-radius: 0 !important;
     overflow: hidden;
     box-shadow: 0 -4px 24px -12px color-mix(in srgb, var(--text-primary) 30%, transparent) !important;
   }
@@ -36283,7 +36283,7 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   margin: 0;
   padding: 0 !important;
   border: 1px solid color-mix(in srgb, var(--accent-primary) 45%, transparent) !important;
-  border-radius: 4px !important;
+  border-radius: 0 !important;
   overflow: hidden;
   background: var(--bg-card-solid) !important;
 }
@@ -36760,4 +36760,13 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
 .patient-registration-page .tamam-reg select,
 .patient-registration-page .tamam-reg textarea {
   background-color: var(--bg-app);
+}
+/* ═══════════════ SHARP EDGES — dashboard list-item exception ═══════════════
+   App-wide corners are square: the --radius-* tokens and the Tailwind
+   borderRadius theme are 0 (--radius-pill / `rounded-full` stay for circular
+   avatars, dots and pills), and literal radii were swept to 0. The one place
+   that keeps rounding, by request, is the dashboard worklist LIST ITEM. Its
+   outer panel (.ehr-worklist-panel) and every other card stay square. */
+.appointment-card-row.ehr-appointment-row {
+  border-radius: 12px;
 }

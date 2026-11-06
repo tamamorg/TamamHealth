@@ -194,4 +194,29 @@ describe('POST /api/auth/logout → GET /api/auth/me — end to end', () => {
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ success: true });
   });
+
+  it('a forged, unsigned cookie is NOT written to the revocation store', async () => {
+    // The endpoint is public and takes an unauthenticated cookie. Writing
+    // whatever string arrives let an anonymous caller flood the store with
+    // forged entries whose attacker-chosen `exp` never expired. A cookie that
+    // does not verify is ignored (the logout still succeeds and clears cookies).
+    const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+    const claims = Buffer.from(JSON.stringify({ sub: 'attacker', exp: 9999999999 })).toString('base64url');
+    const forged = `${header}.${claims}.not-a-real-signature`;
+
+    const res = await authLogout(new NextRequest('http://localhost/api/auth/logout', {
+      method: 'POST',
+      headers: { cookie: `tamamhealth-token=${forged}` },
+    }));
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ success: true });
+    expect(await isTokenRevoked(forged)).toBe(false);
+  });
+
+  it('clamps a genuine token to one TTL so a revoked entry cannot outlive the session', async () => {
+    const token = await createToken(BASE_USER);
+    await revokeToken(token);
+    expect(await isTokenRevoked(token)).toBe(true);
+  });
 });

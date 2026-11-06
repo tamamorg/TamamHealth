@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { headers } from 'next/headers';
+import { publicBookingOrigin } from '@/lib/booking/public-base-url';
 import PracticeBooking from '@/components/booking/PracticeBooking';
 import type { PracticePayload } from '@/lib/booking/public-client';
 import T from '@/components/T';
@@ -15,11 +15,8 @@ export const dynamic = 'force-dynamic';
  * could drift out of step with the allow-lists in `public-context`.
  */
 async function loadPractice(slug: string): Promise<PracticePayload | null> {
-  const h = await headers();
-  const host = h.get('host');
-  const proto = h.get('x-forwarded-proto') || 'http';
   try {
-    const res = await fetch(`${proto}://${host}/api/booking/practice/${encodeURIComponent(slug)}`, {
+    const res = await fetch(`${publicBookingOrigin()}/api/booking/practice/${encodeURIComponent(slug)}`, {
       cache: 'no-store',
     });
     if (!res.ok) return null;

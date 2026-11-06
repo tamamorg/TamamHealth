@@ -39,7 +39,7 @@ export default function PostConsultPanel({ encounterId, patientId, embedded = fa
   // Keep an empty queue out of the dashboard; pending work and failures still
   // surface here, and polling continues so new handoffs appear automatically.
   if (!error && !rows.length) return null;
-  return <section id="post-consult" className="ehr-post-consult" style={embedded ? { marginBottom: 16 } : { padding: 16, marginBottom: 16, background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: 8 }}>
+  return <section id="post-consult" className="ehr-post-consult" style={embedded ? { marginBottom: 16 } : { padding: 16, marginBottom: 16, background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: 0 }}>
     <h2>{t('postConsult.title')}</h2>
     <p>{t('postConsult.help')}</p>
     {error ? <p role="alert">{t('postConsult.error')}</p> : loading ? <p role="status">{t('postConsult.loading')}</p> : !rows.length ? <p>{t('postConsult.empty')}</p> : rows.map(row => row.postConsult

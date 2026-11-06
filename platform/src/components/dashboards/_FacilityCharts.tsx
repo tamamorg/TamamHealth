@@ -143,7 +143,7 @@ export function WeeklyActivityChart({ data, chartType, series }: WeeklyActivityC
         {/* A money axis needs both a wider tick column and compact ticks —
             "SSP 1,250,000" spelled out would eat the plot area. */}
         <YAxis tickLine={false} axisLine={false} tick={axisTick} width={axisFormat ? 40 : 28} allowDecimals={false} tickFormatter={axisFormat} />
-        <Tooltip cursor={{ fill: 'var(--overlay-subtle)' }} contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={tooltipFormatter} />
+        <Tooltip cursor={{ fill: 'var(--overlay-subtle)' }} contentStyle={{ fontSize: 12, borderRadius: 0 }} formatter={tooltipFormatter} />
         <Legend {...legendProps} />
         {series.map((s, i) => (
           <Bar

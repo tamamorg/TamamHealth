@@ -91,7 +91,12 @@ export function buildPrintListHtml(
 }
 
 function downloadCsv(filename: string, sections: PrintListSection[]) {
-  const quote = (cell: string) => `"${String(cell).replace(/"/g, '""')}"`;
+  const quote = (cell: string) => {
+    let text = String(cell);
+    // Formula-injection guard: keep a cell a spreadsheet would run as text.
+    if (/^[\t\r ]*[=+\-@]/.test(text)) text = `'${text}`;
+    return `"${text.replace(/"/g, '""')}"`;
+  };
   // Sections can carry different column sets, so each becomes its own block
   // (label line, header, rows) rather than being forced into one grid.
   const blocks = sections.map(section => {
@@ -152,7 +157,7 @@ export default function PrintListDialog({ title, subtitle, sections, filename, o
   // choices, so each label resets that inline.
   const choiceLabel: React.CSSProperties = {
     display: 'flex', alignItems: 'flex-start', gap: 10, margin: 0, padding: '9px 12px',
-    border: '1px solid var(--border-light)', borderRadius: 10, cursor: 'pointer',
+    border: '1px solid var(--border-light)', borderRadius: 0, cursor: 'pointer',
     textTransform: 'none', letterSpacing: 'normal', fontWeight: 500, fontSize: 13,
     color: 'var(--text-primary)',
   };

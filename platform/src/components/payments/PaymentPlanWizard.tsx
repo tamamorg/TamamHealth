@@ -133,7 +133,7 @@ export default function PaymentPlanWizard({
                 ))}
               </Select>
               <button className="btn btn-primary ehr-finance-dialog__primary" disabled={loadingBalance || !Number.isFinite(balance) || balance <= 0} onClick={() => setStep(2)} style={{
-                marginTop: 8, padding: '12px 0', borderRadius: 10, border: 'none',
+                marginTop: 8, padding: '12px 0', borderRadius: 0, border: 'none',
                 fontSize: 14, fontWeight: 600,
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               }}>
@@ -144,7 +144,7 @@ export default function PaymentPlanWizard({
 
           {step === 2 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ padding: 16, borderRadius: 12, background: 'var(--bg-secondary)' }}>
+              <div style={{ padding: 16, borderRadius: 0, background: 'var(--bg-secondary)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                   <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('payments.monthlyPayment')}</span>
                   <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--accent)' }}>{formatMoney(monthlyAmount, { currency })}</span>
@@ -167,11 +167,11 @@ export default function PaymentPlanWizard({
 
               <div className="ehr-finance-dialog__actions" style={{ display: 'flex', gap: 10 }}>
                 <button disabled={processing} onClick={() => setStep(1)} style={{
-                  flex: 1, padding: '12px 0', borderRadius: 10, border: '1px solid var(--border-medium)',
+                  flex: 1, padding: '12px 0', borderRadius: 0, border: '1px solid var(--border-medium)',
                   background: 'transparent', color: 'var(--text-muted)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 }}>{t('action.back')}</button>
                 <button className="btn btn-primary ehr-finance-dialog__primary" onClick={handleCreate} disabled={processing} style={{
-                  flex: 2, padding: '12px 0', borderRadius: 10, border: 'none',
+                  flex: 2, padding: '12px 0', borderRadius: 0, border: 'none',
                   fontSize: 14, fontWeight: 600,
                   cursor: 'pointer', opacity: processing ? 0.7 : 1,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,

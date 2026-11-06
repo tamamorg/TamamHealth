@@ -36,7 +36,7 @@ const PREF_KEYS = {
 } as const;
 
 const linkStyle = {
-  padding: '4px 10px', borderRadius: 8, border: '1px solid var(--border-medium)',
+  padding: '4px 10px', borderRadius: 0, border: '1px solid var(--border-medium)',
   background: 'var(--bg-card)', color: 'var(--accent-text)', fontSize: 12, fontWeight: 600,
   textDecoration: 'none', whiteSpace: 'nowrap' as const,
 };
@@ -162,7 +162,7 @@ export default function AppointmentRequestsPanel({
                     onChange={e => setReason(e.target.value)}
                     rows={2}
                     placeholder={t('frontDesk.requestDeclineReason')}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', resize: 'vertical' }}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 0, fontSize: 12, background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', resize: 'vertical' }}
                   />
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                     <button type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={() => { setDeclining(null); setReason(''); setError(appt._id, null); }}>

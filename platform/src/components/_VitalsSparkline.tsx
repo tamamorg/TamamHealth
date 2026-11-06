@@ -67,7 +67,7 @@ export default function VitalsSparkline({
           contentStyle={{
             background: 'var(--bg-card)',
             border: '1px solid var(--border-light)',
-            borderRadius: 6,
+            borderRadius: 0,
             fontSize: 11,
             padding: '6px 8px',
           }}

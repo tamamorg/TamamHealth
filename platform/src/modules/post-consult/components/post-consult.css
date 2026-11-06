@@ -1,5 +1,5 @@
 .ehr-post-consult label { display: block; text-transform: none; letter-spacing: normal; font-size: 13px; margin-block: 8px; }
-.ehr-post-consult textarea, .ehr-post-consult select, .ehr-post-consult input:not([type="checkbox"]) { width: 100%; max-width: 560px; display: block; padding: 8px; border: 1px solid var(--border-light); border-radius: 4px; background: var(--bg-card); color: var(--text-primary); }
+.ehr-post-consult textarea, .ehr-post-consult select, .ehr-post-consult input:not([type="checkbox"]) { width: 100%; max-width: 560px; display: block; padding: 8px; border: 1px solid var(--border-light); border-radius: 0; background: var(--bg-card); color: var(--text-primary); }
 .ehr-post-consult textarea { min-height: 64px; }
 .ehr-post-consult fieldset { border: 0; padding: 8px; margin: 0; }
 .ehr-post-consult summary { cursor: pointer; padding-block: 6px; }
@@ -9,7 +9,7 @@
 .cn-editor > .ehr-post-consult { max-height: 40vh; overflow: auto; flex-shrink: 0; }
 .ehr-post-consult-visit { padding-block: 16px; border-top: 1px solid var(--border-light); }
 .ehr-post-consult-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-.ehr-post-consult-status { padding: 4px 10px; border: 1px solid var(--border-light); border-radius: 4px; font-size: 13px; font-weight: 600; }
+.ehr-post-consult-status { padding: 4px 10px; border: 1px solid var(--border-light); border-radius: 0; font-size: 13px; font-weight: 600; }
 .ehr-post-consult-warning { padding: 12px; margin-block: 12px; border-inline-start: 3px solid #a15c00; background: var(--bg-card-hover); }
 .ehr-post-consult-transfer { margin-block: 12px; }
 .ehr-post-consult nav { padding-block: 8px 12px; }

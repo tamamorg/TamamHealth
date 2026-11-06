@@ -4,10 +4,10 @@
 .scribe-panel header { padding-bottom: 16px; border-bottom: 1px solid var(--border-medium); }
 .scribe-panel h2, .scribe-panel h3 { margin: 0 0 8px; }
 .scribe-panel p { margin: 8px 0 16px; color: var(--text-secondary); line-height: 1.6; }
-.scribe-panel header button { padding: 8px; border-radius: 8px; }
+.scribe-panel header button { padding: 8px; border-radius: 0; }
 .scribe-context { flex-wrap: wrap; padding-block: 16px; font-size: .875rem; }
 .scribe-context span:last-child { margin-inline-start: auto; }
-.scribe-notice, .scribe-warning { padding: 12px 16px; border: 1px solid var(--border-medium); border-radius: 8px; background: var(--bg-primary); }
+.scribe-notice, .scribe-warning { padding: 12px 16px; border: 1px solid var(--border-medium); border-radius: 0; background: var(--bg-primary); }
 .scribe-panel .scribe-warning { border-inline-start: 3px solid var(--warning, #b45309); }
 .scribe-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-block: 24px; }
 .scribe-columns section { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
@@ -15,7 +15,7 @@
 .scribe-panel label { text-transform: none; letter-spacing: normal; font-weight: 500; font-size: .875rem; }
 .scribe-panel .scribe-consent { display: flex; align-items: flex-start; gap: 10px; line-height: 1.6; }
 .scribe-consent input { width: 18px; height: 18px; flex: 0 0 18px; margin-top: 3px; }
-.scribe-panel textarea, .scribe-panel select { width: 100%; border: 1px solid var(--border-medium); border-radius: 8px; padding: 12px; background: var(--bg-card-solid); color: var(--text-primary); font: inherit; }
+.scribe-panel textarea, .scribe-panel select { width: 100%; border: 1px solid var(--border-medium); border-radius: 0; padding: 12px; background: var(--bg-card-solid); color: var(--text-primary); font: inherit; }
 .scribe-panel textarea { min-height: 220px; resize: vertical; line-height: 1.6; }
 .scribe-panel select { margin-top: 8px; }
 .scribe-panel :is(button, input, textarea, select, summary):focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 3px; }

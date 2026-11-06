@@ -26,6 +26,14 @@ describe('toCsv', () => {
     expect(toCsv([{ note: 'said "hello"' }])).toBe('"note"\n"said ""hello"""');
   });
 
+  it('neutralises spreadsheet formula cells with a leading apostrophe', () => {
+    // A patient name like =HYPERLINK(...) must not execute when the export is
+    // opened in Excel. The apostrophe keeps it text; RFC 4180 quoting remains.
+    expect(toCsv([{ name: '=HYPERLINK("http://evil.example")' }]))
+      .toBe('"name"\n"\'=HYPERLINK(""http://evil.example"")"');
+    expect(toCsv([{ name: '  @SUM(A1:A2)' }])).toBe('"name"\n"\'  @SUM(A1:A2)"');
+  });
+
   it('keeps a comma inside a cell from splitting the row', () => {
     const csv = toCsv([{ name: 'Deng, Mary' }]);
     expect(csv).toBe('"name"\n"Deng, Mary"');
