@@ -813,6 +813,16 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   background: var(--ehr-hover, #FAFBFC);
 }
 
+/* Stays selected while its menu is open. This button is token-driven
+   (background: var(--tamam-btn-bg)) and its surface is pinned by the flat
+   button pass, so re-point the token rather than the background. */
+.tamam-header-actions-btn[aria-expanded="true"] {
+  --tamam-btn-bg: var(--accent-light);
+  --tamam-btn-bg-hover: var(--accent-light);
+  --tamam-btn-ink: var(--accent-text);
+  border-color: var(--accent-primary);
+}
+
 .tamam-header-actions-btn.tamam-link {
   border-color: transparent;
   background: transparent;
