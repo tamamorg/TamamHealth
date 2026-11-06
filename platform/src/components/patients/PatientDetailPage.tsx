@@ -608,7 +608,7 @@ export default function PatientDetailPage() {
    * exact inverse: the flags are cleared rather than set false-ish, matching a
    * record that was never marked.
    */
-  const handleToggleDeceased = buildHandleToggleDeceased({ patient, deceasedDateInput, setDeceasedSubmitting, updatePatient, setShowDeceasedModal });
+  const handleToggleDeceased = buildHandleToggleDeceased({ patient, deceasedDateInput, setDeceasedSubmitting, updatePatient, setShowDeceasedModal, showToast, t });
 
   // Facesheet card actions. Each one performs the real write action the card
   // represents, reusing the flows the header/tabs already use: the prescribe

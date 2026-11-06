@@ -62,15 +62,25 @@ export function useAppointments() {
     await load();
   }, [currentUser?._id, currentUser?.name, currentUser?.role, load]);
 
+  // rescheduleAppointment / updateAppointment return null when the write is
+  // refused (the doc is gone, or db.put fails); they throw only for booking
+  // conflicts and amend-permission errors. Without checking the null, the
+  // reschedule dialog showed "Appointment moved" and reloaded even though
+  // nothing changed (security/data audit 2026-11-05, §2.3). Throw so the
+  // caller's existing try/catch shows the failure toast.
   const reschedule = useCallback(async (id: string, newDate: string, newTime: string) => {
     const { rescheduleAppointment } = await import('../services/appointment-service');
-    await rescheduleAppointment(id, newDate, newTime, currentUser?.role as UserRole);
+    if (!(await rescheduleAppointment(id, newDate, newTime, currentUser?.role as UserRole))) {
+      throw new Error('Appointment not rescheduled');
+    }
     await load();
   }, [currentUser?.role, load]);
 
   const update = useCallback(async (id: string, updates: Partial<AppointmentDoc>) => {
     const { updateAppointment } = await import('../services/appointment-service');
-    await updateAppointment(id, updates, currentUser?.role as UserRole);
+    if (!(await updateAppointment(id, updates, currentUser?.role as UserRole))) {
+      throw new Error('Appointment not updated');
+    }
     await load();
   }, [currentUser?.role, load]);
 
