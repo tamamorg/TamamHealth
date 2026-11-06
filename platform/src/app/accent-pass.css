@@ -280,3 +280,15 @@
   color: currentColor !important;
   stroke: currentColor !important;
 }
+
+/* ═══════════════ Open-trigger selected state ═══════════════
+   A button that has opened a menu, dropdown, popover or select stays visibly
+   selected until it closes — every such trigger carries aria-expanded. This is
+   the shared default; a trigger whose own CSS sets a background at higher
+   specificity needs a matching rule beside it (see .tamam-header-actions-btn in
+   tamam-chart.css, .tsel-field in Select's CSS). Slider openers carry no
+   aria-expanded, so they are out of scope here. */
+button[aria-expanded="true"]:not(:disabled),
+[role="button"][aria-expanded="true"]:not([aria-disabled="true"]) {
+  background: var(--accent-light);
+}
