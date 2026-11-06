@@ -857,6 +857,7 @@ export async function createPrescription(
     operation: 'create',
     resourceVersion: doc._rev,
     username: doc.prescribedBy,
+    orgId: doc.orgId,
     hospitalId: doc.hospitalId,
   });
 
@@ -947,6 +948,7 @@ export async function updatePrescription(id: string, data: Partial<PrescriptionD
       resourceId: updated._id,
       operation: 'update',
       resourceVersion: updated._rev,
+      orgId: updated.orgId,
       hospitalId: updated.hospitalId,
     });
     return updated;
