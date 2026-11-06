@@ -24,11 +24,14 @@ import type { LabResultDoc } from '@/lib/db-types';
 import { useColumnSort } from '@/components/table/useColumnSort';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { hasLabReport } from '@/components/reports/clinical-reports';
+import { usePermissions } from '@/lib/hooks/usePermissions';
+import { canCancelLabOrder, useCancelLabOrder } from '@/components/lab/useCancelLabOrder';
 
 const PAGE_SIZE = 8;
 
 const STATUS_BADGE: Record<string, string> = {
   pending: 'tamam-panel-badge tamam-panel-badge--pending',
+  cancelled: 'tamam-panel-badge tamam-panel-badge--muted',
   in_progress: 'tamam-panel-badge tamam-panel-badge--active',
   completed: 'tamam-panel-badge tamam-panel-badge--done',
   resulted: 'tamam-panel-badge tamam-panel-badge--pending',
@@ -67,6 +70,8 @@ interface ResultsSectionProps {
 export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId, onSelect, onViewReport }: ResultsSectionProps) {
   const { results } = useLabResults(patientId);
   const { t } = useTranslation();
+  const { canEnterLabResults } = usePermissions();
+  const cancelLabOrder = useCancelLabOrder();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
 
@@ -168,7 +173,7 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
                   {l.result || '—'}{l.unit ? ` ${l.unit}` : ''}
                 </td>
                 <td>{l.referenceRange || '—'}</td>
-                <td>{t(benchActionLabel(effectiveOrderStatus(l)))}</td>
+                <td>{lifecycleStatus === 'cancelled' ? '—' : t(benchActionLabel(lifecycleStatus))}</td>
                 <td>{formatDate(l.completedAt || l.orderedAt || l.createdAt)}</td>
                 <td><span className={STATUS_BADGE[lifecycleStatus] || STATUS_BADGE[l.status] || 'tamam-panel-badge tamam-panel-badge--pending'}>{humanizeStatus(lifecycleStatus)}</span></td>
                 <td>
@@ -180,6 +185,9 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
                     actions={[
                       ...(onViewReport && hasLabReport(l) ? [{ key: 'report', label: t('chart.viewReport'), onClick: () => onViewReport(l._id) }] : []),
                       ...(onSelect ? [{ key: 'open', label: t('chart.resultOpenWorkflow'), onClick: () => onSelect(l._id) }] : []),
+                      ...((canOrderLabs || canEnterLabResults) && canCancelLabOrder(l)
+                        ? [{ key: 'cancel-order', label: t('lab.cancelOrder'), tone: 'danger' as const, group: 'undo', onClick: () => void cancelLabOrder(l) }]
+                        : []),
                     ]}
                   />
                 </td>

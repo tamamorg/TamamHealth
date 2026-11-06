@@ -25,6 +25,7 @@ import { isImagingStudy } from '@/lib/clinical-flow/lab-catalog';
 import { addPatientDocument } from '@/lib/services/patient-document-service';
 import { patientFullName } from '@/lib/patient-utils';
 import { formatDate } from '@/lib/format-utils';
+import { canCancelLabOrder, useCancelLabOrder } from '@/components/lab/useCancelLabOrder';
 import { describeError } from '@/lib/user-facing-error';
 import type { LabResultDoc, PatientDoc } from '@/lib/db-types';
 import type { ChartPanelUser } from './types';
@@ -59,9 +60,10 @@ export default function ImagingReportPanel({ patient, currentUser, onClose, focu
   const { t } = useTranslation();
   const { showToast } = useToast();
   const { results, update } = useLabResults(patient._id);
+  const cancelLabOrder = useCancelLabOrder();
   const studies = useMemo(
     () => results
-      .filter(r => isImagingStudy(r) && (!focusId || r._id === focusId))
+      .filter(r => isImagingStudy(r) && r.status !== 'cancelled' && (!focusId || r._id === focusId))
       .sort((a, b) => (STATUS_ORDER[a.status] ?? 3) - (STATUS_ORDER[b.status] ?? 3)
         || (b.orderedAt || '').localeCompare(a.orderedAt || '')),
     [results, focusId],
@@ -174,6 +176,16 @@ export default function ImagingReportPanel({ patient, currentUser, onClose, focu
     return true;
   };
 
+  const withdrawStudy = async (study: LabResultDoc) => {
+    setBusyId(study._id);
+    try {
+      // A focused study that is withdrawn leaves nothing to report: close.
+      if (await cancelLabOrder(study) && focusId) onClose();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const statusLabel = (status: string) => t(`radiology.status_${status}`);
 
   // The O3 frame every clinical form shares: one page, a section per study.
@@ -226,6 +238,11 @@ export default function ImagingReportPanel({ patient, currentUser, onClose, focu
                           <button type="button" onClick={() => chooseFiles(study)} disabled={busy}>
                             {t('radiology.attachImage')}{study.imageCount ? ` (${study.imageCount})` : ''}
                           </button>
+                          {canCancelLabOrder(study) && (
+                            <button type="button" className="is-danger" disabled={busy} onClick={() => void withdrawStudy(study)}>
+                              {t('lab.cancelOrder')}
+                            </button>
+                          )}
                         </div>
                         <label className="sv-field">
                           <span className="sv-label">{t('radiology.enterFindings')}</span>

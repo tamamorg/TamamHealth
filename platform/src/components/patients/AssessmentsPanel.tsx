@@ -16,6 +16,7 @@ import RowActionsMenu from '@/components/RowActionsMenu';
 import { FormError } from '@/components/overlay/FormNotices';
 import FormField from '@/components/overlay/FormField';
 import FormSlider from '@/components/overlay/FormSlider';
+import { useConfirmPrompt } from '@/components/ConfirmDialog';
 
 const SEVERITY_COLOR: Record<string, string> = {
   minimal: 'var(--color-success)',
@@ -48,6 +49,7 @@ export default function AssessmentsPanel({ patient, focusId }: {
   const [reviewing, setReviewing] = useState<AssessmentDoc | null>(null);
 
   const isProvider = isClinicalAuthorRole(currentUser?.role);
+  const confirmPrompt = useConfirmPrompt();
 
   // Scroll the deep-linked assessment into view once the list has loaded.
   useEffect(() => {
@@ -93,6 +95,29 @@ export default function AssessmentsPanel({ patient, focusId }: {
   async function doSign(id: string) {
     const svc = await import('@/lib/services/assessment-service');
     await svc.signAssessment(id, { userId: currentUser?._id, userName: currentUser?.name || currentUser?.username || 'Provider', userRole: currentUser?.role });
+  }
+
+  /** Discard a held assessment entered in error: asks why (optional), then soft-discards. */
+  async function discard(a: AssessmentDoc) {
+    const reason = await confirmPrompt({
+      title: t('assessments.discardTitle'),
+      message: t('assessments.discardMessage', { instrument: a.instrumentName }),
+      confirmLabel: t('assessments.discard'),
+      tone: 'danger',
+      inputLabel: t('assessments.discardReasonLabel'),
+      layout: 'dialog',
+    });
+    if (reason === null) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const svc = await import('@/lib/services/assessment-service');
+      await svc.discardAssessment(a._id, reason, { userId: currentUser?._id, userName: currentUser?.name || currentUser?.username || 'Staff', userRole: currentUser?.role });
+    } catch (e) {
+      setError(describeError(e, t('msg.changeNotSavedTryAgain')));
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -143,7 +168,7 @@ export default function AssessmentsPanel({ patient, focusId }: {
                   <td>{formatDateTime(a.createdAt)}</td>
                   <td>
                     <span className={signed ? 'tamam-panel-badge tamam-panel-badge--done' : 'tamam-panel-badge tamam-panel-badge--pending'}>
-                      {signed ? 'Signed' : 'Held'}
+                      {signed ? t('assessments.statusSigned') : t('assessments.statusHeld')}
                     </span>
                   </td>
                   <td>
@@ -153,6 +178,9 @@ export default function AssessmentsPanel({ patient, focusId }: {
                         !signed && isProvider
                           ? { key: 'sign', label: t('assessments.reviewSign'), onClick: () => setReviewing(a) }
                           : { key: 'view', label: t('assessments.view'), onClick: () => setReviewing(a) },
+                        ...(!signed && (isProvider || a.enteredById === currentUser?._id)
+                          ? [{ key: 'discard', label: t('assessments.discard'), tone: 'danger' as const, onClick: () => { void discard(a); } }]
+                          : []),
                       ]}
                     />
                   </td>

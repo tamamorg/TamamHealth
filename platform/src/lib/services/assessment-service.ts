@@ -58,7 +58,7 @@ export async function getAssessmentsByPatient(patientId: string, scope?: DataSco
     { indexFields: ['type', 'patientId'] },
   );
   if (scope) rows = filterByScope(rows, scope);
-  return rows.sort(byNewest);
+  return rows.filter(a => a.documentStatus !== 'discarded').sort(byNewest);
 }
 
 /** Held assessments awaiting provider review/signature — for the signing inbox. */
@@ -124,7 +124,7 @@ export async function updateAssessmentAnswers(id: string, answers: Record<string
   } catch {
     return null;
   }
-  if (existing.documentStatus === 'signed') throw new AssessmentLockError(id);
+  if (existing.documentStatus !== 'held') throw new AssessmentLockError(id);
   const meta = scored(existing.instrumentId, answers || {});
   const updated: AssessmentDoc = {
     ...existing,
@@ -161,7 +161,7 @@ export async function signAssessment(id: string, signer: AssessmentSigner): Prom
   } catch {
     return null;
   }
-  if (existing.documentStatus === 'signed') throw new AssessmentLockError(id);
+  if (existing.documentStatus !== 'held') throw new AssessmentLockError(id);
   const now = new Date().toISOString();
   const signed: AssessmentDoc = {
     ...existing,
@@ -176,4 +176,44 @@ export async function signAssessment(id: string, signer: AssessmentSigner): Prom
   await logAuditSafe('SIGN_ASSESSMENT', signer.userId, signer.userName, `Signed ${signed.instrumentName} for patient ${signed.patientId}`);
   emitSyncEvent({ resourceType: 'assessment', resourceId: signed._id, operation: 'update', resourceVersion: signed._rev, hospitalId: signed.hospitalId, orgId: signed.orgId });
   return signed;
+}
+
+export class AssessmentDiscardError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AssessmentDiscardError';
+  }
+}
+
+/**
+ * Discard a HELD (unsigned) assessment entered in error. Soft: status becomes
+ * 'discarded' with who/when/why; it drops out of lists, the signing inbox and
+ * the note outcome-measures. A signed assessment is immutable and is refused —
+ * correct it with a new assessment.
+ */
+export async function discardAssessment(id: string, reason: string | undefined, actor: AssessmentSigner): Promise<AssessmentDoc | null> {
+  const db = assessmentsDB();
+  let existing: AssessmentDoc;
+  try {
+    existing = await db.get(id) as AssessmentDoc;
+  } catch {
+    return null;
+  }
+  if (existing.documentStatus === 'signed') throw new AssessmentLockError(id);
+  if (existing.documentStatus === 'discarded') throw new AssessmentDiscardError('This assessment is already discarded.');
+  const now = new Date().toISOString();
+  const discarded: AssessmentDoc = {
+    ...existing,
+    documentStatus: 'discarded',
+    discardedAt: now,
+    discardedBy: actor.userId,
+    discardedByName: actor.userName,
+    discardReason: (reason || '').trim() || undefined,
+    updatedAt: now,
+  };
+  const resp = await db.put(discarded);
+  discarded._rev = resp.rev;
+  await logAuditSafe('DISCARD_ASSESSMENT', actor.userId, actor.userName, `Discarded held ${discarded.instrumentName} for patient ${discarded.patientId}${discarded.discardReason ? `: ${discarded.discardReason}` : ''}`);
+  emitSyncEvent({ resourceType: 'assessment', resourceId: discarded._id, operation: 'update', resourceVersion: discarded._rev, hospitalId: discarded.hospitalId, orgId: discarded.orgId });
+  return discarded;
 }

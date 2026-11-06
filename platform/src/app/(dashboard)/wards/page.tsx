@@ -21,6 +21,8 @@ import TransferPatientModal from '@/components/patients/TransferPatientModal';
 import { roleCan, WARD_ADMIT_ROLES, WARD_BED_ROLES, WARD_DISCHARGE_ROLES } from '@/lib/clinical-flow/ward-permissions';
 import { useNow } from '@/lib/hooks/useNow';
 import { describeError } from '@/lib/user-facing-error';
+import { useConfirmPrompt } from '@/components/ConfirmDialog';
+import { findUndoDischargeBlocker } from '@/lib/ward-reversal-rules';
 
 /* The admissions list is the shared appointment/worklist card row — the same
    surface, grid, type scale and status pill the patient registry uses, so a
@@ -60,12 +62,16 @@ export default function WardsPage() {
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const { patients } = usePatients();
-  const { wards, beds, activeAdmissions, totalBeds, occupiedBeds, availableBeds, occupancyRate, discharge, reassignBed, markBedReady } = useWards();
+  const { wards, beds, admissions, activeAdmissions, totalBeds, occupiedBeds, availableBeds, occupancyRate, discharge, cancel, undoDischarge, reassignBed, markBedReady } = useWards();
   const { showToast } = useToast();
+  const confirmPrompt = useConfirmPrompt();
 
   const [admitOpen, setAdmitOpen] = useState(false);
   const [dischargeFor, setDischargeFor] = useState<AdmissionDoc | null>(null);
   const [transferFor, setTransferFor] = useState<AdmissionDoc | null>(null);
+  const [undoFor, setUndoFor] = useState<AdmissionDoc | null>(null);
+  const [undoReason, setUndoReason] = useState('');
+  const [undoBedId, setUndoBedId] = useState('');
   const [filterWard, setFilterWard] = useState<string>('');
   const [admissionSearch, setAdmissionSearch] = useState('');
   const activeFilterCount = filterWard ? 1 : 0;
@@ -153,6 +159,55 @@ export default function WardsPage() {
     } catch (err) {
       console.error(err);
       showToast(describeError(err, t('ward.dischargeFailedToast')), 'error');
+    }
+  };
+
+  const actor = () => ({ id: currentUser?._id || currentUser?.username, name: currentUser?.name, role: currentUser?.role });
+
+  const handleCancelAdmission = async () => {
+    if (!dischargeFor) return;
+    const reason = await confirmPrompt({
+      title: t('ward.cancelAdmissionTitle'),
+      message: t('ward.cancelAdmissionMessage'),
+      inputLabel: t('ward.cancelAdmissionReason'),
+      inputRequired: true,
+      confirmLabel: t('ward.cancelAdmission'),
+      tone: 'danger',
+    });
+    if (!reason?.trim()) return;
+    try {
+      await cancel(dischargeFor._id, reason, actor());
+      showToast(t('ward.cancelAdmissionToast', { name: dischargeFor.patientName }), 'success');
+      setDischargeFor(null);
+    } catch (err) {
+      showToast(describeError(err, t('ward.cancelAdmissionFailedToast')), 'error');
+    }
+  };
+
+  // Discharged today and still reversible: the undo list's rows.
+  const recentDischarges = useMemo(
+    () => admissions.filter(a => (!facilityId || a.facilityId === facilityId) && !findUndoDischargeBlocker(a, new Date(now))),
+    [admissions, facilityId, now],
+  );
+  const undoOriginalBed = undoFor?.bedId ? beds.find(b => b._id === undoFor.bedId) : undefined;
+  const undoOriginalFree = Boolean(undoOriginalBed && !undoOriginalBed.currentAdmissionId && (undoOriginalBed.status === 'cleaning' || undoOriginalBed.status === 'available'));
+  const undoBeds = useMemo(
+    () => undoFor ? beds.filter(b => b.wardId === undoFor.wardId && b.status === 'available') : [],
+    [beds, undoFor],
+  );
+
+  const handleUndoDischarge = async () => {
+    if (!undoFor || !undoReason.trim()) return;
+    const bed = undoOriginalFree ? undefined : undoBeds.find(b => b._id === undoBedId);
+    if (!undoOriginalFree && !bed) return;
+    try {
+      const updated = await undoDischarge(undoFor._id, undoReason, actor(), bed
+        ? { wardId: bed.wardId, wardName: bed.wardName, bedId: bed._id, bedNumber: bed.bedNumber }
+        : undefined);
+      showToast(t('ward.undoDischargeToast', { name: updated.patientName, ward: updated.wardName }), 'success');
+      setUndoFor(null); setUndoReason(''); setUndoBedId('');
+    } catch (err) {
+      showToast(describeError(err, t('ward.undoDischargeFailedToast')), 'error');
     }
   };
 
@@ -338,10 +393,56 @@ export default function WardsPage() {
                     </div>
                   );
                 })}
+
+                {recentDischarges.length > 0 && (
+                  <div className="wdis-body" data-testid="recent-discharges">
+                    <div className="wdis-sectionhead"><h4>{t('ward.recentDischarges')}</h4></div>
+                    {recentDischarges.map(a => (
+                      <div key={a._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '6px 0' }}>
+                        <span>
+                          <PatientName patientId={a.patientId} name={a.patientName} nameClassName="" className="ehr-row-name" />
+                          {' · '}{a.wardName}{a.bedNumber ? ` · ${t('ward.bedShort', { bed: a.bedNumber })}` : ''}
+                        </span>
+                        {canDischarge && <button type="button" className="btn btn-secondary" onClick={() => { setUndoFor(a); setUndoReason(''); setUndoBedId(''); }}>{t('ward.undoDischarge')}</button>}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
+
+        {undoFor && (
+          <FormSlider
+            title={t('ward.undoDischargeTitle')}
+            width={560}
+            subtitle={undoFor.patientName}
+            onClose={() => setUndoFor(null)}
+            footer={<>
+              <button type="button" className="btn btn-secondary" onClick={() => setUndoFor(null)}>{t('action.cancel')}</button>
+              <button type="button" className="btn btn-primary" onClick={handleUndoDischarge}
+                disabled={!undoReason.trim() || (!undoOriginalFree && !undoBedId)}>{t('ward.undoDischargeConfirm')}</button>
+            </>}
+          >
+            <div className="wdis-body">
+              <p>{t('ward.undoDischargeMessage')}</p>
+              {!undoOriginalFree && (
+                <Select aria-label={t('ward.bedNumber')} value={undoBedId} onChange={e => setUndoBedId(e.target.value)}>
+                  <option value="">{t('ward.selectAvailableBed')}</option>
+                  {undoBeds.map(bed => <option key={bed._id} value={bed._id}>{bed.bedNumber}</option>)}
+                </Select>
+              )}
+              <textarea
+                aria-label={t('ward.undoDischargeReason')}
+                placeholder={t('ward.undoDischargeReason')}
+                value={undoReason}
+                onChange={e => setUndoReason(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </FormSlider>
+        )}
 
         {/* Admit form — shared with the patient chart's workspace. */}
         {admitOpen && (
@@ -548,6 +649,7 @@ export default function WardsPage() {
                     {t('ward.openChart')}
                   </button>
                   {canDischarge && <button type="button" className="btn btn-secondary" onClick={() => setTransferFor(dischargeFor)}>{t('ward.startTransfer')}</button>}
+                  {canDischarge && <button type="button" className="btn btn-danger" onClick={handleCancelAdmission}>{t('ward.cancelAdmission')}</button>}
                   {canDischarge && <button type="button" className="btn btn-secondary" onClick={() => router.push(`/deaths?patientId=${encodeURIComponent(dischargeFor.patientId)}${dischargeFor.encounterId ? `&encounterId=${encodeURIComponent(dischargeFor.encounterId)}` : ''}`)}>{t('ward.recordDeath')}</button>}
                 </div>
               </div>

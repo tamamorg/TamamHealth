@@ -4,7 +4,7 @@
  * Mapping lives here so the form, the rows and the queue all agree.
  */
 
-import { toIsoDate, todayIso } from '@/lib/date-utils';
+import { accessionDay } from '@/lib/accession-date';
 import type { LabOrderStatus } from '@/lib/clinical-flow/order-lifecycles';
 
 /** What the next press does to an order at this stage. One label for the row,
@@ -23,8 +23,14 @@ export function benchActionLabel(stage: LabOrderStatus): string {
 /** What a row's dropdown offers at this stage. Nothing once it has resulted. */
 export function benchActions(stage: LabOrderStatus, t: (key: string) => string): { value: string; label: string }[] {
   if (['resulted', 'reviewed_by_clinician', 'acted_upon', 'communicated_to_patient'].includes(stage)) return [];
+  // A cancelled order is withdrawn: nothing further happens to it.
+  if (stage === 'cancelled') return [];
   const next = { value: 'next', label: t(benchActionLabel(stage)) };
-  return stage === 'specimen_collected' ? [next, { value: 'reject', label: t('labFlow.actionReject') }] : [next];
+  if (stage === 'specimen_collected') return [next, { value: 'reject', label: t('labFlow.actionReject') }];
+  // Before the specimen is collected the order can still be withdrawn; after
+  // that the bench's Reject applies.
+  if (stage === 'ordered') return [next, { value: 'cancel', label: t('lab.cancelOrder') }];
+  return [next];
 }
 
 /** Requests from outside this facility get their report back from the lab. */
@@ -35,6 +41,7 @@ export const isOutsideRequest = (order: { requestSource?: string }) =>
 export function completedThrough(stage: LabOrderStatus): number {
   const order: Record<LabOrderStatus, number> = {
     ordered: 0,
+    cancelled: 0,
     rejected_needs_recollection: 0,
     specimen_collected: 1,
     received_at_lab: 2,
@@ -86,9 +93,5 @@ export function resultWithUnit(result?: string | number, unit?: string): string 
 /** Accession fallback for orders placed before accessions were stamped. */
 export function fallbackAccessionNumber(order: { _id: string; accessionNumber?: string; orderedAt?: string }): string {
   if (order.accessionNumber) return order.accessionNumber;
-  const ordered = new Date(order.orderedAt || Date.now());
-  const day = Number.isNaN(ordered.getTime())
-    ? todayIso().slice(2).replace(/-/g, '')
-    : toIsoDate(ordered).slice(2).replace(/-/g, '');
-  return `ACC-${day}-${order._id.replace(/^lab-/, '').slice(0, 5).toUpperCase()}`;
+  return `ACC-${accessionDay(order.orderedAt || Date.now())}-${order._id.replace(/^lab-/, '').slice(0, 5).toUpperCase()}`;
 }

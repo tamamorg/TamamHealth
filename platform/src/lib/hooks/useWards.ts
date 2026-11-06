@@ -68,6 +68,29 @@ export function useWards() {
     return doc;
   }, [load]);
 
+  const cancel = useCallback(async (
+    admissionId: string,
+    reason: string,
+    actor: { id?: string; name?: string; role?: import('../db-types').UserRole },
+  ) => {
+    const { cancelAdmission } = await import('../services/ward-service');
+    const doc = await cancelAdmission(admissionId, reason, actor);
+    await load();
+    return doc;
+  }, [load]);
+
+  const undoDischarge = useCallback(async (
+    admissionId: string,
+    reason: string,
+    actor: { id?: string; name?: string; role?: import('../db-types').UserRole },
+    newBed?: { wardId: string; wardName: string; bedId: string; bedNumber: string },
+  ) => {
+    const { undoDischarge: undo } = await import('../services/ward-service');
+    const doc = await undo(admissionId, reason, actor, newBed);
+    await load();
+    return doc;
+  }, [load]);
+
   const markBedReady = useCallback(async (
     bedId: string,
     actor?: { id?: string; name?: string },
@@ -123,6 +146,6 @@ export function useWards() {
     wards, beds, admissions, activeAdmissions,
     totalBeds, occupiedBeds, availableBeds, occupancyRate,
     loading, error: error && t(error),
-    admit, discharge, reassignBed, markBedReady, reload: load,
+    admit, discharge, cancel, undoDischarge, reassignBed, markBedReady, reload: load,
   };
 }

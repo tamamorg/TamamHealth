@@ -29,10 +29,15 @@ async function findAncVisitsForMother(motherName: string): Promise<ANCVisitDoc[]
   }
 }
 
-export async function getAllBirths(scope?: DataScope): Promise<BirthRegistrationDoc[]> {
+/**
+ * Registered births, newest first. Voided registrations (entered in error /
+ * duplicate) are left out unless `includeVoided` is set, so every statistic,
+ * export and dashboard built on this call excludes them by construction.
+ */
+export async function getAllBirths(scope?: DataScope, opts: { includeVoided?: boolean } = {}): Promise<BirthRegistrationDoc[]> {
   const db = birthsDB();
   const all = (await findByType<BirthRegistrationDoc>(db, 'birth'))
-    .filter(d => d.isDeleted !== true);
+    .filter(d => d.isDeleted !== true && (opts.includeVoided === true || !d.voidedAt));
   /* istanbul ignore next -- defensive null-safety in sort */
   all.sort((a, b) => new Date(b.dateOfBirth || '').getTime() - new Date(a.dateOfBirth || '').getTime());
   return scope ? filterByScope(all, scope) : all;
@@ -134,6 +139,57 @@ export async function updateBirth(id: string, data: Partial<BirthRegistrationDoc
   } catch {
     return null;
   }
+}
+
+export class VitalVoidError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'VitalVoidError';
+  }
+}
+
+export interface VitalVoidActor {
+  userId?: string;
+  userName: string;
+}
+
+/**
+ * Strike a birth registration out (entered in error / duplicate). The document
+ * stays in the register database for the civil trail; it is hidden and counted
+ * nowhere. A reason is required. Voiding twice is refused.
+ */
+export async function voidBirth(id: string, reason: string, actor: VitalVoidActor): Promise<BirthRegistrationDoc | null> {
+  const why = (reason || '').trim();
+  if (!why) throw new VitalVoidError('Give a reason for voiding this birth record.');
+  const db = birthsDB();
+  let existing: BirthRegistrationDoc;
+  try {
+    existing = await db.get(id) as BirthRegistrationDoc;
+  } catch {
+    return null;
+  }
+  if (existing.voidedAt) throw new VitalVoidError('This birth record is already voided.');
+  const now = new Date().toISOString();
+  const voided: BirthRegistrationDoc = {
+    ...existing,
+    voidedAt: now,
+    voidedBy: actor.userId,
+    voidedByName: actor.userName,
+    voidReason: why,
+    updatedAt: now,
+  };
+  const resp = await db.put(voided);
+  voided._rev = resp.rev;
+  await logAuditSafe('VOID_BIRTH', actor.userId, actor.userName, `Voided birth ${id} (${existing.certificateNumber}): ${why}`);
+  emitSyncEvent({
+    resourceType: 'birth',
+    resourceId: id,
+    operation: 'update',
+    resourceVersion: voided._rev,
+    orgId: voided.orgId,
+    hospitalId: voided.facilityId,
+  });
+  return voided;
 }
 
 export async function deleteBirth(id: string): Promise<boolean> {

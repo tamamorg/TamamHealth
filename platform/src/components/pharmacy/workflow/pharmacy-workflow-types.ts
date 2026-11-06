@@ -6,9 +6,16 @@ import type { PrescriptionStatus } from '@/lib/clinical-flow/order-lifecycles';
 export const isFilled = (stage: PrescriptionStatus): boolean =>
   stage === 'dispensed' || stage === 'counseled' || stage === 'complete';
 
-/** What the row's dropdown offers. Nothing once the medicine has gone out. */
-export function counterActions(stage: PrescriptionStatus, t: (key: string) => string): { value: string; label: string }[] {
-  if (isFilled(stage)) return [];
+/**
+ * What the row's dropdown offers. Once the medicine has gone out there is
+ * nothing to fill; a pharmacist (`canReverse`) can still take it back.
+ */
+export function counterActions(
+  stage: PrescriptionStatus,
+  t: (key: string) => string,
+  opts?: { canReverse?: boolean },
+): { value: string; label: string }[] {
+  if (isFilled(stage)) return opts?.canReverse ? [{ value: 'reverse', label: t('rxFlow.actionReverseDispense') }] : [];
   return [
     { value: 'next', label: t('rxFlow.fillPrescription') },
     { value: 'hold', label: t('rxFlow.actionHold') },

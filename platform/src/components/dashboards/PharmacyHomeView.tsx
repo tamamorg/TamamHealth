@@ -174,6 +174,7 @@ export function assemblePharmacyWorklist({
         rowKey: `${rx.patientId}:dispensed`,
         chartHref: dispenseFormHref(rx.patientId, rx._id),
         openId: rx._id,
+        actions: labels.t ? counterActions(rx.orderStatus || 'prescribed', labels.t, { canReverse: true }) : undefined,
       },
     });
   }
@@ -244,15 +245,15 @@ export function assemblePharmacyWorklist({
     return { date: localDayOf(at), time: localClockOf(at), series: (done ? 1 : 0) as 0 | 1 };
   });
 
+  // The ring counts the rows the lanes show (a patient with several scripts is
+  // one row), so each segment equals its lane's count. It covers every open
+  // script however old, plus what was dispensed today.
+  const inLane = (lane: string) => rows.filter(row => row.station?.lane === lane).length;
   return {
     patients: rows,
     outstanding,
     activity,
-    counts: {
-      queued: open.filter(rx => !isParked(rx.orderStatus || 'prescribed')).length,
-      working: open.filter(rx => isParked(rx.orderStatus || 'prescribed')).length,
-      dispensed: dispensedToday.length,
-    },
+    counts: { queued: inLane('scheduled'), working: inLane('in_office'), dispensed: inLane('finished') },
   };
 }
 
@@ -342,8 +343,8 @@ export default function PharmacyHomeView() {
         activitySeriesNames={[t('pharmacyHome.prescribed'), t('pharmacyHome.dispensed')]}
         laneLabels={{ scheduled: t('rxFlow.pillToFill'), in_office: t('rxFlow.pillOnHold'), finished: t('pharmacyHome.dispensed') }}
         acuityDonut={{
-          title: t('pharmacyHome.counterToday'),
-          centerLabel: t('pharmacyHome.scripts'),
+          title: t('pharmacyHome.counter'),
+          centerLabel: t('nav.patients').toLowerCase(),
           segments: [
             { name: t('rxFlow.pillToFill'), value: worklist.counts.queued, color: '#B35900' },
             { name: t('rxFlow.pillOnHold'), value: worklist.counts.working, color: '#015697' },
@@ -364,7 +365,7 @@ export default function PharmacyHomeView() {
           </section>
         )}
         stationDetail={stationDetail}
-        onStationOpen={(id, action) => setCounter({ id, intent: action === 'hold' || action === 'stockout' ? action : undefined })}
+        onStationOpen={(id, action) => setCounter({ id, intent: action === 'hold' || action === 'stockout' || action === 'reverse' ? action : undefined })}
         canWriteNotes={false}
         extraHeaderActions={[
           { key: 'stock', label: t('pharmacyHome.inventory'), icon: Package, run: () => router.push('/pharmacy?tab=inventory') },

@@ -51,6 +51,9 @@ export interface PortalLabResult {
   completedAt?: string;
 }
 
+/** A withdrawn order is not shown to the patient at all. */
+export const isPortalVisibleLab = (doc: Pick<LabResultDoc, 'status'>) => doc.status !== 'cancelled';
+
 /** Whether the patient may see this order's result. */
 export function isReleasedToPatient(doc: Pick<LabResultDoc, 'status' | 'orderStatus'>): boolean {
   if (doc.status !== 'completed') return false;
@@ -59,6 +62,8 @@ export function isReleasedToPatient(doc: Pick<LabResultDoc, 'status' | 'orderSta
 }
 
 export function toPortalLabResult(doc: LabResultDoc): PortalLabResult {
+  // Callers drop withdrawn orders first (isPortalVisibleLab); the narrowing here
+  // keeps the portal's three-state status honest.
   const released = isReleasedToPatient(doc);
   const filedButUnreviewed = doc.status === 'completed' && !released;
   const base: PortalLabResult = {
@@ -71,7 +76,7 @@ export function toPortalLabResult(doc: LabResultDoc): PortalLabResult {
     orderedAt: doc.orderedAt,
     createdAt: doc.createdAt,
     // An unreviewed result reads as still pending: to the patient, it is.
-    status: filedButUnreviewed ? 'pending' : doc.status,
+    status: filedButUnreviewed || doc.status === 'cancelled' ? 'pending' : doc.status,
     awaitingReview: filedButUnreviewed,
   };
   if (!released) return base;

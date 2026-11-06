@@ -711,9 +711,9 @@ export default function PharmacyPage() {
                           <StationActionPill
                             label={counterPillLabel(rx.orderStatus || 'prescribed', t)}
                             className={RX_STAGE_PILL_CLASS[stage] ?? 'status-scheduled'}
-                            actions={canDispense ? counterActions(rx.orderStatus || 'prescribed', t) : []}
+                            actions={canDispense ? counterActions(rx.orderStatus || 'prescribed', t, { canReverse: true }) : []}
                             ariaLabel={`Next step for ${rx.medication}`}
-                            onPick={action => setCounter({ id: rx._id, intent: action === 'hold' || action === 'stockout' ? action : undefined })}
+                            onPick={action => setCounter({ id: rx._id, intent: action === 'hold' || action === 'stockout' || action === 'reverse' ? action : undefined })}
                           />
                           {rx.urgency === 'immediate' && (
                             <small style={{ color: 'var(--color-warning-text)' }}>{t('rxFlow.urgencyImmediate')}</small>

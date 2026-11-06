@@ -32,6 +32,7 @@ import type { LabOrderStatus, PrescriptionStatus } from './order-lifecycles';
 import type { UserRole } from '../db-types';
 
 export type ProgressEventKind =
+  | 'checked_in'
   | 'triaged'
   | 'specimen_collected'
   | 'lab_resulted'
@@ -65,6 +66,8 @@ export interface ProgressEvent {
 interface TriageLike {
   _id: string; patientId: string; patientName: string;
   triagedAt?: string; updatedAt?: string; createdAt?: string;
+  /** 'clerical_checkin' = the front-desk placeholder; no clinician has assessed yet. */
+  assessmentSource?: string;
 }
 interface LabLike {
   _id: string; patientId: string; patientName: string; testName?: string;
@@ -111,12 +114,16 @@ export function buildProgressFeed(
   for (const d of input.triages ?? []) {
     const at = pick(d.triagedAt, d.updatedAt, d.createdAt);
     if (!within(at)) continue;
+    // Check-in files a placeholder triage row stamped with the check-in time.
+    // Until a nurse runs the real assessment (which flips assessmentSource to
+    // 'clinician') that is an arrival, not a triage.
+    const awaitingTriage = d.assessmentSource === 'clerical_checkin';
     out.push({
       id: `triage-${d._id}`,
-      kind: 'triaged',
+      kind: awaitingTriage ? 'checked_in' : 'triaged',
       patientId: d.patientId,
       patientName: d.patientName,
-      label: 'triaged',
+      label: awaitingTriage ? 'checked in, awaiting triage' : 'triaged',
       at,
       href: `/patients/${d.patientId}?tab=vitals`,
       // triagedAt is a real event stamp, so this one is exact.
@@ -222,20 +229,20 @@ export const PROGRESS_FEED_BY_ROLE: Readonly<Partial<Record<UserRole, ProgressFe
   // toward them, whose results are back, whose treatment completed at the
   // pharmacy. (Originally omitted on the theory that "Awaiting review"
   // covered it — it covers results only, not patient movement.)
-  doctor: { title: 'Patient flow', kinds: ['triaged', 'lab_resulted', 'dispensed'] },
-  clinical_officer: { title: 'Patient flow', kinds: ['triaged', 'lab_resulted', 'dispensed'] },
-  clinician: { title: 'Patient flow', kinds: ['triaged', 'lab_resulted', 'dispensed'] },
-  medical_superintendent: { title: 'Patient flow', kinds: ['triaged', 'lab_resulted', 'dispensed'] },
+  doctor: { title: 'Patient flow', kinds: ['checked_in', 'triaged', 'lab_resulted', 'dispensed'] },
+  clinical_officer: { title: 'Patient flow', kinds: ['checked_in', 'triaged', 'lab_resulted', 'dispensed'] },
+  clinician: { title: 'Patient flow', kinds: ['checked_in', 'triaged', 'lab_resulted', 'dispensed'] },
+  medical_superintendent: { title: 'Patient flow', kinds: ['checked_in', 'triaged', 'lab_resulted', 'dispensed'] },
 
   // Nurses hand patients on and receive them back — they care about movement
   // through triage and about results landing for someone they are watching.
-  nurse: { title: 'Patient progress', kinds: ['triaged', 'lab_resulted', 'dispensed'] },
-  triage_nurse: { title: 'Patient progress', kinds: ['triaged', 'lab_resulted', 'dispensed'] },
-  rooming_nurse: { title: 'Patient progress', kinds: ['triaged', 'lab_resulted', 'dispensed'] },
+  nurse: { title: 'Patient progress', kinds: ['checked_in', 'triaged', 'lab_resulted', 'dispensed'] },
+  triage_nurse: { title: 'Patient progress', kinds: ['checked_in', 'triaged', 'lab_resulted', 'dispensed'] },
+  rooming_nurse: { title: 'Patient progress', kinds: ['checked_in', 'triaged', 'lab_resulted', 'dispensed'] },
 
   // Midwives run their own clinical station and hand patients on like any
   // other clinician.
-  midwife: { title: 'Patient progress', kinds: ['triaged', 'lab_resulted', 'dispensed'] },
+  midwife: { title: 'Patient progress', kinds: ['checked_in', 'triaged', 'lab_resulted', 'dispensed'] },
 
   // The lab's own pipeline, from specimen in to result acted on.
   lab_tech: { title: 'Specimens moving', kinds: ['specimen_collected', 'lab_resulted', 'lab_reviewed'] },
@@ -244,13 +251,13 @@ export const PROGRESS_FEED_BY_ROLE: Readonly<Partial<Record<UserRole, ProgressFe
   pharmacist: { title: 'Scripts moving', kinds: ['prescribed', 'cleared_for_dispensing', 'dispensed', 'stockout'] },
 
   // The front desk needs to know who has finished, so it can close them out.
-  front_desk: { title: 'Patient flow', kinds: ['triaged', 'dispensed'] },
-  central_registration_clerk: { title: 'Patient flow', kinds: ['triaged', 'dispensed'] },
-  clinic_clerk: { title: 'Patient flow', kinds: ['triaged', 'dispensed'] },
+  front_desk: { title: 'Patient flow', kinds: ['checked_in', 'triaged', 'dispensed'] },
+  central_registration_clerk: { title: 'Patient flow', kinds: ['checked_in', 'triaged', 'dispensed'] },
+  clinic_clerk: { title: 'Patient flow', kinds: ['checked_in', 'triaged', 'dispensed'] },
 
   radiologist: { title: 'Imaging moving', kinds: ['specimen_collected', 'lab_resulted'] },
-  nutritionist: { title: 'Patient progress', kinds: ['triaged', 'lab_resulted'] },
-  data_entry_clerk: { title: 'Recent activity', kinds: ['triaged', 'lab_resulted', 'dispensed'] },
+  nutritionist: { title: 'Patient progress', kinds: ['checked_in', 'triaged', 'lab_resulted'] },
+  data_entry_clerk: { title: 'Recent activity', kinds: ['checked_in', 'triaged', 'lab_resulted', 'dispensed'] },
 };
 
 export function progressFeedFor(role: string | undefined): ProgressFeedConfig | null {

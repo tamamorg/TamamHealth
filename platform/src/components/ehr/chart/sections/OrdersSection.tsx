@@ -25,6 +25,8 @@ import { useToast } from '@/components/Toast';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { describeError } from '@/lib/user-facing-error';
+import { usePermissions } from '@/lib/hooks/usePermissions';
+import { canCancelLabOrder, useCancelLabOrder } from '@/components/lab/useCancelLabOrder';
 
 const PAGE_SIZE = 10;
 
@@ -41,6 +43,8 @@ interface UnifiedOrderRow {
   priority: 'STAT' | 'Urgent' | 'Routine';
   orderedBy: string;
   status: string;
+  /** A lab order still at `ordered`: it can be withdrawn. */
+  cancellable?: boolean;
 }
 
 /** Defensive sort key: an invalid/missing date sorts as oldest (0) rather
@@ -56,6 +60,7 @@ const STATUS_BADGE: Record<string, string> = {
   dispensed: 'tamam-panel-badge tamam-panel-badge--done',
   completed: 'tamam-panel-badge tamam-panel-badge--done',
   discontinued: 'tamam-panel-badge tamam-panel-badge--muted',
+  cancelled: 'tamam-panel-badge tamam-panel-badge--muted',
 };
 
 /**
@@ -91,6 +96,8 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const confirmPrompt = useConfirmPrompt();
+  const { canEnterLabResults } = usePermissions();
+  const cancelLabOrder = useCancelLabOrder();
   const { t } = useTranslation();
 
   // The same write the Medications tab's Discontinue makes, reason required.
@@ -150,6 +157,7 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
         priority: l.priority === 'stat' ? 'STAT' : l.priority === 'urgent' ? 'Urgent' : 'Routine',
         orderedBy: l.orderedBy || '—',
         status: l.status,
+        cancellable: canCancelLabOrder(l),
       }));
     return [...drugRows, ...labRows].sort((a, b) => ts(b.date) - ts(a.date));
   }, [prescriptions, results]);
@@ -273,6 +281,9 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
                       { key: 'open', label: r.source === 'drug' ? t('chart.orderOpenPrescription') : t('chart.orderOpenResult'), onClick: () => router.push(orderRowHref(pathname, r)) },
                       ...(r.source === 'drug' && canPrescribe ? [
                         { key: 'stop', label: t('chart.medicationDiscontinue'), tone: 'danger' as const, disabled: busyId === r.id || r.status !== 'pending', onClick: () => void discontinue(r) },
+                      ] : []),
+                      ...(r.source === 'lab' && r.cancellable && (canOrderLabs || canEnterLabResults) ? [
+                        { key: 'cancel-order', label: t('lab.cancelOrder'), tone: 'danger' as const, onClick: () => { const lab = (results || []).find(x => x._id === r.id); if (lab) void cancelLabOrder(lab); } },
                       ] : []),
                     ]}
                   />

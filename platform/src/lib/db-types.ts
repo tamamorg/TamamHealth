@@ -432,7 +432,8 @@ export interface LabResultDoc extends BaseDoc {
   hospitalNumber: string;
   testName: string;
   specimen: string;
-  status: 'pending' | 'in_progress' | 'completed';
+  /** `cancelled` = withdrawn before the specimen was collected (cancelLabOrder). */
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
   result: string;
   unit: string;
   referenceRange: string;
@@ -524,6 +525,10 @@ export interface LabResultDoc extends BaseDoc {
   specimenRejectionNotes?: string;
   specimenRejectedAt?: string;
   specimenRejectedBy?: string;
+  /** Withdrawn before collection: why, who and when (cancelLabOrder). */
+  cancelledReason?: string;
+  cancelledBy?: string;
+  cancelledAt?: string;
   /** The collector's remark about the draw (difficult draw, patient fasted…). */
   specimenCollectionNote?: string;
   /** Who asked for this test. Absent = a clinician at this facility. */
@@ -659,6 +664,21 @@ export interface DispenseAllocation {
   /** Stock on that batch before this dispense — lets the ledger be replayed. */
   beforeBalance: number;
   afterBalance: number;
+}
+
+/** One reversal of a dispense: medicine returned to stock. */
+export interface DispenseReversal {
+  at: string;
+  byId: string;
+  byName: string;
+  reason: string;
+  quantity: number;
+  /** Batches the units went back to, and the shelf balance either side. */
+  returns: Array<{ inventoryId: string; batchNumber: string; quantity: number; beforeBalance: number; afterBalance: number }>;
+  /** Register `return` entries, when a controlled batch was involved. */
+  controlledLogIds?: string[];
+  witnessId?: string;
+  witnessName?: string;
 }
 
 /** One copy of a prescription handed to the patient. */
@@ -841,6 +861,13 @@ export interface PrescriptionDoc extends BaseDoc {
   dispenseNote?: string;
   /** Controlled-substance register entry proving the two-signature sign-off. */
   controlledLogId?: string;
+  /**
+   * Every time this order's dispense was reversed and the medicine returned to
+   * stock (`reverseDispense`). Append-only history: the live fields above
+   * (`quantityDispensed`, `dispenseAllocations`) show what is out with the
+   * patient now; this shows what came back, from which batches, and why.
+   */
+  dispenseReversals?: DispenseReversal[];
   /** 'immediate' = emergency/stat med given before results (IV fluids, antipyretic,
    *  anticonvulsant); 'definitive' = started after diagnosis. */
   urgency?: 'immediate' | 'definitive';
@@ -1575,7 +1602,12 @@ export interface AssessmentDoc extends BaseDoc {
   interpretation?: string;
   severity?: string;
   /** held = entered, awaiting provider review; signed = attested + locked. */
-  documentStatus: 'held' | 'signed';
+  documentStatus: 'held' | 'signed' | 'discarded';
+  /** Set when a HELD assessment is discarded (entered in error). Signed ones are never discarded. */
+  discardedAt?: string;
+  discardedBy?: string;
+  discardedByName?: string;
+  discardReason?: string;
   enteredById?: string;
   enteredByName?: string;
   signedBy?: string;
@@ -1925,6 +1957,11 @@ export interface EncounterDoc extends BaseDoc {
   /** Set when the encounter is finalised into a medical_record. */
   medicalRecordId?: string;
   closedAt?: string;
+  /** Set by voidEncounter: the visit was opened in error and carries nothing clinical. */
+  voidedAt?: string;
+  voidedBy?: string;
+  voidedByName?: string;
+  voidReason?: string;
   orgId?: string;
   /**
    * New case vs re-attendance, captured once at arrival (front desk or
@@ -2106,6 +2143,11 @@ export interface BirthRegistrationDoc extends BaseDoc {
   linkedAncMotherId?: string;
   isDeleted?: boolean;
   orgId?: string;
+  /** Voided (entered in error / duplicate): a civil record is never deleted, it is struck out. */
+  voidedAt?: string;
+  voidedBy?: string;
+  voidedByName?: string;
+  voidReason?: string;
 }
 
 export interface DeathRegistrationDoc extends BaseDoc {
@@ -2145,6 +2187,11 @@ export interface DeathRegistrationDoc extends BaseDoc {
   patientId?: string;
   isDeleted?: boolean;
   orgId?: string;
+  /** Voided (entered in error / duplicate): a civil record is never deleted, it is struck out. */
+  voidedAt?: string;
+  voidedBy?: string;
+  voidedByName?: string;
+  voidReason?: string;
 }
 
 // ===== Health Facility Assessment =====
@@ -2432,7 +2479,9 @@ export interface ControlledSubstanceLogDoc extends BaseDoc {
   inventoryId: string;
   medicationName: string;
   schedule: 'I' | 'II' | 'III' | 'IV' | 'V';
-  movement: 'intake' | 'dispense' | 'waste' | 'reconciliation' | 'transfer';
+  /** `return` puts dispensed units back on the shelf (a reversed dispense);
+   *  like `intake` it raises the balance, every other movement lowers it. */
+  movement: 'intake' | 'dispense' | 'waste' | 'reconciliation' | 'transfer' | 'return';
   quantity: number;
   unit: string;
   beforeBalance: number;

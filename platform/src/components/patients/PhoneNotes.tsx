@@ -93,6 +93,10 @@ export default function PhoneNotes({ patient }: { patient: PatientDoc }) {
     const svc = await import('@/lib/services/phone-note-service');
     await svc.closePhoneNote(id);
   }
+  async function doReopen(id: string) {
+    const svc = await import('@/lib/services/phone-note-service');
+    await svc.reopenPhoneNote(id, { userId: currentUser?._id, userName: currentUser?.name || currentUser?.username });
+  }
 
   return (
     <ChartSection title={t('ui.phoneNotes')} addLabel="Log call" onAdd={() => setAdding(true)}>
@@ -142,6 +146,7 @@ export default function PhoneNotes({ patient }: { patient: PatientDoc }) {
                         { key: 'view', label: t('phoneNotes.view'), onClick: () => setOpenId(n._id) },
                         ...(n.status === 'open' && isProvider ? [{ key: 'respond', label: t('phoneNotes.respond'), onClick: () => setOpenId(n._id) }] : []),
                         ...(n.status === 'open' ? [{ key: 'close', label: t('phoneNotes.closeCall'), disabled: busy, onClick: () => run(() => doClose(n._id)) }] : []),
+                        ...(n.status === 'closed' ? [{ key: 'reopen', label: t('phoneNotes.reopenCall'), disabled: busy, group: 'undo', onClick: () => run(() => doReopen(n._id)) }] : []),
                       ]}
                     />
                   </td>

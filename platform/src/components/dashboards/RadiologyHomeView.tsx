@@ -30,6 +30,9 @@ import type { DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useAppointments } from '@/lib/hooks/useAppointments';
 import { useLabResults } from '@/lib/hooks/useLabResults';
+import { effectiveOrderStatus } from '@/lib/services/lab-service';
+import { studyActions } from '@/components/radiology/workflow/radiology-workflow-types';
+import { useCancelLabOrder } from '@/components/lab/useCancelLabOrder';
 import { isImagingStudy } from '@/lib/clinical-flow/lab-catalog';
 import { patientDisplayName, patientAge, shortenPersonName } from '@/lib/patient-utils';
 import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
@@ -51,6 +54,8 @@ export interface RadiologyWorklistInput {
     toPerform: string; toReport: string; urgent: string; reportedToday: string; assigned: string;
     /** What the row's dropdown offers for a study at this status. */
     nextAction?: (status: LabResultDoc['status']) => string;
+    /** The "Cancel order" row action; omit to hide it (no permission). */
+    cancelAction?: string;
   };
   now?: Date;
 }
@@ -67,7 +72,7 @@ export function assembleRadiologyWorklist({
   const patientById = new Map(patients.map(p => [p._id, p]));
   const studies = results.filter(r => isImagingStudy(r));
   const open = studies
-    .filter(s => s.status !== 'completed')
+    .filter(s => s.status === 'pending' || s.status === 'in_progress')
     .sort((a, b) => Number(b.critical) - Number(a.critical) || (a.orderedAt || '').localeCompare(b.orderedAt || ''));
 
   // One row per patient: their most pressing open study names the row, the
@@ -107,7 +112,9 @@ export function assembleRadiologyWorklist({
         lane: study.status === 'in_progress' ? 'in_office' : 'scheduled',
         chartHref: imagingReportHref(study.patientId),
         openId: study._id,
-        actions: labels.nextAction ? [{ value: 'next', label: labels.nextAction(study.status) }] : undefined,
+        actions: labels.nextAction
+          ? studyActions(effectiveOrderStatus(study), labels.nextAction(study.status), labels.cancelAction)
+          : undefined,
       },
     });
   }
@@ -206,6 +213,7 @@ export default function RadiologyHomeView() {
   const { patients } = usePatients();
   const { appointments } = useAppointments();
   const { results } = useLabResults();
+  const cancelOrder = useCancelLabOrder();
   // Whose studies are open in the slider.
   const [reportFor, setReportFor] = useState<string | null>(null);
 
@@ -219,6 +227,7 @@ export default function RadiologyHomeView() {
       toReport: t('radiologyHome.toReport'),
       reportedToday: t('radiologyHome.reportedToday'),
       assigned: t('labHome.assignedToMe'),
+      cancelAction: t('lab.cancelOrder'),
       nextAction: status => t(status === 'in_progress' ? 'radiologyHome.actionReport' : 'radiologyHome.actionPerform'),
     },
   });
@@ -238,7 +247,14 @@ export default function RadiologyHomeView() {
         missionTitle={t('mission.radiology.title')}
         missionDescription={t('mission.radiology.body')}
         missionIcon={ScanLine}
-        onStationOpen={setReportFor}
+        onStationOpen={(id, action) => {
+          if (action === 'cancel') {
+            const target = results.find(r => r._id === id);
+            if (target) void cancelOrder(target);
+            return;
+          }
+          setReportFor(id);
+        }}
       />
       {reportPatient && (
         <FormSlider title={reportStudy?.testName ?? t('radiologyHome.reportTitle')} subtitle={patientDisplayName(reportPatient)} className="tamam-dialog" width={560} flush onClose={() => setReportFor(null)}>

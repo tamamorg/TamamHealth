@@ -176,15 +176,31 @@ export function buildAccountLines({ entries, charges, payments, refunds, bills }
     });
   };
 
+  // Old bills were saved with no visit. When exactly one visit was charged on
+  // that Juba day, the visit-less charge belongs to it; with two or more it is
+  // ambiguous and keeps its day line. Display only, the ledger is not touched.
+  const visitsByDay = new Map<string, Set<string>>();
+  for (const entry of ordered) {
+    if (entry.entryType !== 'charge' || !entry.encounterId) continue;
+    const day = jubaDate(new Date(entry.createdAt));
+    visitsByDay.set(day, (visitsByDay.get(day) ?? new Set()).add(entry.encounterId));
+  }
+  const visitOnDay = (day: string): string | undefined => {
+    const visits = visitsByDay.get(day);
+    return visits?.size === 1 ? [...visits][0] : undefined;
+  };
+
   // Every charge first, so a deposit taken before its charge still finds it.
   for (const entry of ordered) {
     if (entry.entryType !== 'charge') continue;
-    const key = entry.encounterId ? `visit:${entry.encounterId}` : `day:${jubaDate(new Date(entry.createdAt))}`;
+    const day = jubaDate(new Date(entry.createdAt));
+    const visitId = entry.encounterId || visitOnDay(day);
+    const key = visitId ? `visit:${visitId}` : `day:${day}`;
     const line = openLine(key, entry);
-    if (entry.encounterId) line.encounterId = entry.encounterId;
+    if (visitId) line.encounterId = visitId;
     line.chargeRef ??= entry.referenceId;
     if (entry.referenceId) byReference.set(entry.referenceId, line);
-    if (entry.encounterId) byEncounter.set(entry.encounterId, line);
+    if (visitId) byEncounter.set(visitId, line);
     const seen = new Set(line.items.map(item => item.id));
     line.items.push(...itemsFor(entry, charges, billById).filter(item => !seen.has(item.id)));
     post(line, entry, Number(entry.amount) || 0, Number(entry.amount) || 0);

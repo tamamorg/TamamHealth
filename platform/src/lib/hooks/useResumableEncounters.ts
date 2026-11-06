@@ -87,6 +87,8 @@ export function useResumableEncounters() {
         for (const doc of byEncounterId.get(e._id) || []) {
           if (!merged.has(doc._id)) merged.set(doc._id, doc);
         }
+        // A withdrawn order is not a result the clinician is waiting on.
+        for (const [id, doc] of merged) if (doc?.status === 'cancelled') merged.delete(id);
         const resultsTotal = merged.size;
         const resultsReady = Array.from(merged.values()).filter(doc => doc?.status === 'completed').length;
         return {

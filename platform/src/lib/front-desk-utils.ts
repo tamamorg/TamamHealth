@@ -1,6 +1,6 @@
 import type { EncounterDoc, PatientDoc } from '@/lib/db-types';
 import { formatClockTime } from '@/lib/format-utils';
-import { toIsoDate, todayIso } from '@/lib/date-utils';
+import { jubaDate } from '@/lib/time-juba';
 import { canTransition, isTerminal } from '@/lib/clinical-flow/encounter-journey';
 
 // Exam rooms / bays a walk-in patient can be placed in to meet the provider.
@@ -62,10 +62,12 @@ export function formatDayMonthYear(iso?: string | null): string {
 }
 
 export function isoDateKey(value?: string | null): string {
-  if (!value) return todayIso();
-  if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+  if (!value) return jubaDate();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? todayIso() : toIsoDate(date);
+  // A full timestamp is dated on the CLINICAL day (Africa/Juba) — the same
+  // clock check-in stamps bookings with — not the device's own calendar.
+  return Number.isNaN(date.getTime()) ? jubaDate() : jubaDate(date);
 }
 
 // Final-checkout target: closing out a completed visit at the front desk.
@@ -104,7 +106,7 @@ export interface StaleOpenVisit {
  * never auto-expiry: a clinical record is closed by a person, audited — this
  * only says which ones are waiting for that.
  *
- * "Previous day" is the local calendar day (`toIsoDate`), matching how every
+ * "Previous day" is the clinical day (`jubaDate`), matching how every
  * board buckets its "today".
  */
 export function staleOpenVisits(encounters: EncounterDoc[], todayLocalIso: string): StaleOpenVisit[] {
@@ -114,7 +116,7 @@ export function staleOpenVisits(encounters: EncounterDoc[], todayLocalIso: strin
     const trail = encounter.statusHistory;
     const lastMovedAt = (trail && trail.length > 0 ? trail[trail.length - 1].at : '')
       || encounter.updatedAt || encounter.createdAt || '';
-    if (!lastMovedAt || toIsoDate(new Date(lastMovedAt)) >= todayLocalIso) continue;
+    if (!lastMovedAt || jubaDate(new Date(lastMovedAt)) >= todayLocalIso) continue;
     rows.push({
       encounter,
       lastMovedAt,

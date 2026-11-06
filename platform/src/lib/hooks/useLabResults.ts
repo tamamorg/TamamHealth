@@ -63,5 +63,13 @@ export function useLabResults(patientId?: string) {
     return result;
   }, [loadResults]);
 
-  return { results, loading, error: error && t(error), create, update, advance, reload: loadResults };
+  // Withdraw an order before its specimen is collected (reason required).
+  const cancel = useCallback(async (id: string, reason: string, actor: { id?: string; name: string; role?: string }) => {
+    const { cancelLabOrder } = await import('../services/lab-service');
+    const result = await cancelLabOrder(id, reason, actor);
+    await loadResults();
+    return result;
+  }, [loadResults]);
+
+  return { results, loading, error: error && t(error), create, update, advance, cancel, reload: loadResults };
 }

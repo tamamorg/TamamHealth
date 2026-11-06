@@ -10,7 +10,7 @@
  * is what this file names.
  */
 
-import { toIsoDate, todayIso } from '@/lib/date-utils';
+import { accessionDay } from '@/lib/accession-date';
 import type { LabOrderStatus } from '@/lib/clinical-flow/order-lifecycles';
 
 export type RadiologyWorkflowStepKey = 'order' | 'schedule' | 'safety' | 'acquire' | 'report' | 'release';
@@ -50,6 +50,7 @@ export function stepForStage(stage: LabOrderStatus): RadiologyWorkflowStepKey {
 export function completedThrough(stage: LabOrderStatus): number {
   const order: Record<LabOrderStatus, number> = {
     ordered: 0,
+    cancelled: 0,
     rejected_needs_recollection: 0,
     specimen_collected: 1,
     received_at_lab: 2,
@@ -60,6 +61,20 @@ export function completedThrough(stage: LabOrderStatus): number {
     communicated_to_patient: 5,
   };
   return order[stage] ?? 0;
+}
+
+/**
+ * What a study row's dropdown offers: the next step, plus "Cancel order" while
+ * the study is still at `ordered` (same rule as the lab bench's benchActions).
+ */
+export function studyActions(
+  stage: LabOrderStatus,
+  nextLabel: string,
+  cancelLabel?: string,
+): { value: string; label: string }[] {
+  if (stage === 'cancelled') return [];
+  const next = { value: 'next', label: nextLabel };
+  return stage === 'ordered' && cancelLabel ? [next, { value: 'cancel', label: cancelLabel }] : [next];
 }
 
 export const MODALITIES = ['X-Ray', 'Ultrasound', 'CT Scan', 'MRI', 'Fluoroscopy', 'Mammography'];
@@ -98,11 +113,7 @@ export const REPEAT_REASONS = [
  */
 export function fallbackAccessionNumber(study: { _id: string; accessionNumber?: string; orderedAt?: string }): string {
   if (study.accessionNumber) return study.accessionNumber;
-  const ordered = new Date(study.orderedAt || Date.now());
-  const day = Number.isNaN(ordered.getTime())
-    ? todayIso().slice(2).replace(/-/g, '')
-    : toIsoDate(ordered).slice(2).replace(/-/g, '');
-  return `IMG-${day}-${study._id.replace(/^lab-/, '').slice(0, 5).toUpperCase()}`;
+  return `IMG-${accessionDay(study.orderedAt || Date.now())}-${study._id.replace(/^lab-/, '').slice(0, 5).toUpperCase()}`;
 }
 
 /** The study as one line — modality, region, side. */

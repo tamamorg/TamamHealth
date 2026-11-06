@@ -226,7 +226,7 @@ function parseHL7(payload: string): IntakeOutcome {
 export function matchAnalyzerResult<
   T extends { _id: string; status?: string; testName?: string; accessionNumber?: string },
 >(parsed: Pick<ParsedInstrumentResult, 'accession' | 'testName'>, orders: T[]): T | undefined {
-  const open = orders.filter(o => o.status !== 'completed');
+  const open = orders.filter(o => o.status !== 'completed' && o.status !== 'cancelled');
   const accession = parsed.accession?.trim().toLowerCase();
 
   if (accession) {

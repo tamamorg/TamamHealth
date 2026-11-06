@@ -505,7 +505,7 @@ export const DOC_UPDATE_ONLY_FIELDS: Readonly<Record<string, readonly string[]>>
   prescription: [
     'status', 'orderStatus', 'dispensedAt', 'dispensedBy', 'dispensedByName',
     'quantityDispensed', 'dispenseAllocations', 'dispenseLock', 'dispenseOutcome',
-    'dispenseNote', 'dispenseAllergyReview', 'controlledLogId', 'counselledAt', 'counselledBy',
+    'dispenseNote', 'dispenseAllergyReview', 'dispenseReversals', 'controlledLogId', 'counselledAt', 'counselledBy',
     'counselledPoints', 'counsellingNote', 'updatedAt', 'offlineSync',
   ],
   admission: [

@@ -284,6 +284,14 @@ export interface CreateTriageOptions {
  * sentinel entries ("None known"), which are contradicted by the real
  * allergen being added alongside them.
  */
+/** A triage "known allergies" answer that says the patient has none
+ *  ("none", "NKDA", "no known allergies") — as opposed to a blank field,
+ *  which means the question was not asked. */
+export function isTriageNoAllergyAnswer(knownAllergies: string | undefined): boolean {
+  const parts = (knownAllergies || '').split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
+  return parts.length > 0 && parts.every(s => isNoAllergySentinel(s) && !/^unknown$/i.test(s));
+}
+
 export function mergeTriageAllergies(
   existing: string[] | undefined,
   knownAllergies: string | undefined,
@@ -323,7 +331,26 @@ async function applyTriageAllergiesToPatient(
     for (let attempt = 0; attempt < 3; attempt++) {
       const patient = await db.get(patientId) as PatientDoc;
       const merged = mergeTriageAllergies(patient.allergies, knownAllergies);
-      if (!merged) return;
+      if (!merged) {
+        // The nurse asked and the patient has none ("none", "NKDA" typed in
+        // the field): that is an assessment, so record the attestation —
+        // unless real allergies are already on file, which it can't override.
+        const saidNone = isTriageNoAllergyAnswer(knownAllergies);
+        const hasReal = (patient.allergies || []).some(a => a && !isNoAllergySentinel(a))
+          || (patient.structuredAllergies || []).some(a => a.status === 'active');
+        if (!saidNone || hasReal || patient.noKnownDrugAllergies) return;
+        try {
+          await db.put(withPendingOfflineSync({ ...patient, noKnownDrugAllergies: true, updatedAt: new Date().toISOString() }));
+        } catch (error) {
+          const conflict = error as { name?: string; status?: number } | undefined;
+          if ((conflict?.name === 'conflict' || conflict?.status === 409) && attempt < 2) continue;
+          throw error;
+        }
+        await logAuditSafe('PATIENT_ALLERGIES_UPDATED', actor?.userId, actor?.username,
+          `No known drug allergies recorded at triage for patient ${patientId}`,
+        );
+        return;
+      }
       // Record the triage allergens as STRUCTURED entries, not only the legacy
       // mirror: the prescribing/dispensing allergy checks read
       // structuredAllergies and ignore the legacy list once any structured

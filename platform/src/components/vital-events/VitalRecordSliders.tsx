@@ -8,6 +8,8 @@
  */
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { useConfirmPrompt } from '@/components/ConfirmDialog';
+import { formatDateTime } from '@/lib/format-utils';
 import FormSlider from '@/components/overlay/FormSlider';
 import { FileText, Printer } from '@/components/icons/lucide';
 import type { BirthRegistrationDoc, DeathRegistrationDoc } from '@/lib/db-types';
@@ -28,17 +30,58 @@ function Fact({ label, children, wide = false }: { label: string; children: Reac
 const shown = (value: unknown, fallback: string) =>
   value === undefined || value === null || String(value).trim() === '' ? fallback : String(value);
 
+/** Shown in place of the print button on a voided record, and in the body. */
+function VoidedNotice({ rec }: { rec: { voidedAt?: string; voidedByName?: string; voidReason?: string } }) {
+  const { t } = useTranslation();
+  return (
+    <p className="vr-paper" role="status" style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)' }}>
+      <span>
+        <strong>{t('vital.voidedReason', { reason: rec.voidReason || '' })}</strong>
+        {[rec.voidedByName, rec.voidedAt ? formatDateTime(rec.voidedAt) : ''].filter(Boolean).join(' · ')}
+      </span>
+    </p>
+  );
+}
+
+/** Asks for the required reason, then voids. Errors are surfaced inline by the caller's toast host. */
+function useVoidAction(onVoid: ((reason: string) => Promise<void>) | undefined, kind: 'birth' | 'death', linkedPatient: boolean, onClose: () => void) {
+  const { t } = useTranslation();
+  const confirmPrompt = useConfirmPrompt();
+  if (!onVoid) return undefined;
+  return async () => {
+    const reason = await confirmPrompt({
+      title: t(kind === 'birth' ? 'vital.voidBirthTitle' : 'vital.voidDeathTitle'),
+      message: [t('vital.voidMessage'), linkedPatient ? t('vital.voidDeathPatientNote') : ''].filter(Boolean).join(' '),
+      confirmLabel: t('vital.voidRecord'),
+      tone: 'danger',
+      inputLabel: t('vital.voidReasonLabel'),
+      inputRequired: true,
+      layout: 'dialog',
+    });
+    if (!reason || !reason.trim()) return;
+    try {
+      await onVoid(reason.trim());
+      onClose();
+    } catch (err) {
+      console.error('Void failed', err);
+    }
+  };
+}
+
 const capital = (value?: string) => (value ? value.charAt(0).toUpperCase() + value.slice(1).replace(/_/g, ' ') : '');
 
-export function BirthRecordSlider({ birth, motherChartId, onClose, onCorrect }: {
+export function BirthRecordSlider({ birth, motherChartId, onClose, onCorrect, onVoid }: {
   birth: BirthRegistrationDoc;
   /** The mother's chart, when she is a registered patient. */
   motherChartId?: string;
   onClose: () => void;
   /** Present only for a viewer who may change the register; opens the form on this record. */
   onCorrect?: () => void;
+  /** Present only for a viewer who may change the register; strikes the record out with a reason. */
+  onVoid?: (reason: string) => Promise<void>;
 }) {
   const { t } = useTranslation();
+  const voidAction = useVoidAction(onVoid, 'birth', false, onClose);
   const none = t('vital.notRecorded');
   const child = [birth.childFirstName, birth.childSurname].filter(Boolean).join(' ');
   return (
@@ -50,12 +93,16 @@ export function BirthRecordSlider({ birth, motherChartId, onClose, onCorrect }: 
       footer={<>
         <button type="button" className="btn btn-secondary" onClick={onClose}>{t('vital.close')}</button>
         {onCorrect && <button type="button" className="btn btn-secondary" onClick={onCorrect}>{t('vital.correctRecord')}</button>}
+        {voidAction && !birth.voidedAt && <button type="button" className="btn btn-danger" onClick={voidAction}>{t('vital.voidRecord')}</button>}
+        {!birth.voidedAt && (
         <button type="button" className="btn btn-primary inline-flex items-center gap-2" onClick={() => printBirthNotification(birth)}>
           <Printer className="w-4 h-4" /> {t('vital.printBirthNotification')}
         </button>
+        )}
       </>}
     >
       <div className="vr-detail">
+        {birth.voidedAt && <VoidedNotice rec={birth} />}
         <section className="vr-section">
           <h3>{t('vital.child')}</h3>
           <dl className="vr-facts">
@@ -110,13 +157,16 @@ export function BirthRecordSlider({ birth, motherChartId, onClose, onCorrect }: 
   );
 }
 
-export function DeathRecordSlider({ death, onClose, onCorrect }: {
+export function DeathRecordSlider({ death, onClose, onCorrect, onVoid }: {
   death: DeathRegistrationDoc;
   onClose: () => void;
   /** Present only for a viewer who may change the register; opens the form on this record. */
   onCorrect?: () => void;
+  /** Present only for a viewer who may change the register; strikes the record out with a reason. */
+  onVoid?: (reason: string) => Promise<void>;
 }) {
   const { t } = useTranslation();
+  const voidAction = useVoidAction(onVoid, 'death', !!death.patientId, onClose);
   const none = t('vital.notRecorded');
   const name = [death.deceasedFirstName, death.deceasedSurname].filter(Boolean).join(' ');
   const chain = [
@@ -135,12 +185,16 @@ export function DeathRecordSlider({ death, onClose, onCorrect }: {
       footer={<>
         <button type="button" className="btn btn-secondary" onClick={onClose}>{t('vital.close')}</button>
         {onCorrect && <button type="button" className="btn btn-secondary" onClick={onCorrect}>{t('vital.correctRecord')}</button>}
+        {voidAction && !death.voidedAt && <button type="button" className="btn btn-danger" onClick={voidAction}>{t('vital.voidRecord')}</button>}
+        {!death.voidedAt && (
         <button type="button" className="btn btn-primary inline-flex items-center gap-2" onClick={() => printDeathCertificate(death)}>
           <Printer className="w-4 h-4" /> {t('vital.printDeathCertificate')}
         </button>
+        )}
       </>}
     >
       <div className="vr-detail">
+        {death.voidedAt && <VoidedNotice rec={death} />}
         <section className="vr-section">
           <h3>{t('vital.deceased')}</h3>
           <dl className="vr-facts">

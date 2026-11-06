@@ -652,6 +652,10 @@ export async function getMCHAnalytics(scope?: DataScope): Promise<MCHAnalyticsDa
     findByType<ImmunizationDoc>(immunizationsDB(), 'immunization'),
   ]);
 
+  // Voided registrations (entered in error / duplicate) count nowhere.
+  births = births.filter(b => !b.voidedAt && b.isDeleted !== true);
+  deaths = deaths.filter(d => !d.voidedAt && d.isDeleted !== true);
+
   // Apply tenant scoping (orgId/hospitalId per role) so non-government users
   // never see other facilities' MCH data through the analytics surface.
   if (scope) {

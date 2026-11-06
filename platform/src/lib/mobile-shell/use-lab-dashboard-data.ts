@@ -24,7 +24,7 @@ export function useLabDashboardData(): MobileDashboardData {
 
   const now = useNow(60_000);
   const outstanding = useMemo<MobileOutstandingItem[]>(() => {
-    const critical = results.filter((r) => r.critical && r.status !== 'completed').length;
+    const critical = results.filter((r) => r.critical && (r.status === 'pending' || r.status === 'in_progress')).length;
     const agingMs = 2 * 60 * 60 * 1000; // 2h
     const agedPending = results.filter(
       (r) => r.status === 'pending' && r.orderedAt && now - new Date(r.orderedAt).getTime() > agingMs

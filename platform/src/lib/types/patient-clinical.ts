@@ -115,6 +115,9 @@ export interface CareAlertEntry {
   recordedBy?: string;
   recordedByName?: string;
   recordedAt: string;
+  /** Set by updateCareAlert / reopenCareAlert. */
+  updatedAt?: string;
+  updatedByName?: string;
 }
 
 /**

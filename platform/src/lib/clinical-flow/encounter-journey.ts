@@ -80,7 +80,10 @@ export type EncounterStatus =
   | 'discharged'
   | 'discharged_with_referral'
   | 'discharged_with_pending_items'
-  | 'dismissed_without_formal_checkout';
+  | 'dismissed_without_formal_checkout'
+  // Opened in error: terminal, reachable only through voidEncounter's guard
+  // (nothing clinical recorded). Never a clinical outcome.
+  | 'voided';
 
 /**
  * Allowed forward transitions per status, exactly as the "Status transitions"
@@ -93,10 +96,10 @@ export type EncounterStatus =
  */
 export const ENCOUNTER_TRANSITIONS: Readonly<Record<EncounterStatus, readonly EncounterStatus[]>> = {
   // Stage 1–2
-  scheduled: ['registered'],
-  registered: ['arrived_at_facility'],
-  arrived_at_facility: ['awaiting_next_station'],
-  awaiting_next_station: ['awaiting_triage', 'routed_to_clinic', 'escalated_to_emergency', 'lwbs'],
+  scheduled: ['registered', 'voided'],
+  registered: ['arrived_at_facility', 'voided'],
+  arrived_at_facility: ['awaiting_next_station', 'voided'],
+  awaiting_next_station: ['awaiting_triage', 'routed_to_clinic', 'escalated_to_emergency', 'lwbs', 'voided'],
 
   // Stage 3 — Triage
   // Deliberately NO `escalated_to_emergency` here, unlike every other status
@@ -109,8 +112,8 @@ export const ENCOUNTER_TRANSITIONS: Readonly<Record<EncounterStatus, readonly En
   // the patient and the facility visit can close without opening a clinic
   // encounter. It is recorded as a formal dismissal so the open-visit joiner
   // cannot absorb the patient's next arrival.
-  awaiting_triage: ['in_triage', 'lwbs', 'dismissed_without_formal_checkout'],
-  in_triage: ['triaged_awaiting_destination', 'escalated_to_emergency', 'lwbs'],
+  awaiting_triage: ['in_triage', 'lwbs', 'dismissed_without_formal_checkout', 'voided'],
+  in_triage: ['triaged_awaiting_destination', 'escalated_to_emergency', 'lwbs', 'voided'],
   // `awaiting_next_station` here (and on the stage-4 statuses below) is the
   // RETURN-TO-DESK edge: a clinician sends a visit back to reception — the
   // patient stepped out, the handoff went to the wrong provider, or the visit
@@ -118,15 +121,15 @@ export const ENCOUNTER_TRANSITIONS: Readonly<Record<EncounterStatus, readonly En
   // the desk-owned crossroads (capabilities: patient_routing), and its own
   // onward edges (re-route to clinic, escalate, close as LWBS) are exactly
   // the choices the desk then has.
-  triaged_awaiting_destination: ['routed_to_clinic', 'escalated_to_emergency', 'lwbs', 'awaiting_next_station'],
+  triaged_awaiting_destination: ['routed_to_clinic', 'escalated_to_emergency', 'lwbs', 'awaiting_next_station', 'voided'],
   escalated_to_emergency: ['admitted', 'discharged', 'deceased', 'referred_out'],
   lwbs: [],
 
   // Stage 4 — Clinic Intake / Rooming
-  routed_to_clinic: ['arrived_at_clinic_awaiting_rooming', 'transferred_to_other_clinic', 'escalated_to_emergency', 'lwbs', 'awaiting_next_station'],
-  arrived_at_clinic_awaiting_rooming: ['in_rooming', 'transferred_to_other_clinic', 'escalated_to_emergency', 'lwbs', 'awaiting_next_station'],
-  in_rooming: ['ready_for_clinician', 'escalated_to_emergency', 'transferred_to_other_clinic', 'lwbs', 'awaiting_next_station'],
-  ready_for_clinician: ['with_clinician', 'escalated_to_emergency', 'lwbs', 'awaiting_next_station'],
+  routed_to_clinic: ['arrived_at_clinic_awaiting_rooming', 'transferred_to_other_clinic', 'escalated_to_emergency', 'lwbs', 'awaiting_next_station', 'voided'],
+  arrived_at_clinic_awaiting_rooming: ['in_rooming', 'transferred_to_other_clinic', 'escalated_to_emergency', 'lwbs', 'awaiting_next_station', 'voided'],
+  in_rooming: ['ready_for_clinician', 'escalated_to_emergency', 'transferred_to_other_clinic', 'lwbs', 'awaiting_next_station', 'voided'],
+  ready_for_clinician: ['with_clinician', 'escalated_to_emergency', 'lwbs', 'awaiting_next_station', 'voided'],
   transferred_to_other_clinic: ['arrived_at_clinic_awaiting_rooming'],
 
   // Stage 5 — Clinical Consultation
@@ -142,6 +145,7 @@ export const ENCOUNTER_TRANSITIONS: Readonly<Record<EncounterStatus, readonly En
     'transferred_to_other_clinic',
     'escalated_to_emergency',
     'consultation_paused_draft',
+    'voided',
   ],
   // Diagnostics/procedures/pharmacy run as parallel order lifecycles; when the
   // clinician's in-visit loops resolve the encounter returns toward checkout.
@@ -158,7 +162,7 @@ export const ENCOUNTER_TRANSITIONS: Readonly<Record<EncounterStatus, readonly En
   // after tests were ordered leaves the visit reading `awaiting_labs`.
   awaiting_pharmacy: ['with_clinician', 'awaiting_labs', 'awaiting_imaging', 'ready_for_clinic_checkout', 'escalated_to_emergency'],
   awaiting_procedure: ['with_clinician', 'ready_for_clinic_checkout', 'escalated_to_emergency'],
-  consultation_paused_draft: ['with_clinician'],
+  consultation_paused_draft: ['with_clinician', 'voided'],
   referred_out: ['ready_for_clinic_checkout', 'awaiting_facility_checkout'],
 
   // Stage 9 — Clinic Checkout
@@ -179,6 +183,7 @@ export const ENCOUNTER_TRANSITIONS: Readonly<Record<EncounterStatus, readonly En
   discharged_with_referral: [],
   discharged_with_pending_items: [],
   dismissed_without_formal_checkout: [],
+  voided: [],
 };
 
 /** Statuses that close the encounter (Stage 11 — post-visit workflows continue separately). */
@@ -190,6 +195,7 @@ export const TERMINAL_STATUSES: readonly EncounterStatus[] = [
   'admitted',
   'deceased',
   'lwbs',
+  'voided',
 ];
 
 /** Which stage a status belongs to (for station routing & dashboards). */
@@ -226,6 +232,7 @@ export const STATUS_STAGE: Readonly<Record<EncounterStatus, EncounterStageKey>> 
   discharged_with_referral: 'facility_checkout',
   discharged_with_pending_items: 'facility_checkout',
   dismissed_without_formal_checkout: 'facility_checkout',
+  voided: 'arrival_registration',
 };
 
 /**

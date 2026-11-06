@@ -7,7 +7,7 @@ import type { BaseDoc, FacilityLevel } from './db-types';
 
 export type WardType = 'general_male' | 'general_female' | 'paediatric' | 'maternity' | 'surgical' | 'icu' | 'isolation' | 'emergency' | 'neonatal' | 'private';
 export type BedStatus = 'available' | 'occupied' | 'reserved' | 'maintenance' | 'cleaning';
-export type AdmissionStatus = 'admitted' | 'transferred' | 'discharged' | 'deceased' | 'absconded';
+export type AdmissionStatus = 'admitted' | 'transferred' | 'discharged' | 'deceased' | 'absconded' | 'cancelled';
 export type RoomClass = 'standard' | 'semi_private' | 'private' | 'vip' | 'icu' | 'isolation';
 
 export interface WardDoc extends BaseDoc {
@@ -116,6 +116,27 @@ export interface AdmissionDoc extends BaseDoc {
   /** Clinician confirmed which inpatient medicines stop or continue at exit. */
   medicationReconciled?: boolean;
   medicationReconciledAt?: string;
+  // Cancelled in error (cancelAdmission): the stay never happened clinically.
+  cancelledAt?: string;
+  cancelledBy?: string;
+  cancelledByName?: string;
+  cancelReason?: string;
+  /** Append-only trail of undone discharges; each keeps what was reversed. */
+  dischargeReversals?: Array<{
+    at: string;
+    by?: string;
+    byName?: string;
+    reason: string;
+    reversed: {
+      dischargeDate?: string;
+      dischargeType?: AdmissionDoc['dischargeType'];
+      dischargeDiagnosis?: string;
+      dischargeIcd11?: string;
+      dischargeSummary?: string;
+      dischargedBy?: string;
+      dischargedByName?: string;
+    };
+  }>;
   // Transfer
   transferredFrom?: string;
   transferredTo?: string;

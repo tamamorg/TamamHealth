@@ -150,7 +150,16 @@ function signatureBlock(lines: { label: string; value?: string }[]): string {
 
 /* ── Notification of Birth ─────────────────────────────────────────────── */
 
+/** A voided registration is struck out of the register; no paper may be issued for it. */
+export class VoidedRecordError extends Error {
+  constructor(kind: 'birth' | 'death') {
+    super(`This ${kind} record is voided; no ${kind === 'birth' ? 'notification' : 'certificate'} can be printed.`);
+    this.name = 'VoidedRecordError';
+  }
+}
+
 export function buildBirthNotificationHtml(b: BirthRegistrationDoc, issued: Date = new Date()): string {
+  if (b.voidedAt) throw new VoidedRecordError('birth');
   const child = [b.childFirstName, b.childSurname].filter(Boolean).join(' ');
   const body = `
   <p class="cert-statement">This is to certify that the birth described below took place at, or was attended by, this health facility and is recorded in its birth register as entry <strong>${escapeHtml(b.certificateNumber || '—')}</strong>.</p>
@@ -254,6 +263,7 @@ const EXTERNAL_PLACES = [
 ];
 
 export function buildDeathCertificateHtml(d: DeathRegistrationDoc, issued: Date = new Date()): string {
+  if (d.voidedAt) throw new VoidedRecordError('death');
   const name = [d.deceasedFirstName, d.deceasedSurname].filter(Boolean).join(' ');
   const manner = MANNER_TO_WHO[d.mannerOfDeath] || null;
   const external = d.mannerOfDeath === 'accident' || d.mannerOfDeath === 'assault' || d.mannerOfDeath === 'intentional_self_harm';
@@ -372,10 +382,12 @@ export function buildDeathCertificateHtml(d: DeathRegistrationDoc, issued: Date 
 }
 
 export function printBirthNotification(b: BirthRegistrationDoc): void {
+  if (b.voidedAt) return;
   openIsolatedHtmlWindow(buildBirthNotificationHtml(b), '', true);
 }
 
 export function printDeathCertificate(d: DeathRegistrationDoc): void {
+  if (d.voidedAt) return;
   openIsolatedHtmlWindow(buildDeathCertificateHtml(d), '', true);
 }
 

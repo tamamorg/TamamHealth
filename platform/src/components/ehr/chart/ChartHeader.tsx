@@ -86,10 +86,16 @@ function activeAllergies(patient: PatientDoc): BannerAllergy[] | undefined {
       .filter(a => a.status === 'active')
       .map(a => ({ substance: a.substance, criticality: a.criticality }));
   }
-  if (!patient.allergies) return undefined;
-  return patient.allergies
+  const recorded = (patient.allergies || [])
     .filter(a => a && !isNoAllergySentinel(a))
     .map(substance => ({ substance }));
+  if (recorded.length) return recorded;
+  // An empty legacy list, or one holding only a "None known" sentinel, is not
+  // an assessment: registration used to write ['None known'] as its "not asked
+  // yet" default, and the banner read it as an answer (a safety finding in the
+  // 2026-11-05 walkthrough). "No known allergies" now needs the clinician's
+  // explicit NKDA attestation (or a structured review, above).
+  return patient.noKnownDrugAllergies ? [] : undefined;
 }
 
 /** The banner's allergy line. Three states, deliberately distinct: allergies

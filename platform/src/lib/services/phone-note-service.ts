@@ -166,3 +166,35 @@ export async function closePhoneNote(id: string): Promise<PhoneNoteDoc | null> {
   });
   return updated;
 }
+
+/**
+ * Reopen a closed phone note (closed in error, or the caller rang back). Only a
+ * closed note can reopen: an answered note keeps its response and stays
+ * answered. Any earlier response is kept on the record.
+ */
+export async function reopenPhoneNote(id: string, actor?: { userId?: string; userName?: string }): Promise<PhoneNoteDoc | null> {
+  const db = phoneNotesDB();
+  let existing: PhoneNoteDoc;
+  try {
+    existing = await db.get(id) as PhoneNoteDoc;
+  } catch {
+    return null;
+  }
+  if (existing.status !== 'closed') {
+    throw new Error('Phone note not reopened. Only a closed note can be reopened.');
+  }
+  const now = new Date().toISOString();
+  const updated: PhoneNoteDoc = { ...existing, status: 'open', updatedAt: now };
+  const resp = await db.put(updated);
+  updated._rev = resp.rev;
+  await logAuditSafe('REOPEN_PHONE_NOTE', actor?.userId, actor?.userName, `Reopened phone note ${id} on patient ${updated.patientId}`);
+  emitSyncEvent({
+    resourceType: 'phone_note',
+    resourceId: updated._id,
+    operation: 'update',
+    resourceVersion: updated._rev,
+    hospitalId: updated.hospitalId,
+    orgId: updated.orgId,
+  });
+  return updated;
+}

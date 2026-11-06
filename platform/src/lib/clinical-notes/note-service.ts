@@ -134,7 +134,7 @@ async function hasOutstandingParkedWork(
     // has not yet resulted still blocks the move.
     const { getLabResultsByPatient } = await import('../services/lab-service');
     const labs = await getLabResultsByPatient(patientId);
-    return labs.some(l => l.encounterId === encounterId && l.status !== 'completed');
+    return labs.some(l => l.encounterId === encounterId && (l.status === 'pending' || l.status === 'in_progress'));
   } catch {
     return true;
   }

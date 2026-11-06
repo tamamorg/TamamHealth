@@ -1,8 +1,9 @@
 import { labResultsDB, hospitalsDB } from '../db';
+import { accessionDay } from '@/lib/accession-date';
 import { findByType } from './db-query';
 import type { LabResultDoc, HospitalDoc } from '../db-types';
 import type { DataScope } from './data-scope';
-import { filterByScope } from './data-scope';
+import { filterByScope, orgOnlyScope } from './data-scope';
 import { v4 as uuidv4 } from 'uuid';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
@@ -36,6 +37,7 @@ function encryptLabFields<T extends Partial<LabResultDoc>>(data: T): T {
  */
 export function effectiveOrderStatus(doc: Pick<LabResultDoc, 'orderStatus' | 'status'>): LabOrderStatus {
   if (doc.orderStatus) return doc.orderStatus;
+  if (doc.status === 'cancelled') return 'cancelled';
   if (doc.status === 'completed') return 'resulted';
   if (doc.status === 'in_progress') return 'in_process';
   return 'ordered';
@@ -43,6 +45,7 @@ export function effectiveOrderStatus(doc: Pick<LabResultDoc, 'orderStatus' | 'st
 
 /** Coarse `status` derived from the granular lifecycle stage. */
 function coarseFromOrderStatus(s: LabOrderStatus): LabResultDoc['status'] {
+  if (s === 'cancelled') return 'cancelled';
   if (s === 'in_process') return 'in_progress';
   if (s === 'resulted' || s === 'reviewed_by_clinician' || s === 'acted_upon' || s === 'communicated_to_patient') return 'completed';
   return 'pending';
@@ -70,6 +73,122 @@ export async function advanceLabOrder(
     ? new Date().toISOString()
     : existing.completedAt;
   return updateLabResult(id, { ...extra, orderStatus: to, status, completedAt, updatedAt: now } as Partial<LabResultDoc>);
+}
+
+/**
+ * An order that still needs the bench: not resulted and not withdrawn. Use this
+ * in place of `status !== 'completed'`, which now also matches cancelled orders.
+ */
+export function isOpenLabOrder(doc: Pick<LabResultDoc, 'status'>): boolean {
+  return doc.status === 'pending' || doc.status === 'in_progress';
+}
+
+/** A cancelled order is a record of what was withdrawn, not work to do. */
+export function isCancelledLabOrder(doc: Pick<LabResultDoc, 'orderStatus' | 'status'>): boolean {
+  return doc.status === 'cancelled' || doc.orderStatus === 'cancelled';
+}
+
+/** Outcome of withdrawing the charge a cancelled order raised. */
+export type LabCancelBilling = 'none' | 'cancelled' | 'reversed' | 'line_removed' | 'manual';
+
+export interface CancelLabOrderResult {
+  order: LabResultDoc;
+  /**
+   * none = the order was never billed; cancelled = its own unpaid invoice was
+   * cancelled; reversed = paid invoice, charge reversed (refund due); manual =
+   * the test shares an invoice with other lines (or the write failed) and
+   * billing must take the line off.
+   */
+  billing: LabCancelBilling;
+}
+
+/**
+ * Withdraw a lab order before its specimen is collected. Only `ordered` can
+ * leave this way (LAB_ORDER_TRANSITIONS); after collection the bench's Reject
+ * applies. A written reason is required and the actor and time are stamped.
+ *
+ * The test's charge is withdrawn when the order owns its invoice outright
+ * (cancelBill, or reversePaidBillCharge once money was taken), the same two
+ * moves a stopped prescription makes. A test billed together with others sits on
+ * a shared invoice: a role that may amend bills takes just that test's line off
+ * (`line_removed`, totals and ledger corrected by updateBillItems) while the
+ * invoice is still open and unpaid; otherwise, or for lab staff, it is reported
+ * as `manual` instead of cancelling the other tests' charges.
+ */
+export async function cancelLabOrder(
+  id: string,
+  reason: string,
+  actor: { id?: string; name: string; role?: string },
+): Promise<CancelLabOrderResult> {
+  const why = reason.trim();
+  if (!why) throw new Error('Cancel reason is required.');
+  const existing = await labResultsDB().get(id) as LabResultDoc;
+  const from = effectiveOrderStatus(existing);
+  if (from !== 'ordered') {
+    throw new Error(from === 'cancelled'
+      ? 'This order is already cancelled.'
+      : 'Specimen already collected, so the order cannot be cancelled. Reject the specimen at the bench instead.');
+  }
+  const order = (await advanceLabOrder(id, 'cancelled', {
+    cancelledReason: why,
+    cancelledBy: actor.name,
+    cancelledAt: new Date().toISOString(),
+  }))!;
+  await logAuditSafe('CANCEL_LAB_ORDER', actor.id, actor.name, `Lab order ${id} cancelled before collection; reason recorded on the order`);
+  return { order, billing: await withdrawLabCharge(order, why, actor) };
+}
+
+const BILL_WITHDRAW_ROLES: readonly string[] = ['doctor', 'clinical_officer', 'clinician', 'super_admin'];
+
+async function hasLabCharge(order: LabResultDoc): Promise<boolean> {
+  try {
+    const { getBillsByPatient } = await import('./billing-service');
+    const bills = await getBillsByPatient(order.patientId, orgOnlyScope(order.orgId));
+    return bills.some(b => b.status !== 'cancelled' && !b.chargeReversedAt
+      && b.items.some(i => i.referenceType === 'lab_result' && i.referenceId === order._id));
+  } catch {
+    return true;
+  }
+}
+
+async function withdrawLabCharge(
+  order: LabResultDoc,
+  reason: string,
+  actor: { id?: string; name: string; role?: string },
+): Promise<LabCancelBilling> {
+  // The sync validator lets only these roles amend a bill (cancel / reverse);
+  // a bench write by anyone else would be refused at replication and wedge the
+  // bill document, so billing is left for them to withdraw.
+  if (!actor.role || !BILL_WITHDRAW_ROLES.includes(actor.role)) {
+    return (await hasLabCharge(order)) ? 'manual' : 'none';
+  }
+  try {
+    const { getBillsByPatient, cancelBill, reversePaidBillCharge, updateBillItems } = await import('./billing-service');
+    const scope = orgOnlyScope(order.orgId);
+    const bills = await getBillsByPatient(order.patientId, scope);
+    let outcome: LabCancelBilling = 'none';
+    for (const bill of bills) {
+      if (bill.status === 'cancelled' || bill.chargeReversedAt) continue;
+      const lines = bill.items.filter(i => i.referenceType === 'lab_result' && i.referenceId === order._id);
+      if (!lines.length) continue;
+      const note = `Lab test cancelled: ${reason}`;
+      const by = actor.id || actor.name;
+      if (bill.items.length !== lines.length) {
+        // Shared invoice: only this test's line comes off. updateBillItems
+        // refuses a finalized or paid bill; that stays for billing to settle.
+        const kept = bill.items.filter(i => !(i.referenceType === 'lab_result' && i.referenceId === order._id));
+        outcome = (await updateBillItems(bill._id, kept, by, actor.name)) ? 'line_removed' : 'manual';
+        continue;
+      }
+      if (await cancelBill(bill._id, by, actor.name, note)) { outcome = 'cancelled'; continue; }
+      if (await reversePaidBillCharge(bill._id, by, actor.name, note)) { outcome = 'reversed'; continue; }
+      outcome = 'manual';
+    }
+    return outcome;
+  } catch (err) {
+    console.warn('[lab] could not withdraw the charge for a cancelled order:', err);
+    return 'manual';
+  }
 }
 
 /**
@@ -165,7 +284,7 @@ export async function createLabResult(
   const db = labResultsDB();
   const now = new Date().toISOString();
   const orgId = data.orgId || await inferOrgIdFromHospital(data.hospitalId);
-  const accessionNumber = data.accessionNumber || `ACC-${now.slice(2, 10).replace(/-/g, '')}-${uuidv4().slice(0, 5).toUpperCase()}`;
+  const accessionNumber = data.accessionNumber || `ACC-${accessionDay(now)}-${uuidv4().slice(0, 5).toUpperCase()}`;
   const doc: LabResultDoc = encryptLabFields(withPendingOfflineSync({
     _id: `lab-${uuidv4()}`,
     type: 'lab_result',
@@ -351,5 +470,5 @@ export async function getOverdueUnreviewedResults(scope?: DataScope): Promise<La
  */
 export async function getPendingLabResults(scope?: DataScope): Promise<LabResultDoc[]> {
   const all = await getAllLabResults(scope);
-  return all.filter(l => l.status === 'pending' || l.status === 'in_progress');
+  return all.filter(isOpenLabOrder);
 }

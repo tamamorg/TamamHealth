@@ -82,7 +82,7 @@ export default function AlertsPage() {
   );
   // Lab results flagged critical and not yet reviewed/finalized.
   const criticalLabResults = useMemo(
-    () => (labResults || []).filter(r => r.critical && r.status !== 'completed'),
+    () => (labResults || []).filter(r => r.critical && (r.status === 'pending' || r.status === 'in_progress')),
     [labResults],
   );
 

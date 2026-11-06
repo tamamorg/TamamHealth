@@ -221,7 +221,7 @@ export async function generateDHIS2Export(
   const labDB = labResultsDB();
   let labResults = await findByType<LabResultDoc>(labDB, 'lab_result');
   if (dataScope) labResults = filterByScope(labResults, dataScope);
-  labResults = labResults.filter(l => isInRange(l.orderedAt, range));
+  labResults = labResults.filter(l => l.status !== 'cancelled' && isInRange(l.orderedAt, range));
 
   // Prescription data — PrescriptionDoc has no distinct `prescribedAt`; the
   // inherited BaseDoc `createdAt` is the moment the order was written, which

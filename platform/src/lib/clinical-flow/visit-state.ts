@@ -43,6 +43,7 @@ const encounterStates: Record<EncounterStatus, Omit<OperationalVisitState, 'key'
   discharged_with_referral: { label: 'Discharged with referral', i18nKey: 'visitStages.dischargedWithReferral', lane: 'finished' },
   discharged_with_pending_items: { label: 'Discharged with pending items', i18nKey: 'visitStages.dischargedWithPendingItems', lane: 'finished' },
   dismissed_without_formal_checkout: { label: 'Visit closed', i18nKey: 'visitStages.visitClosed', lane: 'finished' },
+  voided: { label: 'Voided', i18nKey: 'visitStages.voided', lane: 'finished' },
 };
 
 const appointmentFallbacks: Record<AppointmentStatus, Omit<OperationalVisitState, 'key'>> = {
@@ -91,6 +92,7 @@ export function resolveOperationalVisitState(
 export function appointmentStatusForEncounter(status: EncounterStatus): AppointmentStatus {
   const lane = encounterStates[status].lane;
   if (lane === 'upcoming') return 'scheduled';
+  if (status === 'voided') return 'cancelled';
   if (lane === 'finished') return status === 'lwbs' ? 'no_show' : 'completed';
   if (status === 'triaged_awaiting_destination') return 'triaged';
   if (

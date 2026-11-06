@@ -61,7 +61,8 @@ const blankForm = () => ({
 export default function DeathsPage() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { deaths, register, correct } = useDeaths();
+  const { deaths, voidedDeaths, register, correct, voidRecord } = useDeaths();
+  const [showVoided, setShowVoided] = useState(false);
   const { hospitals } = useHospitals();
   const { patients } = usePatients();
   const { currentUser } = useAuth();
@@ -153,7 +154,7 @@ export default function DeathsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, patients]);
 
-  const filtered = (deaths || []).filter(d => {
+  const matchesFilters = (d: DeathRegistrationDoc) => {
     const f = colFilters;
     if (f.certificate && !(d.certificateNumber || '').toLowerCase().includes(f.certificate.toLowerCase())) return false;
     if (f.name && !`${d.deceasedFirstName} ${d.deceasedSurname}`.toLowerCase().includes(f.name.toLowerCase())) return false;
@@ -164,7 +165,10 @@ export default function DeathsPage() {
     if (f.facility && !(d.facilityName || '').toLowerCase().includes(f.facility.toLowerCase())) return false;
     if (f.registered && (f.registered === 'yes') !== !!d.deathRegistered) return false;
     return true;
-  });
+  };
+  // Print/export use `filtered` only: a voided record never leaves in a register copy.
+  const filtered = (deaths || []).filter(matchesFilters);
+  const tableRows = showVoided ? [...filtered, ...(voidedDeaths || []).filter(matchesFilters)] : filtered;
 
   // Header stat chips — computed from data already loaded on this page,
   // unaffected by the column filters (same as the patients header).
@@ -320,7 +324,7 @@ export default function DeathsPage() {
     }
   };
 
-  const selectedDeath = selectedDeathId ? (deaths || []).find(d => d._id === selectedDeathId) ?? null : null;
+  const selectedDeath = selectedDeathId ? [...(deaths || []), ...(voidedDeaths || [])].find(d => d._id === selectedDeathId) ?? null : null;
 
   return (
     <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
@@ -340,6 +344,11 @@ export default function DeathsPage() {
                 <button type="button" onClick={() => setPrintOpen(true)} className="btn tm-ghost-btn">
                   <Printer className="w-4 h-4" /> {t('vital.print')}
                 </button>
+                {(voidedDeaths || []).length > 0 && (
+                  <button type="button" className="btn tm-ghost-btn" aria-pressed={showVoided} onClick={() => setShowVoided(v => !v)}>
+                    {showVoided ? t('vital.hideVoided') : t('vital.showVoided', { count: voidedDeaths.length })}
+                  </button>
+                )}
                 {canRecordVitalEvents && (
                   <button data-tour="register-death-btn" onClick={() => { if (editingId) { setForm(blankForm()); setLinkedPatientId(undefined); setEncounterId(undefined); } setEditingId(null); setShowForm(true); }} className="btn btn-primary flex items-center gap-2" style={{ whiteSpace: 'nowrap' }}>
                     <Plus className="w-4 h-4" /> {t('deaths.registerDeath')}
@@ -363,9 +372,9 @@ export default function DeathsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(d => (
+              {tableRows.map(d => (
                 <tr key={d._id} className="cursor-pointer hover:bg-[var(--table-row-hover)]" tabIndex={0} aria-haspopup="dialog" onClick={() => setSelectedDeathId(d._id)} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setSelectedDeathId(d._id); } }}>
-                  <td className="font-mono text-xs">{d.certificateNumber}</td>
+                  <td className="font-mono text-xs">{d.certificateNumber}{d.voidedAt && <span className="badge text-[10px] ml-2" style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)' }}>{t('vital.voided')}</span>}</td>
                   <td><PatientName patientId={d.patientId} name={`${d.deceasedFirstName} ${d.deceasedSurname}`} gender={d.deceasedGender} nameClassName="text-sm font-semibold" /></td>
                   <td className="text-sm">{d.deceasedGender}</td>
                   <td className="text-sm">{d.ageAtDeath < 1 ? t('deaths.neonate') : `${d.ageAtDeath}y`}</td>
@@ -409,7 +418,11 @@ export default function DeathsPage() {
         {selectedDeath && <DeathRecordSlider
           death={selectedDeath}
           onClose={() => setSelectedDeathId(null)}
-          onCorrect={canRecordVitalEvents ? () => startCorrection(selectedDeath) : undefined}
+          onCorrect={canRecordVitalEvents && !selectedDeath.voidedAt ? () => startCorrection(selectedDeath) : undefined}
+          onVoid={canRecordVitalEvents && !selectedDeath.voidedAt ? async (reason) => {
+            await voidRecord(selectedDeath._id, reason, { userId: currentUser?._id, userName: currentUser?.name || currentUser?.username || 'Staff' });
+            showToast(t('vital.voidedToast'), 'success');
+          } : undefined}
         />}
 
         {printOpen && (

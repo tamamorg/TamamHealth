@@ -9,7 +9,7 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import type { PatientDoc } from '@/lib/db-types';
 import type { CareAlertCategory } from '@/data/mock';
 import { AlertTriangle, Info, Plus } from '@/components/icons/lucide';
-import { chartCareAlerts } from '@/lib/care-alert-rules';
+import { chartCareAlerts, isReferralStatusNotice } from '@/lib/care-alert-rules';
 import { formatDate } from '@/lib/format-utils';
 import './care-alerts.css';
 import CareAlertFields, { CARE_ALERT_CATEGORY_LABELS } from '@/components/patients/CareAlertFields';
@@ -42,6 +42,11 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{ category: CareAlertCategory; message: string; priority: 'high' | 'normal' }>(
+    { category: 'clinical_risk', message: '', priority: 'high' },
+  );
+  const [showResolved, setShowResolved] = useState(false);
   const [reason, setReason] = useState('');
   const [form, setForm] = useState<{ category: CareAlertCategory; message: string; priority: 'high' | 'normal' }>(
     { category: 'clinical_risk', message: '', priority: 'high' },
@@ -49,7 +54,18 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
 
   // Most urgent first, without the referral notices the chart no longer shows.
   const active = chartCareAlerts(patient.careAlerts);
+  // Resolved alerts are kept, never deleted; they sit behind a toggle so one
+  // resolved by mistake (or a risk that has returned) can be reopened.
+  const resolved = (patient.careAlerts ?? [])
+    .filter((a) => a.status === 'resolved' && !isReferralStatusNotice(a))
+    .sort((a, b) => (b.recordedAt || '').localeCompare(a.recordedAt || ''));
   const [showAll, setShowAll] = useState(false);
+  const editingAlert = active.find((a) => a.id === editingId) ?? null;
+  const closeEdit = () => { if (!busy) setEditingId(null); };
+  const startEdit = (a: (typeof active)[number]) => {
+    setEditForm({ category: a.category, message: a.message, priority: a.priority });
+    setEditingId(a.id);
+  };
   const resolvingAlert = active.find((a) => a.id === resolvingId) ?? null;
   const closeResolve = () => { if (!busy) { setResolvingId(null); setReason(''); } };
   const author = { recordedBy: currentUser?._id, recordedByName: currentUser?.name || currentUser?.username };
@@ -61,6 +77,7 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
       await fn();
       setAdding(false);
       setResolvingId(null);
+      setEditingId(null);
       setReason('');
       setForm({ category: 'clinical_risk', message: '', priority: 'high' });
     } catch (e) {
@@ -73,6 +90,14 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
     const svc = await import('@/lib/services/care-alert-service');
     await svc.addCareAlert(patient._id, needScope(), { ...form, ...author });
   }
+  async function doEdit(id: string) {
+    const svc = await import('@/lib/services/care-alert-service');
+    await svc.updateCareAlert(patient._id, needScope(), id, editForm, { id: currentUser?._id, name: author.recordedByName });
+  }
+  async function doReopen(id: string) {
+    const svc = await import('@/lib/services/care-alert-service');
+    await svc.reopenCareAlert(patient._id, needScope(), id, { id: currentUser?._id, name: author.recordedByName });
+  }
   async function doResolve(id: string) {
     const svc = await import('@/lib/services/care-alert-service');
     await svc.resolveCareAlert(patient._id, needScope(), id, reason);
@@ -80,7 +105,7 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
 
   // Nothing active and not composing → a slim "add" affordance only. When the
   // add control is hosted elsewhere (ChartSafetyActions toolbar), render nothing.
-  if (active.length === 0 && !adding) {
+  if (active.length === 0 && !adding && resolved.length === 0) {
     if (hideAddButton) return null;
     return (
       <div className="lg:col-span-3 lg:order-1 flex justify-end">
@@ -114,6 +139,14 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
                 type="button"
                 className="tamam-flag__resolve"
                 disabled={busy}
+                onClick={() => startEdit(a)}
+              >
+                {t('careAlerts.edit')}
+              </button>
+              <button
+                type="button"
+                className="tamam-flag__resolve"
+                disabled={busy}
                 onClick={() => { setReason(''); setResolvingId(a.id); }}
               >
                 {t('careAlerts.resolve')}
@@ -125,6 +158,31 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
               {showAll ? t('careAlerts.showFewer') : t('careAlerts.showMore', { count: String(active.length - VISIBLE_FLAGS) })}
             </button>
           )}
+        </section>
+      )}
+
+      {resolved.length > 0 && (
+        <section className="tamam-flags" aria-label={t('careAlerts.resolvedLabel')}>
+          <button type="button" className="tamam-flags__more" onClick={() => setShowResolved(v => !v)}>
+            {showResolved ? t('careAlerts.hideResolved') : t('careAlerts.showResolved', { count: String(resolved.length) })}
+          </button>
+          {showResolved && resolved.map((a) => (
+            <div key={a.id} className="tamam-flag" data-priority="normal">
+              <Info className="tamam-flag__icon" aria-hidden />
+              <div className="tamam-flag__body">
+                <p className="tamam-flag__message">{a.message}</p>
+                <p className="tamam-flag__meta">
+                  {[
+                    CARE_ALERT_CATEGORY_LABELS[a.category],
+                    a.resolutionReason && t('careAlerts.resolvedBecause', { reason: a.resolutionReason }),
+                  ].filter(Boolean).join(' · ')}
+                </p>
+              </div>
+              <button type="button" className="tamam-flag__resolve" disabled={busy} onClick={() => run(() => doReopen(a.id))}>
+                {t('careAlerts.reopen')}
+              </button>
+            </div>
+          ))}
         </section>
       )}
 
@@ -154,6 +212,36 @@ export default function CareAlertsBanner({ patient, hideAddButton = false }: { p
       )}
 
       {error && <FormError message={error} />}
+
+      {editingAlert && (
+        <Modal variant="slider" onClose={closeEdit} size="md" labelledBy="care-alert-edit-title">
+          <DialogFrame busy={busy}>
+            <DialogHeader titleId="care-alert-edit-title" title={t('careAlerts.editTitle')} onClose={closeEdit} />
+            <DialogBody tight>
+              <CareAlertFields
+                autoFocus
+                category={editForm.category}
+                priority={editForm.priority}
+                message={editForm.message}
+                onCategoryChange={category => setEditForm({ ...editForm, category })}
+                onPriorityChange={priority => setEditForm({ ...editForm, priority })}
+                onMessageChange={message => setEditForm({ ...editForm, message })}
+              />
+            </DialogBody>
+            <DialogFooter>
+              <button type="button" className="btn btn-secondary" disabled={busy} onClick={closeEdit}>{t('action.cancel')}</button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={busy || editForm.message.trim().length === 0}
+                onClick={() => run(() => doEdit(editingAlert.id))}
+              >
+                {t('ui.saveAlert')}
+              </button>
+            </DialogFooter>
+          </DialogFrame>
+        </Modal>
+      )}
 
       {resolvingAlert && (
         <Modal

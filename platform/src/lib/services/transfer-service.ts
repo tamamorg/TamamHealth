@@ -84,6 +84,7 @@ export async function assembleTransferPackage(
   // Get all lab results for patient
   const labDb = labResultsDB();
   const labResults = (await findByType<LabResultDoc>(labDb, 'lab_result', { patientId }, { indexFields: ['type', 'patientId'] }))
+    .filter(lab => lab.status !== 'cancelled')
     .map(lab => ({
       testName: lab.testName,
       result: lab.result,
