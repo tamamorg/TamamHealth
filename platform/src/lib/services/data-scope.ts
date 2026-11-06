@@ -47,6 +47,13 @@ export interface DataScope {
   state?: string;
   role: UserRole;
   /**
+   * The viewer's clinical specialty, when they have one. Only consulted to
+   * grant routine access to restricted clinical notes (e.g. a psychiatrist
+   * reading mental-health notes) — see restricted-note-access.ts. Absent for
+   * non-clinical users and for most server-built scopes.
+   */
+  specialtyCode?: import('@/modules/departments').ClinicalSpecialty;
+  /**
    * The viewer's own user `_id`.
    *
    * Only consulted to keep an organization administrator's OWN account visible
@@ -191,6 +198,7 @@ export function buildScopeFromAuth(auth: {
   state?: string;
   /** JWT subject — the viewer's user `_id`. */
   sub?: string;
+  specialtyCode?: import('@/modules/departments').ClinicalSpecialty;
 }): DataScope {
   return {
     role: auth.role as UserRole,
@@ -200,6 +208,7 @@ export function buildScopeFromAuth(auth: {
     payam: auth.payam,
     county: auth.county,
     state: auth.state,
+    specialtyCode: auth.specialtyCode,
     // Carried so an org admin still sees their own account among the peers
     // the filter hides from them.
     userId: auth.sub,

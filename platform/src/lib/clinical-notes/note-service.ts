@@ -17,6 +17,7 @@ import { logAuditSafe } from '../services/audit-service';
 import { emitSyncEvent } from '../services/sync-event-service';
 import type { DataScope } from '../services/data-scope';
 import { filterByScope, orgOnlyScope } from '../services/data-scope';
+import { mayViewRestrictedClinicalNote } from './restricted-note-access';
 import { isProviderRole } from '../clinical-roles';
 import { ValidationError } from '../validation';
 import {
@@ -380,6 +381,9 @@ export async function getClinicalNoteById(id: string, scope?: DataScope): Promis
   try {
     const doc = await clinicalNotesDB().get(id) as ClinicalNoteDoc;
     if (scope && filterByScope([doc], scope).length === 0) return null;
+    // Restricted note types (e.g. mental health) read like a missing doc to a
+    // viewer without routine access (security audit 2026-11-05, H4).
+    if (!mayViewRestrictedClinicalNote(scope, doc)) return null;
     return doc;
   } catch {
     return null;
@@ -395,7 +399,8 @@ export async function getNotesByPatient(
     clinicalNotesDB(), 'clinical_note', { patientId },
     { indexFields: ['type', 'patientId'] },
   );
-  const scoped = scope ? filterByScope(rows, scope) : rows;
+  const scoped = (scope ? filterByScope(rows, scope) : rows)
+    .filter(n => mayViewRestrictedClinicalNote(scope, n));
   return scoped.sort(byServiceDate);
 }
 
@@ -414,6 +419,9 @@ export async function listClinicalNotes(
   const scoped = scope ? filterByScope(rows, scope) : rows;
 
   const filtered = scoped.filter((n) => {
+    // Restricted note types are hidden from viewers without routine access
+    // (security audit 2026-11-05, H4).
+    if (!mayViewRestrictedClinicalNote(scope, n)) return false;
     if (filters.noteType && n.noteType !== filters.noteType) return false;
     if (filters.userId && filters.userId !== 'all') {
       if (n.authorId !== filters.userId && n.assignedToId !== filters.userId) return false;
