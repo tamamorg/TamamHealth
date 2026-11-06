@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import EmptyState from '@/components/EmptyState';
 import Badge, { type BadgeTone } from '@/components/Badge';
 import { useANC } from '@/lib/hooks/useANC';
+import { isAggregateOnlyViewer } from '@/lib/services/data-scope';
 import { useAuth, useUi } from '@/lib/context';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -30,6 +31,9 @@ export default function ANCPage() {
   // view for facility management and the Ministry of Health. Clinical roles keep
   // the data recordings, workflow, and the mother/visit data.
   const canViewCoverage = ['hospital_manager', 'medical_superintendent', 'government', 'county_health_director', 'super_admin'].includes(currentUser?.role ?? '');
+  // Government sees the ANC continuum funnel only, never the mother register
+  // (security audit 2026-11-05, H3).
+  const aggregateOnly = isAggregateOnlyViewer(currentUser?.role);
   // Table toolbar search (shared list-page header), combined with the
   // platform-wide search bar so a term typed elsewhere still narrows this list.
   const [tableSearch, setTableSearch] = useState('');
@@ -143,7 +147,10 @@ export default function ANCPage() {
         )}
 
         {/* The register is the list of mothers; each opens her own chart at
-            Antenatal care, where the visits, birth plan and corrections live. */}
+            Antenatal care, where the visits, birth plan and corrections live.
+            Government sees the continuum funnel above only — never the mother
+            register (security audit 2026-11-05, H3). */}
+        {!aggregateOnly && (
         <div>
           <div className="card-elevated overflow-hidden">
             <EhrListHeader
@@ -226,6 +233,7 @@ export default function ANCPage() {
             </div>
           </div>
         </div>
+        )}
 
         {/* Registration form — shared with the patient chart's workspace. */}
         {showModal && (

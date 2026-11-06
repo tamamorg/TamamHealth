@@ -32,6 +32,20 @@ const NATIONAL_ROLES = new Set<UserRole>([
 ]);
 
 /**
+ * Roles that see aggregate statistics only — never the row-level patient PHI on
+ * coverage/analytics surfaces (immunizations, ANC, MCH high-risk, data-quality
+ * duplicates). `government` has a national-statistics mandate, not a per-patient
+ * one; births, deaths and surveillance keep row-level access (civil
+ * registration and outbreak case investigation are inherently per-person) and
+ * are deliberately NOT gated by this helper. super_admin is unrestricted;
+ * county_health_director is already org/facility-scoped by filterByScope
+ * (security audit 2026-11-05, H3).
+ */
+export function isAggregateOnlyViewer(role: UserRole | undefined): boolean {
+  return role === 'government';
+}
+
+/**
  * Document types addressed to another organisation (`toOrgId` is part of their
  * schema): referrals and patient transfers. See the toOrgId rule in filterByScope.
  */

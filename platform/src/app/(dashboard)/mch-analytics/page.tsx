@@ -6,6 +6,8 @@ import { SadbKpiTile } from '@/components/admin/sadb-ui';
 import TableCols from '@/components/TableCols';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useMCHAnalytics } from '@/lib/hooks/useMCHAnalytics';
+import { useAuth } from '@/lib/context';
+import { isAggregateOnlyViewer } from '@/lib/services/data-scope';
 import {
   HeartPulse, Baby, Syringe, AlertTriangle,
   Users, Heart,
@@ -21,8 +23,17 @@ export default function MCHAnalyticsPage() {
   const { t } = useTranslation();
   const router = useRouter();
   const { data, loading } = useMCHAnalytics();
+  const { currentUser } = useAuth();
+  // Government sees the aggregate tabs only — never the individual high-risk
+  // mothers and their clinical values (security audit 2026-11-05, H3).
+  const aggregateOnly = isAggregateOnlyViewer(currentUser?.role);
   // In the URL (?view=) so Back returns to the tab the user was on.
-  const [activeTab, setActiveTab] = useUrlView<TabView>(['overview', 'anc', 'births', 'mortality', 'immunization', 'high-risk'], 'overview');
+  const [activeTab, setActiveTab] = useUrlView<TabView>(
+    aggregateOnly
+      ? ['overview', 'anc', 'births', 'mortality', 'immunization']
+      : ['overview', 'anc', 'births', 'mortality', 'immunization', 'high-risk'],
+    'overview',
+  );
   const [expandedMother, setExpandedMother] = useState<string | null>(null);
 
   if (loading || !data) {
@@ -51,7 +62,7 @@ export default function MCHAnalyticsPage() {
     { key: 'births', label: t('mch.tabBirthOutcomes'), icon: Baby },
     { key: 'mortality', label: t('mch.tabMortality'), icon: Heart },
     { key: 'immunization', label: t('mch.tabImmunization'), icon: Syringe },
-    { key: 'high-risk', label: t('mch.tabHighRisk'), icon: AlertTriangle },
+    ...(aggregateOnly ? [] : [{ key: 'high-risk' as const, label: t('mch.tabHighRisk'), icon: AlertTriangle }]),
   ];
 
   return (
@@ -111,7 +122,7 @@ export default function MCHAnalyticsPage() {
             value={summary.highRiskCount.toLocaleString()}
             delta={t('mchx.highRiskDetail')}
             deltaTone={summary.highRiskCount > 0 ? 'warn' : undefined}
-            onClick={() => setActiveTab('high-risk')}
+            onClick={aggregateOnly ? undefined : () => setActiveTab('high-risk')}
           />
         </div>
 
@@ -856,7 +867,7 @@ export default function MCHAnalyticsPage() {
         )}
 
         {/* ═══ HIGH RISK TAB ═══ */}
-        {activeTab === 'high-risk' && (
+        {activeTab === 'high-risk' && !aggregateOnly && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="card-elevated p-4">
