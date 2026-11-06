@@ -1033,7 +1033,9 @@ export default function EhrClinicalDashboard({
         status: 'completed',
         outcome: followUpOutcome,
         completedDate: toIsoDate(new Date()),
-        notes: followUpNotes.trim() || undefined,
+        // Record the completion note in its own field — writing `notes` here
+        // erased the original clinical instructions (audit §2.1 #14).
+        completionNotes: followUpNotes.trim() || undefined,
       });
       if (!updated) throw new Error('Follow-up not updated. Try again.');
       showToast(t('msg.followUpCompleted'), 'success');
