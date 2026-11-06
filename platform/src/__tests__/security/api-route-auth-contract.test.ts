@@ -52,10 +52,15 @@ describe('API route authentication contract', () => {
       const route = apiPath(file);
       if (STATIC_PUBLIC.has(route)) return [];
       const source = routeSource(file);
-      return /(?:await\s+)?getAuthPayload\s*\(|verifySyncMachineRequest\s*\(/.test(source) ? [] : [route];
+      return /(?:await\s+)?getAuthPayload\s*\(|authorizeJson\s*\(|verifySyncMachineRequest\s*\(/.test(source) ? [] : [route];
     });
 
     expect(unguarded).toEqual([]);
+  });
+
+  it('keeps the shared JSON guard anchored to staff authentication', () => {
+    const source = fs.readFileSync(path.join(process.cwd(), 'src/lib/api-json-guard.ts'), 'utf8');
+    expect(source).toMatch(/(?:await\s+)?getAuthPayload\s*\(/);
   });
 
   it('does not silently make a new route public through a broad path prefix', () => {

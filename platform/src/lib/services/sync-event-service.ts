@@ -137,7 +137,7 @@ export async function getPendingSyncEvents(limit = 500): Promise<SyncEventDoc[]>
 /**
  * Aggregate stats for sync-health UI.
  */
-export async function getSyncEventStats(scope?: DataScope): Promise<{
+export async function getSyncEventStats(scope: DataScope): Promise<{
   total: number;
   pending: number;
   syncing: number;
@@ -152,7 +152,7 @@ export async function getSyncEventStats(scope?: DataScope): Promise<{
   // and government see every org; org_admin / medical_superintendent / hrio are
   // restricted to their own. Without this, /api/admin/sync-health returned a
   // cross-tenant per-facility stat to an org-level admin.
-  const docs = scope ? filterByScope(all, scope) : all;
+  const docs = filterByScope(all, scope);
 
   const stats = {
     total: docs.length,

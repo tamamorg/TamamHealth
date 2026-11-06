@@ -16,6 +16,7 @@ import {
 import { SaPill, SaTable, formatWhen } from '@/components/admin/sa-ui';
 import { useToast } from '@/components/Toast';
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import {
   getDhis2SyncLog, isDhis2Configured, getDhis2BaseUrlHost, isFullySynced,
   type Dhis2SyncLogDoc,
@@ -47,6 +48,7 @@ export default function AdminInteropPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const { config, loading: configLoading } = usePlatformConfig();
+  const scope = useDataScope();
 
   const [dhisLog, setDhisLog] = useState<Dhis2SyncLogDoc | null>(null);
   const [queue, setQueue] = useState<QueueHealth | null>(null);
@@ -55,10 +57,11 @@ export default function AdminInteropPage() {
   const [retrying, setRetrying] = useState(false);
 
   const loadAll = useCallback(async () => {
+    if (!scope) return;
     try {
       const [log, stats, allEvents] = await Promise.all([
         getDhis2SyncLog(),
-        getSyncEventStats(),
+        getSyncEventStats(scope),
         findByType<SyncEventDoc>(syncEventsDB(), 'sync_event'),
       ]);
       setDhisLog(log);
@@ -74,7 +77,7 @@ export default function AdminInteropPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [scope]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
 

@@ -130,6 +130,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      if (!scope) return;
       try {
         const [{ getClientUsers }, { getAllPatients }, { getAllEncounters }, { getRecentAuditLogs }, { getSyncEventStats }] =
           await Promise.all([
@@ -140,7 +141,7 @@ export default function AdminDashboardPage() {
             import('@/lib/services/sync-event-service'),
           ]);
         const [allUsers, allPatients, allEncounters, logs, sync, resolutions] = await Promise.all([
-          getClientUsers({ role: 'super_admin' }), scope ? getAllPatients(scope) : Promise.resolve([]), getAllEncounters(), getRecentAuditLogs(500, scope), getSyncEventStats(),
+          getClientUsers({ role: 'super_admin' }), getAllPatients(scope), getAllEncounters(), getRecentAuditLogs(500, scope), getSyncEventStats(scope),
           getRiskResolutions(),
         ]);
         if (cancelled) return;

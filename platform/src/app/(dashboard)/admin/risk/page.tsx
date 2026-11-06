@@ -130,6 +130,7 @@ export default function RiskCenterPage() {
   useEffect(() => {
     let mounted = true;
     (async () => {
+      if (!scope) return;
       try {
         const [{ getRecentAuditLogs }, { getSyncEventStats, getPendingSyncEvents }] = await Promise.all([
           import('@/lib/services/audit-service'),
@@ -137,7 +138,7 @@ export default function RiskCenterPage() {
         ]);
         const [logs, stats, saved] = await Promise.all([
           getRecentAuditLogs(1000, scope),
-          getSyncEventStats(),
+          getSyncEventStats(scope),
           getRiskResolutions(),
         ]);
         if (!mounted) return;
