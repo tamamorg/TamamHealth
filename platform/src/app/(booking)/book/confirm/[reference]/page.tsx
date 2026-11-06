@@ -1,4 +1,4 @@
-import { headers } from 'next/headers';
+import { publicBookingOrigin } from '@/lib/booking/public-base-url';
 import { longWhen } from '@/lib/booking/public-client';
 import T from '@/components/T';
 
@@ -17,11 +17,8 @@ interface Confirmation {
 }
 
 async function load(ref: string): Promise<Confirmation | null> {
-  const h = await headers();
-  const host = h.get('host');
-  const proto = h.get('x-forwarded-proto') || 'http';
   try {
-    const res = await fetch(`${proto}://${host}/api/booking/reference/${encodeURIComponent(ref)}`, {
+    const res = await fetch(`${publicBookingOrigin()}/api/booking/reference/${encodeURIComponent(ref)}`, {
       cache: 'no-store',
     });
     if (!res.ok) return null;
