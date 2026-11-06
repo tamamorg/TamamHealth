@@ -1,5 +1,5 @@
 'use client';
-import { Building2 } from '@/components/icons/lucide';
+import ChartSection from '@/components/ehr/chart/ChartSection';
 import { patientFullName } from '@/lib/patient-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import { PharmacyWorkspace } from './lazy-panels';
@@ -19,19 +19,24 @@ export default function PatientMedicationsTab({ patient, canPrescribe, canRecord
   return (
             <div className="space-y-4">
               {patient.preferredPharmacy && (
-                <div className="card-elevated px-5 py-3 flex items-center gap-3">
-                  <div className="icon-box-sm flex-shrink-0">
-                    <Building2 className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('ptDetail.preferredPharmacy')}</p>
-                    <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                      {patient.preferredPharmacy.name}
-                      {patient.preferredPharmacy.address && <span className="font-normal" style={{ color: 'var(--text-muted)' }}> · {patient.preferredPharmacy.address}</span>}
-                      {patient.preferredPharmacy.phone && <span className="font-normal" style={{ color: 'var(--text-muted)' }}> · {patient.preferredPharmacy.phone}</span>}
-                    </p>
-                  </div>
-                </div>
+                <ChartSection title={t('ptDetail.preferredPharmacy')}>
+                  <table className="tamam-table tamam-table--fixed">
+                    <thead>
+                      <tr>
+                        <th>{t('breadcrumb.pharmacy')}</th>
+                        <th>{t('hospitals.colLocation')}</th>
+                        <th>{t('hospitals.fieldPhone')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="tamam-cell-strong">{patient.preferredPharmacy.name}</td>
+                        <td>{patient.preferredPharmacy.address || '—'}</td>
+                        <td>{patient.preferredPharmacy.phone || '—'}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </ChartSection>
               )}
               {/* Medication list, and the counter workflow for one script —
                   the same shape the Labs tab gives the bench. */}
