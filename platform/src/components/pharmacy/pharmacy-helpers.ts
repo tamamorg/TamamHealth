@@ -1,6 +1,20 @@
 import type { PrescriptionStatus } from '@/lib/clinical-flow/order-lifecycles';
+import { isControlledMedicine } from '@/lib/data/formulary';
 
 export const UNITS = ['tablets', 'vials', 'bottles', 'sachets', 'tubes', 'ampoules', 'sachet', 'ml'];
+
+/**
+ * Whether a stocked batch must require a second-person witness to dispense:
+ * the pharmacist assigned a controlled schedule, OR the medicine is a
+ * recognised controlled substance by its drug class. The second arm is the
+ * safety net — a narcotic stocked without a schedule (morphine typed into the
+ * receive-stock form) still can't be dispensed with no witness, which was the
+ * headline gap in the 2026-11-05 security audit (§2.1 #7). Dispensing enforces
+ * the witness whenever the batch carries requiresWitness or a controlledSchedule.
+ */
+export function stockRequiresWitness(medicationName: string, schedule: string | undefined): boolean {
+  return !!schedule || isControlledMedicine(medicationName);
+}
 
 export type PharmacyTab = 'queue' | 'inventory' | 'reorder' | 'expiry' | 'overview' | 'patients';
 

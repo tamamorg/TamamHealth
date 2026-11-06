@@ -3,10 +3,12 @@
 import FormSlider from '@/components/overlay/FormSlider';
 import FormField from '@/components/overlay/FormField';
 import Select from '@/components/Select';
-import { medications } from '@/lib/data/formulary';
+import { medications, isControlledMedicine } from '@/lib/data/formulary';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { UNITS } from './pharmacy-helpers';
 import NumberInput from '@/components/forms/NumberInput';
+
+export type StockControlledSchedule = '' | 'II' | 'III' | 'IV' | 'V';
 
 export interface StockInForm {
   medicationName: string;
@@ -16,6 +18,9 @@ export interface StockInForm {
   reorderLevel: number;
   batchNumber: string;
   expiryDate: string;
+  /** Narcotic/psychotropic schedule. Set it (or stock a recognised controlled
+   *  medicine) and a second-person witness is required to dispense the batch. */
+  controlledSchedule: StockControlledSchedule;
 }
 
 interface StockInModalProps {
@@ -80,6 +85,22 @@ export default function StockInModal({ stockForm, setStockForm, onClose, onSave 
         <FormField label={t('pharmacy.expiryDate')}>
           {control => <input {...control} type="date" value={stockForm.expiryDate} onChange={e => setStockForm({ ...stockForm, expiryDate: e.target.value })} />}
         </FormField>
+        <FormField label={t('pharmacy.controlledSchedule')} optional>
+          {control => (
+            <Select {...control} value={stockForm.controlledSchedule} onChange={e => setStockForm({ ...stockForm, controlledSchedule: e.target.value as StockControlledSchedule })}>
+              <option value="">{t('pharmacy.controlledScheduleNone')}</option>
+              <option value="II">{t('pharmacy.controlledScheduleII')}</option>
+              <option value="III">{t('pharmacy.controlledScheduleIII')}</option>
+              <option value="IV">{t('pharmacy.controlledScheduleIV')}</option>
+              <option value="V">{t('pharmacy.controlledScheduleV')}</option>
+            </Select>
+          )}
+        </FormField>
+        {isControlledMedicine(stockForm.medicationName) && !stockForm.controlledSchedule && (
+          <p className="text-xs" style={{ color: 'var(--color-warning-text)' }}>
+            {t('pharmacy.controlledUnscheduledWarning')}
+          </p>
+        )}
       </div>
     </FormSlider>
   );
