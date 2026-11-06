@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { isNurseFamilyRole } from '@/lib/clinical-roles';
 import { appointmentAmendRefusalMessage } from '@/lib/appointment-amend-message';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useSync } from '@/lib/context';
@@ -762,7 +763,7 @@ export default function FrontDeskDashboardPage() {
     .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [users, myHospitalId]);
 
   const assignableNurses = useMemo(() => users
-    .filter(u => ['nurse', 'midwife', 'triage_nurse', 'rooming_nurse'].includes(u.role || '')
+    .filter(u => isNurseFamilyRole(u.role)
       && canAssignStaffAtFacility(myHospitalId, u.hospitalId))
     .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [users, myHospitalId]);
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { isNurseFamilyRole } from '@/lib/clinical-roles';
 import { useDashboardRailDock } from '@/lib/hooks/useDashboardRailDock';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { AppointmentDoc, AppointmentStatus, EncounterDoc, FollowUpDoc } from '@/lib/db-types';
@@ -1175,8 +1176,7 @@ export default function EhrClinicalDashboard({
   // Nurse-family users read this worklist as ward admissions, rooming
   // arrivals and triaged walk-ins — never "patients assigned to you" — so the
   // empty state has to speak that language or an empty ward reads as a bug.
-  const isNurseFamily = currentUser?.role === 'nurse' || currentUser?.role === 'midwife'
-    || currentUser?.role === 'triage_nurse' || currentUser?.role === 'rooming_nurse';
+  const isNurseFamily = isNurseFamilyRole(currentUser?.role);
 
   /**
    * The greeting row's actions: what this dashboard is opened to press —

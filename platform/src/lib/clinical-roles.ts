@@ -27,6 +27,19 @@ export const PROVIDER_ROLES: UserRole[] = ['doctor', 'medical_superintendent', '
 /** Clinical authors who sign but route to a supervising provider for co-signature. */
 export const TRAINEE_AUTHOR_ROLES: UserRole[] = ['nurse', 'midwife', 'nutritionist'];
 
+/**
+ * The "nurse family": nursing roles that share a dashboard, a second-staff slot
+ * on a booking, and the nursing worklists. This exact set was duplicated inline
+ * in ~8 places (modularization 2026-11, Phase 1 dedup). NOT the same as sets
+ * that add clinical_officer, or that mean only {nurse, midwife} — those stay
+ * their own lists on purpose.
+ */
+export const NURSE_FAMILY_ROLES: readonly UserRole[] = ['nurse', 'midwife', 'triage_nurse', 'rooming_nurse'];
+
+export function isNurseFamilyRole(role?: string | null): boolean {
+  return !!role && (NURSE_FAMILY_ROLES as readonly string[]).includes(role);
+}
+
 /** What a role may do to a consultation record: sign, route it, co-sign it. */
 export function recordSignRights(role: UserRole | undefined) {
   const isProvider = !!role && PROVIDER_ROLES.includes(role);

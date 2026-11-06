@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { isNurseFamilyRole } from '@/lib/clinical-roles';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
@@ -29,7 +30,7 @@ export default function DashboardPage() {
 
   if (!currentUser) return null;
   if (currentUser.role === 'medical_superintendent') return <SuperintendentDashboard />;
-  if (['nurse', 'midwife', 'triage_nurse', 'rooming_nurse'].includes(currentUser.role)) {
+  if (isNurseFamilyRole(currentUser.role)) {
     return <NurseHomeView />;
   }
   if (['doctor', 'clinical_officer', 'clinician', 'super_admin'].includes(currentUser.role)) {

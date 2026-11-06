@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { isNurseFamilyRole } from '@/lib/clinical-roles';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -40,7 +41,6 @@ import NumberInput from '@/components/forms/NumberInput';
 
 const TYPE_OPTIONS = APPOINTMENT_TYPE_OPTIONS;
 const PATTERNS = ['weekly', 'biweekly', 'monthly', 'quarterly'] as const;
-const SECOND_STAFF_ROLES = new Set(['nurse', 'midwife', 'triage_nurse', 'rooming_nurse']);
 const NOTE_MAX = 255;
 
 /** "02:29" + "PM" → "14:29"; null when the clock reading is not a real time. */
@@ -90,7 +90,7 @@ export default function BookAppointmentPanel({ patient, patientName, onClose, on
       && u.isActive !== false && canAssignStaffAtFacility(myHospitalId, u.hospitalId))
     .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [users, myHospitalId]);
   const staffOptions = useMemo(() => users
-    .filter(u => SECOND_STAFF_ROLES.has(u.role)
+    .filter(u => isNurseFamilyRole(u.role)
       && u.isActive !== false && canAssignStaffAtFacility(myHospitalId, u.hospitalId))
     .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [users, myHospitalId]);
 
@@ -106,7 +106,7 @@ export default function BookAppointmentPanel({ patient, patientName, onClose, on
   // The booker's own diary is the obvious default: a doctor books with
   // themselves, a nurse books themselves in as the visit's nurse.
   const [providerId, setProviderId] = useState(myRole === 'doctor' || myRole === 'clinical_officer' ? myId || '' : '');
-  const [staffId, setStaffId] = useState(myRole && SECOND_STAFF_ROLES.has(myRole) ? myId || '' : '');
+  const [staffId, setStaffId] = useState(isNurseFamilyRole(myRole) ? myId || '' : '');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [clash, setClash] = useState<string | null>(null);
