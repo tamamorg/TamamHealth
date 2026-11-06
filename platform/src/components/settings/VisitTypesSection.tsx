@@ -162,7 +162,7 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
               key={reason._id}
               style={{
                 display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-                padding: '10px 12px', borderRadius: 12,
+                padding: '10px 12px', borderRadius: 0,
                 border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)',
                 opacity: busyId === reason._id ? 0.6 : 1,
               }}
@@ -229,7 +229,7 @@ export default function VisitTypesSection({ facilityId: facilityIdProp }: { faci
             <div
               style={{
                 display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-                padding: '10px 12px', borderRadius: 12,
+                padding: '10px 12px', borderRadius: 0,
                 border: '1px dashed var(--border-medium)',
               }}
             >

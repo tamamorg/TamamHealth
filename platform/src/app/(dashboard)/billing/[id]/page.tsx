@@ -445,13 +445,13 @@ export default function BillDetailPage() {
         )}
 
         {underReview && (
-          <p role="status" style={{ margin: '0 0 12px', padding: '10px 14px', border: '1px solid var(--color-warning-border)', borderRadius: 6, background: 'var(--color-warning-bg)', color: 'var(--color-warning-text)', fontSize: 13 }}>
+          <p role="status" style={{ margin: '0 0 12px', padding: '10px 14px', border: '1px solid var(--color-warning-border)', borderRadius: 0, background: 'var(--color-warning-bg)', color: 'var(--color-warning-text)', fontSize: 13 }}>
             <strong>{t('billing.review.title')}</strong> {t('billing.review.body')}
           </p>
         )}
 
         {bill.chargeReversedAt && (
-          <p role="status" style={{ margin: '0 0 12px', padding: '10px 14px', border: '1px solid var(--color-warning-border)', borderRadius: 6, background: 'var(--color-warning-bg)', color: 'var(--color-warning-text)', fontSize: 13 }}>
+          <p role="status" style={{ margin: '0 0 12px', padding: '10px 14px', border: '1px solid var(--color-warning-border)', borderRadius: 0, background: 'var(--color-warning-bg)', color: 'var(--color-warning-text)', fontSize: 13 }}>
             <strong>{t('ui.chargeReversed')}</strong> on {formatBillDate(bill.chargeReversedAt)}{bill.chargeReversedBy ? ` by ${bill.chargeReversedBy}` : ''}: {bill.chargeReversalReason}.
             {' '}{money(bill.amountPaid)} {t('ui.wasCollectedAgainstThisInvoice')}
           </p>
@@ -517,7 +517,7 @@ export default function BillDetailPage() {
                           onChange={e => setQtyDraft(e.target.value)}
                           onBlur={() => handleSaveQty(item)}
                           onKeyDown={e => { if (e.key === 'Enter') handleSaveQty(item); if (e.key === 'Escape') setEditingItemId(null); }}
-                          style={{ font: 'inherit', border: '1px solid var(--bl-teal)', borderRadius: 5 }}
+                          style={{ font: 'inherit', border: '1px solid var(--bl-teal)', borderRadius: 0 }}
                         />
                       ) : item.quantity}
                     </td>
@@ -757,7 +757,7 @@ export default function BillDetailPage() {
                         const qty = Math.max(1, parseInt(e.target.value, 10) || 1);
                         setPendingItems(prev => prev.map(p => (p.id === item.id ? { ...p, quantity: qty, totalPrice: qty * p.unitPrice } : p)));
                       }}
-                      style={{ font: 'inherit', border: '1px solid var(--ehr-border, #E2E6EB)', borderRadius: 5 }}
+                      style={{ font: 'inherit', border: '1px solid var(--ehr-border, #E2E6EB)', borderRadius: 0 }}
                     />
                     <span className="bl-fee-price">{money(item.totalPrice)}</span>
                     <button type="button" className="bl-fee-add" onClick={() => setPendingItems(prev => prev.filter(p => p.id !== item.id))}>{t('action.remove')}</button>

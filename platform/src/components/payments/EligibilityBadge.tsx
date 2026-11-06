@@ -26,7 +26,7 @@ export default function EligibilityBadge({ status, compact }: EligibilityBadgePr
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 6,
       padding: compact ? '2px 8px' : '4px 12px',
-      borderRadius: 20,
+      borderRadius: 0,
       fontSize: compact ? 11 : 12,
       fontWeight: 600,
       color: config.color,

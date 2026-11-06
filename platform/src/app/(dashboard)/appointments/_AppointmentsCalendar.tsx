@@ -189,7 +189,7 @@ const THREE_LINE_MINUTES = 75;
 const rbcNavBtn: React.CSSProperties = {
   background: 'transparent',
   border: '1px solid var(--glass-border)',
-  borderRadius: 8,
+  borderRadius: 0,
   width: 32,
   height: 32,
   display: 'flex',
@@ -207,7 +207,7 @@ function CalToolbar({ onNavigate }: ToolbarProps<CalEvent, object>) {
         type="button"
         onClick={() => onNavigate('TODAY')}
         style={{
-          height: 32, padding: '0 14px', borderRadius: 8,
+          height: 32, padding: '0 14px', borderRadius: 0,
           border: '1px solid var(--glass-border)',
           background: 'var(--bg-card-solid)',
           color: 'var(--text-secondary)',

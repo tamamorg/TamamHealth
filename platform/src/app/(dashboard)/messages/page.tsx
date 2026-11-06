@@ -623,7 +623,7 @@ function StaffPickerModal({
               placeholder={t('ui.groupNameEGMorning')}
               className="w-full text-[13px] mb-2.5"
               style={{
-                padding: '9px 12px', borderRadius: 8,
+                padding: '9px 12px', borderRadius: 0,
                 background: 'var(--bg-card-solid)',
                 border: '1px solid var(--ehr-border)',
                 color: 'var(--ehr-text)',
@@ -641,7 +641,7 @@ function StaffPickerModal({
               placeholder={t('ui.searchStaffByNameOr')}
               className="w-full text-[13px]"
               style={{
-                paddingInlineStart: 34, paddingTop: 9, paddingBottom: 9, borderRadius: 8,
+                paddingInlineStart: 34, paddingTop: 9, paddingBottom: 9, borderRadius: 0,
                 background: 'var(--bg-card-solid)',
                 border: '1px solid var(--ehr-border)',
                 color: 'var(--ehr-text)',

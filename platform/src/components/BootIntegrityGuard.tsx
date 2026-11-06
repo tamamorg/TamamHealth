@@ -141,7 +141,7 @@ export default function BootIntegrityGuard() {
       }}
     >
       <div style={{ maxWidth: 420, width: '100%', textAlign: 'center' }}>
-        <div style={{ width: 56, height: 56, borderRadius: 16, margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(224, 49, 39,0.12)', border: '1px solid rgba(224, 49, 39,0.25)' }}>
+        <div style={{ width: 56, height: 56, borderRadius: 0, margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(224, 49, 39,0.12)', border: '1px solid rgba(224, 49, 39,0.25)' }}>
           <span style={{ fontSize: 28, lineHeight: 1 }} aria-hidden>⚠️</span>
         </div>
         <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 8px' }}>{t('ui.couldnTLoadTheApp')}</h2>
@@ -150,7 +150,7 @@ export default function BootIntegrityGuard() {
         </p>
         <button
           onClick={() => { try { sessionStorage.removeItem(RELOAD_FLAG); } catch { /* ignore */ } window.location.reload(); }}
-          style={{ background: 'var(--accent-primary)', color: 'white', border: 'none', padding: '12px 24px', borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+          style={{ background: 'var(--accent-primary)', color: 'white', border: 'none', padding: '12px 24px', borderRadius: 0, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
         >
           {t('ui.reload')}
         </button>

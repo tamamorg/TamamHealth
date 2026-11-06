@@ -151,7 +151,7 @@ export default function FacilityFormModal({
   };
 
   const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '8px 12px', borderRadius: 8, fontSize: 14,
+    width: '100%', padding: '8px 12px', borderRadius: 0, fontSize: 14,
     background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)',
     color: 'var(--text-primary)',
   };

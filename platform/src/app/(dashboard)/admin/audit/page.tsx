@@ -492,12 +492,12 @@ function AuditEntryDialog({
 
         {/* Full details line first — it is the sentence the row truncated. */}
         {log.details && (
-          <p style={{ fontSize: 13.5, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', margin: '0 0 16px', padding: '10px 12px', background: 'var(--overlay-subtle)', borderRadius: 10 }}>
+          <p style={{ fontSize: 13.5, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', margin: '0 0 16px', padding: '10px 12px', background: 'var(--overlay-subtle)', borderRadius: 0 }}>
             {log.details}
           </p>
         )}
 
-        <div style={{ border: '1px solid var(--border-light)', borderRadius: 8, marginBottom: 16 }}>
+        <div style={{ border: '1px solid var(--border-light)', borderRadius: 0, marginBottom: 16 }}>
           <EntryKv label={t('admin.colUser')} value={log.username || log.userId || t('admin.systemUser')} />
           <EntryKv label={t('ui.userId')} value={log.userId} mono />
           <EntryKv label={t('adminUsers.colRole')} value={log.role} />

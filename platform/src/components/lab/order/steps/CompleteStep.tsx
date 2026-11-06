@@ -24,7 +24,7 @@ export default function CompleteStep({ controller }: { controller: LabOrderContr
     <div>
       <div
         className="labord-row"
-        style={{ border: '1px solid var(--labord-line)', borderRadius: 4, marginBottom: 16, background: 'var(--labord-surface-soft)' }}
+        style={{ border: '1px solid var(--labord-line)', borderRadius: 0, marginBottom: 16, background: 'var(--labord-surface-soft)' }}
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <CheckCircle2 className="w-5 h-5" style={{ color: 'var(--color-success, #0E9463)' }} aria-hidden />

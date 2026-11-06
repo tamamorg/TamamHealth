@@ -492,11 +492,11 @@ export default function RiskCenterPage() {
                 <p style={{
                   fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'pre-wrap',
                   overflowWrap: 'anywhere', margin: '0 0 14px', padding: '10px 12px',
-                  background: 'var(--overlay-subtle)', borderRadius: 10,
+                  background: 'var(--overlay-subtle)', borderRadius: 0,
                 }}>
                   {single.detail}
                 </p>
-                <div style={{ border: '1px solid var(--border-light)', borderRadius: 8, marginBottom: 14 }}>
+                <div style={{ border: '1px solid var(--border-light)', borderRadius: 0, marginBottom: 14 }}>
                   <div className="sadb-kv">
                     <span>{t('epidemic.colSeverity')}</span>
                     <SadbChip tone={SEVERITY_CHIP[single.severity]}>{t(SEVERITY_KEY[single.severity])}</SadbChip>
@@ -580,7 +580,7 @@ export default function RiskCenterPage() {
               onClose={() => setReopening(null)}
             />
             <DialogBody tight>
-            <div style={{ border: '1px solid var(--border-light)', borderRadius: 8, marginBottom: 14 }}>
+            <div style={{ border: '1px solid var(--border-light)', borderRadius: 0, marginBottom: 14 }}>
               <div className="sadb-kv">
                 <span>{t('epidemic.colSeverity')}</span>
                 <SadbChip tone={SEVERITY_CHIP[reopening.severity]}>{t(SEVERITY_KEY[reopening.severity])}</SadbChip>
@@ -592,7 +592,7 @@ export default function RiskCenterPage() {
             <p style={{
               fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'pre-wrap',
               overflowWrap: 'anywhere', margin: '0 0 4px', padding: '10px 12px',
-              background: 'var(--overlay-subtle)', borderRadius: 10,
+              background: 'var(--overlay-subtle)', borderRadius: 0,
             }}>
               {reopening.note || t('ui.acknowledgedNoNote')}
             </p>

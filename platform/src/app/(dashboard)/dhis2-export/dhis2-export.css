@@ -7,7 +7,7 @@ body main[data-surface="management"] .dx-controls {
   padding: 12px 16px 14px;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
-  border-radius: 4px;
+  border-radius: 0;
 }
 body main[data-surface="management"] .dx-controls-title,
 body main[data-surface="management"] .dx-card-title,
@@ -117,7 +117,7 @@ body main[data-surface="management"] .dx-format {
   text-align: start;
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
-  border-radius: 4px;
+  border-radius: 0;
   cursor: pointer;
 }
 body main[data-surface="management"] .dx-format:hover:not(:disabled) { background: var(--accent-light); }
@@ -136,5 +136,5 @@ body main[data-surface="management"] .dx-field input[type="month"] {
   color: var(--text-primary);
   background: var(--bg-card-solid);
   border: 1px solid var(--border-light);
-  border-radius: 4px;
+  border-radius: 0;
 }

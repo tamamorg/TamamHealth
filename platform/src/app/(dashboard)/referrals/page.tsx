@@ -875,7 +875,7 @@ export default function ReferralsPage() {
                 rows={4}
                 placeholder={t('referrals.notePlaceholder')}
                 className="w-full mb-4"
-                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 13 }}
+                style={{ padding: '10px 12px', borderRadius: 0, border: '1px solid var(--border-medium)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 13 }}
               />
             </div>
           </FormSlider>
@@ -903,7 +903,7 @@ export default function ReferralsPage() {
                 aria-label={t('referrals.declinePlaceholder')}
                 placeholder={t('referrals.declinePlaceholder')}
                 className="w-full"
-                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-medium)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 13 }}
+                style={{ padding: '10px 12px', borderRadius: 0, border: '1px solid var(--border-medium)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 13 }}
               />
             </div>
           </FormSlider>

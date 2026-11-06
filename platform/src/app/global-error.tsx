@@ -31,7 +31,7 @@ export default function GlobalError({
       <body style={{ margin: 0, background: colors.bg, color: colors.text, fontFamily: 'system-ui, sans-serif' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '24px', boxSizing: 'border-box' }}>
           <div style={{ maxWidth: '420px', width: '100%', textAlign: 'center' }}>
-            <div style={{ width: 56, height: 56, borderRadius: 16, margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: colors.dangerBg, border: `1px solid ${colors.dangerBorder}` }}>
+            <div style={{ width: 56, height: 56, borderRadius: 0, margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: colors.dangerBg, border: `1px solid ${colors.dangerBorder}` }}>
               <span style={{ fontSize: 28, lineHeight: 1 }} aria-hidden>⚠️</span>
             </div>
             <h2 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 8px' }}>This page could not be loaded</h2>
@@ -41,13 +41,13 @@ export default function GlobalError({
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
                 onClick={() => { try { reset(); } catch { window.location.reload(); } }}
-                style={{ background: colors.primary, color: colors.white, border: 'none', padding: '12px 24px', borderRadius: '6px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
+                style={{ background: colors.primary, color: colors.white, border: 'none', padding: '12px 24px', borderRadius: '0', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
               >
                 Try again
               </button>
               <button
                 onClick={() => window.location.reload()}
-                style={{ background: 'transparent', color: colors.secondaryText, border: `1px solid ${colors.secondaryBorder}`, padding: '12px 24px', borderRadius: '6px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
+                style={{ background: 'transparent', color: colors.secondaryText, border: `1px solid ${colors.secondaryBorder}`, padding: '12px 24px', borderRadius: '0', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
               >
                 Reload page
               </button>

@@ -104,7 +104,7 @@ export default function PharmacyPage() {
   // patients registry) — no per-column funnels.
   // Field style for the selects inside the header's Filters popover (mirrors
   // the patients registry's Filters panel fields).
-  const popoverFieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 8, minWidth: 0 } as const;
+  const popoverFieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 0, minWidth: 0 } as const;
   const statusFilterRelevant = activeTab === 'inventory' || activeTab === 'reorder' || activeTab === 'expiry';
   const headerFilterCount = (categoryFilter !== 'all' ? 1 : 0) + (statusFilterRelevant && statusFilter !== 'all' ? 1 : 0);
 
@@ -518,7 +518,7 @@ export default function PharmacyPage() {
                   maxWidth: 320,
                   flexShrink: 0,
                   // 8px, matching the square icon buttons beside it.
-                  borderRadius: 8,
+                  borderRadius: 0,
                   padding: '0 14px',
                   fontSize: 13,
                   fontWeight: 600,
