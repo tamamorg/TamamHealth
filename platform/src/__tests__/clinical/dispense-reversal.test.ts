@@ -165,3 +165,37 @@ describe('reverseDispense', () => {
     expect(isWithinReversalWindow('2020-01-01T10:00:00Z')).toBe(false);
   });
 });
+
+describe('dailyReconciliation', () => {
+  it('buckets movements by the clinical day instead of the UTC date', async () => {
+    await putDoc(controlledSubstanceLogDB(), {
+      _id: 'cslog-midnight-boundary',
+      type: 'controlled_substance_log',
+      inventoryId: 'inv-boundary',
+      medicationName: 'Morphine 10mg/mL',
+      schedule: 'II',
+      movement: 'dispense',
+      quantity: 2,
+      unit: 'ampoules',
+      beforeBalance: 10,
+      afterBalance: 8,
+      operatorId: PHARMACIST._id,
+      operatorName: PHARMACIST.name,
+      witnessId: WITNESS._id,
+      witnessName: WITNESS.name,
+      facilityId: HOSP,
+      facilityName: 'JTH',
+      orgId: ORG,
+      createdAt: '2026-11-06T22:30:00.000Z',
+      updatedAt: '2026-11-06T22:30:00.000Z',
+    } as never);
+
+    const jubaDay = await dailyReconciliation('2026-11-07');
+    const utcDay = await dailyReconciliation('2026-11-06');
+
+    expect(jubaDay.movementsByMedication['inv-boundary']).toEqual(
+      expect.objectContaining({ dispenses: 2, netChange: -2 }),
+    );
+    expect(utcDay.movementsByMedication['inv-boundary']).toBeUndefined();
+  });
+});
