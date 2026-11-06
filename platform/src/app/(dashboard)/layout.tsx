@@ -1,7 +1,7 @@
 'use client';
 
 import { ForcePasswordChange } from '@/modules/identity/client';
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { isManagementSurface } from '@/lib/navigation/management-surface';
 import { useAuth } from '@/lib/context';
@@ -11,7 +11,7 @@ import RoleGuard from '@/components/RoleGuard';
 import { SettingsProvider } from '@/lib/settings/SettingsProvider';
 import PreferenceEffects from '@/components/PreferenceEffects';
 import KeyboardShortcuts from '@/components/KeyboardShortcuts';
-import LockScreen, { pinSetupDismissedKey, shouldPromptPinSetup } from '@/components/LockScreen';
+import LockScreen, { shouldPromptPinSetup } from '@/components/LockScreen';
 import ConnectivityNotice from '@/components/ConnectivityNotice';
 
 import { TourProvider } from '@/lib/tour/tour-context';
@@ -61,31 +61,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { isLocked, hasPin, lockEnabled, pinSupported, unlock, verifyPin, setPin } = useAutoLock(
     isAuthenticated, orgTimeout, platformPolicy.sessionTimeoutMinutes, platformPolicy, currentUser?._id,
   );
-  // First-run PIN prompt: shown once per device after sign-in when the session
+  // First-run PIN prompt: shown after sign-in when the session
   // WILL lock but no PIN exists to unlock it with. This is what keeps the lock
   // screen's digit pad reachable outside demo mode — the lock overlay itself
   // refuses PIN *creation* (see LockScreen), so the only safe moment to offer
   // it is right here, while the user has just proven who they are.
-  const [pinSetupDismissed, setPinSetupDismissed] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return true;
-    try { return localStorage.getItem(pinSetupDismissedKey(currentUser?._id)) === '1'; } catch { return true; }
-  });
-  useEffect(() => {
-    try {
-      setPinSetupDismissed(localStorage.getItem(pinSetupDismissedKey(currentUser?._id)) === '1');
-    } catch { setPinSetupDismissed(true); }
-  }, [currentUser?._id]);
-  const dismissPinSetup = useCallback(() => {
-    setPinSetupDismissed(true);
-    try { localStorage.setItem(pinSetupDismissedKey(currentUser?._id), '1'); } catch { /* best-effort */ }
-  }, [currentUser?._id]);
   const showPinSetup = shouldPromptPinSetup({
     isAuthenticated,
     isLocked,
     lockEnabled,
     hasPin,
     pinSupported,
-    dismissed: pinSetupDismissed,
     // In demo/dev the lock overlay offers first-lock setup itself (allowSetup
     // below) — a second interstitial here would also break every fresh-profile
     // login the demo automation drives.
@@ -174,12 +160,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           pinSupported={pinSupported}
           onVerifyPin={verifyPin}
           onSetPin={setPin}
-          /* Setting a PIN flips hasPin and unmounts this; marking it dismissed
-             too keeps the prompt from returning if the PIN is later cleared in
-             Settings — that was a deliberate choice, not a fresh device. */
-          onUnlock={dismissPinSetup}
-          onDismiss={dismissPinSetup}
-          onLogout={dismissPinSetup}
+          /* Setting a PIN flips hasPin and unmounts this prompt. A user may
+             switch accounts, but cannot dismiss setup while auto-lock remains
+             enabled: doing so creates a later lock screen with no PIN field. */
+          onUnlock={unlock}
+          onLogout={switchUser}
         />
       )}
       <a href="#main-content" className="skip-link">{t('ui.skipToMainContent')}</a>
