@@ -69,8 +69,73 @@ const JOURNEY_STEPS: Partial<Record<UserRole, TourStep[]>> = {
   super_admin: SUPER_ADMIN_STEPS,
 };
 
+/**
+ * The stops each tour actually makes: the main panels of the role's home,
+ * the top bar, and one stop on each main page the role works in.
+ *
+ * 2026-11-05, the user: "the tour should not go through all the details it
+ * should just point to the main features and panels". The journey files
+ * still describe the whole day; this list is what the tour shows of it. No
+ * stop opens a record, a row, a form or a dialog; getting from page to page
+ * is shown by the engine itself (the ☰ menu or the shortcut it clicks).
+ */
+// The chart is shown as the user asked (2026-11-05, "like in the patient
+// chart just show the panels and the sliders and the navigations for the main
+// actions"): its header and actions, vitals band, summary, the section rail
+// and the workspace panels (sliders), and nothing inside a tab.
+const CHART_CORE = ['patients-open-chart', 'chart-header', 'chart-vitals-band', 'chart-summary', 'chart-rail', 'chart-workspace', 'chart-slider'];
+const CLINICIAN_CORE = ['welcome', 'dash-schedule', 'dash-calendar', 'dash-outstanding', 'top-search', 'top-modules', 'patients-registry', ...CHART_CORE, 'alerts-feed', 'finish'];
+const NURSE_CORE = ['welcome', 'worklist', 'dash-outstanding', 'ward-board', 'handoff', 'anc', 'immunizations', 'search', 'messaging', 'finish'];
+const FRONT_DESK_CORE = ['welcome', 'queue', 'lanes', 'register', 'views', 'referrals', 'search', 'messaging', 'finish'];
+const RECORDS_CORE = ['welcome', 'census-queue', 'module-shortcuts', 'births-list', 'deaths-list', 'vitals-stats', 'quality-national', 'dhis2-status', 'reports', 'messaging', 'finish'];
+const CORE_STEP_IDS: Partial<Record<UserRole, readonly string[]>> = {
+  clinical_officer: CLINICIAN_CORE,
+  doctor: CLINICIAN_CORE,
+  clinician: CLINICIAN_CORE,
+  medical_superintendent: ['supt-welcome', 'supt-signal', 'top-search', 'top-modules', 'patients-registry', ...CHART_CORE, 'data-quality-oversight', 'hr-dashboard-oversight', 'facility-overview-oversight', 'payments-oversight', 'messaging', 'finish'],
+  nurse: NURSE_CORE,
+  midwife: NURSE_CORE,
+  triage_nurse: NURSE_CORE,
+  rooming_nurse: NURSE_CORE,
+  lab_tech: ['welcome', 'specimen-intake', 'critical', 'registry-worklists', 'blood-bank', 'search', 'messaging', 'finish'],
+  pharmacist: ['welcome', 'queue', 'stock-alerts', 'analytics', 'inventory', 'controlled', 'search', 'messaging', 'finish'],
+  radiologist: ['welcome', 'worklist', 'outstanding', 'search', 'messaging', 'finish'],
+  nutritionist: ['welcome', 'worklist', 'outstanding', 'supplies', 'mch-analytics', 'search', 'messaging', 'finish'],
+  front_desk: FRONT_DESK_CORE,
+  central_registration_clerk: FRONT_DESK_CORE,
+  clinic_clerk: FRONT_DESK_CORE,
+  cashier: ['welcome', 'collect', 'pending', 'bill-list', 'portal', 'search', 'messaging', 'finish'],
+  medical_biller: ['welcome', 'pending', 'bill-list', 'submit', 'refunds', 'search', 'messaging', 'finish'],
+  hrio: RECORDS_CORE,
+  records_hmis_officer: RECORDS_CORE,
+  data_entry_clerk: RECORDS_CORE,
+  hospital_manager: ['welcome', 'facility-overview', 'my-facility', 'hr-leave', 'payments', 'reports', 'patients', 'wards', 'messaging', 'finish'],
+  org_admin: ['welcome', 'today-ops', 'org-overview', 'users-create', 'hospitals', 'pricing', 'branding', 'analytics', 'org-settings', 'messaging', 'finish'],
+  county_health_director: ['welcome', 'counties', 'surveillance', 'epidemic-intelligence', 'assessments', 'data-quality', 'dhis2', 'public-stats', 'messaging', 'finish'],
+  government: ['welcome', 'alerts', 'epi-curves', 'facility-assessments', 'equity', 'programs', 'briefing', 'public-stats', 'dhis2', 'finish'],
+  super_admin: ['welcome', 'command-deck', 'orgs', 'users', 'config', 'sync', 'security', 'audit', 'system', 'announcements', 'analytics', 'finish'],
+};
+
+/**
+ * A row click that bridged into a record the tour no longer visits is
+ * dropped with it: the step keeps its pointer and loses the click. The one
+ * bridge kept is the patient row into the chart, since the chart is a stop.
+ */
+function withoutDeadBridges(steps: TourStep[]): TourStep[] {
+  return steps.map((step, i) => {
+    const bridge = step.preClickSelector && step.preClickSelector === step.target;
+    const next = steps[i + 1];
+    if (!bridge || (next && next.route.includes('['))) return step;
+    const { preClickSelector: _drop, ...rest } = step;
+    void _drop;
+    return rest;
+  });
+}
+
 function isRouteAllowed(route: string, allowedRoutes: readonly string[]): boolean {
-  return allowedRoutes.some(r => route === r || route.startsWith(r + '/'));
+  // A view of a page (`/epidemic-intelligence?tab=curves`) is allowed when the page is.
+  const path = route.split('?')[0];
+  return allowedRoutes.some(r => path === r || path.startsWith(r + '/'));
 }
 
 /**
@@ -94,7 +159,10 @@ export function journeyTourForRole(role: UserRole): TourDefinition | undefined {
   const steps = JOURNEY_STEPS[role];
   if (!steps) return undefined;
   const allowed = getRoleConfig(role)?.allowedRoutes || [];
-  const filtered = steps.filter(s => isRouteAllowed(s.route, allowed));
+  const core = CORE_STEP_IDS[role];
+  const filtered = withoutDeadBridges(steps
+    .filter(s => !core || core.includes(s.id))
+    .filter(s => isRouteAllowed(s.route, allowed)));
   if (filtered.length < 3) return undefined;
   return { key: `journey-${role}`, steps: filtered };
 }

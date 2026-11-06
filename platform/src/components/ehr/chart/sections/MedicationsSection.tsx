@@ -168,15 +168,12 @@ export default function MedicationsSection({
   const handleDiscontinue = async (rx: PrescriptionDoc, reason: string) => {
     setBusyId(rx._id);
     try {
-      const { updatePrescription } = await import('@/lib/services/prescription-service');
-      const stopped = await updatePrescription(rx._id, {
-        status: 'discontinued',
-        stoppedAt: new Date().toISOString(),
-        stoppedBy: currentUser?._id,
-        stoppedByName: userName,
-        stoppedSource: 'clinician',
-        stoppedReason: reason.trim() || 'Discontinued from the Medications tab',
-      });
+      const { discontinuePrescription } = await import('@/lib/services/prescription-service');
+      const stopped = await discontinuePrescription(
+        rx._id,
+        { id: currentUser?._id, name: userName },
+        reason.trim() || 'Discontinued from the Medications tab',
+      );
       // updatePrescription returns null when the write fails.
       if (!stopped) throw new Error('Change not saved. Try again.');
       showToast(t('msg.discontinued', { medication: rx.medication }), 'success');

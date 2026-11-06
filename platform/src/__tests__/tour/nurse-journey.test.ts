@@ -34,15 +34,11 @@ describe.each(NURSING_ROLES)('%s guided journey', role => {
     expect(outstanding?.target).toBe('.ehr-outstanding-card');
   });
 
-  it('describes triage and rooming narratively, with no per-patient route', () => {
-    const step = tour!.steps.find(s => s.id === 'triage-rooming');
-    expect(step).toBeDefined();
-    expect(step!.route).toBe(SHARED_DASHBOARD);
-    // No real anchor exists for this on /dashboard (triage/rooming both
-    // require a real patient id) — it must render as a centred narrative
-    // card, not point at an invented selector.
-    expect(step!.target).toBe('');
-    expect(step!.preClickSelector).toBeUndefined();
+  it('keeps the tour to the main panels: no per-patient stops', () => {
+    // 2026-11-05: tours point at the main panels and pages only; triage,
+    // rooming and the MAR all need a real patient, so they are not stops.
+    for (const step of tour!.steps) expect(step.route.includes('[')).toBe(false);
+    expect(tour!.steps.find(s => s.id === 'triage-rooming')).toBeUndefined();
   });
 
   it('sends the ward-board step to the real /wards route', () => {

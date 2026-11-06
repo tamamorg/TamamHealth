@@ -999,6 +999,36 @@
 
 .tour-card {
   box-shadow: 0 12px 32px rgba(0, 29, 63, 0.35) !important;
+  animation: tour-card-in 0.35s ease both;
+}
+@keyframes tour-card-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* The pointer the tour shows before it clicks for the user (TourClickHint):
+   the spotlight ring pulses in the accent, and a dark caption names the
+   control. */
+.tour-spotlight--click {
+  animation: tour-click-pulse 0.9s ease-in-out infinite;
+}
+@keyframes tour-click-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px var(--accent-primary), 0 0 0 9999px rgba(0, 29, 63, 0.50); }
+  50% { box-shadow: 0 0 0 7px var(--accent-primary), 0 0 0 9999px rgba(0, 29, 63, 0.50); }
+}
+.tour-click-hint {
+  padding: 6px 12px;
+  background: var(--tm-navy);
+  color: var(--color-white, #fff);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 6px 18px rgba(0, 29, 63, 0.35) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-card { animation: none; }
+  .tour-spotlight--click { animation: none; box-shadow: 0 0 0 5px var(--accent-primary), 0 0 0 9999px rgba(0, 29, 63, 0.50) !important; }
 }
 
 /* Decorative glass gradients died with the flat redesign — but a conic
@@ -25907,7 +25937,7 @@ table.patient-data-table.patient-data-table {
   border: none;
   background: none;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.29;
   text-align: start;
   color: var(--tamam-ui-05);
@@ -25944,7 +25974,13 @@ table.patient-data-table.patient-data-table {
 /* Where you are — carried by the label's colour alone. The blue bar that
    used to sit in the left margin is gone: it read as a scrollbar or a stray
    rule rather than as a marker. */
-.tamam-reg-navitem.is-current { color: var(--tamam-interactive); }
+/* 2026-11-05: the arrow takes the accent too, and nothing sits behind the
+   row. Never a fill: solid blue is the chart's left panel only. */
+.tamam-reg-navitem.is-current {
+  color: var(--tamam-interactive);
+  font-weight: 600;
+}
+.tamam-reg-navitem.is-current .tamam-reg-navarrow { color: currentColor; }
 
 /* Trailing mark — "optional", or the error flag. */
 .tamam-reg-navmeta {
@@ -35194,8 +35230,8 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 
 /* ══════════════════ GHOST ACTIONS — app-wide (O3) ══════════════════
    The verbs that OPEN something — a list page's "New referral", "Register",
-   any primary button led by a plus — are OpenMRS O3 ghost buttons: blue
-   label, no fill and no border, the glyph after the label. What COMMITS
+   any primary button led by a plus — are opener buttons: white inside,
+   square, no border, a Tamam-blue label with the glyph after it. What COMMITS
    something (a form's Save, a dialog's confirm, the workspace action bars)
    stays solid — so inside a dialog or modal a plus-led primary is the
    dialog's commit ("Create group") and keeps its fill. The chart has its own
@@ -35213,13 +35249,15 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   gap: 8px;
   min-height: 36px;
   padding: 0 12px;
+  /* 2026-11-05 (the user's call): white inside, square, Tamam-blue label
+     and glyph, no border. */
   border: 0;
   border-radius: 0;
-  background: transparent;
+  background: var(--bg-card-solid, #fff);
   box-shadow: none;
-  color: var(--accent-link);
+  color: var(--accent-primary);
   font-size: 14px;
-  font-weight: 400;
+  font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
 }
@@ -35229,8 +35267,8 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   .ehr-list-header-actions > .btn-primary,
   .btn-primary:has(> svg.lucide-plus):not([role="dialog"] *):not(.modal-panel *)
 ):not(.tm-dialog__foot > *):not(.tm-action-bar > *):hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-slate-400) 12%, transparent);
-  color: var(--accent-hover, var(--accent-link));
+  background: color-mix(in srgb, var(--accent-primary) 8%, var(--bg-card-solid, #fff));
+  color: var(--accent-primary);
   text-decoration: none;
 }
 
@@ -35250,7 +35288,7 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 ):not(.tm-dialog__foot > *):not(.tm-action-bar > *) svg.lucide {
   width: 16px;
   height: 16px;
-  color: var(--accent-link) !important;
+  color: var(--accent-primary) !important;
   stroke: currentColor !important;
 }
 
@@ -36639,4 +36677,87 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
 .ehr-list-header-toolbar select {
   height: var(--control-height, 40px);
   min-height: var(--control-height, 40px);
+}
+
+/* The × on the chart's transfer banner (TransferBanner): a quiet square at
+   the banner's right edge; closing hides that transfer's banner for good. */
+.transfer-banner-close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin: -2px -4px -2px auto;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.transfer-banner-close:hover { background: color-mix(in srgb, var(--text-primary) 8%, transparent); color: var(--text-primary); }
+.transfer-banner-close:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+.transfer-banner-close svg { width: 16px; height: 16px; }
+
+/* ══════════════════ Register New Patient in the chart's frame ══════════════
+   2026-11-05, the user: "style it like the patient chart". Scoped to the
+   registration page (the triage form shares the .tamam-reg classes and keeps
+   its own look):
+   - a white page, like .ehr-chart-page;
+   - each section is a chart summary card (.tebra-panel): white, slate-300
+     border, square corners, a hairline under the head, a blue 16/600 title
+     with a muted icon and no number;
+   - fields sit straight on the card with the light app fill, instead of a
+     grey slab under white fields;
+   - the rail is divided from the form like the chart's section rail. */
+#main-content:has(> .patient-registration-page:not(.patient-registration-page--embedded)),
+.patient-registration-page:not(.patient-registration-page--embedded) {
+  background: var(--bg-card-solid);
+}
+.patient-registration-page .tamam-reg-rail {
+  padding-inline-end: 24px;
+  border-inline-end: 1px solid var(--border-light);
+}
+.patient-registration-page .tamam-reg-section {
+  background: var(--bg-card-solid);
+  border: 1px solid var(--color-slate-300);
+  border-radius: 0; /* sharp, at the user's request (2026-11-05) */
+  padding: 16px 18px 20px;
+}
+.patient-registration-page .tamam-reg-form .tamam-reg-section + .tamam-reg-section { margin-top: 16px; }
+.patient-registration-page .tamam-reg-sectionhead {
+  margin: 0 0 16px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid var(--border-medium);
+}
+.patient-registration-page .tamam-reg-sectionhead h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent-primary);
+}
+.patient-registration-page .tamam-reg-sectionicon {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  color: var(--text-secondary) !important;
+  stroke: currentColor !important;
+}
+.patient-registration-page .tamam-reg-sectionhead p { margin-inline-start: 25px; }
+/* The head already draws the rule; the first block under it does not add a
+   second one (it read as a sentence boxed between two lines). */
+.patient-registration-page .tamam-reg-fields > .registration-inline-panel:first-child,
+.patient-registration-page .tamam-reg-fields > .registration-contact-card:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.patient-registration-page .tamam-reg-fields {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+.patient-registration-page .tamam-reg input:not([type="checkbox"]):not([type="radio"]),
+.patient-registration-page .tamam-reg select,
+.patient-registration-page .tamam-reg textarea {
+  background-color: var(--bg-app);
 }

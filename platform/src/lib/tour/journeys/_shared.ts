@@ -15,14 +15,17 @@ export const searchStep = (route: string): TourStep => ({
 export const messagingStep = (route: string): TourStep => ({
   id: 'messaging',
   route,
-  // The sidebar entry, which every role that can message has. The floating
-  // dock is back (restored after da19f4d6 removed it), but the nav link stays
-  // the tour anchor: it exists on every screen and viewport, while the dock's
-  // launcher is desktop-only and hidden under the mobile shell.
-  target: 'a.nav-item[href="/messages"]',
+  // The floating chat bubble (MessagingDock), bottom right on every screen.
+  // The sidebar link used to be the anchor, but the side menu now sits
+  // collapsed behind ☰, so that link measured as nothing and this card fell
+  // back to the centre for every role (2026-11-05 tour check).
+  target: '[data-tour="messaging-dock"]',
   title: 'Message your team',
-  body: 'Direct messages, plus group threads for a whole ward or department. A handover of care waiting on you appears on your dashboard under “Transfers to accept”.',
-  placement: 'right',
+  // The bubble only renders on /dashboard pages; on a home elsewhere (org
+  // admin, super admin, ministry) the card simply centres, and the wording
+  // holds either way.
+  body: 'Direct messages, plus group threads for a whole ward or department. Open them from the chat bubble on your dashboard, or from Messages in the ☰ menu.',
+  placement: 'left',
 });
 
 export const finishStep = (route: string): TourStep => ({

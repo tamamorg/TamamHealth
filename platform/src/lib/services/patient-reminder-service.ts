@@ -17,6 +17,7 @@ import { findByType } from './db-query';
 import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import { todayIso } from '@/lib/date-utils';
+import { canReopenReminder } from '../reminder-rules';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 
@@ -93,13 +94,25 @@ export async function queueReminder(input: QueueReminderInput): Promise<PatientR
   return doc;
 }
 
-async function setStatus(id: string, status: PatientReminderDoc['status'], extra: Partial<PatientReminderDoc>, action: string): Promise<PatientReminderDoc | null> {
+async function setStatus(
+  id: string,
+  status: PatientReminderDoc['status'],
+  extra: Partial<PatientReminderDoc>,
+  action: string,
+  /** Statuses the reminder may be in for this change; others are refused. */
+  from?: readonly PatientReminderDoc['status'][],
+): Promise<PatientReminderDoc | null> {
   const db = patientRemindersDB();
   let existing: PatientReminderDoc;
   try {
     existing = (await db.get(id)) as PatientReminderDoc;
   } catch {
     return null;
+  }
+  // A reminder closed on another device (synced in after this list loaded)
+  // must not be silently flipped: say so instead.
+  if (from && !from.includes(existing.status)) {
+    throw new Error('Reminder already changed. Refresh to see its current state.');
   }
   const updated: PatientReminderDoc = { ...existing, ...extra, status, updatedAt: new Date().toISOString() };
   const resp = await db.put(updated);
@@ -111,12 +124,63 @@ async function setStatus(id: string, status: PatientReminderDoc['status'], extra
 
 /** Mark a reminder as sent (staff confirm the patient was contacted). */
 export async function markReminderSent(id: string): Promise<PatientReminderDoc | null> {
-  return setStatus(id, 'sent', { sentAt: new Date().toISOString() }, 'MARK_REMINDER_SENT');
+  return setStatus(id, 'sent', { sentAt: new Date().toISOString() }, 'MARK_REMINDER_SENT', ['queued', 'failed']);
+}
+
+/**
+ * Change what a queued reminder says, when it goes, or how. Only while it is
+ * still queued: one already sent or cancelled is history and stays as it was.
+ */
+export async function updateReminder(
+  id: string,
+  changes: { message?: string; sendDate?: string; channel?: ReminderChannel },
+  actor?: { id?: string; name?: string },
+): Promise<PatientReminderDoc | null> {
+  const db = patientRemindersDB();
+  let existing: PatientReminderDoc;
+  try {
+    existing = (await db.get(id)) as PatientReminderDoc;
+  } catch {
+    return null;
+  }
+  if (existing.status !== 'queued') throw new Error('Reminder already closed. Add a new one instead.');
+  const message = changes.message === undefined ? existing.message : changes.message.trim();
+  if (!message) throw new Error('Enter the reminder message.');
+  const updated: PatientReminderDoc = {
+    ...existing,
+    message,
+    sendDate: changes.sendDate || existing.sendDate,
+    channel: changes.channel ?? existing.channel,
+    updatedAt: new Date().toISOString(),
+  };
+  const resp = await db.put(updated);
+  updated._rev = resp.rev;
+  await logAuditSafe('UPDATE_PATIENT_REMINDER', actor?.id, actor?.name, `Reminder ${id} changed for patient ${updated.patientId} (send ${updated.sendDate})`);
+  emitSyncEvent({ resourceType: 'patient_reminder', resourceId: id, operation: 'update', resourceVersion: updated._rev, hospitalId: updated.hospitalId, orgId: updated.orgId });
+  return updated;
 }
 
 /** Cancel a queued reminder. */
 export async function cancelReminder(id: string): Promise<PatientReminderDoc | null> {
-  return setStatus(id, 'cancelled', {}, 'CANCEL_PATIENT_REMINDER');
+  return setStatus(id, 'cancelled', {}, 'CANCEL_PATIENT_REMINDER', ['queued', 'failed']);
+}
+
+/**
+ * Undo a Mark sent or a Cancel: the reminder goes back to the queue. Refused
+ * for a reminder the SMS gateway actually sent (see canReopenReminder).
+ */
+export async function reopenReminder(id: string): Promise<PatientReminderDoc | null> {
+  const db = patientRemindersDB();
+  let existing: PatientReminderDoc;
+  try {
+    existing = (await db.get(id)) as PatientReminderDoc;
+  } catch {
+    return null;
+  }
+  if (!canReopenReminder(existing)) {
+    throw new Error('Reminder already sent by text. Add a new one instead.');
+  }
+  return setStatus(id, 'queued', { sentAt: undefined }, 'REOPEN_PATIENT_REMINDER', ['sent', 'cancelled']);
 }
 
 // ── Gateway dispatch ─────────────────────────────────────────────────────────

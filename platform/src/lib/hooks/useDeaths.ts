@@ -42,5 +42,18 @@ export function useDeaths() {
     return doc;
   }, [load, scope]);
 
-  return { deaths, stats, loading, error: error && t(error), register, reload: load };
+  /** Correct a registered death. Only a record already in this caller's scope can be changed; the certificate number never moves. */
+  const correct = useCallback(async (id: string, patch: Partial<DeathRegistrationDoc>) => {
+    if (!scope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
+    if (!deaths.some(d => d._id === id)) throw new Error('This death record is not available to your account.');
+    const { updateDeath } = await import('../services/death-service');
+    const { certificateNumber: _keep, _id: _i, _rev: _r, type: _t, orgId: _o, ...safe } = patch;
+    void _keep; void _i; void _r; void _t; void _o;
+    const saved = await updateDeath(id, safe);
+    if (!saved) throw new Error('Death record not updated.');
+    await load();
+    return saved;
+  }, [load, scope, deaths]);
+
+  return { deaths, stats, loading, error: error && t(error), register, correct, reload: load };
 }

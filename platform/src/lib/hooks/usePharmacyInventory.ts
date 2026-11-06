@@ -45,17 +45,17 @@ export function usePharmacyInventory() {
 
   const update = useCallback(async (id: string, updates: Partial<PharmacyInventoryDoc>) => {
     const { updateInventoryItem } = await import('../services/pharmacy-inventory-service');
-    const item = await updateInventoryItem(id, updates);
+    const item = await updateInventoryItem(id, updates, scope ?? undefined);
     await load();
     return item;
-  }, [load]);
+  }, [load, scope]);
 
   const remove = useCallback(async (id: string) => {
     const { deleteInventoryItem } = await import('../services/pharmacy-inventory-service');
-    const ok = await deleteInventoryItem(id);
+    const ok = await deleteInventoryItem(id, scope ?? undefined);
     await load();
     return ok;
-  }, [load]);
+  }, [load, scope]);
 
   return { items, loading, error: error && t(error), create, update, remove, reload: load };
 }

@@ -4,7 +4,7 @@ import DepartmentInput from '@/components/DepartmentInput';
 
 import { useState, useMemo } from 'react';
 import FormSlider from '@/components/overlay/FormSlider';
-import { Plus, CheckCircle2, Settings as Wrench } from '@/components/icons/lucide';
+import { Plus, CheckCircle2, Settings as Wrench, Edit3, Trash2, XCircle } from '@/components/icons/lucide';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import type { RowAction } from '@/components/RowActionsMenu';
 import { useAuth, useUi } from '@/lib/context';
@@ -18,6 +18,8 @@ import { SadbChip, type ChipTone } from '@/components/admin/sadb-ui';
 import Select from '@/components/Select';
 import { useNow } from '@/lib/hooks/useNow';
 import NumberInput from '@/components/forms/NumberInput';
+import { useConfirm } from '@/components/ConfirmDialog';
+import { describeError } from '@/lib/user-facing-error';
 
 const CATEGORIES: { id: AssetCategory; labelKey: string }[] = [
   { id: 'medical_equipment', labelKey: 'equipment.categoryMedicalEquipment' },
@@ -43,7 +45,8 @@ const STATUS_TOKENS: Record<AssetStatus, { labelKey: string; tone: ChipTone }> =
 export default function AssetsPage() {
   const { currentUser } = useAuth();
   const { globalSearch, setGlobalSearch } = useUi();
-  const { assets, summary, create, setStatus, logService } = useAssets();
+  const { assets, summary, create, update, remove, setStatus, logService } = useAssets();
+  const confirm = useConfirm();
   const { showToast } = useToast();
   const { t } = useTranslation();
 
@@ -53,21 +56,86 @@ export default function AssetsPage() {
   // reading it mid-render made two renders of the same data disagree.
   const now = useNow(60_000);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [serviceFor, setServiceFor] = useState<AssetDoc | null>(null);
   // One popup for the table; the clicked row supplies its actions and position.
 
-  /** What a row offers. "Mark operational" only shows while it is not. */
+  const actor = { id: currentUser?._id || 'unknown', name: currentUser?.name || 'Staff' };
+
+  const changeStatus = async (a: AssetDoc, status: AssetStatus, toastKey: string) => {
+    try {
+      const doc = await setStatus(a._id, status, actor);
+      if (!doc) throw new Error('not saved');
+      showToast(t(toastKey, { name: a.name }), 'success');
+    } catch (err) {
+      showToast(describeError(err, t('equipment.toastStatusFailed')), 'error');
+    }
+  };
+
+  const retireAsset = async (a: AssetDoc) => {
+    const ok = await confirm({
+      title: t('equipment.retireTitle', { name: a.name }),
+      message: t('equipment.retireMessage'),
+      confirmLabel: t('equipment.retireConfirm'),
+      tone: 'warning',
+    });
+    if (ok) await changeStatus(a, 'decommissioned', 'equipment.toastRetired');
+  };
+
+  const deleteAssetRow = async (a: AssetDoc) => {
+    const ok = await confirm({
+      title: t('equipment.deleteTitle', { name: a.name }),
+      message: t('equipment.deleteMessage'),
+      confirmLabel: t('equipment.deleteConfirm'),
+      tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      if (!(await remove(a._id))) throw new Error('not deleted');
+      showToast(t('equipment.toastDeleted', { name: a.name }), 'success');
+    } catch (err) {
+      showToast(describeError(err, t('equipment.toastDeleteFailed')), 'error');
+    }
+  };
+
+  const startEdit = (a: AssetDoc) => {
+    setEditingId(a._id);
+    setForm({
+      name: a.name, assetTag: a.assetTag, serialNumber: a.serialNumber || '', category: a.category,
+      manufacturer: a.manufacturer || '', model: a.model || '', department: a.department || '', location: a.location || '',
+      condition: a.condition, cost: a.cost || 0, costCurrency: a.costCurrency || defaultCurrency(), donor: a.donor || '',
+      warrantyExpiresAt: a.warrantyExpiresAt || '', serviceIntervalMonths: a.serviceIntervalMonths || 0,
+      notes: a.notes || '',
+    });
+    setCreateOpen(true);
+  };
+
+  /** What a row offers. Status moves only show while they would change something. */
   const actionsFor = (a: AssetDoc): RowAction[] => [
     { key: 'service', label: t('equipment.logServiceTitle'), icon: <Wrench className="w-4 h-4" />, onClick: () => setServiceFor(a) },
+    { key: 'edit', label: t('equipment.editAsset'), icon: <Edit3 className="w-4 h-4" />, onClick: () => startEdit(a) },
     ...(a.status !== 'operational'
       ? [{
           key: 'operational',
           label: t('equipment.markOperationalTitle'),
           tone: 'success' as const,
           icon: <CheckCircle2 className="w-4 h-4" />,
-          onClick: () => setStatus(a._id, 'operational', { id: currentUser?._id || 'unknown', name: currentUser?.name || 'Staff' }),
+          onClick: () => void changeStatus(a, 'operational', 'equipment.toastOperational'),
         }]
       : []),
+    ...(a.status !== 'under_repair' && a.status !== 'decommissioned'
+      ? [{
+          key: 'out-of-service',
+          label: t('equipment.markOutOfService'),
+          icon: <XCircle className="w-4 h-4" />,
+          group: 'status',
+          onClick: () => void changeStatus(a, 'under_repair', 'equipment.toastOutOfService'),
+        }]
+      : []),
+    ...(a.status !== 'decommissioned'
+      ? [{ key: 'retire', label: t('equipment.retireAsset'), icon: <XCircle className="w-4 h-4" />, group: 'status', onClick: () => void retireAsset(a) }]
+      : []),
+    { key: 'delete', label: t('equipment.deleteAsset'), tone: 'danger' as const, icon: <Trash2 className="w-4 h-4" />, group: 'danger', onClick: () => void deleteAssetRow(a) },
   ];
 
   const [form, setForm] = useState({
@@ -111,6 +179,21 @@ export default function AssetsPage() {
       showToast(t('equipment.toastNoFacility'), 'error');
       return;
     }
+    if (editingId) {
+      try {
+        const doc = await update(editingId, {
+          ...form,
+          cost: form.cost || undefined,
+          warrantyExpiresAt: form.warrantyExpiresAt || undefined,
+        });
+        if (!doc) throw new Error('not saved');
+        showToast(t('equipment.toastUpdated', { name: form.name }), 'success');
+        closeForm();
+      } catch (err) {
+        showToast(describeError(err, t('equipment.toastUpdateFailed')), 'error');
+      }
+      return;
+    }
     try {
       await create({
         ...form,
@@ -123,12 +206,16 @@ export default function AssetsPage() {
         createdByName: currentUser?.name,
       });
       showToast(t('equipment.toastRegistered', { name: form.name }), 'success');
-      setCreateOpen(false);
-      setForm({ name: '', assetTag: '', serialNumber: '', category: 'medical_equipment', manufacturer: '', model: '', department: '', location: '', condition: 'good', cost: 0, costCurrency: defaultCurrency(), donor: '', warrantyExpiresAt: '', serviceIntervalMonths: 12, notes: '' });
+      closeForm();
     } catch (err) {
       console.error(err);
       showToast(t('equipment.toastRegisterFailed'), 'error');
     }
+  };
+  const closeForm = () => {
+    setCreateOpen(false);
+    setEditingId(null);
+    setForm({ name: '', assetTag: '', serialNumber: '', category: 'medical_equipment', manufacturer: '', model: '', department: '', location: '', condition: 'good', cost: 0, costCurrency: defaultCurrency(), donor: '', warrantyExpiresAt: '', serviceIntervalMonths: 12, notes: '' });
   };
 
   const handleLogService = async () => {
@@ -227,7 +314,7 @@ export default function AssetsPage() {
                         </span>
                       ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                     </td>
-                    <td><RowActionsMenu ariaLabel={`Actions for ${a.name}`} actions={actionsFor(a)} /></td>
+                    <td><RowActionsMenu ariaLabel={t('equipment.rowActionsAria', { name: a.name })} actions={actionsFor(a)} /></td>
                   </tr>
                 );
               })}
@@ -239,11 +326,11 @@ export default function AssetsPage() {
         {/* Register modal */}
         {createOpen && (
           <FormSlider
-            title={t('equipment.registerModalTitle')}
-            onClose={() => setCreateOpen(false)}
+            title={editingId ? t('equipment.editModalTitle') : t('equipment.registerModalTitle')}
+            onClose={closeForm}
             footer={<>
-                <button onClick={() => setCreateOpen(false)} className="btn btn-secondary">{t('action.cancel')}</button>
-                <button onClick={handleCreate} className="btn btn-primary">{t('equipment.register')}</button>
+                <button onClick={closeForm} className="btn btn-secondary">{t('action.cancel')}</button>
+                <button onClick={handleCreate} className="btn btn-primary">{editingId ? t('equipment.saveChanges') : t('equipment.register')}</button>
             </>}
           >
             <div className="space-y-4">

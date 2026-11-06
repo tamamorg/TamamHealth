@@ -54,5 +54,19 @@ export function useAssets() {
     return doc;
   }, [load]);
 
-  return { assets, summary, loading, error: error && t(error), create, setStatus, logService, reload: load };
+  const update = useCallback(async (id: string, updates: Partial<AssetDoc>) => {
+    const { updateAsset } = await import('../services/asset-service');
+    const doc = await updateAsset(id, updates);
+    await load();
+    return doc;
+  }, [load]);
+
+  const remove = useCallback(async (id: string) => {
+    const { deleteAsset } = await import('../services/asset-service');
+    const ok = await deleteAsset(id);
+    await load();
+    return ok;
+  }, [load]);
+
+  return { assets, summary, loading, error: error && t(error), create, update, remove, setStatus, logService, reload: load };
 }

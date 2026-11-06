@@ -14,9 +14,12 @@ export const BILLER_STEPS: TourStep[] = [
   {
     id: 'pending',
     route: '/payments',
-    target: '[data-tour="pending-queue"]',
+    // Patient accounts is always there; the pending queue only while
+    // something is waiting, so the card points at the accounts.
+    target: '[data-tour="work-queue"]',
+    placement: 'top',
     title: 'Collections & pending verification',
-    body: 'Collect payments and record plan installments from the queue below — same flow as the cashier. Pay-by-link and patient-portal payments always land here pending: Approve posts and credits the balance, Reject records why.',
+    body: 'Collect payments and record plan installments from Patient accounts, the same flow as the cashier. Pay-by-link and patient-portal payments land in a Pending verification queue above it while something is waiting: Approve posts and credits the balance, Reject records why.',
   },
   {
     id: 'bill-list',

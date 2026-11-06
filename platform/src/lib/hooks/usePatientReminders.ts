@@ -39,15 +39,35 @@ export function usePatientReminders(patientId?: string) {
 
   const markSent = useCallback(async (id: string) => {
     const { markReminderSent } = await import('../services/patient-reminder-service');
-    await markReminderSent(id);
+    const saved = await markReminderSent(id);
     await load();
+    if (!saved) throw new Error('Reminder not found. Refresh and try again.');
   }, [load]);
 
   const cancel = useCallback(async (id: string) => {
     const { cancelReminder } = await import('../services/patient-reminder-service');
-    await cancelReminder(id);
+    const saved = await cancelReminder(id);
     await load();
+    if (!saved) throw new Error('Reminder not found. Refresh and try again.');
   }, [load]);
 
-  return { reminders, queued, loading, queue, markSent, cancel, reload: load };
+  const edit = useCallback(async (
+    id: string,
+    changes: { message?: string; sendDate?: string; channel?: PatientReminderDoc['channel'] },
+    actor?: { id?: string; name?: string },
+  ) => {
+    const { updateReminder } = await import('../services/patient-reminder-service');
+    const doc = await updateReminder(id, changes, actor);
+    await load();
+    return doc;
+  }, [load]);
+
+  const reopen = useCallback(async (id: string) => {
+    const { reopenReminder } = await import('../services/patient-reminder-service');
+    const saved = await reopenReminder(id);
+    await load();
+    if (!saved) throw new Error('Reminder not found. Refresh and try again.');
+  }, [load]);
+
+  return { reminders, queued, loading, queue, markSent, cancel, edit, reopen, reload: load };
 }

@@ -15,7 +15,6 @@ import LockScreen, { pinSetupDismissedKey, shouldPromptPinSetup } from '@/compon
 import ConnectivityNotice from '@/components/ConnectivityNotice';
 
 import { TourProvider } from '@/lib/tour/tour-context';
-import GetStartedCard from '@/components/onboarding/GetStartedCard';
 
 import { useAutoLock } from '@/lib/hooks/useAutoLock';
 import { Loader2 } from '@/components/icons/lucide';
@@ -209,7 +208,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 data-surface={managementSurface ? 'management' : undefined}
               >
                 <RoleGuard>{children}</RoleGuard>
-                <GetStartedCard />
                 <PageDraftKeeper />
               </main>
             </div>

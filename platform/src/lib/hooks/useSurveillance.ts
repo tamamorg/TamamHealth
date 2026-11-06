@@ -45,5 +45,14 @@ export function useSurveillance() {
     return alert;
   }, [loadAlerts]);
 
-  return { alerts, loading, error: error && t(error), create, reload: loadAlerts };
+  /** Correct counts / level / trend on an existing alert (scoped to the caller's tenant). */
+  const update = useCallback(async (id: string, data: Partial<DiseaseAlertDoc>) => {
+    const { updateAlert } = await import('../services/surveillance-service');
+    const saved = await updateAlert(id, data, scope ?? undefined);
+    if (!saved) throw new Error('Alert not updated.');
+    await loadAlerts();
+    return saved;
+  }, [loadAlerts, scope]);
+
+  return { alerts, loading, error: error && t(error), create, update, reload: loadAlerts };
 }

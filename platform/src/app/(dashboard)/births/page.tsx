@@ -16,13 +16,23 @@ import PopupSelect from '@/components/PopupSelect';
 import FormSlider from '@/components/overlay/FormSlider';
 import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
+import type { BirthRegistrationDoc } from '@/lib/db-types';
 import { Plus, Printer } from '@/components/icons/lucide';
 import PrintListDialog from '@/components/PrintListDialog';
 import { BirthRecordSlider } from '@/components/vital-events/VitalRecordSliders';
 import NumberInput from '@/components/forms/NumberInput';
 
+const blankForm = () => ({
+  childFirstName: '', childSurname: '', childGender: 'Male' as 'Male' | 'Female',
+  dateOfBirth: todayIso(), placeOfBirth: '', facilityId: '', facilityName: '',
+  motherName: '', motherAge: 0, motherNationality: 'South Sudanese',
+  fatherName: '', fatherNationality: 'South Sudanese',
+  birthWeight: 3000, birthType: 'single' as 'single' | 'twin' | 'multiple', deliveryType: 'normal' as 'normal' | 'caesarean' | 'assisted',
+  attendedBy: '', registeredBy: '', state: '', county: '', certificateNumber: '',
+});
+
 export default function BirthsPage() {
-  const { births, loading, register } = useBirths();
+  const { births, loading, register, correct } = useBirths();
   const { hospitals } = useHospitals();
   const { patients } = usePatients();
 
@@ -52,6 +62,8 @@ export default function BirthsPage() {
   const [showForm, setShowForm] = useState(false);
   const [selectedBirthId, setSelectedBirthId] = useState<string | null>(null);
   const [printOpen, setPrintOpen] = useState(false);
+  // Set while the form is correcting a registered birth instead of registering one.
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     childFirstName: '', childSurname: '', childGender: 'Male' as 'Male' | 'Female',
     dateOfBirth: todayIso(), placeOfBirth: '', facilityId: '', facilityName: '',
@@ -79,9 +91,50 @@ export default function BirthsPage() {
     };
   }, [births, thisMonthPrefix]);
 
+  const startCorrection = (b: BirthRegistrationDoc) => {
+    setForm({
+      childFirstName: b.childFirstName || '', childSurname: b.childSurname || '',
+      childGender: b.childGender, dateOfBirth: b.dateOfBirth || todayIso(),
+      placeOfBirth: b.placeOfBirth || '', facilityId: b.facilityId || '', facilityName: b.facilityName || '',
+      motherName: b.motherName || '', motherAge: b.motherAge || 0, motherNationality: b.motherNationality || 'South Sudanese',
+      fatherName: b.fatherName || '', fatherNationality: b.fatherNationality || 'South Sudanese',
+      birthWeight: b.birthWeight || 0, birthType: b.birthType || 'single', deliveryType: b.deliveryType || 'normal',
+      attendedBy: b.attendedBy || '', registeredBy: b.registeredBy || '', state: b.state || '', county: b.county || '',
+      certificateNumber: b.certificateNumber || '',
+    });
+    setEditingId(b._id);
+    setSelectedBirthId(null);
+    setShowForm(true);
+  };
+
+  const closeForm = () => { setShowForm(false); setEditingId(null); };
+
   const handleSubmit = async () => {
     if (!form.childFirstName.trim() || !form.childSurname.trim() || !form.motherName.trim() || !form.dateOfBirth) {
       showToast(t('patientNew.toastFillRequired'), 'error');
+      return;
+    }
+    if (editingId) {
+      const original = (births || []).find(b => b._id === editingId);
+      const facility = hospitals.find(h => h._id === form.facilityId);
+      try {
+        // The notification number, registrar and organization stay as issued.
+        await correct(editingId, {
+          childFirstName: form.childFirstName.trim(), childSurname: form.childSurname.trim(),
+          childGender: form.childGender, dateOfBirth: form.dateOfBirth, placeOfBirth: form.placeOfBirth,
+          motherName: form.motherName.trim(), motherAge: form.motherAge, motherNationality: form.motherNationality,
+          fatherName: form.fatherName, fatherNationality: form.fatherNationality,
+          birthWeight: form.birthWeight, birthType: form.birthType, deliveryType: form.deliveryType,
+          attendedBy: form.attendedBy,
+          facilityId: facility?._id || original?.facilityId || '',
+          facilityName: facility?.name || original?.facilityName || '',
+          state: facility?.state || original?.state || form.state,
+        });
+        showToast(t('vital.recordCorrected'), 'success');
+        closeForm();
+      } catch (err) {
+        showToast(err instanceof ValidationError ? err.message : t('vital.recordNotCorrected'), 'error');
+      }
       return;
     }
     const facilityMatch = hospitals.find(h => h._id === (form.facilityId || currentUser?.hospitalId));
@@ -95,7 +148,7 @@ export default function BirthsPage() {
         certificateNumber: form.certificateNumber || `SS-B-${Date.now().toString(36).toUpperCase()}`,
       });
       showToast(t('births.registeredSuccess'), 'success');
-      setShowForm(false);
+      closeForm();
       setForm({ childFirstName: '', childSurname: '', childGender: 'Male', dateOfBirth: todayIso(), placeOfBirth: '', facilityId: '', facilityName: '', motherName: '', motherAge: 0, motherNationality: 'South Sudanese', fatherName: '', fatherNationality: 'South Sudanese', birthWeight: 3000, birthType: 'single', deliveryType: 'normal', attendedBy: '', registeredBy: '', state: '', county: '', certificateNumber: '' });
     } catch (err) {
       // The service says what is missing (a facility, an organization); the
@@ -124,7 +177,7 @@ export default function BirthsPage() {
                 <Printer className="w-4 h-4" /> {t('vital.print')}
               </button>
               {canRecordVitalEvents && (
-                <button data-tour="register-birth-btn" onClick={() => setShowForm(true)} className="btn btn-primary flex items-center gap-2" style={{ whiteSpace: 'nowrap' }}>
+                <button data-tour="register-birth-btn" onClick={() => { if (editingId) setForm(blankForm()); setEditingId(null); setShowForm(true); }} className="btn btn-primary flex items-center gap-2" style={{ whiteSpace: 'nowrap' }}>
                   <Plus className="w-4 h-4" /> {t('births.registerBirth')}
                 </button>
               )}
@@ -210,6 +263,7 @@ export default function BirthsPage() {
             birth={selectedBirth}
             motherChartId={selectedBirth.motherPatientId || motherChartId(selectedBirth.motherName)}
             onClose={() => setSelectedBirthId(null)}
+            onCorrect={canRecordVitalEvents ? () => startCorrection(selectedBirth) : undefined}
           />
         )}
 
@@ -250,12 +304,13 @@ export default function BirthsPage() {
         {/* Registration Form Modal */}
         {showForm && (
           <FormSlider
-            title={t('births.registerNewBirth')}
+            title={editingId ? t('vital.correctBirthRecord') : t('births.registerNewBirth')}
+            subtitle={editingId ? `${t('vital.notificationNo')} ${form.certificateNumber}` : undefined}
             width={672}
-            onClose={() => setShowForm(false)}
+            onClose={closeForm}
             footer={<>
-                <button onClick={() => setShowForm(false)} className="btn btn-secondary">{t('action.cancel')}</button>
-                <button onClick={handleSubmit} className="btn btn-primary" style={{ opacity: !form.childFirstName.trim() || !form.childSurname.trim() || !form.motherName.trim() || !form.dateOfBirth ? 0.5 : 1 }}>{t('births.registerBirth')}</button>
+                <button onClick={closeForm} className="btn btn-secondary">{t('action.cancel')}</button>
+                <button onClick={handleSubmit} className="btn btn-primary" style={{ opacity: !form.childFirstName.trim() || !form.childSurname.trim() || !form.motherName.trim() || !form.dateOfBirth ? 0.5 : 1 }}>{editingId ? t('action.save') : t('births.registerBirth')}</button>
             </>}
           >
             <div className="space-y-4">

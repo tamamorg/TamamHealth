@@ -41,5 +41,18 @@ export function useBirths() {
     return doc;
   }, [load, scope]);
 
-  return { births, stats, loading, error: error && t(error), register, reload: load };
+  /** Correct a registered birth. Only a record already in this caller's scope can be changed; the notification number never moves. */
+  const correct = useCallback(async (id: string, patch: Partial<BirthRegistrationDoc>) => {
+    if (!scope) throw new Error('Your account details are still loading. Wait a moment, then try again.');
+    if (!births.some(b => b._id === id)) throw new Error('This birth record is not available to your account.');
+    const { updateBirth } = await import('../services/birth-service');
+    const { certificateNumber: _keep, _id: _i, _rev: _r, type: _t, orgId: _o, ...safe } = patch;
+    void _keep; void _i; void _r; void _t; void _o;
+    const saved = await updateBirth(id, safe);
+    if (!saved) throw new Error('Birth record not updated.');
+    await load();
+    return saved;
+  }, [load, scope, births]);
+
+  return { births, stats, loading, error: error && t(error), register, correct, reload: load };
 }

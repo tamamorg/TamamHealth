@@ -39,6 +39,7 @@ import FormSlider from '@/components/overlay/FormSlider';
 import { printElementById } from '@/lib/safe-html';
 import { describeError } from '@/lib/user-facing-error';
 import { expandHref } from '@/lib/navigation/expand-to-page';
+import { useConfirmPrompt } from '@/components/ConfirmDialog';
 
 function todayISO(): string {
   return todayIso();
@@ -74,9 +75,10 @@ interface CellProps {
   day: string;
   time: string;
   onRecord: (rx: PrescriptionDoc, scheduledFor: string) => void;
+  onCorrect: (rx: PrescriptionDoc, adm: MedicationAdministration) => void;
 }
 
-function MARCell({ rx, day, time, onRecord }: CellProps) {
+function MARCell({ rx, day, time, onRecord, onCorrect }: CellProps) {
   const { t } = useTranslation();
   const adm = findAdministration(rx, day, time);
   const scheduledFor = scheduledForIso(day, time);
@@ -86,7 +88,7 @@ function MARCell({ rx, day, time, onRecord }: CellProps) {
     return (
       <button
         type="button"
-        disabled
+        onClick={() => onCorrect(rx, adm)}
         className="w-full h-full p-1.5 text-start rounded-md transition-all"
         style={{
           background: tint.bg,
@@ -95,6 +97,7 @@ function MARCell({ rx, day, time, onRecord }: CellProps) {
           minHeight: 52,
         }}
         title={t('mar.cellTooltip', { status: t(STATUS_LABEL_KEY[adm.status]), name: adm.administeredByName, time: new Date(adm.recordedAt).toLocaleTimeString() })}
+        aria-label={t('mar.correctEntryAria', { status: t(STATUS_LABEL_KEY[adm.status]), name: adm.administeredByName })}
       >
         <div className="text-[10.5px] font-bold uppercase" style={{ letterSpacing: '0.04em' }}>
           {t(STATUS_LABEL_KEY[adm.status])}
@@ -138,7 +141,8 @@ export default function MARPage() {
   const { currentUser } = useAuth();
   const { activeAdmissions } = useWards();
   const { patients } = usePatients();
-  const { prescriptions, administer } = usePrescriptions();
+  const { prescriptions, administer, voidAdministration } = usePrescriptions();
+  const confirmPrompt = useConfirmPrompt();
   const { users } = useUsers();
   const { showToast } = useToast();
 
@@ -204,6 +208,29 @@ export default function MARPage() {
     setModalReason('');
     setModalNotes('');
     setModalWitnessId('');
+  };
+
+  // Undo a mis-recorded dose: append a void with the reason (the original
+  // stays on the legal record) so the slot reopens. Re-recording goes through
+  // the normal path, so the controlled-substance witness rule still applies.
+  const handleCorrect = async (rx: PrescriptionDoc, adm: MedicationAdministration) => {
+    if (!currentUser) return;
+    const reason = await confirmPrompt({
+      title: t('mar.correctTitle', { medication: rx.medication }),
+      message: t('mar.correctMessage', { status: t(STATUS_LABEL_KEY[adm.status]) }),
+      inputLabel: t('mar.correctReasonLabel'),
+      inputRequired: true,
+      confirmLabel: t('mar.correctConfirm'),
+      tone: 'danger',
+    });
+    if (!reason?.trim()) return;
+    try {
+      await voidAdministration(rx._id, adm.id, currentUser._id || currentUser.username, currentUser.name, reason.trim());
+      showToast(t('mar.correctionSaved'), 'success');
+    } catch (err) {
+      console.error(err);
+      showToast(describeError(err, t('mar.correctionFailed')), 'error');
+    }
   };
 
   const handleSubmit = async () => {
@@ -451,7 +478,7 @@ export default function MARPage() {
                           className="p-1.5 align-middle"
                           style={{ borderBottom: '1px solid var(--border-light)' }}
                         >
-                          <MARCell rx={rx} day={day} time={t} onRecord={openModal} />
+                          <MARCell rx={rx} day={day} time={t} onRecord={openModal} onCorrect={handleCorrect} />
                         </td>
                       ))}
                     </tr>

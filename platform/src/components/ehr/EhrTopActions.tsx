@@ -47,6 +47,7 @@ export default function EhrTopActions({
           <Tooltip key={item.href} content={tip}>
             <button
               type="button"
+              data-href={item.href}
               onClick={() => onOpenModule(item.href)}
               onMouseEnter={() => onWarm?.(item.href)}
               onFocus={() => onWarm?.(item.href)}

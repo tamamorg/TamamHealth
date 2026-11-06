@@ -16,7 +16,10 @@ import Select from '@/components/Select';
 import { todayIso } from '@/lib/date-utils';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import RowActionsMenu from '@/components/RowActionsMenu';
+import RowActionsMenu, { type RowAction } from '@/components/RowActionsMenu';
+import { canReopenReminder } from '@/lib/reminder-rules';
+import type { PatientReminderDoc } from '@/lib/db-types';
+import { useToast } from '@/components/Toast';
 import { FormError } from '@/components/overlay/FormNotices';
 import FormField from '@/components/overlay/FormField';
 import FormSlider from '@/components/overlay/FormSlider';
@@ -35,8 +38,11 @@ function todayISO(): string {
 export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
-  const { reminders, queued, queue, markSent, cancel } = usePatientReminders(patient._id);
+  const { reminders, queued, queue, markSent, cancel, edit, reopen } = usePatientReminders(patient._id);
+  const { showToast } = useToast();
   const [adding, setAdding] = useState(false);
+  // Set while the slider edits a queued reminder rather than adding one.
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<{ message: string; sendDate: string; channel: ReminderChannel }>(
@@ -44,12 +50,48 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
   );
 
   const today = todayISO();
-  const closeForm = () => { setAdding(false); setError(null); };
+  const closeForm = () => { setAdding(false); setEditingId(null); setError(null); setForm({ message: '', sendDate: todayISO(), channel: 'sms' }); };
+  const openEdit = (r: PatientReminderDoc) => {
+    setEditingId(r._id);
+    setForm({ message: /[\p{L}\p{N}]/u.test(r.message || '') ? r.message : '', sendDate: r.sendDate, channel: r.channel });
+    setAdding(true);
+  };
+  const openAgain = (r: PatientReminderDoc) => {
+    setEditingId(null);
+    setForm({ message: /[\p{L}\p{N}]/u.test(r.message || '') ? r.message : '', sendDate: todayISO(), channel: r.channel });
+    setAdding(true);
+  };
+  // One write per row action; a failure says so instead of failing silently.
+  const act = async (work: () => Promise<void>, done: string) => {
+    try {
+      await work();
+      showToast(done, 'success');
+    } catch (e) {
+      showToast(describeError(e, t('taskList.notSaved')), 'error');
+    }
+  };
+  const actionsFor = (r: PatientReminderDoc): RowAction[] => r.status === 'queued' || r.status === 'failed'
+    ? [
+        { key: 'edit', label: t('taskList.edit'), onClick: () => openEdit(r) },
+        { key: 'sent', label: t('ui.markSent'), onClick: () => void act(() => markSent(r._id), t('reminders.markedSent')) },
+        { key: 'cancel', label: t('ui.cancelReminder'), tone: 'danger', onClick: () => void act(() => cancel(r._id), t('reminders.cancelled')) },
+      ]
+    : [
+        ...(canReopenReminder(r) ? [{ key: 'undo', label: t('taskList.undo'), onClick: () => void act(() => reopen(r._id), t('reminders.reopened')) }] : []),
+        { key: 'again', label: t('taskList.addAgain'), onClick: () => openAgain(r) },
+      ];
 
   const submit = async () => {
     setBusy(true);
     setError(null);
     try {
+      if (editingId) {
+        const saved = await edit(editingId, { message: form.message.trim(), sendDate: form.sendDate, channel: form.channel },
+          { id: currentUser?._id, name: currentUser?.name || currentUser?.username });
+        if (!saved) throw new Error('Reminder not found. Refresh and try again.');
+        closeForm();
+        return;
+      }
       await queue({
         patientId: patient._id,
         patientName: patientFullName(patient),
@@ -98,7 +140,11 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
               const muted = r.status !== 'queued';
               return (
                 <tr key={r._id} style={muted ? { opacity: 0.6 } : undefined}>
-                  <td className="tamam-cell-note"><div className="tamam-cell-clamp" title={r.message}>{r.message}</div></td>
+                  <td className="tamam-cell-note">
+                    {/[\p{L}\p{N}]/u.test(r.message || '')
+                      ? <div className="tamam-cell-clamp" title={r.message}>{r.message}</div>
+                      : <div className="tamam-cell-clamp" style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>{t('taskList.noDescription')}</div>}
+                  </td>
                   <td>{CHANNELS.find(c => c.v === r.channel)?.label || r.channel}</td>
                   <td>{r.sendDate}</td>
                   <td>
@@ -113,13 +159,7 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
                     </span>
                   </td>
                   <td>
-                    <RowActionsMenu
-                      ariaLabel="Reminder actions"
-                      actions={r.status === 'queued' ? [
-                        { key: 'sent', label: t('ui.markSent'), onClick: () => markSent(r._id) },
-                        { key: 'cancel', label: t('ui.cancelReminder'), tone: 'danger', onClick: () => cancel(r._id) },
-                      ] : []}
-                    />
+                    <RowActionsMenu ariaLabel={t('reminders.actions')} actions={actionsFor(r)} />
                   </td>
                 </tr>
               );
@@ -131,7 +171,7 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
 
       {adding && (
         <FormSlider
-          title={t('reminders.addTitle')}
+          title={editingId ? t('reminders.editTitle') : t('reminders.addTitle')}
           subtitle={patientFullName(patient)}
           className="tamam-dialog"
           onClose={closeForm}
@@ -139,7 +179,7 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
           footerNote={t('reminders.noGateway')}
           footer={<>
             <button type="button" className="btn btn-secondary" disabled={busy} onClick={closeForm}>{t('action.cancel')}</button>
-            <button type="button" className="btn btn-primary" disabled={busy || !form.message.trim()} onClick={submit}>{t('reminders.queue')}</button>
+            <button type="button" className="btn btn-primary" disabled={busy || !form.message.trim()} onClick={submit}>{editingId ? t('taskList.saveChanges') : t('reminders.queue')}</button>
           </>}
         >
           <div className="space-y-4">
@@ -147,7 +187,7 @@ export default function RemindersPanel({ patient }: { patient: PatientDoc }) {
               {control => <textarea {...control} rows={4} value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} placeholder={t('reminders.messagePlaceholder')} />}
             </FormField>
             <FormField label={t('reminders.sendDate')}>
-              {control => <input {...control} type="date" value={form.sendDate} min={today} onChange={e => setForm({ ...form, sendDate: e.target.value })} />}
+              {control => <input {...control} type="date" value={form.sendDate} min={editingId ? undefined : today} onChange={e => setForm({ ...form, sendDate: e.target.value })} />}
             </FormField>
             <FormField label={t('reminders.channel')}>
               {control => (

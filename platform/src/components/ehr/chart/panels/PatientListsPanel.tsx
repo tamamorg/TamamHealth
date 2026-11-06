@@ -16,7 +16,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Users, ChevronDown, ChevronUp, Search } from '@/components/icons/lucide';
+import { Users, ChevronDown, Search } from '@/components/icons/lucide';
 import { usePatients } from '@/lib/hooks/usePatients';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { patientDisplayName, patientFullName } from '@/lib/patient-utils';
@@ -47,20 +47,21 @@ export default function PatientListsPanel({ currentUser, router, onClose }: Pati
   const myHospitalId = currentUser?.hospitalId;
   const myUserId = currentUser?._id;
 
-  const lists = useMemo<{ id: string; name: string; type: string; patients: PatientDoc[] }[]>(() => [
+  // One line per list: its name and its size. The scope ("Hospital · …",
+  // "Provider worklist") used to sit under each name; the user took it out
+  // on 2026-11-05 as noise.
+  const lists = useMemo<{ id: string; name: string; patients: PatientDoc[] }[]>(() => [
     {
       id: 'my-patients',
-      name: 'My patients',
-      type: `Hospital · ${currentUser?.hospitalName || '—'}`,
+      name: t('patientLists.myPatients'),
       patients: (patients || []).filter(p => p.registrationHospital === myHospitalId),
     },
     {
       id: 'assigned-to-me',
-      name: 'Assigned to me',
-      type: 'Provider worklist',
+      name: t('patients.assignedMe'),
       patients: myUserId ? (patients || []).filter(p => p.assignedDoctor === myUserId) : [],
     },
-  ], [patients, myHospitalId, myUserId, currentUser?.hospitalName]);
+  ], [patients, myHospitalId, myUserId, t]);
 
   const openPatient = (id: string) => {
     router.push(`/patients/${encodeURIComponent(id)}`);
@@ -68,50 +69,50 @@ export default function PatientListsPanel({ currentUser, router, onClose }: Pati
   };
 
   return (
-    <div className="tamam-drawer-body">
+    <div className="tamam-drawer-body tamam-plist">
       {lists.map(list => {
         const open = openList === list.id;
         const query = searches[list.id] ?? '';
         const shown = open ? list.patients.filter(p => matchesListSearch(p, query)) : [];
+        const bodyId = `tamam-plist-${list.id}`;
         return (
-          <div key={list.id}>
-            <button type="button" className="tamam-panel-list-item" aria-expanded={open}
+          <section key={list.id} className={open ? 'tamam-plist-group is-open' : 'tamam-plist-group'}>
+            <button type="button" className="tamam-plist-row" aria-expanded={open} aria-controls={bodyId}
               onClick={() => setOpenList(open ? null : list.id)}>
-              <Users />
-              <div style={{ flex: 1 }}>
-                <div className="tamam-panel-row-main">{list.name}</div>
-                <div className="tamam-panel-row-sub">{list.type}</div>
-              </div>
-              <span className="tamam-panel-list-count">{list.patients.length}</span>
-              {open ? <ChevronUp /> : <ChevronDown />}
+              <span className="tamam-plist-icon" aria-hidden><Users /></span>
+              <span className="tamam-plist-name">{list.name}</span>
+              <span className="tamam-plist-count">{list.patients.length}</span>
+              <ChevronDown aria-hidden className="tamam-plist-chevron" />
             </button>
-            {open && (<>
-              <label className="tamam-section-search tamam-panel-search">
-                <Search aria-hidden />
-                <input
-                  type="search"
-                  value={query}
-                  onChange={event => setSearches(prev => ({ ...prev, [list.id]: event.target.value }))}
-                  aria-label={t('patientLists.searchLabel', { list: list.name })}
-                  placeholder={t('patientLists.searchPlaceholder')}
-                />
-              </label>
-              <ul className="tamam-panel-patients">
-                {list.patients.length === 0 && <li className="tamam-panel-patients-empty">No patients in this list.</li>}
-                {list.patients.length > 0 && shown.length === 0 && (
-                  <li className="tamam-panel-patients-empty">{t('patientLists.noMatch')}</li>
-                )}
-                {shown.map(p => (
-                  <li key={p._id}>
-                    <button type="button" onClick={() => openPatient(p._id)}>
-                      <span>{patientDisplayName(p)}</span>
-                      <span>{p.hospitalNumber}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>)}
-          </div>
+            {open && (
+              <div id={bodyId} className="tamam-plist-body">
+                <label className="tamam-section-search tamam-panel-search">
+                  <Search aria-hidden />
+                  <input
+                    type="search"
+                    value={query}
+                    onChange={event => setSearches(prev => ({ ...prev, [list.id]: event.target.value }))}
+                    aria-label={t('patientLists.searchLabel', { list: list.name })}
+                    placeholder={t('patientLists.searchPlaceholder')}
+                  />
+                </label>
+                <ul className="tamam-panel-patients">
+                  {list.patients.length === 0 && <li className="tamam-panel-patients-empty">{t('patientLists.empty')}</li>}
+                  {list.patients.length > 0 && shown.length === 0 && (
+                    <li className="tamam-panel-patients-empty">{t('patientLists.noMatch')}</li>
+                  )}
+                  {shown.map(p => (
+                    <li key={p._id}>
+                      <button type="button" onClick={() => openPatient(p._id)}>
+                        <span>{patientDisplayName(p)}</span>
+                        <span>{p.hospitalNumber}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
         );
       })}
     </div>

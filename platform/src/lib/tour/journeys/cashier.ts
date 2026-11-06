@@ -29,16 +29,19 @@ export const CASHIER_STEPS: TourStep[] = [
   {
     id: 'collect',
     route: '/payments',
-    target: '',
+    target: '[data-tour="work-queue"]',
+    placement: 'top',
     title: 'Collect a payment',
-    body: 'Or from the patient accounts queue: pick the patient (or arrive deep-linked from front-desk checkout), choose the tender — cash, mobile money (m-Gurush, M-Pesa, MTN, Airtel), bank transfer, insurance, or waiver — and the payment posts, credits the ledger, and offers Print or Email on the confirmation screen.',
+    body: 'Or from Patient accounts: pick the patient (or arrive deep-linked from front-desk checkout), choose the tender — cash, mobile money (m-Gurush, M-Pesa, MTN, Airtel), bank transfer, insurance, or waiver — and the payment posts, credits the ledger, and offers Print or Email on the confirmation screen.',
   },
   {
     id: 'pending',
     route: '/payments',
     target: '[data-tour="pending-queue"]',
     title: 'Verify pending payments',
-    body: 'Pay-by-link and patient-portal payments always land here pending — this queue is your daily gate. Approve posts it and credits the patient’s balance; Reject records why.',
+    // The queue renders only while something is waiting, so with nothing
+    // pending this card centres; the wording says so.
+    body: 'Pay-by-link and patient-portal payments land in a Pending verification queue on this page, shown only while something is waiting: your daily gate. Approve posts it and credits the patient’s balance; Reject records why.',
   },
   {
     id: 'portal',
@@ -50,7 +53,8 @@ export const CASHIER_STEPS: TourStep[] = [
   {
     id: 'plans',
     route: '/payments',
-    target: '',
+    target: '[data-tour="work-queue"]',
+    placement: 'top',
     title: 'Plans, refunds & waivers',
     body: 'Record installments on payment plans, void or refund posted payments (with confirmation), and waive bills through the exemption path — reason required.',
   },

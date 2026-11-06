@@ -58,7 +58,7 @@ export const RECORDS_STEPS: TourStep[] = [
     target: '.data-table',
     placement: 'top',
     title: 'The birth register',
-    body: 'Every registration on file — certificate number, child, parents, delivery details. Click a row to expand it; when the mother matches a registered patient, her name links straight to her chart.',
+    body: 'Every registration on file: notification number, child, parents, delivery details. Click a row to open the record in a slider; Print there gives the facility’s Notification of Birth, which the Civil Registry turns into the birth certificate.',
   },
   {
     id: 'births-register',
@@ -66,7 +66,7 @@ export const RECORDS_STEPS: TourStep[] = [
     target: '[data-tour="register-birth-btn"]',
     placement: 'bottom',
     title: 'Register a birth',
-    body: 'Child + parents + birth details. The certificate number auto-generates (SS-B-…) on save — this is the source event behind every birth statistic downstream.',
+    body: 'Child + parents + birth details. The notification number generates itself (SS-B-…) on save: this is the source event behind every birth statistic downstream.',
   },
   {
     id: 'deaths-list',
@@ -74,7 +74,7 @@ export const RECORDS_STEPS: TourStep[] = [
     target: '.data-table',
     placement: 'top',
     title: 'The death register',
-    body: 'Certificate, cause, manner, and registration status for every death on file. A ward “death” discharge routes here automatically with the encounter already linked.',
+    body: 'Certificate, cause, manner, and registration status for every death on file. Click a row to open the record in a slider, where Print gives the WHO medical certificate of cause of death. A ward “death” discharge routes here automatically with the encounter already linked.',
   },
   {
     id: 'deaths-register',

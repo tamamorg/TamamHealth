@@ -110,9 +110,6 @@ export default function FingerprintCapture({ value, onChange }: FingerprintCaptu
         <ScanLine className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} />
         {t('fingerprint.sectionTitle')}
       </h4>
-      <p className="text-[11px] mb-3" style={{ color: 'var(--text-muted)' }}>
-        {t('fingerprint.sectionDesc')}
-      </p>
 
       {!enabled ? (
         <div className="flex items-center gap-2 p-3 rounded-lg text-xs" style={{ background: 'var(--overlay-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}>

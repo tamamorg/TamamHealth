@@ -4,7 +4,8 @@
  * until the clinician presses "Sign and close". These are the drafts it holds.
  */
 
-import type { FormularyDrug } from '@/lib/data/formulary';
+import { FORMULARY, offFormularyDrug, type FormularyDrug } from '@/lib/data/formulary';
+import type { PrescriptionDoc } from '@/lib/db-types';
 import type { LabOrderPriority, OrderedTest } from '@/components/lab/order/lab-order-types';
 import { todayIso } from '@/lib/date-utils';
 import { estimateCourseQuantity } from '@/lib/pharmacy/course-quantity';
@@ -36,6 +37,9 @@ export interface DrugOrderDraft {
   indication: string;
   /** The note this order was raised from, if any. */
   context?: BasketContext;
+  /** Set when this draft changes a signed prescription (Modify): signing
+   *  writes this order and stops the one it replaces. */
+  replaces?: { id: string; medication: string };
 }
 
 export interface TestOrderDraft {
@@ -162,4 +166,60 @@ export function drugOrderGaps(order: DrugOrderDraft): ('dose' | 'route' | 'frequ
   if (!order.frequency) gaps.push('frequency');
   if (order.prn && !order.prnReason.trim()) gaps.push('prnReason');
   return gaps;
+}
+
+/**
+ * A draft that changes a signed prescription (the basket's Modify), filled
+ * from what was signed. A sig the form's fields cannot hold (a frequency off
+ * the list, a dose with no number) comes over as free-text dosage instead, so
+ * nothing the prescriber wrote is lost.
+ *
+ * Kept from the signed order: the exact medicine (an exact formulary match,
+ * else off-list under its own name; never the fuzzy lookup, which could swap
+ * a suspension for capsules), and its visit, so the new order parks the same
+ * encounter. Not kept: the dispensed quantity, which is re-estimated from
+ * the new dose/frequency/duration unless the prescriber types one.
+ *
+ * `prnLinePrefix` is the start of the "Take as needed for: …" line signing
+ * adds to the pharmacy instructions; it is lifted back out into prnReason so
+ * a second signing does not repeat it.
+ */
+export function draftFromPrescription(rx: PrescriptionDoc, prnLinePrefix = ''): DrugOrderDraft {
+  const wanted = (rx.medication || '').trim().toLowerCase();
+  const drug = FORMULARY.find(d => d.name.toLowerCase() === wanted) ?? offFormularyDrug(rx.medication);
+  const base = newDrugOrder(drug);
+  const freq = (rx.frequency || '').trim();
+  const prn = /\bPRN\b/i.test(freq);
+  const code = freq.replace(/\bPRN\b/i, '').trim();
+  const doseMatch = (rx.dose || '').trim().match(/^([\d.,/]+)\s*(.*)$/);
+  const durMatch = (rx.duration || '').trim().match(/^(\d+)\s*(day|week|month)s?$/i);
+  const listed = (FREQUENCIES as readonly string[]).includes(code);
+  const structured = !!doseMatch && listed && (!rx.duration || !!durMatch);
+  let prnReason = '';
+  const instructions = (rx.pharmacyInstructions || '').split(' · ').map(part => part.trim()).filter(part => {
+    if (prnLinePrefix && part.startsWith(prnLinePrefix)) {
+      prnReason = part.slice(prnLinePrefix.length).trim();
+      return false;
+    }
+    return !!part;
+  });
+  return {
+    ...base,
+    freeText: !structured,
+    freeTextDosage: structured ? '' : [rx.dose, rx.route, freq].filter(Boolean).join(' · '),
+    dose: doseMatch ? doseMatch[1] : '',
+    doseUnit: doseMatch && doseMatch[2] ? doseMatch[2] : base.doseUnit,
+    route: rx.route || base.route,
+    frequency: listed ? code : '',
+    prn,
+    prnReason,
+    duration: durMatch ? durMatch[1] : '',
+    durationUnit: durMatch ? (`${durMatch[2].toLowerCase()}s` as DurationUnit) : 'days',
+    quantity: '',
+    refills: String(rx.refills ?? 0),
+    indication: rx.indication || '',
+    patientInstructions: instructions.join(' · '),
+    ...(rx.encounterId ? { context: { encounterId: rx.encounterId } } : {}),
+    replaces: { id: rx._id, medication: rx.medication },
+  };
 }

@@ -23,7 +23,6 @@ export default function NextOfKinSection({
   const { t } = useTranslation();
   return (
     <>
-      <p className="registration-section-note">{t('patientNew.nokSectionNote')}</p>
 
       <div className="registration-contact-card">
         <div className="flex items-center gap-2">

@@ -13,10 +13,11 @@ import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import FormSlider from '@/components/overlay/FormSlider';
 import FormField from '@/components/overlay/FormField';
 import { useToast } from '@/components/Toast';
+import { useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useAuth } from '@/lib/context';
 import { usePrograms } from '@/lib/hooks/usePrograms';
 import { formatDate } from '@/lib/format-utils';
-import type { ProgramKey, ProgramEnrollmentStatus } from '@/lib/db-types';
+import type { ProgramKey, ProgramEnrollmentStatus, ProgramEnrollmentDoc } from '@/lib/db-types';
 import Select from '@/components/Select';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { todayIso } from '@/lib/date-utils';
@@ -61,7 +62,11 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { showToast } = useToast();
-  const { enrollments, create, setStatus } = usePrograms(patientId);
+  const { enrollments, create, setStatus, update, remove } = usePrograms(patientId);
+  const confirmPrompt = useConfirmPrompt();
+  const [editingEnrollment, setEditingEnrollment] = useState<ProgramEnrollmentDoc | null>(null);
+  const [editDate, setEditDate] = useState('');
+  const [editNotes, setEditNotes] = useState('');
 
   const [adding, setAdding] = useState(false);
   const [programKey, setProgramKey] = useState<ProgramKey>('art_hiv_care');
@@ -129,6 +134,51 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
     }
   };
 
+  const openEdit = (e: ProgramEnrollmentDoc) => {
+    setEditingEnrollment(e);
+    setEditDate(e.enrollmentDate);
+    setEditNotes(e.notes || '');
+  };
+
+  const handleEditSave = async () => {
+    if (!editingEnrollment) return;
+    if (!editDate) { showToast(t('msg.selectTheEnrollmentDate'), 'error'); return; }
+    try {
+      setSubmitting(true);
+      const saved = await update(editingEnrollment._id, { enrollmentDate: editDate, notes: editNotes.trim() || undefined });
+      if (!saved) throw new Error('Enrollment not saved. Try again.');
+      showToast(t('msg.programEnrollmentUpdated'), 'success');
+      setEditingEnrollment(null);
+    } catch (err) {
+      console.error(err);
+      showToast(describeError(err, t('msg.enrollmentNotUpdatedTryAgain')), 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRemove = async (e: ProgramEnrollmentDoc) => {
+    const reason = await confirmPrompt({
+      title: t('chartPrograms.removeTitle'),
+      message: t('chartPrograms.removeMessage', { name: e.programName }),
+      inputLabel: t('chartPrograms.removeReason'),
+      inputRequired: true,
+      confirmLabel: t('action.remove'),
+      tone: 'danger',
+    });
+    if (!reason?.trim()) return;
+    setStatusBusy(e._id);
+    try {
+      if (!(await remove(e._id, reason))) throw new Error('Enrollment not removed. Try again.');
+      showToast(t('msg.programEnrollmentRemoved'), 'success');
+    } catch (err) {
+      console.error(err);
+      showToast(describeError(err, t('msg.enrollmentNotRemovedTryAgain')), 'error');
+    } finally {
+      setStatusBusy(null);
+    }
+  };
+
   return (
     <>
       <ChartSection title={t('chartPrograms.title')} addLabel={t('chartPrograms.add')} onAdd={canEnroll ? () => setAdding(true) : undefined} searchValue={search} onSearchChange={setSearch}>
@@ -169,14 +219,24 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
                   <td>
                     <RowActionsMenu
                       ariaLabel={t('chart.programRowActions', { name: e.programName })}
-                      actions={canEnroll ? STATUSES
-                        .filter(status => status !== e.status)
-                        .map(status => ({
-                          key: `status-${status}`,
-                          label: t('chart.markStatus', { status: t(`chartPrograms.status.${status}`) }),
+                      actions={canEnroll ? [
+                        { key: 'edit', label: t('action.edit'), disabled: statusBusy === e._id, onClick: () => openEdit(e) },
+                        ...STATUSES
+                          .filter(status => status !== e.status)
+                          .map(status => ({
+                            key: `status-${status}`,
+                            label: t('chart.markStatus', { status: t(`chartPrograms.status.${status}`) }),
+                            disabled: statusBusy === e._id,
+                            onClick: () => void handleStatusChange(e._id, status),
+                          })),
+                        ...(e.status !== 'discontinued' ? [{
+                          key: 'remove',
+                          label: t('action.remove'),
+                          tone: 'danger' as const,
                           disabled: statusBusy === e._id,
-                          onClick: () => void handleStatusChange(e._id, status),
-                        })) : []}
+                          onClick: () => void handleRemove(e),
+                        }] : []),
+                      ] : []}
                     />
                   </td>
                 </tr>
@@ -184,6 +244,30 @@ export default function ProgramsSection({ patientId, patientName, canEnroll }: P
             </tbody>
           </table>
       </ChartSection>
+
+      {editingEnrollment && (
+        <FormSlider
+          title={t('chartPrograms.editTitle', { name: editingEnrollment.programName })}
+          className="tamam-dialog"
+          onClose={() => setEditingEnrollment(null)}
+          busy={submitting}
+          footer={<>
+            <button type="button" className="btn btn-secondary" disabled={submitting} onClick={() => setEditingEnrollment(null)}>{t('action.cancel')}</button>
+            <button type="button" className="btn btn-primary" disabled={submitting} onClick={handleEditSave}>
+              {submitting ? t('common.saving') : t('action.save')}
+            </button>
+          </>}
+        >
+          <div className="space-y-4">
+            <FormField label={t('chartPrograms.fieldDate')}>
+              {control => <input {...control} type="date" value={editDate} onChange={e => setEditDate(e.target.value)} />}
+            </FormField>
+            <FormField label={t('chartPrograms.fieldNotes')} optional>
+              {control => <textarea {...control} rows={2} value={editNotes} onChange={e => setEditNotes(e.target.value)} />}
+            </FormField>
+          </div>
+        </FormSlider>
+      )}
 
       {adding && (
         <FormSlider

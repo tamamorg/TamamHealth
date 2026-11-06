@@ -65,6 +65,7 @@ export async function signOrders({
       try {
         const safety = await assessPrescriptionSafety(patient._id, order.drug.name, scope, {
           dose: order.freeText ? '' : doseText(order), frequency: frequencyText(order),
+          replacing: order.replaces?.medication,
         });
         if (safety.allergyCheckUnavailable) outcome.warnings.push(t('prescribe.allergyCheckUnavailable'));
         if (safety.interactionCheckUnavailable) outcome.warnings.push(t('prescribe.interactionCheckUnavailable'));
@@ -132,17 +133,44 @@ export async function signOrders({
           orgId: currentUser?.orgId,
           medicationSafetyAcknowledgement,
         } as PrescriptionCreateInput, scope);
-        if (result.interactionWarnings?.hasInteractions) {
+        // A Modify is written before the order it replaces is stopped, so the
+        // write's own checks still see that order: drop the warnings that are
+        // only the new order meeting its old self.
+        const replaced = order.replaces?.medication.trim().toLowerCase();
+        const isReplaced = (name: string) => !!replaced && name.trim().toLowerCase() === replaced;
+        // Only the pair "new order ↔ the order it replaces" goes; the new
+        // order's interactions with anything else still show.
+        const isNew = (name: string) => name.trim().toLowerCase() === order.drug.name.trim().toLowerCase();
+        const interactions = (result.interactionWarnings?.interactions || [])
+          .filter(i => !((isReplaced(i.drug1) && isNew(i.drug2)) || (isReplaced(i.drug2) && isNew(i.drug1))));
+        if (interactions.length) {
           outcome.warnings.push(t('basket.interactionWarning', {
             medication: order.drug.name,
-            value: result.interactionWarnings.interactions.map(i => `${i.drug1} ↔ ${i.drug2}`).join(', '),
+            value: interactions.map(i => `${i.drug1} ↔ ${i.drug2}`).join(', '),
           }));
         }
-        if (result.duplicateWarnings?.length) {
-          outcome.warnings.push(t('msg.possibleDuplicateIsAlreadyActive', { value: result.duplicateWarnings.join(', ') }));
+        const duplicates = (result.duplicateWarnings || []).filter(name => !isReplaced(name));
+        if (duplicates.length) {
+          outcome.warnings.push(t('msg.possibleDuplicateIsAlreadyActive', { value: duplicates.join(', ') }));
         }
         if (result.duplicateRecord) {
           outcome.warnings.push(t('dup.orderWarning', { name: result.duplicateRecord.survivorName }));
+        }
+        // Modify: the new order is written, so the one it changes stops now.
+        // If that write fails the new order stands and the prescriber is told
+        // to stop the old one by hand, rather than both silently staying live.
+        if (order.replaces) {
+          try {
+            const { discontinuePrescription } = await import('@/lib/services/prescription-service');
+            const stopped = await discontinuePrescription(
+              order.replaces.id,
+              { id: currentUser?._id, name: prescriber },
+              t('basket.replacedReason'),
+            );
+            if (!stopped) throw new Error('not saved');
+          } catch {
+            outcome.warnings.push(t('basket.replaceStopFailed', { medication: order.replaces.medication }));
+          }
         }
         outcome.signed.push(order.id);
       } catch (err) {

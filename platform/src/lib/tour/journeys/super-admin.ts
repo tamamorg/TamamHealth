@@ -130,13 +130,15 @@ export const SUPER_ADMIN_STEPS: TourStep[] = [
     body: 'Every local data store and its document count, plus the build’s stack facts — a fast pulse check when something isn’t syncing right. Platform settings live under Configuration.',
     placement: 'top',
   },
+  // The Support operations page was deleted (202ec5e4); its jobs live on in
+  // Users, Organizations and here. The step pointed at a 404 and ended the
+  // tour there until the 2026-11-05 tour check.
   {
-    id: 'support',
-    route: '/admin/support',
-    target: '.sadb-rail',
-    title: 'Support operations',
-    body: 'Look up any tenant or user, review support-access policy and its audit trail, or post an announcement — everything you need when a facility calls in.',
-    placement: 'right',
+    id: 'announcements',
+    route: '/admin/announcements',
+    target: '',
+    title: 'Announcements',
+    body: 'Post a notice to an organization’s staff, with a priority, and see every announcement that is live, newest first. When a facility calls in, look the person up under Users and the tenant under Organizations.',
   },
   // The standalone billing step is gone: /admin/billing merged into the
   // Organizations registry (2026-08-23), whose step above now covers it.

@@ -32,7 +32,6 @@ export default function CoverageSection({
   const { t } = useTranslation();
   return (
     <>
-      <p className="registration-section-note">{t('patientNew.coverageNote')}</p>
 
       {/* A radio group, not a field: `label`/`htmlFor` cannot point at four
           buttons, so the group gets a real fieldset and its own legend. */}
@@ -103,9 +102,6 @@ export default function CoverageSection({
         </>
       )}
 
-      <div className="registration-info-note">
-        <p>{t('patientNew.medicalHistoryDeferredNote')}</p>
-      </div>
     </>
   );
 }

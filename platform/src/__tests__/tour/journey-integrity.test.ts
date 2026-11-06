@@ -12,8 +12,10 @@ const ALL_ROLES: UserRole[] = [
 ];
 
 function routeIsAllowed(route: string, role: UserRole): boolean {
+  // A view of a page (`/epidemic-intelligence?tab=curves`) needs the page.
+  const path = route.split('?')[0];
   return getRoleConfig(role).allowedRoutes.some(
-    allowed => route === allowed || route.startsWith(`${allowed}/`),
+    allowed => path === allowed || path.startsWith(`${allowed}/`),
   );
 }
 
@@ -56,13 +58,13 @@ describe('Ministry of Health guided journey', () => {
     expect(tour?.steps.at(-1)?.route).toBe('/government');
   });
 
-  it('reveals every epidemic-intelligence panel with its matching tab', () => {
-    const epidemicSteps = tour?.steps.filter(step => step.route === '/epidemic-intelligence');
-    expect(epidemicSteps?.map(step => [step.id, step.preClickSelector, step.target])).toEqual([
-      ['epi-curves', '[data-tour="epi-tab-curves"]', '[data-tour="epi-curve-panel"]'],
-      ['epi-syndromic', '[data-tour="epi-tab-syndromic"]', '[data-tour="epi-syndromic-panel"]'],
-      ['epi-idsr', '[data-tour="epi-tab-idsr"]', '[data-tour="epi-idsr-panel"]'],
-      ['epi-geographic', '[data-tour="epi-tab-geographic"]', '[data-tour="epi-geo-panel"]'],
+  it('opens the epidemic-intelligence view by its address, not a dead tab click', () => {
+    // The page's views are a dropdown now (no tab buttons to pre-click), and
+    // its view lives in ?tab=, so the step names the view it shows. The tour
+    // stops at the main view only (2026-11-05: main panels, not every detail).
+    const epidemicSteps = tour?.steps.filter(step => step.route.startsWith('/epidemic-intelligence'));
+    expect(epidemicSteps?.map(step => [step.id, step.route, step.target, step.preClickSelector])).toEqual([
+      ['epi-curves', '/epidemic-intelligence?tab=curves', '[data-tour="epi-curve-panel"]', undefined],
     ]);
   });
 });

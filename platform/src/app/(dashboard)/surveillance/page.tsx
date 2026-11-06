@@ -34,6 +34,9 @@ const TREND_WINDOWS: { weeks: TrendWindow; key: string }[] = [
   { weeks: 52, key: 'surveillance.window52w' },
 ];
 import Select from '@/components/Select';
+import RowActionsMenu from '@/components/RowActionsMenu';
+import { useConfirm } from '@/components/ConfirmDialog';
+import type { DiseaseAlertDoc } from '@/lib/db-types';
 import { todayIso } from '@/lib/date-utils';
 import NumberInput from '@/components/forms/NumberInput';
 
@@ -192,7 +195,56 @@ export default function SurveillancePage() {
   const { canRecordVitalEvents, isGovernment, isSuperAdmin } = usePermissions();
   const canReportAlert = canRecordVitalEvents || isGovernment || isSuperAdmin;
   const { showToast } = useToast();
-  const { alerts: diseaseAlerts, create: createAlert } = useSurveillance();
+  const { alerts: diseaseAlerts, create: createAlert, update: updateAlert } = useSurveillance();
+  const confirm = useConfirm();
+  const [editing, setEditing] = useState<DiseaseAlertDoc | null>(null);
+  const [editForm, setEditForm] = useState({ cases: 0, deaths: 0, alertLevel: 'watch' as DiseaseAlertDoc['alertLevel'], trend: 'increasing' as DiseaseAlertDoc['trend'] });
+  const [editSaving, setEditSaving] = useState(false);
+
+  const openEdit = (alert: DiseaseAlertDoc) => {
+    setEditForm({ cases: alert.cases || 0, deaths: alert.deaths || 0, alertLevel: alert.alertLevel, trend: alert.trend });
+    setEditing(alert);
+  };
+
+  const handleEditAlert = async () => {
+    if (!editing) return;
+    if (editForm.cases <= 0) { showToast(t('surveillance.validationRequired'), 'error'); return; }
+    try {
+      setEditSaving(true);
+      await updateAlert(editing._id, editForm);
+      const { logAudit } = await import('@/lib/services/audit-service');
+      await logAudit('DISEASE_ALERT_UPDATED', currentUser?._id, currentUser?.username,
+        `${editing.disease} in ${editing.state}: ${editForm.cases} cases, ${editForm.deaths} deaths, level ${editForm.alertLevel}`
+      ).catch(() => {});
+      showToast(t('surveillance.alertUpdated'), 'success');
+      setEditing(null);
+    } catch (err) {
+      console.error(err);
+      showToast(t('surveillance.alertUpdateFailed'), 'error');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const resolveAlert = async (alert: DiseaseAlertDoc) => {
+    if (!await confirm({
+      title: t('surveillance.resolveTitle'),
+      message: t('surveillance.resolveMessage', { disease: alert.disease, state: alert.state }),
+      confirmLabel: t('surveillance.resolve'),
+      tone: 'warning',
+    })) return;
+    try {
+      await updateAlert(alert._id, { alertLevel: 'normal', trend: 'decreasing' });
+      const { logAudit } = await import('@/lib/services/audit-service');
+      await logAudit('DISEASE_ALERT_RESOLVED', currentUser?._id, currentUser?.username,
+        `${alert.disease} in ${alert.state} resolved (was ${alert.alertLevel})`
+      ).catch(() => {});
+      showToast(t('surveillance.alertResolved'), 'success');
+    } catch (err) {
+      console.error(err);
+      showToast(t('surveillance.alertUpdateFailed'), 'error');
+    }
+  };
   const { hospitals } = useHospitals();
   // Real per-facility patient counts for the map tooltip — the stored
   // HospitalDoc.patientCount is write-once-zero (2026-08 sweep).
@@ -597,6 +649,7 @@ export default function SurveillancePage() {
                         <th className="text-start">{t('surveillance.colCases')}</th>
                         <th className="text-start">{t('surveillance.colDeaths')}</th>
                         <th className="text-start">{t('ui.level')}</th>
+                        {canReportAlert && <th className="tamam-col-actions"><span className="sr-only">{t('chart.actions')}</span></th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -617,6 +670,17 @@ export default function SurveillancePage() {
                           <td>{(alert.cases || 0).toLocaleString()}</td>
                           <td style={{ color: (alert.deaths || 0) > 0 ? 'var(--color-danger-text)' : undefined }}>{(alert.deaths || 0).toLocaleString()}</td>
                           <td><Badge tone={alertLevelTone[alert.alertLevel] ?? 'neutral'}>{levelLabel(alert.alertLevel)}</Badge></td>
+                          {canReportAlert && (
+                            <td>
+                              <RowActionsMenu
+                                ariaLabel={t('chart.actions')}
+                                actions={[
+                                  { key: 'edit', label: t('surveillance.editAlert'), onClick: () => openEdit(alert) },
+                                  ...(alert.alertLevel !== 'normal' ? [{ key: 'resolve', label: t('surveillance.resolve'), onClick: () => void resolveAlert(alert) }] : []),
+                                ]}
+                              />
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -813,6 +877,49 @@ export default function SurveillancePage() {
                       <option value="decreasing">{t('surveillance.trendDecreasing')}</option>
                     </Select>
                   </div>
+                </div>
+              </div>
+            </div>
+          </FormSlider>
+        )}
+        {editing && (
+          <FormSlider
+            title={t('surveillance.editAlert')}
+            subtitle={`${editing.disease} · ${editing.county}, ${editing.state}`}
+            onClose={() => !editSaving && setEditing(null)}
+            footer={<>
+              <button onClick={() => setEditing(null)} className="btn btn-secondary" disabled={editSaving}>{t('action.cancel')}</button>
+              <button onClick={handleEditAlert} className="btn btn-primary" disabled={editSaving}>{t('action.save')}</button>
+            </>}
+          >
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('surveillance.labelSuspectedCases')}</label>
+                  <NumberInput step="1" min={0} value={editForm.cases || ''} onChange={e => setEditForm({ ...editForm, cases: parseInt(e.target.value) || 0 })} />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('surveillance.labelDeaths')}</label>
+                  <NumberInput step="1" min={0} value={editForm.deaths || ''} onChange={e => setEditForm({ ...editForm, deaths: parseInt(e.target.value) || 0 })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('surveillance.labelAlertLevel')}</label>
+                  <Select value={editForm.alertLevel} onChange={e => setEditForm({ ...editForm, alertLevel: e.target.value as typeof editForm.alertLevel })}>
+                    <option value="watch">{t('surveillance.levelWatch')}</option>
+                    <option value="warning">{t('surveillance.levelWarning')}</option>
+                    <option value="emergency">{t('surveillance.levelEmergency')}</option>
+                    <option value="normal">{t('surveillance.levelNormal')}</option>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('surveillance.labelTrend')}</label>
+                  <Select value={editForm.trend} onChange={e => setEditForm({ ...editForm, trend: e.target.value as typeof editForm.trend })}>
+                    <option value="increasing">{t('surveillance.trendIncreasing')}</option>
+                    <option value="stable">{t('surveillance.trendStable')}</option>
+                    <option value="decreasing">{t('surveillance.trendDecreasing')}</option>
+                  </Select>
                 </div>
               </div>
             </div>
