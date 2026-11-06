@@ -11,6 +11,8 @@ import InlineBanner from '@/components/overlay/InlineBanner';
 import { SadbKpiTile } from '@/components/admin/sadb-ui';
 import DuplicateReviewPanel from '@/components/patients/DuplicateReviewPanel';
 import { useDuplicateReview } from '@/components/patients/useDuplicateReview';
+import { useAuth } from '@/lib/context';
+import { isAggregateOnlyViewer } from '@/lib/services/data-scope';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import type { DataCompletenessEntry } from '@/lib/services/data-quality-service';
 
@@ -52,6 +54,10 @@ export default function DataQualityPage() {
   // facility role reviews the records it actually holds. Called before the
   // early return below to keep the hook order stable.
   const duplicateReview = useDuplicateReview();
+  const { currentUser } = useAuth();
+  // Government sees aggregate data-quality metrics only, never the duplicate
+  // candidates' names/hospital numbers (security audit 2026-11-05, H3).
+  const aggregateOnly = isAggregateOnlyViewer(currentUser?.role);
 
   const viewParam = searchParams?.get('view');
   const view: View = (viewParam === 'timeliness' || viewParam === 'outliers' || viewParam === 'scores') ? viewParam : 'completeness';
@@ -275,10 +281,14 @@ export default function DataQualityPage() {
       </div>
 
       {/* Duplicate patient records: the review that used to live only on the
-          platform operator's /admin/data, which holds no records. */}
-      <div className="mt-4" data-tour="dq-duplicate-review">
-        <DuplicateReviewPanel review={duplicateReview} standalone />
-      </div>
+          platform operator's /admin/data, which holds no records. Government
+          sees the aggregate quality metrics above only, never the candidate
+          patient names/hospital numbers (security audit 2026-11-05, H3). */}
+      {!aggregateOnly && (
+        <div className="mt-4" data-tour="dq-duplicate-review">
+          <DuplicateReviewPanel review={duplicateReview} standalone />
+        </div>
+      )}
     </main>
   );
 }

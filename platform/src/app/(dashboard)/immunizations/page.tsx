@@ -16,6 +16,7 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { toCsvRows, downloadCsvText } from '@/lib/export-file';
 import type { ImmunizationDefaulter } from '@/lib/services/immunization-service';
+import { isAggregateOnlyViewer } from '@/lib/services/data-scope';
 import type { ImmunizationDoc } from '@/lib/db-types';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import FormSlider from '@/components/overlay/FormSlider';
@@ -69,7 +70,13 @@ export default function ImmunizationsPage() {
   const [expandedChild, setExpandedChild] = useState<string | null>(null);
   const [patientLookup, setPatientLookup] = useState('');
   // In the URL (?view=) so Back returns to the tab the user was on.
-  const [activeTab, setActiveTab] = useUrlView(['records', 'by_vaccine', 'defaulters'] as const, 'records');
+  // Government sees coverage only — never the per-child records/defaulters rows
+  // (security audit 2026-11-05, H3). Restrict their tabs to the aggregate view.
+  const aggregateOnly = isAggregateOnlyViewer(currentUser?.role);
+  const [activeTab, setActiveTab] = useUrlView(
+    aggregateOnly ? (['by_vaccine'] as const) : (['records', 'by_vaccine', 'defaulters'] as const),
+    aggregateOnly ? 'by_vaccine' : 'records',
+  );
   const [vaccineExpanded, setVaccineExpanded] = useState<Record<string, boolean>>({});
   const [defaulters, setDefaulters] = useState<ImmunizationDefaulter[]>([]);
   const [defaulterStats, setDefaulterStats] = useState<{ totalDefaulters: number; uniqueChildren: number; critical: number; high: number; medium: number; byVaccine: Record<string, number> } | null>(null);
@@ -416,11 +423,13 @@ export default function ImmunizationsPage() {
 
       {/* Tab switcher */}
       <div className="flex gap-0 border-b mt-4 mb-1 overflow-x-auto" style={{ borderColor: 'var(--border-light)' }}>
+        {!aggregateOnly && (
         <button onClick={() => setActiveTab('records')}
           className={`px-4 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'records' ? 'tab-active' : ''}`}
           style={{ color: activeTab === 'records' ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
           {t('immun.tabRecords', { count: stats?.totalChildren || 0 })}
         </button>
+        )}
         {canViewCoverage && (
           <button onClick={() => setActiveTab('by_vaccine')}
             className={`px-4 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'by_vaccine' ? 'tab-active' : ''}`}
@@ -428,6 +437,7 @@ export default function ImmunizationsPage() {
             {t('ui.byVaccine')}
           </button>
         )}
+        {!aggregateOnly && (
         <button onClick={() => setActiveTab('defaulters')}
           className={`px-4 py-3 text-sm font-bold flex items-center gap-2 whitespace-nowrap ${activeTab === 'defaulters' ? 'tab-active' : ''}`}
           style={{ color: activeTab === 'defaulters' ? 'var(--accent-primary)' : 'var(--text-muted)' }}>
@@ -438,6 +448,7 @@ export default function ImmunizationsPage() {
             </span>
           )}
         </button>
+        )}
       </div>
 
         {/* By Vaccine — population-level outreach view */}
