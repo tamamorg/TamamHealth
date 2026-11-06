@@ -23,10 +23,26 @@ export function usePlatformConfig() {
 
   const update = useCallback(async (
     data: Partial<PlatformConfigDoc>,
-    actorId?: string, actorUsername?: string
+    // Kept for call-site compatibility; the server now stamps the actor from the
+    // verified auth claim, so these are no longer sent.
+    _actorId?: string, _actorUsername?: string
   ) => {
-    const { updatePlatformConfig } = await import('../services/platform-config-service');
-    const updated = await updatePlatformConfig(data, actorId, actorUsername);
+    // platform_config lives in a PULL-ONLY database: a browser write to the
+    // local copy never replicates up, so feature flags, security policies and
+    // configuration looked changed on this device but reached no one else, and
+    // a second super-admin saw stale values (security/data audit 2026-11-05,
+    // §2.1 #11). Write through the server, which owns the canonical doc and
+    // replicates it back down to every device.
+    const { apiFetch } = await import('../api-fetch');
+    const res = await apiFetch('/api/platform-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      throw new Error(`Platform configuration not saved (HTTP ${res.status})`);
+    }
+    const { config: updated } = await res.json() as { config: PlatformConfigDoc };
     setConfig(updated);
     return updated;
   }, []);
