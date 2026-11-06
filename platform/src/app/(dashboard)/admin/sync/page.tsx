@@ -17,6 +17,7 @@ import { SaTable, formatWhen } from '@/components/admin/sa-ui';
 import { useToast } from '@/components/Toast';
 import { apiFetch } from '@/lib/api-fetch';
 import { useHospitals } from '@/lib/hooks/useHospitals';
+import { useDataScope } from '@/lib/hooks/useDataScope';
 import {
   getSyncEventStats,
   getPendingSyncEvents,
@@ -55,6 +56,7 @@ export default function AdminSyncPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const { hospitals } = useHospitals();
+  const scope = useDataScope();
 
   const [stats, setStats] = useState<SyncStats | null>(null);
   const [events, setEvents] = useState<SyncEventDoc[]>([]);
@@ -74,8 +76,9 @@ export default function AdminSyncPage() {
   }, [hospitals]);
 
   const loadQueue = useCallback(async () => {
+    if (!scope) return;
     try {
-      const [s, ev] = await Promise.all([getSyncEventStats(), getPendingSyncEvents(100)]);
+      const [s, ev] = await Promise.all([getSyncEventStats(scope), getPendingSyncEvents(100)]);
       setStats(s);
       setEvents(ev);
     } catch (err) {
@@ -83,7 +86,7 @@ export default function AdminSyncPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [scope]);
 
   const loadConflicts = useCallback(async () => {
     try {
