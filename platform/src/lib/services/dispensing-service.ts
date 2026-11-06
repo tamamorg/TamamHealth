@@ -220,6 +220,7 @@ async function completeClaimedDispense(
         resourceId: updated._id,
         operation: 'update',
         resourceVersion: updated._rev,
+        orgId: updated.orgId,
         hospitalId: updated.hospitalId,
       });
       return updated;
