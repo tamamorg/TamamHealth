@@ -65,9 +65,10 @@ async function postHandler(request: NextRequest) {
         { status: 400 }
       );
     }
-    // Inject auth context
-    body.registeredBy = body.registeredBy || auth.sub;
-    body.registeredByName = body.registeredByName || auth.name;
+    // Attribution is stamped from the verified auth claim, never trusted from
+    // the client: the person recorded as having made this record cannot be forged.
+    body.registeredBy = auth.sub;
+    body.registeredByName = auth.name;
     if (!body.facilityId && auth.hospitalId) body.facilityId = auth.hospitalId;
     // Tenancy is stamped from the verified auth claim, never trusted from the
     // client -- a non-admin must not inject records into another org's tenant DB.
