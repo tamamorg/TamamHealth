@@ -45,7 +45,7 @@ export default function ReferralFilterFields({
   newIncomingCount?: number;
 }) {
   const { t } = useTranslation();
-  const fieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 8, minWidth: 0 } as const;
+  const fieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 0, minWidth: 0 } as const;
 
   return (
     <div className="flex flex-col gap-3">

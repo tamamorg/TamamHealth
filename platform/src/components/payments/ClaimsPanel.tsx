@@ -513,7 +513,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                   id="adj-status-preview"
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '10px 12px', borderRadius: 6,
+                    padding: '10px 12px', borderRadius: 0,
                     border: '1px solid var(--border-light)', background: 'var(--bg-app)',
                   }}
                 >

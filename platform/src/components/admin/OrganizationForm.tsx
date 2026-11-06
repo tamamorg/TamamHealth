@@ -429,7 +429,7 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
   // there's no shared "field" kit yet, so these stay hand-rolled, tokens only.
   const inputStyle: React.CSSProperties = {
     background: 'var(--overlay-subtle)', border: '1px solid var(--border-light)',
-    borderRadius: '4px', padding: '10px 14px', color: 'var(--text-primary)',
+    borderRadius: '0', padding: '10px 14px', color: 'var(--text-primary)',
     fontSize: '14px', width: '100%', outline: 'none',
   };
   const selectStyle: React.CSSProperties = {
@@ -620,7 +620,7 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
         </p>
         <div
           className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1"
-          style={{ border: '1px solid var(--border-light)', borderRadius: 8, padding: 12 }}
+          style={{ border: '1px solid var(--border-light)', borderRadius: 0, padding: 12 }}
         >
           {labelRolesDistinctly(selectableRoles).map(({ role, label }) => (
             <label
@@ -651,7 +651,7 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
       {/* Feature Flags */}
       <div id="org-form-flags">
         <h4 className="sadb-group-title" style={sectionTitleStyle}>{t('orgAdmin.sectionFeatureFlags')}</h4>
-        <div style={{ border: '1px solid var(--border-light)', borderRadius: 8 }}>
+        <div style={{ border: '1px solid var(--border-light)', borderRadius: 0 }}>
           {FEATURE_FLAGS.map(ff => (
             <SadbSettingRow key={ff.key} label={ff.label} sub={ff.sub}>
               <SadbToggle
@@ -671,7 +671,7 @@ export function OrganizationForm({ editing = null, onCancel, onSaved }: {
           already have staff, never as re-creating the first one. */}
       <div id="org-form-admin">
         <h4 className="sadb-group-title" style={sectionTitleStyle}>{t('orgAdmin.sectionAdministrator')}</h4>
-        <div style={{ border: '1px solid var(--border-light)', borderRadius: 8 }}>
+        <div style={{ border: '1px solid var(--border-light)', borderRadius: 0 }}>
           <SadbSettingRow label={adminToggleLabel} sub={adminToggleSub}>
             <SadbToggle checked={createAdmin} onChange={setCreateAdmin} label={adminToggleLabel} />
           </SadbSettingRow>

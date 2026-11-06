@@ -1004,7 +1004,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
               <div style={{ flex: 'none', width: 190 }}>
                 <Select value={chatDepartment} onChange={e => setChatDepartment(e.target.value)}
                   aria-label={t('patientPortal.department')}
-                  style={{ width: '100%', height: 28, padding: '0 8px', borderRadius: 6, border: '1px solid var(--border-light)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 12, fontFamily: 'var(--font-platform)' }}>
+                  style={{ width: '100%', height: 28, padding: '0 8px', borderRadius: 0, border: '1px solid var(--border-light)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 12, fontFamily: 'var(--font-platform)' }}>
                   {['General / OPD', 'Internal Medicine', 'Obstetrics', 'Pediatrics', 'Surgery', 'Laboratory', 'Pharmacy', 'Dental', 'Emergency'].map(d => (
                     <option key={d} value={d}>{d}</option>
                   ))}

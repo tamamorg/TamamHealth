@@ -150,7 +150,7 @@ export const tooltipStyle = {
   contentStyle: {
     background: 'var(--bg-card-solid)',
     border: '1px solid var(--border-light)',
-    borderRadius: 8,
+    borderRadius: 0,
     fontSize: 12,
     fontFamily: "var(--font-platform)",
     boxShadow: 'none',

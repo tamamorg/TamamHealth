@@ -420,7 +420,7 @@ export default function PatientPortalPage() {
                   </p>
                   <div style={{
                     background: 'var(--ehr-page-bg, #F5F8FB)', border: '1px solid var(--ehr-border, #E2E6EB)',
-                    borderRadius: 6, padding: '14px 18px', textAlign: 'center', marginBottom: 16,
+                    borderRadius: 0, padding: '14px 18px', textAlign: 'center', marginBottom: 16,
                   }}>
                     <span className="bl-stat-label">{t('portal.totalDue')}</span>
                     <span className="bl-stat-value" style={{ fontSize: 22 }}>{formatMoney(totalOwed)}</span>
@@ -467,7 +467,7 @@ export default function PatientPortalPage() {
                             defeats that :has(>svg:only-child) match so this tint
                             survives; the span itself is a harmless no-op for layout. */}
                         <div style={{
-                          width: 30, height: 30, borderRadius: 7, flexShrink: 0,
+                          width: 30, height: 30, borderRadius: 0, flexShrink: 0,
                           background: `${m.color}14`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
@@ -554,7 +554,7 @@ export default function PatientPortalPage() {
                   >
                     {/* Icon wrapped in a span — see the globals.css note above. */}
                     <div style={{
-                      width: 34, height: 34, borderRadius: 8, flexShrink: 0,
+                      width: 34, height: 34, borderRadius: 0, flexShrink: 0,
                       background: `${m.color}14`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
@@ -604,7 +604,7 @@ export default function PatientPortalPage() {
                   <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--ehr-border, #E2E6EB)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
                       <div style={{
-                        width: 44, height: 44, borderRadius: 10, flexShrink: 0,
+                        width: 44, height: 44, borderRadius: 0, flexShrink: 0,
                         background: `${method.color}14`, // icon wrapped in a span — see globals.css note above
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}>
@@ -625,7 +625,7 @@ export default function PatientPortalPage() {
                   <div style={{ padding: '20px 24px' }}>
                     <h4 className="bl-card-title" style={{ marginBottom: 10 }}>{t('portal.paymentInstructions')}</h4>
                     <div style={{
-                      background: 'var(--ehr-page-bg, #F5F8FB)', borderRadius: 6, padding: '14px 16px',
+                      background: 'var(--ehr-page-bg, #F5F8FB)', borderRadius: 0, padding: '14px 16px',
                       border: '1px solid var(--ehr-border, #E2E6EB)', marginBottom: 18,
                     }}>
                       {method.instructions.split('\n').map((line, i) => (
@@ -641,7 +641,7 @@ export default function PatientPortalPage() {
                     {/* Reference to copy */}
                     <div style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      background: 'var(--ehr-page-bg, #F5F8FB)', borderRadius: 6, padding: '10px 14px',
+                      background: 'var(--ehr-page-bg, #F5F8FB)', borderRadius: 0, padding: '10px 14px',
                       border: '1px solid var(--ehr-border, #E2E6EB)', marginBottom: 20,
                     }}>
                       <div>
@@ -659,7 +659,7 @@ export default function PatientPortalPage() {
                       <div style={{
                         display: 'flex', alignItems: 'center', gap: 8,
                         background: 'var(--ehr-panel, #fff)', border: '1px solid var(--color-danger, #D92B20)',
-                        borderRadius: 6, padding: '10px 14px', marginBottom: 14,
+                        borderRadius: 0, padding: '10px 14px', marginBottom: 14,
                       }}>
                         <AlertCircle size={16} color="var(--color-danger, #D92B20)" style={{ flexShrink: 0 }} />
                         <span className="bl-danger" style={{ fontSize: 12.5 }}>{completeError}</span>
@@ -708,7 +708,7 @@ export default function PatientPortalPage() {
               </p>
 
               <dl className="bl-totals" style={{
-                background: 'var(--ehr-page-bg, #F5F8FB)', borderRadius: 6, padding: '14px 18px',
+                background: 'var(--ehr-page-bg, #F5F8FB)', borderRadius: 0, padding: '14px 18px',
                 marginBottom: 22, border: '1px solid var(--ehr-border, #E2E6EB)', textAlign: 'start',
               }}>
                 {/* The payment reference, not the invoice id. `completedReference`

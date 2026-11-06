@@ -48,7 +48,7 @@ export default function BookingSummaryHeader({
     <div
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
-        padding: '12px 14px', borderRadius: 12,
+        padding: '12px 14px', borderRadius: 0,
         border: '1px solid var(--border-medium)', background: 'var(--overlay-subtle)',
       }}
     >

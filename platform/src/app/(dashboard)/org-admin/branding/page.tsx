@@ -65,7 +65,7 @@ function ColorField({ value, onChange }: { value: string; onChange: (v: string) 
         type="color"
         value={value}
         onChange={e => onChange(e.target.value)}
-        style={{ width: 32, height: 32, border: '1px solid var(--border-light)', borderRadius: 6, cursor: 'pointer', padding: 0, flexShrink: 0 }}
+        style={{ width: 32, height: 32, border: '1px solid var(--border-light)', borderRadius: 0, cursor: 'pointer', padding: 0, flexShrink: 0 }}
       />
       <input
         className="sadb-modal-input font-mono"

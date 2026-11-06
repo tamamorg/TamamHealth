@@ -204,7 +204,7 @@ export default function WardsPage() {
                     <Select
                       value={filterWard}
                       onChange={e => setFilterWard(e.target.value)}
-                      style={{ width: 'auto', minWidth: '100%', height: 36, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', fontSize: 13 }}
+                      style={{ width: 'auto', minWidth: '100%', height: 36, padding: '0 10px', borderRadius: 0, border: '1px solid var(--border-light)', background: 'var(--bg-card-solid)', fontSize: 13 }}
                     >
                       <option value="">{t('ui.allWards')}</option>
                       {facilityWards.map(w => (

@@ -22,7 +22,7 @@ export default function CheckoutLayout({ children }: { children: React.ReactNode
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/assets/tamamhealth-logo.svg" alt={t('app.name')} style={{ width: 28, height: 28 }} />
           <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.04em' }}>{t('app.name')}</span>
-          <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--accent-primary)', padding: '3px 8px', borderRadius: 6, background: 'var(--accent-light)' }}>{t('ui.securePayment')}</span>
+          <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--accent-primary)', padding: '3px 8px', borderRadius: 0, background: 'var(--accent-light)' }}>{t('ui.securePayment')}</span>
         </Link>
       </header>
       <main style={{ width: '100%' }}>{children}</main>

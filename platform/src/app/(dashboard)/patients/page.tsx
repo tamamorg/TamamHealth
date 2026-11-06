@@ -77,7 +77,7 @@ export default function PatientsPage() {
     window.history.replaceState(window.history.state, '', window.location.pathname + (qs ? `?${qs}` : ''));
   }, []);
   // Shared input/select styling for the filter panel controls.
-  const fieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 8, minWidth: 0 } as const;
+  const fieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 0, minWidth: 0 } as const;
 
   // Outstanding balance per patient — loaded only for billing-desk roles, so the
   // registry shows a "Balance" column instead of clinical conditions. Aggregated

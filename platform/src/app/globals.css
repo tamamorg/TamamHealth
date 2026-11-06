@@ -37,12 +37,12 @@
   --section-spacing: 80px;
   --section-spacing-medium: 56px;
   --section-spacing-small: 40px;
-  --btn-radius: 10px;
+  --btn-radius: 0px;
   /* 8px, per the Clinical App design — its cards, buttons and popovers sit on
      a tighter radius than the 14px the app used, which is what made the old
      surfaces read as consumer-soft next to the design's clinical squareness. */
-  --card-radius: 8px;
-  --input-radius: 10px;
+  --card-radius: 0px;
+  --input-radius: 0px;
   --sidebar-width: 220px;
   --sidebar-collapsed: 72px;
   /* Barlow, per the Clinical App design — the same voice tamamhealth.org

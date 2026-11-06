@@ -57,7 +57,7 @@ export default function InsuranceSnapshot({ patientId, editable, onAddInsurance,
   if (policies.length === 0) {
     return (
       <div style={{
-        padding: 16, borderRadius: 12,
+        padding: 16, borderRadius: 0,
         border: '1px dashed var(--border-medium)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
@@ -70,7 +70,7 @@ export default function InsuranceSnapshot({ patientId, editable, onAddInsurance,
         {editable && onAddInsurance && (
           <button onClick={onAddInsurance} style={{
             display: 'flex', alignItems: 'center', gap: 4,
-            padding: '4px 12px', borderRadius: 16, border: '1px solid var(--accent)',
+            padding: '4px 12px', borderRadius: 0, border: '1px solid var(--accent)',
             background: 'transparent', color: 'var(--accent)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
           }}>
             <Plus size={12} /> {t('insuranceSnapshot.addInsurance')}
@@ -84,7 +84,7 @@ export default function InsuranceSnapshot({ patientId, editable, onAddInsurance,
     <div className="data-row-divider-sm" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {policies.map(policy => (
         <div key={policy._id} style={{
-          padding: '12px 16px', borderRadius: 12,
+          padding: '12px 16px', borderRadius: 0,
           background: 'var(--bg-card)',
           border: `1px solid ${policy.isPrimary ? 'var(--accent)' : 'var(--border-medium)'}`,
           display: 'flex', alignItems: 'flex-start', gap: 12,
@@ -121,7 +121,7 @@ export default function InsuranceSnapshot({ patientId, editable, onAddInsurance,
       {editable && onAddInsurance && (
         <button onClick={onAddInsurance} style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-          padding: '8px 0', borderRadius: 12, border: '1px dashed var(--border-medium)',
+          padding: '8px 0', borderRadius: 0, border: '1px dashed var(--border-medium)',
           background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer',
         }}>
           <Plus size={12} /> {t('insuranceSnapshot.addAnotherPlan')}

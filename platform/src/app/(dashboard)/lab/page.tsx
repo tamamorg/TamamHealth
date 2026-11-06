@@ -279,7 +279,7 @@ export default function LabPage() {
   // Filters popover (matching the patients registry), not per-column funnels.
   // Field style for the selects inside the header's Filters popover (mirrors
   // the patients registry's Filters panel fields).
-  const popoverFieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 8, minWidth: 0 } as const;
+  const popoverFieldStyle = { background: 'var(--bg-card-solid)', border: '1px solid var(--border-medium)', color: 'var(--text-primary)', borderRadius: 0, minWidth: 0 } as const;
   return (
     <>
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>

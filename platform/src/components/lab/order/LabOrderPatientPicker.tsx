@@ -29,7 +29,7 @@ export default function LabOrderPatientPicker({
 
   if (selected) {
     return (
-      <div className="labord-row" style={{ border: '1px solid var(--labord-line)', borderRadius: 4 }}>
+      <div className="labord-row" style={{ border: '1px solid var(--labord-line)', borderRadius: 0 }}>
         <span>
           <span className="labord-pick-name">{patientFullName(selected)}</span>
           <span className="labord-pick-meta" style={{ marginInlineStart: 8 }}>

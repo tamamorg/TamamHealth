@@ -508,7 +508,7 @@ export default function BookAppointmentModal({
                 aria-label={t('action.back')}
                 style={{
                   background: 'var(--overlay-subtle)', border: 'none', cursor: 'pointer',
-                  width: 32, height: 32, borderRadius: 10, display: 'flex',
+                  width: 32, height: 32, borderRadius: 0, display: 'flex',
                   alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)', flexShrink: 0,
                 }}
               >
@@ -540,7 +540,7 @@ export default function BookAppointmentModal({
                 data-action="popup-expand"
                 style={{
                   background: 'var(--overlay-subtle)', border: 'none', cursor: 'pointer',
-                  width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center',
+                  width: 32, height: 32, borderRadius: 0, display: 'flex', alignItems: 'center',
                   justifyContent: 'center', color: 'var(--text-muted)', flexShrink: 0,
                 }}
               >
@@ -553,7 +553,7 @@ export default function BookAppointmentModal({
                 data-action="popup-close"
                 style={{
                   background: 'var(--overlay-subtle)', border: 'none', cursor: 'pointer',
-                  width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center',
+                  width: 32, height: 32, borderRadius: 0, display: 'flex', alignItems: 'center',
                   justifyContent: 'center', color: 'var(--text-muted)', flexShrink: 0,
                 }}
               >
@@ -937,7 +937,7 @@ function ManualTimeFallback({
   return (
     <div
       style={{
-        border: '1px solid var(--border-medium)', borderRadius: 12,
+        border: '1px solid var(--border-medium)', borderRadius: 0,
         padding: 14, background: 'var(--bg-card-solid)',
         display: 'flex', flexDirection: 'column', gap: 12,
       }}
