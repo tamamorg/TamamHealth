@@ -276,7 +276,11 @@ export default function ChartHeader({
           {menuOpen && (
             <>
               <div className="tamam-header-overflow-backdrop" {...dismissBackdrop(() => setMenuOpen(false))} />
-              <div className="tamam-actions-menu" role="menu">
+              <div className="tamam-actions-menu tm-elevated" role="menu" aria-label="Patient actions">
+                <span className="tamam-actions-menu-pointer" aria-hidden />
+                <div className="tamam-actions-menu-head" aria-hidden>
+                  <DuotoneIcon name="moreVertical" size={13} /> Actions
+                </div>
                 {canManageReferrals && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onExchange(); }}>
                     <DuotoneIcon name="arrowRightLeft" size={15} /> Refer patient
