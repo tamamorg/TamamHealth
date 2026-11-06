@@ -76,6 +76,45 @@ export const AUDIT_PRUNE_MIN_INTERVAL_MS = 24 * 60 * 60 * 1000;
 /** Local databases that replicate at all — the only ones with delivery to prove. */
 const REPLICATING_DATABASES: ReadonlySet<string> = new Set(DATABASE_SYNC_CONFIGS.map(c => c.localName));
 
+/**
+ * Clinical-content PHI databases that a pure billing role never reads. A role
+ * in BILLING_ONLY_ROLES does not replicate these, so their device never holds —
+ * and so can never decrypt — the clinical record (security audit 2026-11-05,
+ * H2/H6: one org key opens every catalogued field a device holds, so NOT
+ * holding the data is the barrier).
+ *
+ * Deliberately conservative: only `cashier` and `medical_biller` are gated —
+ * every surface they reach is Bills/Claims/Payments + patient demographics, and
+ * they are already singled out as billing-only in ROLE_PRIORITY_SYNC_DATABASES.
+ * `encounters`, `appointments`, `referrals`, `billing`, `payments`, `ledger`
+ * and `patients` are intentionally NOT withheld (the checkout flow and the
+ * chart billing tab need them). Extend BILLING_ONLY_ROLES to front_desk /
+ * registration clerks ONLY after verifying per role that they read no clinical
+ * database — a wrong entry silently breaks that role's workflow in the field.
+ */
+const CLINICAL_CONTENT_DATABASES: ReadonlySet<string> = new Set([
+  'tamamhealth_clinical_notes',
+  'tamamhealth_medical_records',
+  'tamamhealth_prescriptions',
+  'tamamhealth_lab_results',
+  'tamamhealth_medication_administrations',
+  'tamamhealth_triage',
+]);
+
+const BILLING_ONLY_ROLES: ReadonlySet<string> = new Set(['cashier', 'medical_biller']);
+
+/**
+ * The databases a role may replicate to its device. Defaults to every
+ * replicating database (today's behaviour for all clinical/admin roles); a
+ * billing-only role is denied the clinical-content databases.
+ */
+export function databasesForRole(role: string | undefined): ReadonlySet<string> {
+  if (role && BILLING_ONLY_ROLES.has(role)) {
+    return new Set([...REPLICATING_DATABASES].filter(db => !CLINICAL_CONTENT_DATABASES.has(db)));
+  }
+  return REPLICATING_DATABASES;
+}
+
 const AUDIT_PRUNE_AT_KEY = 'tamamhealth.audit.last-prune.v1';
 
 export type AggregateState =
@@ -276,8 +315,12 @@ export class SyncManager {
     // the user is looking at. `stopAll` cancels the timer, so a logout during
     // the window leaks nothing.
     const priority = prioritySyncDatabasesFor(this.user?.role);
-    const firstWave = DATABASE_SYNC_CONFIGS.filter(c => priority.has(c.localName));
-    const secondWave = DATABASE_SYNC_CONFIGS.filter(c => !priority.has(c.localName));
+    // A billing-only role never replicates the clinical-content databases, so
+    // its device cannot hold (nor decrypt) the clinical record (H2/H6).
+    const allowed = databasesForRole(this.user?.role);
+    const replicable = DATABASE_SYNC_CONFIGS.filter(c => allowed.has(c.localName));
+    const firstWave = replicable.filter(c => priority.has(c.localName));
+    const secondWave = replicable.filter(c => !priority.has(c.localName));
 
     const startConfigs = (configs: typeof DATABASE_SYNC_CONFIGS) => {
       for (const config of configs) {
@@ -504,8 +547,10 @@ export class SyncManager {
         // entry and so are never stamped clean.
         // A database with no sync configuration never replicates (users,
         // device settings, slot holds): it has no delivery to prove, and
-        // leaving it unstamped made every logout report a failed wipe.
-        only: (name) => (REPLICATING_DATABASES.has(name)
+        // leaving it unstamped made every logout report a failed wipe. A
+        // database this ROLE does not replicate (clinical DBs withheld from a
+        // billing-only role, H2) likewise has no delivery to prove here.
+        only: (name) => (databasesForRole(this.user?.role).has(name)
           ? this.services.get(name)?.isCleanForWipe() === true
           : true),
       }))
