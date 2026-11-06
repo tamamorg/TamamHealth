@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { FORMULARY } from '@/lib/data/formulary';
 import { checkAllergies, checkAllergiesStructured, checkInteractions, checkNewPrescription } from '@/lib/services/drug-interaction-service';
 
-const source = readFileSync(join(process.cwd(), 'src/lib/services/drug-interaction-service.ts'), 'utf8');
+const source = readFileSync(join(process.cwd(), 'src/lib/data/drug-interactions.ts'), 'utf8');
 const ruleDrugs = [...new Set(
   [...source.matchAll(/drug[12]: '([^']+)'/g)].map(match => match[1]),
 )];
