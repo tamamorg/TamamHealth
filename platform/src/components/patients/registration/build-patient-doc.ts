@@ -97,9 +97,11 @@ export function buildPatientDoc({
       ...(exemptionReason ? { exemptionReason } : {}),
     },
     // Clinical detail is collected at triage, not registration — these are the
-    // documented "not asked yet" defaults, not findings.
+    // documented "not asked yet" defaults, not findings. Allergies start EMPTY:
+    // a 'None known' entry here read as "no known allergies" on the chart
+    // before anyone had asked (2026-11-05); the chart now says "Not recorded".
     bloodType: 'Unknown' as const,
-    allergies: ['None known'],
+    allergies: [],
     chronicConditions: ['None'],
     ...(photoUrl ? { photoUrl } : {}),
     registrationHospital: hospitalId,

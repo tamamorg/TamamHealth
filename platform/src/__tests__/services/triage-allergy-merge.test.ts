@@ -6,7 +6,7 @@
  * kept claiming "no allergies" for a patient whose penicillin allergy was
  * sitting on the triage record.
  */
-import { mergeTriageAllergies } from '@/lib/services/triage-service';
+import { isTriageNoAllergyAnswer, mergeTriageAllergies } from '@/lib/services/triage-service';
 
 describe('mergeTriageAllergies', () => {
   it('adds parsed allergens to an empty list', () => {
@@ -46,5 +46,20 @@ describe('mergeTriageAllergies', () => {
 
   it('deduplicates repeats within the incoming text itself', () => {
     expect(mergeTriageAllergies([], 'Latex, latex , LATEX')).toEqual(['Latex']);
+  });
+});
+
+describe('isTriageNoAllergyAnswer', () => {
+  it('reads an explicit "none" answer as an assessment', () => {
+    expect(isTriageNoAllergyAnswer('None')).toBe(true);
+    expect(isTriageNoAllergyAnswer('NKDA')).toBe(true);
+    expect(isTriageNoAllergyAnswer('no known allergies')).toBe(true);
+  });
+  it('does not read a blank field, "unknown" or a real allergen as "none"', () => {
+    expect(isTriageNoAllergyAnswer('')).toBe(false);
+    expect(isTriageNoAllergyAnswer(undefined)).toBe(false);
+    expect(isTriageNoAllergyAnswer('unknown')).toBe(false);
+    expect(isTriageNoAllergyAnswer('Penicillin')).toBe(false);
+    expect(isTriageNoAllergyAnswer('none, Penicillin')).toBe(false);
   });
 });

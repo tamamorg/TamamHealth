@@ -10,13 +10,19 @@ import { formatDate } from '@/lib/format-utils';
 import { patientAgeLabel, patientFullName } from '@/lib/patient-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { isNoAllergySentinel } from '@/lib/clinical-roles';
 
 export function AllergyLine({ patient }: { patient: PatientDoc }) {
   const { t } = useTranslation();
-  const active = (patient.structuredAllergies || []).filter(a => a.status === 'active').map(a => a.substance);
+  // Same three states as the chart header: allergies on record (structured,
+  // else the legacy list), an assessment that found none, or not asked yet.
+  const active = patient.structuredAllergies !== undefined
+    ? patient.structuredAllergies.filter(a => a.status === 'active').map(a => a.substance)
+    : (patient.allergies || []).filter(a => a && !isNoAllergySentinel(a));
+  const assessed = patient.structuredAllergies !== undefined || !!patient.noKnownDrugAllergies;
   const value = active.length
     ? active.join(', ')
-    : patient.structuredAllergies !== undefined ? t('basket.allergiesNone') : t('basket.allergiesUnknown');
+    : assessed ? t('basket.allergiesNone') : t('basket.allergiesUnknown');
   return (
     <p className={active.length ? 'obf-allergies has-allergies' : 'obf-allergies'}>
       {t('basket.allergies')}: <span>{value}</span>

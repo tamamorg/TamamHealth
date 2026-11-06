@@ -64,7 +64,7 @@ export async function registerLabPatient(person: NewLabPatient, currentUser: Lab
     nokPhone: person.nokPhone.trim(),
     // Clinical detail is the clinic's to collect: the "not asked yet" defaults.
     bloodType: 'Unknown',
-    allergies: ['None known'],
+    allergies: [], // not asked: the chart reads this as "Not recorded"
     chronicConditions: ['None'],
     registrationHospital: currentUser.hospitalId || '',
     registrationDate: now.slice(0, 10),
