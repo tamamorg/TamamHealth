@@ -35,10 +35,15 @@ export function useAssets() {
 
   const create = useCallback(async (input: Parameters<typeof import('../services/asset-service').createAsset>[0]) => {
     const { createAsset } = await import('../services/asset-service');
-    const doc = await createAsset(input);
+    // Stamp the tenant from the active data scope when the caller didn't supply
+    // one. Without it the asset doc had no orgId, so the sync validator refused
+    // it ("orgId is required") and filterByScope hid it from its own creator —
+    // the equipment page showed "registered" for a record that never saved
+    // (security/data audit 2026-11-05, §2.1 #10).
+    const doc = await createAsset({ ...input, orgId: input.orgId ?? scope?.orgId });
     await load();
     return doc;
-  }, [load]);
+  }, [load, scope?.orgId]);
 
   const setStatus = useCallback(async (id: string, status: AssetDoc['status'], actor: { id: string; name: string }) => {
     const { setAssetStatus } = await import('../services/asset-service');
