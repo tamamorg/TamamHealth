@@ -33,7 +33,7 @@ import { escapeCsvCell } from '@/lib/csv';
 import { useRoleChoice } from '@/lib/settings/useRoleSetting';
 import { stopsClickPropagation } from '@/lib/a11y';
 import PatientMedHistoryModal from '@/components/pharmacy/PatientMedHistoryModal';
-import StockInModal from '@/components/pharmacy/StockInModal';
+import StockInModal, { type StockInForm } from '@/components/pharmacy/StockInModal';
 import RestockModal from '@/components/pharmacy/RestockModal';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import FormSlider from '@/components/overlay/FormSlider';
@@ -42,7 +42,7 @@ import NumberInput from '@/components/forms/NumberInput';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { describeError } from '@/lib/user-facing-error';
 import type { PharmacyInventoryDoc } from '@/lib/db-types';
-import { RX_STAGE_PILL_CLASS, prescriptionSig, type PharmacyTab } from '@/components/pharmacy/pharmacy-helpers';
+import { RX_STAGE_PILL_CLASS, prescriptionSig, stockRequiresWitness, type PharmacyTab } from '@/components/pharmacy/pharmacy-helpers';
 
 import { useUrlView } from '@/lib/navigation/use-url-view';
 
@@ -118,7 +118,7 @@ export default function PharmacyPage() {
 
   // Stock-in modal state
   const [showStockInModal, setShowStockInModal] = useState(false);
-  const [stockForm, setStockForm] = useState({
+  const [stockForm, setStockForm] = useState<StockInForm>({
     medicationName: '',
     category: 'General',
     stockLevel: 0,
@@ -126,6 +126,7 @@ export default function PharmacyPage() {
     reorderLevel: 50,
     batchNumber: '',
     expiryDate: '',
+    controlledSchedule: '',
   });
 
   // Augment each inventory row with a live status classification (which
@@ -159,6 +160,12 @@ export default function PharmacyPage() {
       return;
     }
     try {
+      // A batch is controlled if the pharmacist set a schedule OR the medicine
+      // is a recognised controlled substance by its class (so morphine stocked
+      // without a schedule still can't be dispensed without a witness — the
+      // headline gap in security audit 2026-11-05, §2.1 #7). requiresWitness is
+      // what dispensing enforces.
+      const controlled = stockRequiresWitness(stockForm.medicationName, stockForm.controlledSchedule);
       await createInventory({
         hospitalId: currentUser.hospitalId,
         hospitalName: currentUser.hospitalName || '',
@@ -171,10 +178,12 @@ export default function PharmacyPage() {
         expiryDate: stockForm.expiryDate || toIsoDate(new Date(Date.now() + 365 * 86400000)),
         lastReceived: new Date().toISOString(),
         orgId: currentUser.orgId,
+        controlledSchedule: stockForm.controlledSchedule || undefined,
+        requiresWitness: controlled || undefined,
       });
       showToast(t('pharmacy.stockedMedication', { medication: stockForm.medicationName }), 'success');
       setShowStockInModal(false);
-      setStockForm({ medicationName: '', category: 'General', stockLevel: 0, unit: 'tablets', reorderLevel: 50, batchNumber: '', expiryDate: '' });
+      setStockForm({ medicationName: '', category: 'General', stockLevel: 0, unit: 'tablets', reorderLevel: 50, batchNumber: '', expiryDate: '', controlledSchedule: '' });
     } catch (err) {
       console.error(err);
       showToast(t('pharmacy.saveStockReceiptFailed'), 'error');
