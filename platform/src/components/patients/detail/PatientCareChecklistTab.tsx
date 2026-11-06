@@ -1,5 +1,4 @@
 'use client';
-import { PostConsultPanel } from '@/modules/post-consult/client';
 import type { PatientDoc } from '@/lib/db-types';
 import { AssessmentsPanel, ScreeningsPanel, RemindersPanel } from './lazy-panels';
 export default function PatientCareChecklistTab({ t, patient, focusId }: {
@@ -17,7 +16,6 @@ export default function PatientCareChecklistTab({ t, patient, focusId }: {
                   <h3 className="tamam-section-title">{t('chart.carePlanTitle')}</h3>
                 </div>
               </div>
-              <PostConsultPanel key={patient._id} patientId={patient._id} embedded />
               <ScreeningsPanel patient={patient} />
               <RemindersPanel patient={patient} />
               <AssessmentsPanel patient={patient} focusId={focusId} />

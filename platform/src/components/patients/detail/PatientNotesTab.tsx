@@ -3,6 +3,7 @@ import ClinicalNoteViewer from '@/components/clinical-notes/ClinicalNoteViewer';
 import { patientFullName } from '@/lib/patient-utils';
 import type { PatientDoc } from '@/lib/db-types';
 import { NotesList, PhoneNotes } from './lazy-panels';
+import { NurseReviewPanel } from '@/modules/post-consult/client';
 import type { Dispatch, SetStateAction } from 'react';
 import type { AppUser } from '@/lib/context/types';
 export default function PatientNotesTab({ patient, currentUser, canConsult, setNoteViewer, notesRefreshToken, noteViewer, setNotesRefreshToken, setChartPanelRequest, onCreateNote, onOpenRecord }: {
@@ -47,6 +48,9 @@ export default function PatientNotesTab({ patient, currentUser, canConsult, setN
                 }}
                 refreshToken={notesRefreshToken}
               />
+              {/* The nurse's review after the doctor sits under the notes it
+                  follows from (it was a separate block in the Care plan tab). */}
+              <NurseReviewPanel key={patient._id} patientId={patient._id} />
               {/* Telephone contacts stay separate: they are care-team messages
                   about a patient, not documentation of an encounter. PhoneNotes
                   brings its own ChartSection card. */}

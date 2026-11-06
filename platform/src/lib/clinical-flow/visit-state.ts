@@ -82,7 +82,7 @@ export function resolveOperationalVisitState(
 ): OperationalVisitState {
   const key = encounter?.status ?? appointment.status;
   if (options.nursingReviewOpen && (encounter?.status === 'ready_for_clinic_checkout' || encounter?.status === 'in_clinic_checkout')) {
-    return { key, label: 'Post-consultation nursing', i18nKey: 'postConsult.title', lane: 'in_facility' };
+    return { key, label: 'Nurse review', i18nKey: 'postConsult.title', lane: 'in_facility' };
   }
   const state = encounter ? encounterStates[encounter.status] : appointmentFallbacks[appointment.status];
   return { key, ...state };

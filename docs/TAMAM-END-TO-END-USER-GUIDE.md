@@ -68,7 +68,7 @@ A patient's chart has four parts:
 
 ### Shared navigation and forms
 
-- **Dashboard:** work appropriate to your role; it is not necessarily every visit in the facility. Lists are split into **Waiting**, **In service** and **Finished** (station roles see their own lanes, for example To collect / On the bench / Resulted). The right-hand **Outstanding items** box opens lists such as Rooming queue, Documents to sign or Post-consultation nursing.
+- **Dashboard:** work appropriate to your role; it is not necessarily every visit in the facility. Lists are split into **Waiting**, **In service** and **Finished** (station roles see their own lanes, for example To collect / On the bench / Resulted). The right-hand **Outstanding items** box opens lists such as Rooming queue, Documents to sign or Nurse review.
 - **Status pills:** the coloured status on a list row is a dropdown. Choosing a new status opens a slider that explains the change and asks for a reason when the patient is leaving the visit (No show, Cancelled, Rescheduled). Your role decides which statuses you can choose.
 - **Notifications (bell):** attention items such as "lab result ready" or referral progress. Opening one does not complete the underlying clinical task.
 - **My tasks, Messages, Announcements:** coordination tools, not substitutes for signed notes, orders, results, or a documented handoff.
@@ -150,7 +150,7 @@ Laboratory, pharmacy and payment can run in parallel. They are not always a sing
 | 8. Clinician | Results → open the result → **Mark reviewed** (and **Mark acted upon** when you have acted) | The result shows "Reviewed by clinician" with your name and time |
 | 9. Cashier | Chart **Billing history** (or **Bills & Claims**) → **Billing actions → Collect payment**; choose method, enter the amount actually received, **Record** | "Payment recorded" with a receipt number; Outstanding balance updated |
 | 10. Pharmacy | In the pharmacy workspace set Sami's pill to **Fill prescription**, check the safety review and batch, **Dispense** | Toast "Dispensed". If a balance is due, dispensing stops and says so (section 7) |
-| 11. Nurse | **Outstanding items → Post-consultation nursing**, open Sami's **Care plan** section, **Accept handoff**, then record each task's outcome | All four tasks recorded; the visit moves to "Ready for clinic checkout" |
+| 11. Nurse | **Outstanding items → Nurse review**, open Sami's **Notes** tab, and **Mark reviewed** on each item under the notes | All four tasks recorded; the visit moves to "Ready for clinic checkout" |
 | 12. Reception | Set the visit's status to **Completed**. For a booked visit this opens **Final checkout**, which lists anything unresolved and asks for the disposition | Patient leaves the active board; the disposition says what actually happened |
 
 At the end, search the patient again. Confirm this is one patient record with one intended visit, not a new record at each station. Check that the clinical outcome, financial outcome, and next appointment each say what actually happened.
@@ -200,7 +200,7 @@ Reception completion check: correct identity, one intended visit, correct destin
 
 ## 5. Nursing: triage, rooming, and return from the doctor
 
-Nurses start on the shared clinical workspace. The list shows patients assigned to you, ward patients and the rooming queue; **Outstanding items** opens Medications due, Handoffs to acknowledge, Rooming queue, Follow-ups due and Post-consultation nursing.
+Nurses start on the shared clinical workspace. The list shows patients assigned to you, ward patients and the rooming queue; **Outstanding items** opens Medications due, Handoffs to acknowledge, Rooming queue, Follow-ups due and Nurse review.
 
 ### Triage
 
@@ -225,16 +225,13 @@ Other actions on a visit (in its **More** menu on the worklist): **Return to rec
 
 Nurses record medicines the patient reports (Medications section). These are history, marked "patient-reported"; they are not orders and do not reach the pharmacy. Only prescribers order medicines.
 
-### After the clinician: post-consultation nursing
+### After the clinician: nurse review
 
-1. Open **Outstanding items → Post-consultation nursing** and choose the patient, or open the chart's **Care plan** section. The panel is absent if no nursing step was created.
-2. Read the latest clinical plan and choose **Accept handoff**. You become the responsible staff member.
-3. The four tasks are: care plan, medicines and teach-back with patient/caregiver; review ordered treatments and administration records; coordinate investigations and result follow-up; confirm instructions, referrals and follow-up arrangements. Open linked notes, medicines, laboratory and procedures as needed; a checklist item does not replace these records.
-4. Open a task, write the completion evidence, and **Record task outcome** only after doing it.
-5. To defer a task, tick **Defer with a named owner and review date**, choose the owner and due time, and record the reason.
-6. To hand over, use **Transfer responsibility**, choose the recipient and give a reason. The new owner must accept.
-7. If the clinician changes orders or signed notes afterwards, the panel says so and offers **Review changed plan**. Review the new plan before recording more outcomes.
-8. When all tasks are recorded the visit moves to "Ready for clinic checkout".
+1. Open **Outstanding items → Nurse review** and choose the patient, or open the chart's **Notes** tab. The review sits under the notes; it is absent if no nursing step was created.
+2. Four items are listed: care plan, medicines and teach-back with patient/caregiver; ordered treatments and administration records; investigations and result follow-up; instructions, referrals and follow-up arrangements. Read the notes above before reviewing.
+3. For each item, type what was done and choose **Mark reviewed**. Your first review makes you the responsible nurse; if another nurse already took the review, the items are read-only for you and their name is shown.
+4. If the clinician changes orders or signed notes afterwards, the review says so and offers **Review changed plan**. Review the new plan before recording more.
+5. When all four are recorded the visit moves to "Ready for clinic checkout".
 
 A clinician can record "no separate nursing step needed" with a reason when nothing is required. Do not use that as a routine shortcut around outstanding nursing work.
 
@@ -604,7 +601,7 @@ The app tracks different objects. Always ask: "Status of the appointment, encoun
 | Awaiting consultation / With clinician | Consultation can start or is active |
 | Consultation paused draft | Unfinished clinical documentation/work remains |
 | Awaiting labs / imaging / pharmacy / procedure | A downstream service is outstanding; others may also be pending |
-| Post-consultation nursing | Nursing tasks after the consultation are open |
+| Nurse review | The nurse's review after the consultation is open |
 | Ready for clinic checkout / In clinic checkout | Clinic completion checks are being performed |
 | Clinic complete awaiting next station | This clinic is done; the entire facility visit may not be |
 | Awaiting facility checkout / In facility checkout | Final cross-station checks and disposition remain |

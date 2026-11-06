@@ -159,8 +159,8 @@ its own separate copy and will not see the patient.
    unpaid bill it refuses ("… is due. Send … to the cashier") — a good talking point.
 6. **Cashier** (`cashier.deng`): chart **Billing history → Billing actions → Collect
    payment** → **Record**. Then dispense again.
-7. **Nurse**: **Outstanding items → Post-consultation nursing** → **Accept handoff**
-   → record each task → reception sets the visit **Completed**.
+7. **Nurse**: **Outstanding items → Nurse review** → the chart's **Notes** tab →
+   **Mark reviewed** on each item under the notes → reception sets the visit **Completed**.
 
 Other things worth showing:
 

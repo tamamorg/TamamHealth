@@ -2072,7 +2072,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
 .tamam-header-overflow .tamam-actions-menu {
   width: 236px;
   padding: 6px;
-  border-radius: 10px;
+  border-radius: 0;
   overflow: visible;
   box-shadow: var(--shadow-popover);
 }
@@ -2115,7 +2115,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
 .tamam-header-overflow .tamam-actions-menu button[role="menuitem"] {
   position: relative;
   padding: 9px 12px 9px 15px;
-  border-radius: 7px;
+  border-radius: 0;
   transition: background 90ms ease, color 90ms ease;
 }
 .tamam-header-overflow .tamam-actions-menu button[role="menuitem"]::before {
@@ -2125,7 +2125,7 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   top: 8px;
   bottom: 8px;
   width: 3px;
-  border-radius: 2px;
+  border-radius: 0;
   background: transparent;
 }
 .tamam-header-overflow .tamam-actions-menu button[role="menuitem"]:hover,

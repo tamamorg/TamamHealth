@@ -1,4 +1,10 @@
-import { mountAndFlush, setSelect, setValue, clickAsync, type Mounted } from '../components/clinical-notes/test-utils';
+/**
+ * The nurse review under the patient's notes (NurseReviewPanel), which replaced
+ * the "Post-consultation nursing" block in the Care plan tab (2026-11-06): the
+ * four review items with a one-line record each, nothing else on screen. The
+ * handoff record and its checkout gate are unchanged.
+ */
+import { mountAndFlush, setValue, clickAsync, type Mounted } from '../components/clinical-notes/test-utils';
 import type { EncounterDoc } from '@/lib/db-types';
 import { newPostConsultHandoff } from '@/modules/post-consult';
 
@@ -10,65 +16,67 @@ let mounted: Mounted;
 const mockSave = jest.fn();
 jest.mock('@/lib/hooks/useDataScope', () => ({ useDataScope: () => mockScope }));
 jest.mock('@/lib/context', () => ({ useAuth: () => ({ currentUser: mockUser }) }));
-jest.mock('@/lib/hooks/useUsers', () => ({ useUsers: () => ({ users: [mockUser, { _id: 'replacement', name: 'Nurse Sara', role: 'nurse', isActive: true }] }) }));
+jest.mock('@/lib/hooks/useUsers', () => ({ useUsers: () => ({ users: [mockUser, { _id: 'other', name: 'Nurse Sara', role: 'nurse', isActive: true }] }) }));
 jest.mock('@/lib/i18n/useTranslation', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 jest.mock('@/modules/post-consult/services/plan-service', () => ({ currentPlanRevision: async () => mockPlan }));
 jest.mock('@/modules/post-consult/services/handoff-service', () => ({
-  getHandoffQueue: async () => [mockEncounter], getHandoffEncounter: async () => mockEncounter,
-  updateHandoff: (...args: unknown[]) => mockSave(...args), ensurePostConsultHandoff: jest.fn(),
+  getHandoffQueue: async () => [mockEncounter],
+  updateHandoff: (...args: unknown[]) => mockSave(...args),
 }));
-import { PostConsultPanel } from '@/modules/post-consult/client';
+import { NurseReviewPanel } from '@/modules/post-consult/client';
 
 beforeEach(() => {
-  mockPlan = 'original'; mockSave.mockClear(); mockSave.mockImplementation(async () => mockEncounter);
+  mockPlan = 'original'; mockSave.mockClear();
+  let rev = 1;
+  mockSave.mockImplementation(async () => ({ ...mockEncounter, _rev: `${++rev}-x` }));
   mockEncounter = { _id: 'visit', _rev: '1-a', type: 'clinical_encounter', patientId: 'patient', patientName: 'Synthetic Patient', status: 'ready_for_clinic_checkout',
-    postConsult: { ...newPostConsultHandoff(), ownerId: 'nurse', acceptedAt: new Date().toISOString(), reviewedPlan: 'original' } } as EncounterDoc;
+    postConsult: { ...newPostConsultHandoff(), reviewedPlan: 'original' } } as EncounterDoc;
 });
 afterEach(() => mounted?.unmount());
-function button(name: string) {
-  return Array.from(mounted.container.querySelectorAll('button')).find(el => el.textContent === name)!;
-}
+const buttons = (name: string) => Array.from(mounted.container.querySelectorAll('button')).filter(el => el.textContent === name);
 
-test('does not render an empty nursing panel', async () => {
+test('renders nothing when the patient has no nurse review', async () => {
   delete mockEncounter.postConsult;
-  mounted = await mountAndFlush(<PostConsultPanel />);
-  expect(mounted.container.querySelector('.ehr-post-consult')).toBeNull();
+  mounted = await mountAndFlush(<NurseReviewPanel patientId="patient" />);
+  expect(mounted.container.querySelector('.ehr-nurse-review')).toBeNull();
 });
 
-test('the patient care plan excludes other patients handoffs', async () => {
-  mounted = await mountAndFlush(<PostConsultPanel patientId="another-patient" embedded />);
-  expect(mounted.container.querySelector('.ehr-post-consult')).toBeNull();
+test("shows only this patient's review", async () => {
+  mounted = await mountAndFlush(<NurseReviewPanel patientId="another-patient" />);
+  expect(mounted.container.querySelector('.ehr-nurse-review')).toBeNull();
 });
 
-test('the patient care plan contains its handoff without a separate card frame', async () => {
-  mounted = await mountAndFlush(<PostConsultPanel patientId="patient" embedded />);
-  expect(mounted.container.textContent).toContain('Synthetic Patient');
-  expect(mounted.container.querySelector<HTMLElement>('.ehr-post-consult')!.style.border).toBe('');
+test('lists the four review items and none of the old handoff controls', async () => {
+  mounted = await mountAndFlush(<NurseReviewPanel patientId="patient" />);
+  const text = mounted.container.textContent || '';
+  for (const kind of ['education', 'treatments', 'investigations', 'followup']) expect(text).toContain(`postConsult.task.${kind}`);
+  expect(text).not.toContain('postConsult.transfer');
+  expect(text).not.toContain('postConsult.accept');
+  expect(text).not.toContain('postConsult.link.');
 });
 
-test('shows staff names and requires a recipient and reason for transfer', async () => {
-  mounted = await mountAndFlush(<PostConsultPanel />);
-  expect(mounted.container.textContent).toContain('Nurse Mary');
-  const transfer = button('postConsult.transfer');
-  expect(transfer.disabled).toBe(true);
-  setSelect(mounted.container.querySelector<HTMLSelectElement>('.ehr-post-consult-transfer select')!, 'replacement');
-  setValue(mounted.container.querySelector<HTMLTextAreaElement>('.ehr-post-consult-transfer textarea')!, 'Shift change');
-  await clickAsync(transfer);
-  expect(mockSave).toHaveBeenCalledWith('visit', '1-a', { type: 'transfer', ownerId: 'replacement', reason: 'Shift change' }, mockScope);
+test('the first review takes the handoff, then records the item', async () => {
+  mounted = await mountAndFlush(<NurseReviewPanel patientId="patient" />);
+  setValue(mounted.container.querySelector<HTMLInputElement>('.ehr-nurse-review-entry input')!, 'Explained doses to the mother');
+  await clickAsync(buttons('postConsult.markReviewed')[0]);
+  expect(mockSave).toHaveBeenNthCalledWith(1, 'visit', '1-a', { type: 'accept' }, mockScope);
+  expect(mockSave).toHaveBeenNthCalledWith(2, 'visit', '2-x', { type: 'task', kind: 'education', status: 'done', note: 'Explained doses to the mother' }, mockScope);
 });
 
-test('changed plan shows re-review action and hides task attestation inputs', async () => {
+test("another nurse's review is read-only here", async () => {
+  mockEncounter.postConsult = { ...mockEncounter.postConsult!, ownerId: 'other', acceptedAt: new Date().toISOString() };
+  mounted = await mountAndFlush(<NurseReviewPanel patientId="patient" />);
+  expect(mounted.container.textContent).toContain('Nurse Sara');
+  expect(buttons('postConsult.markReviewed')).toHaveLength(0);
+});
+
+test('a changed plan asks for a fresh review instead of recording', async () => {
+  mockEncounter.postConsult = { ...mockEncounter.postConsult!, ownerId: 'nurse', acceptedAt: new Date().toISOString() };
+  mockEncounter.postConsult.tasks[0] = { ...mockEncounter.postConsult.tasks[0], status: 'done', note: 'x', recordedBy: 'nurse', recordedAt: new Date().toISOString() };
   mockPlan = 'changed';
-  mounted = await mountAndFlush(<PostConsultPanel />);
-  expect(mounted.container.textContent).toContain('postConsult.changedHelp');
-  expect(mounted.container.textContent).not.toContain('postConsult.evidence');
-  await clickAsync(button('postConsult.reopen'));
+  mounted = await mountAndFlush(<NurseReviewPanel patientId="patient" />);
+  expect(mounted.container.textContent).toContain('postConsult.changed');
+  expect(buttons('postConsult.markReviewed')).toHaveLength(0);
+  await clickAsync(buttons('postConsult.reopen')[0]);
   expect(mockSave).toHaveBeenCalledWith('visit', '1-a', { type: 'reopen', reason: 'postConsult.changed' }, mockScope);
-});
-
-test('a transferred handoff requires acceptance before recording outcomes', async () => {
-  mockEncounter.postConsult!.acceptedAt = undefined;
-  mounted = await mountAndFlush(<PostConsultPanel />);
-  expect(button('postConsult.accept').disabled).toBe(false);
-  expect(mounted.container.textContent).not.toContain('postConsult.evidence');
 });
