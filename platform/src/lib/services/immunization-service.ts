@@ -7,6 +7,7 @@ import { filterByScope } from './data-scope';
 import { findByType } from './db-query';
 import { logAuditSafe } from './audit-service';
 import { resolveRegisterOrgId } from './register-org';
+import { nextScheduledDose, dueDateFromBirth } from '../data/epi-schedule';
 
 /**
  * The EPI antigens this deployment records. One list, exported: coverage
@@ -77,6 +78,40 @@ export async function createImmunization(data: Omit<ImmunizationDoc, '_id' | '_r
     orgId: doc.orgId,
     hospitalId: doc.facilityId,
   });
+  // Completing a dose schedules the next dose in the same antigen series, so a
+  // child who misses it becomes a visible defaulter (getDefaulters finds a
+  // scheduled dose past its due date). Only 'completed' doses trigger this, so
+  // the scheduled dose we create below never recurses (security/data audit
+  // 2026-11-05, §2.1 #13). Best-effort: a scheduling failure must not fail the
+  // dose that was actually given.
+  if (doc.status === 'completed' && doc.recordStatus !== 'entered_in_error') {
+    try {
+      const next = nextScheduledDose(doc.vaccine, doc.doseNumber);
+      if (next) {
+        const siblings = await getByPatient(doc.patientId, scope);
+        const alreadyOnFile = siblings.some(r =>
+          r.vaccine === doc.vaccine && r.doseNumber === next.dose && r.recordStatus !== 'entered_in_error');
+        if (!alreadyOnFile) {
+          await createImmunization({
+            ...data,
+            doseNumber: next.dose,
+            status: 'scheduled',
+            dateGiven: '',
+            nextDueDate: dueDateFromBirth(doc.dateOfBirth, next),
+            batchNumber: '',
+            administeredBy: '',
+            adverseReaction: false,
+            adverseReactionDetails: undefined,
+            encounterId: undefined,
+            noteId: undefined,
+          }, scope);
+        }
+      }
+    } catch {
+      // Non-fatal: the given dose is recorded; the follow-up schedule can be
+      // regenerated on the next completed dose or added manually.
+    }
+  }
   return doc;
 }
 
