@@ -16,7 +16,8 @@ interface LockScreenProps {
    * makes offering PIN *creation* safe here: the person at the keyboard just
    * proved who they are. The security rule this component documents is about
    * the UNauthenticated lock overlay, not about PIN setup as such. The bottom
-   * button becomes "Skip for now" (`onDismiss`) instead of "Switch User".
+   * bottom button remains "Switch User" unless an explicitly dismissible
+   * setup flow supplies `onDismiss`.
    */
   variant?: 'lock' | 'setup';
   /** Whether this device can hash a PIN at all right now (useAutoLock's
@@ -80,14 +81,6 @@ export function canOfferPinSetup(hasPin: boolean, pinSupported: boolean, allowSe
   return !hasPin && pinSupported && allowSetup;
 }
 
-/** localStorage flag: the user saw the first-run PIN prompt and skipped it.
- *  Scoped to this user on this device, like the PIN itself — survives logout
- *  on purpose so that same user is not re-nagged; setting a PIN makes it moot. */
-export const PIN_SETUP_DISMISSED_KEY = 'tamamhealth-pin-setup-dismissed';
-export const pinSetupDismissedKey = (userId?: string) => userId
-  ? `${PIN_SETUP_DISMISSED_KEY}.${userId}`
-  : PIN_SETUP_DISMISSED_KEY;
-
 /**
  * Whether to show the authenticated first-run PIN prompt (the 'setup' variant)
  * after sign-in.
@@ -109,11 +102,10 @@ export function shouldPromptPinSetup(opts: {
   lockEnabled: boolean;
   hasPin: boolean;
   pinSupported: boolean;
-  dismissed: boolean;
   lockOverlayOffersSetup: boolean;
 }): boolean {
   return opts.isAuthenticated && !opts.isLocked && opts.lockEnabled
-    && opts.pinSupported && !opts.hasPin && !opts.dismissed && !opts.lockOverlayOffersSetup;
+    && opts.pinSupported && !opts.hasPin && !opts.lockOverlayOffersSetup;
 }
 
 export default function LockScreen({ userName, hasPin, variant = 'lock', pinSupported = true, allowSetup = false, onVerifyPin, onSetPin, onUnlock, onLogout, onDismiss }: LockScreenProps) {
@@ -309,13 +301,14 @@ export default function LockScreen({ userName, hasPin, variant = 'lock', pinSupp
           </div>
         </div>
 
-        {/* Locked: switch user (full re-auth). Setup prompt: skip without a PIN. */}
+        {/* A required setup can only switch users. Optional setup callers may
+            provide onDismiss and get the explicit skip action instead. */}
         <button
           onClick={variant === 'setup' ? (onDismiss ?? onLogout) : onLogout}
           className="flex items-center gap-2 text-xs font-bold mt-1 px-4 py-2.5 rounded-lg transition-colors"
           style={{ color: 'var(--text-muted)', background: 'var(--overlay-subtle)' }}
         >
-          {variant === 'setup' ? t('lock.skipForNow') : (
+          {variant === 'setup' && onDismiss ? t('lock.skipForNow') : (
             <>
               <LogOut className="w-3.5 h-3.5" />
               {t('auth.switchUser')}

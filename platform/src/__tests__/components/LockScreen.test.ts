@@ -55,7 +55,6 @@ describe('shouldPromptPinSetup', () => {
     lockEnabled: true,
     hasPin: false,
     pinSupported: true,
-    dismissed: false,
     lockOverlayOffersSetup: false,
   };
 
@@ -83,11 +82,14 @@ describe('shouldPromptPinSetup', () => {
     expect(shouldPromptPinSetup({ ...base, pinSupported: false })).toBe(false);
   });
 
-  it('respects an earlier "Skip for now" on this device', () => {
-    expect(shouldPromptPinSetup({ ...base, dismissed: true })).toBe(false);
-  });
-
   it('stays out of demo/dev, where the lock overlay offers first-lock setup itself', () => {
     expect(shouldPromptPinSetup({ ...base, lockOverlayOffersSetup: true })).toBe(false);
+  });
+
+  it('cannot be dismissed while the session will still auto-lock', () => {
+    // A dismissible prompt followed by an inevitable lock produced a screen
+    // with no PIN controls. Required setup is the safe path: create the PIN
+    // while authenticated, or switch users.
+    expect(shouldPromptPinSetup(base)).toBe(true);
   });
 });
