@@ -39,7 +39,7 @@ import { getRoleConfig } from '@/lib/permissions';
 import EhrCareDashboard, { type EhrCareDashboardAction, type EhrCareDashboardMetric, type EhrCareDashboardRow } from '@/components/ehr/EhrCareDashboard';
 import { hasUnsyncedWrite } from '@/lib/sync/offline-metadata';
 import { type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
-import { toIsoDate } from '@/lib/date-utils';
+import { jubaDate } from '@/lib/time-juba';
 import {
   ClipboardCheck,
   UserPlus,
@@ -217,12 +217,11 @@ export default function FrontDeskDashboardPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // LOCAL calendar day, same helper the mini-calendar's "today" ring uses.
-  // This was a UTC slice (`toISOString().slice(0, 10)`), which rolls to
-  // tomorrow during the evening (Juba is UTC+2) — so the board's "today"
-  // disagreed with the calendar's, clicking back onto today never matched,
-  // and the live queue vanished after ~21:00.
-  const today = toIsoDate(new Date());
+  // The CLINICAL day (Africa/Juba), the same clock check-in stamps a walk-in's
+  // booking with (check-in-service uses jubaDate()). A device-local day here
+  // let a machine outside Juba see "Nov 5" while the walk-in's booking was
+  // dated "Nov 6", so the queue row found no booking. Never a UTC slice.
+  const today = jubaDate();
   // The day the board is showing. The mini-calendar drives it; today by
   // default. The LIVE parts of the board (triage queue, checkout encounters,
   // walk-ins physically in the building) only exist for today — another day
@@ -364,7 +363,7 @@ export default function FrontDeskDashboardPage() {
   // ── Real today's triages (pending/seen = still in queue) ──
   const todaysTriages = useMemo(() =>
     triages
-      .filter(t => (t.triagedAt || '').startsWith(today))
+      .filter(t => isoDateKey(t.triagedAt) === today)
       .sort((a, b) => {
         const pOrder: Record<string, number> = { RED: 0, YELLOW: 1, GREEN: 2 };
         return (pOrder[a.priority] ?? 3) - (pOrder[b.priority] ?? 3);
@@ -927,14 +926,20 @@ export default function FrontDeskDashboardPage() {
   // already reported the change — the two writes are one action to the clerk.
   const handleWalkInStatusChange = useCallback(async (triage: TriageDoc, status: AppointmentStatus, silent = false) => {
     try {
+      // 'completed' closes the visit and is only ever set through the
+      // checkout gate (handleCompleteCheckout) — never by a bare status write.
+      if (status === 'completed') {
+        setCheckoutTarget({ patientId: triage.patientId, patientName: triage.patientName,
+          encounterId: triage.encounterId, triageId: triage._id });
+        return;
+      }
       const patch: Partial<TriageDoc> = { visitStatus: status };
-      if (status === 'completed') patch.status = 'discharged';
       await updateTriage(triage._id, patch);
       if (!silent) showToast(t('msg.statusChangedTo', { patientName: triage.patientName, value: statusWord(t, status) }), 'success');
     } catch (err) {
       showToast(describeError(err, t('msg.statusNotChangedTryAgain')), 'error');
     }
-  }, [updateTriage, showToast, t]);
+  }, [updateTriage, showToast, t, setCheckoutTarget]);
 
   // ── Set any rung on the ladder straight from the row's status dropdown.
   //    Checking in, no-show and cancelling keep their own dialogs: those do
@@ -950,7 +955,8 @@ export default function FrontDeskDashboardPage() {
     mirrorTriage?: TriageDoc,
   ) => {
     if (status === 'completed') {
-      const encounter = encounters.find(enc => enc.appointmentId === appt._id);
+      const encounter = encounters.find(enc => enc.appointmentId === appt._id)
+        ?? (mirrorTriage?.encounterId ? encounters.find(enc => enc._id === mirrorTriage.encounterId) : undefined);
       setCheckoutTarget({ patientId: appt.patientId, patientName: appt.patientName,
         appointmentId: appt._id, encounterId: encounter?._id, triageId: mirrorTriage?._id });
       return;
@@ -1432,6 +1438,19 @@ export default function FrontDeskDashboardPage() {
           ? async (value: string) => {
               const next = value as AppointmentStatus;
               if (queueAppointment) await handleAppointmentStatusChange(queueAppointment, next, queueTriage);
+              else if (next === 'completed') {
+                // Completed always goes through the checkout gate, booking or
+                // not — a queue row with no matching booking used to fall
+                // through to the plain status slider and discharge the triage
+                // with no balance / critical-item / disposition check.
+                setCheckoutTarget({
+                  patientId: entry.patientId,
+                  patientName: entry.patientName,
+                  hospitalNumber: patient?.hospitalNumber,
+                  encounterId: entry.encounterId,
+                  triageId: queueTriage?._id,
+                });
+              }
               else if (queueTriage) setStatusTarget({ triage: queueTriage, status: next });
             }
           : undefined,
