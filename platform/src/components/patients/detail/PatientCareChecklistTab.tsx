@@ -10,9 +10,12 @@ export default function PatientCareChecklistTab({ t, patient, focusId }: {
   return (
             <div className="space-y-4">
               {/* The rail calls this section "Care plan"; without a page title
-                  it opened under whichever panel came first ("Screenings"). */}
-              <div className="tebra-facesheet">
-                <div className="tebra-section-title"><h1>{t('chart.carePlanTitle')}</h1></div>
+                  it opened under whichever panel came first ("Screenings").
+                  Styled to match the other chart tab titles (Patient summary). */}
+              <div className="tebra-section-title">
+                <div className="tamam-section-title-wrap">
+                  <h3 className="tamam-section-title">{t('chart.carePlanTitle')}</h3>
+                </div>
               </div>
               <PostConsultPanel key={patient._id} patientId={patient._id} embedded />
               <ScreeningsPanel patient={patient} />
