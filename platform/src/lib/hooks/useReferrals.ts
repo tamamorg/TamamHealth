@@ -56,27 +56,31 @@ export function useReferrals() {
     return referral;
   }, [loadReferrals]);
 
+  // These service calls return null when the write is refused (e.g. the sync
+  // validator rejects the role, or the doc is missing). Throwing lets the
+  // page's try/catch show the failure toast instead of a false "Declined" /
+  // "Accepted" / "Completed" success (security/data audit 2026-11-05, §2.3).
   const updateStatus = useCallback(async (id: string, status: 'sent' | 'received' | 'seen' | 'completed' | 'cancelled') => {
     const { updateReferralStatus } = await import('../services/referral-service');
-    await updateReferralStatus(id, status);
+    if (!(await updateReferralStatus(id, status))) throw new Error('Referral status not updated');
     await loadReferrals();
   }, [loadReferrals]);
 
   const accept = useCallback(async (id: string) => {
     const { acceptReferral } = await import('../services/referral-service');
-    await acceptReferral(id);
+    if (!(await acceptReferral(id))) throw new Error('Referral not accepted');
     await loadReferrals();
   }, [loadReferrals]);
 
   const updateNotes = useCallback(async (id: string, notes: string) => {
     const { updateReferralNotes } = await import('../services/referral-service');
-    await updateReferralNotes(id, notes);
+    if (!(await updateReferralNotes(id, notes))) throw new Error('Referral note not saved');
     await loadReferrals();
   }, [loadReferrals]);
 
   const completeWithOutcome = useCallback(async (id: string, outcome: ReferralOutcome) => {
     const { completeReferralWithOutcome } = await import('../services/referral-service');
-    await completeReferralWithOutcome(id, outcome);
+    if (!(await completeReferralWithOutcome(id, outcome))) throw new Error('Referral not completed');
     await loadReferrals();
   }, [loadReferrals]);
 
