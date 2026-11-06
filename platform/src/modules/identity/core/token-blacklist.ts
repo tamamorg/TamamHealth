@@ -222,7 +222,13 @@ async function upstashIsRevoked(token: string): Promise<boolean> {
  */
 export async function revokeToken(token: string): Promise<void> {
   if (!token) return;
-  const expSec = readExpFromJwt(token);
+  // Clamp the stored lifetime to at most one session TTL. A legitimately issued
+  // token's `exp` is always within one TTL of now, so this is a no-op for real
+  // logouts; it caps a forged `exp` (e.g. the year 9999) that would otherwise
+  // create an entry the sweeper never evicts and the Upstash TTL keeps for
+  // centuries. Defence in depth behind the verify check at the logout route.
+  const maxExpSec = Math.floor(Date.now() / 1000) + SESSION_TTL_SEC;
+  const expSec = Math.min(readExpFromJwt(token), maxExpSec);
 
   if (getUpstashConfig()) {
     try {
