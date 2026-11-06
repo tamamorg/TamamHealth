@@ -70,6 +70,26 @@ describe('triage allergies reach the patient document', () => {
     expect(patient.allergies).toEqual(['Penicillin', 'Latex']);
   });
 
+  it('records the triage allergen as a STRUCTURED entry, visible to the prescribing/dispensing safety reader', async () => {
+    // The bug: once a patient has any structured allergy, getActiveAllergies
+    // (which assessPrescriptionSafety and the pharmacist review read) ignores
+    // the legacy mirror — so a triage allergen written only to `allergies` was
+    // invisible. Triage must now fold it into structuredAllergies.
+    await putDoc(patientsDB(), {
+      ...(await patientsDB().get('pat-nyibol') as PatientDoc),
+      structuredAllergies: [{ id: 'a-existing', substance: 'Aspirin', criticality: 'unknown', status: 'active', recordedAt: new Date().toISOString() }],
+      allergies: ['Aspirin'],
+      noKnownDrugAllergies: false,
+    } as never);
+
+    await createTriage(triagePayload({ knownAllergies: 'Penicillin' }), { scope: TEST_SCOPE });
+
+    const { getActiveAllergies } = await import('@/lib/services/allergy-service');
+    const names = (await getActiveAllergies('pat-nyibol', TEST_SCOPE)).map((a) => a.substance);
+    expect(names).toContain('Aspirin');    // existing structured entry kept
+    expect(names).toContain('Penicillin');  // triage allergen now structured + visible to the reader
+  });
+
   it('a triage save without allergies leaves the patient document untouched', async () => {
     const before = await patientsDB().get('pat-nyibol') as PatientDoc;
     await createTriage(triagePayload(), { scope: TEST_SCOPE });

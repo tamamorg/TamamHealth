@@ -52,6 +52,37 @@ export function migrateLegacyAllergies(patient: PatientDoc): AllergyEntry[] | nu
   return legacyToStructured(patient);
 }
 
+/**
+ * Fold a set of active substance NAMES (e.g. the free text captured at triage)
+ * into the patient's structured allergy list, so they become first-class
+ * entries the prescribing / dispensing allergy checks read — not just the
+ * legacy `allergies` mirror, which those checks ignore once any structured
+ * entry exists. Preserves existing structured entries and migrates a
+ * legacy-only list first. Pure: returns the updated structured list and its
+ * active-name mirror for the caller to persist, or null when nothing is new.
+ */
+export function reconcileStructuredAllergens(
+  patient: PatientDoc,
+  activeNames: readonly string[],
+): { structuredAllergies: AllergyEntry[]; allergies: string[] } | null {
+  const existing = patient.structuredAllergies ?? legacyToStructured(patient);
+  const known = new Set(existing.map((e) => e.substance.trim().toLowerCase()));
+  const now = new Date().toISOString();
+  const additions: AllergyEntry[] = activeNames
+    .filter((name) => name && name.trim() && !isNoAllergySentinel(name) && !known.has(name.trim().toLowerCase()))
+    .map((substance) => ({
+      id: uuidv4(),
+      substance: substance.trim(),
+      classification: undefined,
+      criticality: 'unknown' as const,
+      status: 'active' as const,
+      recordedAt: now,
+    }));
+  if (additions.length === 0) return null;
+  const structuredAllergies = [...existing, ...additions];
+  return { structuredAllergies, allergies: activeSubstanceNames(structuredAllergies) };
+}
+
 /** All structured allergy entries for a patient (active + inactive). */
 export async function getAllergies(patientId: string, scope: DataScope): Promise<AllergyEntry[]> {
   const patient = await getPatientById(patientId, scope);
