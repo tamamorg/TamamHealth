@@ -5,11 +5,12 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { getDefaultDashboard } from '@/lib/permissions';
 import type { UserRole } from '@/lib/db-types';
-import TourCard from '@/components/tour/TourCard';
+import TourCard, { TourClickHint } from '@/components/tour/TourCard';
 import { buildGenericTour } from './generic-steps';
 import { journeyTourForRole } from './journey-tours';
 import { hasSeenTour, markTourSeen } from './tour-storage';
 import { hasBlockingDialog } from './tour-dom';
+import { CLICK_PAUSE_MS, SCROLL_SETTLE_MS, SETTLE_MS, MODULE_TRIGGER, clickLabel, closeStrayDialog, findMenuGroup, findNavControl, isShown } from './tour-show';
 import type { TourDefinition } from './types';
 
 // Journey tours (one per role, derived from docs/USER-JOURNEYS.md) take
@@ -46,11 +47,31 @@ function isDynamicRoute(route: string): boolean {
  * `/patients` or `/patients/pat-1/labs`.
  */
 function routeMatches(pathname: string, route: string): boolean {
+  // A step may name a view of a page (`/epidemic-intelligence?tab=curves`):
+  // the path decides whether we are on the page; the query is checked where
+  // the tour navigates (queryMatches), since usePathname never carries it.
+  route = routePath(route);
   if (!isDynamicRoute(route)) return pathname === route;
   const a = pathname.split('/').filter(Boolean);
   const b = route.split('/').filter(Boolean);
   if (a.length !== b.length) return false;
   return b.every((seg, i) => (seg.startsWith('[') && seg.endsWith(']') ? a[i].length > 0 : seg === a[i]));
+}
+
+/** A step route without its query string. */
+function routePath(route: string): string {
+  const q = route.indexOf('?');
+  return q === -1 ? route : route.slice(0, q);
+}
+
+/** Whether the address bar already carries every query param the step names. */
+function queryMatches(route: string): boolean {
+  const q = route.indexOf('?');
+  if (q === -1 || typeof window === 'undefined') return true;
+  const want = new URLSearchParams(route.slice(q + 1));
+  const have = new URLSearchParams(window.location.search);
+  for (const [k, v] of want) if (have.get(k) !== v) return false;
+  return true;
 }
 
 export function TourProvider({ children }: { children: React.ReactNode }) {
@@ -72,8 +93,80 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
 
   const step = active ? steps[stepIndex] : undefined;
 
+  // ── Show, don't move ──
+  // While the tour clicks something on the user's behalf, the card steps
+  // aside and a pointer rests on the control with its name ("Click
+  // “Patients”") before the click lands. `demo` is that pointer; `runRef`
+  // cancels a running sequence when the tour moves on or ends.
+  const [demo, setDemo] = useState<{ rect: DOMRect; label: string } | null>(null);
+  const runRef = useRef(0);
+  const busyRef = useRef(false);
+  // Set while next() is clicking its way to the next page. The route effect
+  // must not push the CURRENT step's route back in that window: it saw the
+  // new pathname before setStepIndex landed and bounced the user back and
+  // forth (code review, 2026-11-05).
+  const navigatingRef = useRef(false);
+  const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+  const showClick = useCallback(async (el: HTMLElement, run: number): Promise<boolean> => {
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    await wait(SCROLL_SETTLE_MS);
+    if (runRef.current !== run || !el.isConnected) return false;
+    const label = clickLabel(el);
+    setDemo({ rect: el.getBoundingClientRect(), label });
+    // Follow the control if the page shifts under it during the pause.
+    for (let waited = 0; waited < CLICK_PAUSE_MS; waited += 250) {
+      await wait(Math.min(250, CLICK_PAUSE_MS - waited));
+      if (runRef.current !== run || !el.isConnected) break;
+      setDemo({ rect: el.getBoundingClientRect(), label });
+    }
+    if (runRef.current !== run || !el.isConnected) { setDemo(null); return false; }
+    el.click();
+    // Keep the ring on the control for a beat after the click, so the page
+    // change reads as caused by it.
+    await wait(SETTLE_MS);
+    setDemo(null);
+    return runRef.current === run;
+  }, []);
+  const waitFor = useCallback(async <T,>(find: () => T | null, ms: number, run: number): Promise<T | null> => {
+    const until = Date.now() + ms;
+    while (Date.now() < until) {
+      if (runRef.current !== run) return null;
+      const found = find();
+      if (found) return found;
+      await wait(100);
+    }
+    return null;
+  }, []);
+  // Reach a page the way a user would: its link or top-bar shortcut if one
+  // is on screen, else through the ☰ menu (and the group that holds it).
+  // False when no control leads there; the route effect then pushes.
+  const navigateVisibly = useCallback(async (route: string, run: number): Promise<boolean> => {
+    const path = routePath(route);
+    let control = findNavControl(path);
+    if (!control) {
+      const trigger = document.querySelector<HTMLElement>(MODULE_TRIGGER);
+      if (!isShown(trigger)) return false;
+      if (trigger.getAttribute('aria-expanded') !== 'true' && !(await showClick(trigger, run))) return false;
+      control = await waitFor(() => findNavControl(path), 700, run);
+      if (!control) {
+        const group = await waitFor(() => findMenuGroup(path), 500, run);
+        if (group && await showClick(group, run)) control = await waitFor(() => findNavControl(path), 700, run);
+      }
+      if (!control) {
+        // Nothing in the menu leads there; close it again before the push.
+        if (trigger.getAttribute('aria-expanded') === 'true') trigger.click();
+        return false;
+      }
+    }
+    return showClick(control, run);
+  }, [showClick, waitFor]);
+
   const stop = useCallback(() => {
     pendingRouteStepRef.current = null;
+    navigatingRef.current = false;
+    runRef.current += 1;
+    busyRef.current = false;
+    setDemo(null);
     setActive(false);
     setRect(null);
   }, []);
@@ -85,10 +178,6 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
 
   const start = useCallback(() => {
     if (!tour) return;
-    // The Get Started onboarding overlay covers the home dashboard for new
-    // users — exactly when the tour auto-launches. Ask it to collapse to its
-    // pill so the tour can actually point at the page underneath.
-    window.dispatchEvent(new CustomEvent('tamam:tour-started'));
     pendingRouteStepRef.current = null;
     setStepIndex(0);
     setRect(null);
@@ -125,8 +214,9 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   // tour, which is most of what a clinician's day actually is.
   useEffect(() => {
     if (!active || !step) return;
+    if (navigatingRef.current) return;
     if (isDynamicRoute(step.route)) return;
-    if (pathname === step.route) return;
+    if (pathname === routePath(step.route) && queryMatches(step.route)) return;
 
     const pending = pendingRouteStepRef.current;
     if (
@@ -165,28 +255,24 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     let clickedPreStep = false;
     const startedAt = Date.now();
 
+    // A click on the highlighted row can be the bridge into a dynamic record
+    // route (its id only exists once the row handles the click). That click
+    // is the NEXT step's way in, so it waits for Next (see `next`), where the
+    // user watches it happen; here the step just points at the row.
+    const nextStep = steps[stepIndex + 1];
+    const bridge = !!step.preClickSelector && step.preClickSelector === step.target
+      && !!nextStep && isDynamicRoute(nextStep.route);
+    const run = runRef.current;
+
     const tick = () => {
       if (cancelled) return;
-      if (step.preClickSelector && !clickedPreStep) {
+      if (step.preClickSelector && !clickedPreStep && !bridge) {
         const trigger = document.querySelector<HTMLElement>(step.preClickSelector);
-        if (trigger) {
-          const nextStep = steps[stepIndex + 1];
-          // A click on the highlighted row can be the bridge into a dynamic
-          // record route. The route cannot be pushed directly because its id
-          // only becomes known after the row handles the click.
-          if (
-            step.preClickSelector === step.target &&
-            nextStep &&
-            isDynamicRoute(nextStep.route)
-          ) {
-            pendingRouteStepRef.current = {
-              fromIndex: stepIndex,
-              toIndex: stepIndex + 1,
-              route: nextStep.route,
-            };
-          }
-          trigger.click();
+        if (isShown(trigger)) {
+          // A reveal click (a tab, a chip, a panel toggle): shown, then made.
           clickedPreStep = true;
+          void showClick(trigger, run).then(() => { if (!cancelled) setTimeout(tick, MEASURE_RETRY_MS); });
+          return;
         }
       }
       const el = document.querySelector<HTMLElement>(step.target);
@@ -211,7 +297,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
       cancelAnimationFrame(clearRectFrame);
     };
-  }, [active, step, stepIndex, steps, pathname]);
+  }, [active, step, stepIndex, steps, pathname, showClick]);
 
   // Keep the highlight glued to its target through scrolling/resizing.
   useEffect(() => {
@@ -228,18 +314,74 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, step, rect !== null]);
 
-  const next = useCallback(() => {
+  // Next shows how the user gets to the next step: the row that opens a
+  // record, or the link / ☰ menu entry for the next page, clicked in front of
+  // them. Back and the step list jump directly; that is a shortcut the user
+  // asked for, not a lesson.
+  const next = useCallback(async () => {
+    if (busyRef.current) return;
     if (stepIndex >= steps.length - 1) { finish(); return; }
-    pendingRouteStepRef.current = null;
-    setStepIndex(i => i + 1);
-  }, [stepIndex, steps.length, finish]);
+    const current = steps[stepIndex];
+    const upcoming = steps[stepIndex + 1];
+    const run = ++runRef.current;
+    busyRef.current = true;
+    try {
+      pendingRouteStepRef.current = null;
+      if (current.preClickSelector && current.preClickSelector === current.target && isDynamicRoute(upcoming.route)) {
+        const row = document.querySelector<HTMLElement>(current.target);
+        if (isShown(row)) {
+          pendingRouteStepRef.current = { fromIndex: stepIndex, toIndex: stepIndex + 1, route: upcoming.route };
+          const from = window.location.pathname;
+          if (await showClick(row, run)) {
+            // Already where the next step lives (a drawer opened on the same
+            // record): move straight on.
+            if (routeMatches(window.location.pathname, upcoming.route)) {
+              pendingRouteStepRef.current = null;
+              setStepIndex(stepIndex + 1);
+              return;
+            }
+            // The route effect advances once the record opens; if the row
+            // did not navigate, move on anyway rather than strand the tour.
+            await waitFor(() => (window.location.pathname !== from ? true : null), 3000, run);
+            if (runRef.current === run && window.location.pathname === from) {
+              pendingRouteStepRef.current = null;
+              setStepIndex(stepIndex + 1);
+            }
+          }
+          return;
+        }
+      }
+      // A popup this step opened (and the next step does not point into)
+      // closes first, or it would hide the tour on the steps after.
+      closeStrayDialog(upcoming.target || undefined);
+      if (!isDynamicRoute(upcoming.route) && window.location.pathname !== routePath(upcoming.route)) {
+        navigatingRef.current = true;
+        try {
+          await wait(150);
+          await navigateVisibly(upcoming.route, run);
+        } finally {
+          navigatingRef.current = false;
+        }
+      }
+      if (runRef.current === run) setStepIndex(stepIndex + 1);
+    } finally {
+      if (runRef.current === run) busyRef.current = false;
+      setDemo(null);
+    }
+  }, [stepIndex, steps, finish, showClick, waitFor, navigateVisibly]);
 
   const back = useCallback(() => {
+    runRef.current += 1;
+    busyRef.current = false;
+    setDemo(null);
     pendingRouteStepRef.current = null;
     setStepIndex(i => Math.max(0, i - 1));
   }, []);
 
   const jumpTo = useCallback((index: number) => {
+    runRef.current += 1;
+    busyRef.current = false;
+    setDemo(null);
     pendingRouteStepRef.current = null;
     setStepIndex(index);
   }, []);
@@ -257,12 +399,12 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     // an oscillation: render card -> detect "dialog" -> hide card -> detect no
     // dialog -> render card, forever. Only suspend for a dialog owned by the
     // application underneath the tour.
-    const check = () => setDialogOpen(hasBlockingDialog());
+    const check = () => setDialogOpen(hasBlockingDialog(document, step?.target || undefined));
     check();
     const observer = new MutationObserver(check);
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
-  }, [active]);
+  }, [active, step]);
 
   // Esc ends the tour, permanently — the same promise the ✕ makes. Every
   // dismissable surface in the product answers Esc; the one whose whole job
@@ -284,8 +426,11 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   return (
     <TourContext.Provider value={value}>
       {children}
-      {active && step && !dialogOpen && (
+      {active && demo && <TourClickHint rect={demo.rect} label={demo.label} />}
+      {active && step && !dialogOpen && !demo && (
         <TourCard
+          // Keyed per step so each new card fades in (globals.css .tour-card).
+          key={step.id}
           step={step}
           rect={rect}
           index={stepIndex}
@@ -293,7 +438,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
           stepTitles={steps.map(s => s.title)}
           onJumpTo={jumpTo}
           onBack={stepIndex > 0 ? back : undefined}
-          onNext={next}
+          onNext={() => { void next(); }}
           onSkip={finish}
           isLast={stepIndex === steps.length - 1}
         />

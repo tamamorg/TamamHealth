@@ -499,7 +499,14 @@ export async function assessPrescriptionSafety(
   patientId: string,
   medication: string,
   scope: DataScope,
-  order?: { dose?: string; frequency?: string },
+  order?: {
+    dose?: string;
+    frequency?: string;
+    /** The medication of an order this one replaces (the basket's Modify):
+     *  one occurrence is left out of "current", so the new order is not
+     *  warned as a duplicate of, or an interaction with, itself. */
+    replacing?: string;
+  },
 ): Promise<PrescriptionSafetyAssessment> {
   let interactionWarnings: InteractionCheckResult | null = null;
   let interactionCheckUnavailable = false;
@@ -514,6 +521,11 @@ export async function assessPrescriptionSafety(
   let currentError = false;
   try {
     current = await getCurrentMedicationNames(patientId, scope);
+    const replacing = order?.replacing?.trim().toLowerCase();
+    if (replacing && current) {
+      const at = current.findIndex(name => name.trim().toLowerCase() === replacing);
+      if (at !== -1) current = [...current.slice(0, at), ...current.slice(at + 1)];
+    }
   } catch {
     currentError = true;
   }
@@ -884,6 +896,26 @@ export async function createPrescription(
  * Fetch a single prescription by id, or null if absent. Used by the
  * `/api/prescriptions/[id]` route to enforce tenant scope before mutating.
  */
+/**
+ * Stop a prescription on a clinician's say-so: the one write behind every
+ * Discontinue (Medications, Orders, the order basket) and behind Modify,
+ * which stops the order it replaces. Null when the write fails.
+ */
+export async function discontinuePrescription(
+  id: string,
+  by: { id?: string; name?: string },
+  reason: string,
+): Promise<PrescriptionDoc | null> {
+  return updatePrescription(id, {
+    status: 'discontinued',
+    stoppedAt: new Date().toISOString(),
+    stoppedBy: by.id,
+    stoppedByName: by.name,
+    stoppedSource: 'clinician',
+    stoppedReason: reason,
+  });
+}
+
 export async function getPrescriptionById(id: string): Promise<PrescriptionDoc | null> {
   try {
     return await prescriptionsDB().get(id) as PrescriptionDoc;

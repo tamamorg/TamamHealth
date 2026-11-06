@@ -18,6 +18,7 @@ import { toIsoDate, todayIso } from '@/lib/date-utils';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import FormSlider from '@/components/overlay/FormSlider';
 
+import type { DeathRegistrationDoc } from '@/lib/db-types';
 import { Plus, Search, UserCheck, ExternalLink, Printer } from '@/components/icons/lucide';
 import PrintListDialog from '@/components/PrintListDialog';
 import { DeathRecordSlider } from '@/components/vital-events/VitalRecordSliders';
@@ -45,10 +46,22 @@ function ICD11Select({ value, onChange, label }: { value: string; onChange: (v: 
   );
 }
 
+const blankForm = () => ({
+    deceasedFirstName: '', deceasedSurname: '', deceasedGender: 'Male' as 'Male' | 'Female',
+    dateOfBirth: '', dateOfDeath: todayIso(), ageAtDeath: 0,
+    placeOfDeath: '', facilityId: '', facilityName: '',
+    immediateCause: '', immediateICD11: '', antecedentCause1: '', antecedentICD11_1: '',
+    antecedentCause2: '', antecedentICD11_2: '', underlyingCause: '', underlyingICD11: '',
+    contributingConditions: '', contributingICD11: '',
+    mannerOfDeath: 'natural' as DeathRegistrationDoc['mannerOfDeath'], maternalDeath: false, pregnancyRelated: false,
+    certifiedBy: '', certifierRole: '', state: '', county: '', certificateNumber: '',
+    deathNotified: true, deathRegistered: false,
+});
+
 export default function DeathsPage() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { deaths, register } = useDeaths();
+  const { deaths, register, correct } = useDeaths();
   const { hospitals } = useHospitals();
   const { patients } = usePatients();
   const { currentUser } = useAuth();
@@ -64,22 +77,14 @@ export default function DeathsPage() {
   const [showForm, setShowForm] = useState(false);
   const [selectedDeathId, setSelectedDeathId] = useState<string | null>(null);
   const [printOpen, setPrintOpen] = useState(false);
+  // Set while the form is correcting a registered death instead of registering one.
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [patientLookup, setPatientLookup] = useState('');
   const [linkedPatientId, setLinkedPatientId] = useState<string | undefined>(undefined);
   // The visit this death closes, when registering from an open encounter
   // (?patientId=&encounterId=) — e.g. the ward or consultation flow.
   const [encounterId, setEncounterId] = useState<string | undefined>(undefined);
-  const [form, setForm] = useState({
-    deceasedFirstName: '', deceasedSurname: '', deceasedGender: 'Male' as 'Male' | 'Female',
-    dateOfBirth: '', dateOfDeath: todayIso(), ageAtDeath: 0,
-    placeOfDeath: '', facilityId: '', facilityName: '',
-    immediateCause: '', immediateICD11: '', antecedentCause1: '', antecedentICD11_1: '',
-    antecedentCause2: '', antecedentICD11_2: '', underlyingCause: '', underlyingICD11: '',
-    contributingConditions: '', contributingICD11: '',
-    mannerOfDeath: 'natural' as const, maternalDeath: false, pregnancyRelated: false,
-    certifiedBy: '', certifierRole: '', state: '', county: '', certificateNumber: '',
-    deathNotified: true, deathRegistered: false,
-  });
+  const [form, setForm] = useState(blankForm);
 
   const patientMatches = useMemo(() => {
     if (!patientLookup || patientLookup.length < 2) return [];
@@ -190,9 +195,59 @@ export default function DeathsPage() {
   ];
   const deathColTotal = deathCols.reduce((sum, c) => sum + c.width, 0);
 
+  const startCorrection = (d: DeathRegistrationDoc) => {
+    setForm({
+      deceasedFirstName: d.deceasedFirstName || '', deceasedSurname: d.deceasedSurname || '', deceasedGender: d.deceasedGender,
+      dateOfBirth: d.dateOfBirth || '', dateOfDeath: d.dateOfDeath || todayIso(), ageAtDeath: d.ageAtDeath ?? 0,
+      placeOfDeath: d.placeOfDeath || '', facilityId: d.facilityId || '', facilityName: d.facilityName || '',
+      immediateCause: d.immediateCause || '', immediateICD11: d.immediateICD11 || '',
+      antecedentCause1: d.antecedentCause1 || '', antecedentICD11_1: d.antecedentICD11_1 || '',
+      antecedentCause2: d.antecedentCause2 || '', antecedentICD11_2: d.antecedentICD11_2 || '',
+      underlyingCause: d.underlyingCause || '', underlyingICD11: d.underlyingICD11 || '',
+      contributingConditions: d.contributingConditions || '', contributingICD11: d.contributingICD11 || '',
+      mannerOfDeath: d.mannerOfDeath || 'natural', maternalDeath: !!d.maternalDeath, pregnancyRelated: !!d.pregnancyRelated,
+      certifiedBy: d.certifiedBy || '', certifierRole: d.certifierRole || '', state: d.state || '', county: d.county || '',
+      certificateNumber: d.certificateNumber || '',
+      deathNotified: !!d.deathNotified, deathRegistered: !!d.deathRegistered,
+    });
+    setEditingId(d._id);
+    setSelectedDeathId(null);
+    setShowForm(true);
+  };
+
+  const closeForm = () => { setShowForm(false); setEditingId(null); };
+
   const handleSubmit = async () => {
     if (!form.deceasedFirstName.trim() || !form.deceasedSurname.trim() || !form.dateOfDeath || !form.immediateCause.trim()) {
       showToast(t('patientNew.toastFillRequired'), 'error');
+      return;
+    }
+    if (editingId) {
+      const original = (deaths || []).find(d => d._id === editingId);
+      const facility = hospitals.find(h => h._id === form.facilityId);
+      try {
+        // The certificate number, patient link and organization stay as issued;
+        // no visit or appointment side effects run for a correction.
+        await correct(editingId, {
+          deceasedFirstName: form.deceasedFirstName.trim(), deceasedSurname: form.deceasedSurname.trim(),
+          deceasedGender: form.deceasedGender, dateOfBirth: form.dateOfBirth, dateOfDeath: form.dateOfDeath,
+          ageAtDeath: form.ageAtDeath, placeOfDeath: form.placeOfDeath,
+          immediateCause: form.immediateCause, immediateICD11: form.immediateICD11,
+          antecedentCause1: form.antecedentCause1, antecedentICD11_1: form.antecedentICD11_1,
+          antecedentCause2: form.antecedentCause2, antecedentICD11_2: form.antecedentICD11_2,
+          underlyingCause: form.underlyingCause, underlyingICD11: form.underlyingICD11,
+          contributingConditions: form.contributingConditions, contributingICD11: form.contributingICD11,
+          mannerOfDeath: form.mannerOfDeath, maternalDeath: form.maternalDeath, pregnancyRelated: form.pregnancyRelated,
+          deathNotified: form.deathNotified, deathRegistered: form.deathRegistered,
+          facilityId: facility?._id || original?.facilityId || '',
+          facilityName: facility?.name || original?.facilityName || '',
+          state: facility?.state || original?.state || form.state,
+        });
+        showToast(t('vital.recordCorrected'), 'success');
+        closeForm();
+      } catch (err) {
+        showToast(err instanceof ValidationError ? err.message : t('vital.recordNotCorrected'), 'error');
+      }
       return;
     }
     const fac = hospitals.find(h => h._id === (form.facilityId || currentUser?.hospitalId));
@@ -221,7 +276,7 @@ export default function DeathsPage() {
         certificateNumber: form.certificateNumber || `SS-D-${Date.now().toString(36).toUpperCase()}`,
       });
       showToast(t('deaths.registeredSuccess'), 'success');
-      setShowForm(false);
+      closeForm();
 
       // Death closes the visit (best-effort — the death record above is
       // already the CRVS source of truth; neither of these can be allowed
@@ -286,7 +341,7 @@ export default function DeathsPage() {
                   <Printer className="w-4 h-4" /> {t('vital.print')}
                 </button>
                 {canRecordVitalEvents && (
-                  <button data-tour="register-death-btn" onClick={() => setShowForm(true)} className="btn btn-primary flex items-center gap-2" style={{ whiteSpace: 'nowrap' }}>
+                  <button data-tour="register-death-btn" onClick={() => { if (editingId) { setForm(blankForm()); setLinkedPatientId(undefined); setEncounterId(undefined); } setEditingId(null); setShowForm(true); }} className="btn btn-primary flex items-center gap-2" style={{ whiteSpace: 'nowrap' }}>
                     <Plus className="w-4 h-4" /> {t('deaths.registerDeath')}
                   </button>
                 )}
@@ -351,7 +406,11 @@ export default function DeathsPage() {
           </div>
         </div>
 
-        {selectedDeath && <DeathRecordSlider death={selectedDeath} onClose={() => setSelectedDeathId(null)} />}
+        {selectedDeath && <DeathRecordSlider
+          death={selectedDeath}
+          onClose={() => setSelectedDeathId(null)}
+          onCorrect={canRecordVitalEvents ? () => startCorrection(selectedDeath) : undefined}
+        />}
 
         {printOpen && (
           <PrintListDialog
@@ -380,18 +439,19 @@ export default function DeathsPage() {
         {/* Death Registration Form Modal */}
         {showForm && (
           <FormSlider
-            title={t('deaths.modalTitle')}
+            title={editingId ? t('vital.correctDeathRecord') : t('deaths.modalTitle')}
+            subtitle={editingId ? `${t('vital.certificateNo')} ${form.certificateNumber}` : undefined}
             width={768}
-            onClose={() => setShowForm(false)}
+            onClose={closeForm}
             footer={<>
-                <button onClick={() => setShowForm(false)} className="btn btn-secondary">{t('action.cancel')}</button>
-                <button onClick={handleSubmit} className="btn btn-primary" style={{ opacity: !form.deceasedFirstName.trim() || !form.deceasedSurname.trim() || !form.dateOfDeath || !form.immediateCause.trim() ? 0.5 : 1 }}>{t('deaths.registerDeath')}</button>
+                <button onClick={closeForm} className="btn btn-secondary">{t('action.cancel')}</button>
+                <button onClick={handleSubmit} className="btn btn-primary" style={{ opacity: !form.deceasedFirstName.trim() || !form.deceasedSurname.trim() || !form.dateOfDeath || !form.immediateCause.trim() ? 0.5 : 1 }}>{editingId ? t('action.save') : t('deaths.registerDeath')}</button>
             </>}
           >
             <div className="space-y-4">
               <div className="p-4 space-y-4">
-                {/* Link to existing patient (optional) */}
-                <div className="rounded-lg p-3" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-primary)' }}>
+                {/* Link to existing patient (optional) — fixed once registered */}
+                {!editingId && <div className="rounded-lg p-3" style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-primary)' }}>
                   <label className="text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'var(--accent-primary)' }}>
                     <UserCheck className="w-3 h-3" />
                     {t('deaths.linkPatient')}
@@ -442,7 +502,7 @@ export default function DeathsPage() {
                       </p>
                     </>
                   )}
-                </div>
+                </div>}
 
                 <hr className="section-divider" />
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('deaths.deceasedInfo')}</h3>

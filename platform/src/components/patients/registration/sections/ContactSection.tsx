@@ -69,7 +69,6 @@ export default function ContactSection({ form, errors, update }: RegistrationSec
       <div className="registration-subsection">
         {pack.usesGeocode && listed && (<>
         <h4>{t('patientNew.geographicIdentifier')}</h4>
-        <p>{t('patientNew.geocodeDescription')}</p>
         <div className="registration-field-grid registration-field-grid--three">
           <RegistrationField name="bomaCode" label={t('patientNew.bomaCode')}>
             {field => (

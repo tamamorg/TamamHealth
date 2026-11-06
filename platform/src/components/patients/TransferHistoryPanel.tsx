@@ -33,7 +33,7 @@ import type {
 } from '@/lib/db-types';
 import { formatDateTime } from '@/lib/format-utils';
 import {
-  ArrowRightLeft, Clock, AlertTriangle,
+  ArrowRightLeft, Clock, AlertTriangle, X,
 } from '@/components/icons/lucide';
 import RowActionsMenu from '@/components/RowActionsMenu';
 import { useToast } from '@/components/Toast';
@@ -609,6 +609,26 @@ export default function TransferHistoryPanel({
 }
 
 /**
+ * Transfer notices this user closed with ×, as `transferId:status`. Kept per
+ * user on this device; a closed notice stays closed, and a later status of the
+ * same transfer is a new notice (the Coordination tab lists it either way).
+ * Capped so the list cannot grow without end.
+ */
+const DISMISSED_KEY = (userId: string) => `tamamhealth.dismissed-transfer-banners.${userId}`;
+function readDismissed(userId?: string): string[] {
+  if (!userId || typeof window === 'undefined') return [];
+  try {
+    const list = JSON.parse(window.localStorage.getItem(DISMISSED_KEY(userId)) || '[]');
+    return Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+function writeDismissed(userId: string, ids: string[]) {
+  try { window.localStorage.setItem(DISMISSED_KEY(userId), JSON.stringify(ids.slice(-200))); } catch { /* private mode: this visit only */ }
+}
+
+/**
  * Compact chart banner. Shown above the chart whenever there is a pending
  * request or a live time-boxed grant, so a clinician opening the record cannot
  * miss that responsibility is in flight or that their access is about to lapse.
@@ -623,7 +643,24 @@ export function TransferBanner({
   const { t } = useTranslation();
   const { activeTransfer } = usePatientTransfers(patient._id);
   const { currentUser } = useAuth();
-  if (!activeTransfer) return null;
+  const userId = currentUser?._id;
+  const [dismissed, setDismissed] = useState<string[]>(() => readDismissed(userId));
+  // The signed-in user can change under a mounted chart (lock screen, switch).
+  const [dismissedFor, setDismissedFor] = useState(userId);
+  if (dismissedFor !== userId) {
+    setDismissedFor(userId);
+    setDismissed(readDismissed(userId));
+  }
+  // Keyed by transfer and status: closing "awaiting acceptance" keeps that
+  // notice gone, but an accepted transfer or a granted access window is a
+  // new notice and shows once (code review, 2026-11-05).
+  const noticeKey = activeTransfer ? `${activeTransfer._id}:${activeTransfer.status}` : '';
+  if (!activeTransfer || dismissed.includes(noticeKey)) return null;
+  const dismiss = () => {
+    const next = [...dismissed, noticeKey];
+    setDismissed(next);
+    if (userId) writeDismissed(userId, next);
+  };
 
   const tr = activeTransfer;
   const pending = tr.status === 'requested';
@@ -640,7 +677,7 @@ export function TransferBanner({
       {overdue
         ? <AlertTriangle className="w-4 h-4 shrink-0 mt-px" style={{ color: 'var(--rose-700, #b4180f)' }} />
         : <ArrowRightLeft className="w-4 h-4 shrink-0 mt-px" style={{ color: 'var(--gold-800, #a65300)' }} />}
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <strong>
           {pending
             ? (overdue ? t('transfers.bannerAwaitingOverdue') : t('transfers.bannerAwaiting'))
@@ -654,6 +691,15 @@ export function TransferBanner({
           <button type="button" className="ms-2 underline" style={{ color: 'var(--accent-primary)', fontWeight: 600 }} onClick={onOpenHistory}>{t('transfers.view')}</button>
         )}
       </div>
+      <button
+        type="button"
+        className="transfer-banner-close"
+        onClick={dismiss}
+        aria-label={t('transfers.hideBanner')}
+        title={t('transfers.hideBanner')}
+      >
+        <X aria-hidden />
+      </button>
     </div>
   );
 }

@@ -35,6 +35,13 @@ import { stopsClickPropagation } from '@/lib/a11y';
 import PatientMedHistoryModal from '@/components/pharmacy/PatientMedHistoryModal';
 import StockInModal from '@/components/pharmacy/StockInModal';
 import RestockModal from '@/components/pharmacy/RestockModal';
+import RowActionsMenu from '@/components/RowActionsMenu';
+import FormSlider from '@/components/overlay/FormSlider';
+import FormField from '@/components/overlay/FormField';
+import NumberInput from '@/components/forms/NumberInput';
+import { useConfirm } from '@/components/ConfirmDialog';
+import { describeError } from '@/lib/user-facing-error';
+import type { PharmacyInventoryDoc } from '@/lib/db-types';
 import { RX_STAGE_PILL_CLASS, prescriptionSig, type PharmacyTab } from '@/components/pharmacy/pharmacy-helpers';
 
 import { useUrlView } from '@/lib/navigation/use-url-view';
@@ -72,7 +79,8 @@ export default function PharmacyPage() {
   // patient is holding them. Dropped here so no queue, count or export below
   // can pick one up.
   const rxQueue = useMemo(() => allPrescriptions.filter(rx => !isOutsidePharmacyOrder(rx)), [allPrescriptions]);
-  const { items: rawInventory, create: createInventory, update: updateInventory } = usePharmacyInventory();
+  const { items: rawInventory, create: createInventory, update: updateInventory, remove: removeInventory } = usePharmacyInventory();
+  const confirm = useConfirm();
   const { patients } = usePatients();
   const patientById = useMemo(() => new Map(patients.map(patient => [patient._id, patient])), [patients]);
   // The script open in the slider from its pill's dropdown.
@@ -206,6 +214,73 @@ export default function PharmacyPage() {
       showToast(t('pharmacy.updateStockFailed'), 'error');
     }
   };
+
+  // Edit / delete a stock line. Quantity is not editable here: stock moves
+  // through Receive and dispensing, which carry the witness and ledger rules.
+  const [editItem, setEditItem] = useState<PharmacyInventoryDoc | null>(null);
+  const [editForm, setEditForm] = useState({ medicationName: '', category: '', unit: '', reorderLevel: 0, batchNumber: '', expiryDate: '' });
+  const [editSaving, setEditSaving] = useState(false);
+
+  const openEditItem = (item: PharmacyInventoryDoc) => {
+    setEditItem(item);
+    setEditForm({
+      medicationName: item.medicationName, category: item.category, unit: item.unit,
+      reorderLevel: item.reorderLevel, batchNumber: item.batchNumber, expiryDate: item.expiryDate,
+    });
+  };
+
+  const handleEditSave = async () => {
+    if (!editItem) return;
+    if (!editForm.medicationName.trim() || !editForm.batchNumber.trim() || !editForm.expiryDate) {
+      showToast(t('pharmacy.editItemRequired'), 'error');
+      return;
+    }
+    setEditSaving(true);
+    try {
+      const saved = await updateInventory(editItem._id, {
+        medicationName: editForm.medicationName.trim(),
+        category: editForm.category.trim() || editItem.category,
+        unit: editForm.unit.trim() || editItem.unit,
+        reorderLevel: Math.max(0, editForm.reorderLevel),
+        batchNumber: editForm.batchNumber.trim(),
+        expiryDate: editForm.expiryDate,
+      });
+      if (!saved) throw new Error('not saved');
+      showToast(t('pharmacy.editItemSaved', { name: editForm.medicationName.trim() }), 'success');
+      setEditItem(null);
+    } catch (err) {
+      showToast(describeError(err, t('pharmacy.editItemFailed')), 'error');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const deleteItem = async (item: PharmacyInventoryDoc) => {
+    const ok = await confirm({
+      title: t('pharmacy.deleteItemTitle', { name: item.medicationName }),
+      message: t('pharmacy.deleteItemMessage', { stock: item.stockLevel, unit: item.unit }),
+      confirmLabel: t('pharmacy.deleteItemConfirm'),
+      tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      if (!(await removeInventory(item._id))) throw new Error('not deleted');
+      showToast(t('pharmacy.deleteItemDone', { name: item.medicationName }), 'success');
+    } catch (err) {
+      showToast(describeError(err, t('pharmacy.deleteItemFailed')), 'error');
+    }
+  };
+
+  const itemActions = (item: PharmacyInventoryDoc) => [
+    { key: 'edit', label: t('pharmacy.editItem'), onClick: () => openEditItem(item) },
+    {
+      key: 'delete', label: t('pharmacy.deleteItem'), tone: 'danger' as const, group: 'danger',
+      // A controlled line carries a witnessed movement log; it is never erased.
+      disabled: Boolean(item.controlledSchedule || item.requiresWitness),
+      hint: item.controlledSchedule || item.requiresWitness ? t('pharmacy.deleteItemControlled') : undefined,
+      onClick: () => void deleteItem(item),
+    },
+  ];
 
   const pendingRx = rxQueue.filter(r => r.status === 'pending').length;
   const paymentDueCount = rxQueue.filter(r => pharmacyStage(r) === 'cleared_for_dispensing' && !isClearedFor(r.patientId)).length;
@@ -656,7 +731,7 @@ export default function PharmacyPage() {
         {activeTab === 'inventory' && (
           <div className="ehr-list-scroll">
             <table className="data-table" style={{ minWidth: 1080, tableLayout: 'fixed' }}>
-              <TableCols widths={[1.9, 1.1, 0.8, 0.9, 0.9, 1, 1, 0.9, 0.8]} />
+              <TableCols widths={canDispense ? [1.7, 1.0, 0.8, 0.9, 0.8, 1, 1, 0.8, 1.3] : [1.9, 1.1, 0.8, 0.9, 0.9, 1, 1, 0.9]} />
               <thead>
                 <tr>
                   <th>{t('pharmacy.medication')}</th>
@@ -714,7 +789,10 @@ export default function PharmacyPage() {
                     <td className="text-center font-semibold text-sm">{dispensedTodayOf(item)}</td>
                     {canDispense && (
                       <td>
-                        <button className="btn btn-secondary btn-sm" onClick={() => openRestock(item._id)}>+ {t('pharmacy.receive')}</button>
+                        <div className="flex items-center gap-1">
+                          <button className="btn btn-secondary btn-sm" onClick={() => openRestock(item._id)}>+ {t('pharmacy.receive')}</button>
+                          <RowActionsMenu ariaLabel={t('pharmacy.itemActionsAria', { name: item.medicationName })} actions={itemActions(item)} />
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -727,7 +805,7 @@ export default function PharmacyPage() {
         {activeTab === 'reorder' && (
           <div className="ehr-list-scroll">
             <table className="data-table" style={{ minWidth: 720, tableLayout: 'fixed' }}>
-              <TableCols widths={[1.9, 1.1, 0.8, 0.9, 0.8, 0.9]} />
+              <TableCols widths={canDispense ? [1.9, 1.1, 0.8, 0.9, 0.8, 0.9, 0.5] : [1.9, 1.1, 0.8, 0.9, 0.8, 0.9]} />
               <thead>
                 <tr>
                   <th>{t('pharmacy.medication')}</th>
@@ -736,11 +814,12 @@ export default function PharmacyPage() {
                   <th>{t('pharmacy.reorderLevel')}</th>
                   <th>{t('pharmacy.orderQty')}</th>
                   <th>{t('pharmacy.statusLabel')}</th>
+                  {canDispense && <th>{t('pharmacy.action')}</th>}
                 </tr>
               </thead>
               <tbody>
                 {reorderList.length === 0 ? (
-                  <tr><td colSpan={6} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.allStockAdequate')}</td></tr>
+                  <tr><td colSpan={canDispense ? 7 : 6} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.allStockAdequate')}</td></tr>
                 ) : reorderList.map(item => (
                   <tr key={item._id}>
                     <td className="font-semibold text-sm">
@@ -762,6 +841,7 @@ export default function PharmacyPage() {
                         {t(`pharmacy.invStatus_${item.status}`)}
                       </span>
                     </td>
+                    {canDispense && <td><RowActionsMenu ariaLabel={t('pharmacy.itemActionsAria', { name: item.medicationName })} actions={itemActions(item)} /></td>}
                   </tr>
                 ))}
               </tbody>
@@ -772,7 +852,7 @@ export default function PharmacyPage() {
         {activeTab === 'expiry' && (
           <div className="ehr-list-scroll">
             <table className="data-table" style={{ minWidth: 600, tableLayout: 'fixed' }}>
-              <TableCols widths={[1.9, 1, 0.8, 0.9, 0.9]} />
+              <TableCols widths={canDispense ? [1.9, 1, 0.8, 0.9, 0.9, 0.5] : [1.9, 1, 0.8, 0.9, 0.9]} />
               <thead>
                 <tr>
                   <th>{t('pharmacy.medication')}</th>
@@ -780,11 +860,12 @@ export default function PharmacyPage() {
                   <th>{t('pharmacy.stockLabel')}</th>
                   <th>{t('pharmacy.expiry')}</th>
                   <th>{t('pharmacy.statusLabel')}</th>
+                  {canDispense && <th>{t('pharmacy.action')}</th>}
                 </tr>
               </thead>
               <tbody>
                 {expiryList.length === 0 ? (
-                  <tr><td colSpan={5} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.noInventoryItems')}</td></tr>
+                  <tr><td colSpan={canDispense ? 6 : 5} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.noInventoryItems')}</td></tr>
                 ) : expiryList.map(item => {
                   const { days, expired, soon } = expiryStatusFor(item);
                   return (
@@ -801,6 +882,7 @@ export default function PharmacyPage() {
                           {expired ? t('pharmacy.expired') : t('pharmacy.daysLeft', { count: days })}
                         </span>
                       </td>
+                      {canDispense && <td><RowActionsMenu ariaLabel={t('pharmacy.itemActionsAria', { name: item.medicationName })} actions={itemActions(item)} /></td>}
                     </tr>
                   );
                 })}
@@ -903,6 +985,43 @@ export default function PharmacyPage() {
           onClose={() => setRestockTarget(null)}
           onSave={handleRestock}
         />
+      )}
+
+      {editItem && (
+        <FormSlider
+          title={t('pharmacy.editItemTitle')}
+          subtitle={editItem.medicationName}
+          onClose={() => !editSaving && setEditItem(null)}
+          busy={editSaving}
+          footerNote={t('pharmacy.editItemNote')}
+          footer={<>
+            <button type="button" onClick={() => setEditItem(null)} disabled={editSaving} className="btn btn-secondary">{t('action.cancel')}</button>
+            <button type="button" onClick={handleEditSave} disabled={editSaving} className="btn btn-primary">{t('action.saveChanges')}</button>
+          </>}
+        >
+          <div className="space-y-4">
+            <FormField label={t('pharmacy.medication')} required>
+              {control => <input {...control} value={editForm.medicationName} onChange={e => setEditForm({ ...editForm, medicationName: e.target.value })} />}
+            </FormField>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label={t('pharmacy.category')}>
+                {control => <input {...control} value={editForm.category} onChange={e => setEditForm({ ...editForm, category: e.target.value })} />}
+              </FormField>
+              <FormField label={t('pharmacy.editItemUnit')}>
+                {control => <input {...control} value={editForm.unit} onChange={e => setEditForm({ ...editForm, unit: e.target.value })} />}
+              </FormField>
+              <FormField label={t('pharmacy.reorderLevel')}>
+                {control => <NumberInput {...control} step="1" min={0} value={editForm.reorderLevel} onChange={e => setEditForm({ ...editForm, reorderLevel: parseInt(e.target.value, 10) || 0 })} />}
+              </FormField>
+              <FormField label={t('pharmacy.batchNo')} required>
+                {control => <input {...control} value={editForm.batchNumber} onChange={e => setEditForm({ ...editForm, batchNumber: e.target.value })} />}
+              </FormField>
+              <FormField label={t('pharmacy.expiryDate')} required>
+                {control => <input {...control} type="date" value={editForm.expiryDate} onChange={e => setEditForm({ ...editForm, expiryDate: e.target.value })} />}
+              </FormField>
+            </div>
+          </div>
+        </FormSlider>
       )}
 
       {/* Single medication handover; controlled medicines add witness sign-off. */}

@@ -109,7 +109,7 @@ export const clinicalOfficerTourSteps: TourStep[] = [
     route: '/patients/[id]',
     target: '.tamam-header',
     title: 'Every chart opens here',
-    body: 'Name, hospital number, and allergy flag up top, with one-click actions — new note, prescribe, order labs, refer — that follow you to every tab.',
+    body: 'Name, hospital number, and allergy flag up top. Actions, on the right, holds the chart-wide tasks: start a visit, transfer, message the patient, print the chart or a visit summary, edit details. It follows you to every tab.',
     placement: 'bottom',
   },
   {
@@ -141,7 +141,18 @@ export const clinicalOfficerTourSteps: TourStep[] = [
     route: '/patients/[id]',
     target: '.tamam-right-rail',
     title: 'Workspace panels',
-    body: 'Order basket, visit note, task list, clinical forms, and patient lists open here without ever leaving the chart you’re reading.',
+    body: 'Order basket, visit note, task list, clinical forms, and patient lists open from this rail without ever leaving the chart you’re reading.',
+    placement: 'left',
+  },
+  {
+    // Shows one slider open, as the user asked (2026-11-05): the tour clicks
+    // the Order basket on the rail in front of the user and points at it.
+    id: 'chart-slider',
+    route: '/patients/[id]',
+    target: '.tamam-drawer',
+    preClickSelector: '.tamam-right-rail-btn[title="Order basket"]',
+    title: 'A workspace slider',
+    body: 'Each panel opens as a slider beside the chart, here the Order basket, where drug and lab orders wait until you sign them. The chart stays readable next to it; close the slider with ×, or open another panel from the rail.',
     placement: 'left',
   },
   {
@@ -174,29 +185,32 @@ export const clinicalOfficerTourSteps: TourStep[] = [
   {
     id: 'chart-notes-tab',
     route: '/patients/[id]',
-    target: '.cn-list-toolbar',
+    target: '.tamam-table--notes',
     preClickSelector: '.tamam-rail-item[title="Notes"]',
     title: 'Documentation lives here',
-    body: 'Every encounter note for this patient, sorted by date of service — notes are the record now, filterable by type, author, and signed status.',
-    placement: 'bottom',
+    body: 'Every note and consultation record for this patient. Search them, sort by any column, and open a row to read it: a saved note opens locked, with Edit for those who may change it.',
+    placement: 'top',
   },
   {
+    // Notes are written in the chart's side drawer now (no separate note
+    // page), so the click on Create note is shown on Next and the next step
+    // points at the form it opened.
     id: 'chart-write-note',
     route: '/patients/[id]',
-    target: '.cn-split-main',
-    preClickSelector: '.cn-split-main',
+    target: '.tamam-section-add',
+    preClickSelector: '.tamam-section-add',
     title: 'Start a note',
-    body: "The main button starts the note type you'll use most, SOAP; the caret next to it opens the full list — OB Evaluation, Nursing visit, and more.",
-    placement: 'bottom',
+    body: 'Create note opens today’s draft if there is one, or a new Consultation note, in the drawer beside the chart. The form’s own type picker switches to another kind of note.',
+    placement: 'left',
   },
 
-  // ── Note editor (/notes/[id]) ───────────────────────────────────────────
+  // ── The note, in the chart's drawer ──────────────────────────────────────
   {
     id: 'note-editor',
-    route: '/notes/[id]',
-    target: '.cn-section-nav',
+    route: '/patients/[id]',
+    target: '.omf-nav',
     title: 'Write the visit',
-    body: 'Jump between sections — a filled dot means it already has content. Assign the note to a colleague or pull in a lab from the sidebar, then Sign to lock it into the record.',
+    body: 'Move between the note’s sections on the left; the blue arrow marks where you are. A new note starts from the visit’s triage. Save keeps your draft, and Sign locks it into the record.',
     placement: 'right',
   },
 
@@ -204,14 +218,12 @@ export const clinicalOfficerTourSteps: TourStep[] = [
   {
     id: 'alerts-feed',
     route: '/alerts',
-    // The feed spans nearly the full width AND height of the page, and
-    // TourCard's cardPosition only clamps one axis per placement (top/bottom
-    // clamp X, left/right clamp Y) — every direction pushed the card
-    // partly off-screen against a target this large. A centred narrative
-    // card is the only placement that's always fully on screen here.
-    target: '',
+    // The list is now a table with its own search and filters; the card
+    // points at those rather than at the whole (page-sized) table.
+    target: '.ehr-list-header-search',
+    placement: 'bottom',
     title: 'What needs attention today',
-    body: 'Outbreak warnings, critical lab results awaiting sign-off, and overdue immunizations — newest first, so nothing urgent gets buried.',
+    body: 'Outbreak warnings, critical lab results awaiting sign-off, and overdue immunizations in one table, newest first. Search it, or narrow it by severity and type.',
   },
 
   {

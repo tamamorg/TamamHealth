@@ -78,6 +78,9 @@ export default function EhrModuleMenu({
         role="menuitem"
         className={active ? 'active' : ''}
         aria-current={active ? 'page' : undefined}
+        // The guided tour finds the real control for a page by its address,
+        // so it can show the click instead of jumping there.
+        data-href={item.href || undefined}
         onClick={() => onOpenModule(item.href)}
         onMouseEnter={() => item.href && onWarm?.(item.href)}
         onFocus={() => item.href && onWarm?.(item.href)}
@@ -133,6 +136,7 @@ export default function EhrModuleMenu({
                   type="button"
                   role="menuitem"
                   className={`ehr-module-group ${expanded ? 'is-expanded' : ''}`}
+                  data-hrefs={group.items.map(item => item.href).filter(Boolean).join(' ')}
                   onClick={() => setExpandedSection(current => current === group.section ? null : group.section)}
                   aria-expanded={expanded}
                 >

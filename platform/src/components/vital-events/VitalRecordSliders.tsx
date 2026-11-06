@@ -30,11 +30,13 @@ const shown = (value: unknown, fallback: string) =>
 
 const capital = (value?: string) => (value ? value.charAt(0).toUpperCase() + value.slice(1).replace(/_/g, ' ') : '');
 
-export function BirthRecordSlider({ birth, motherChartId, onClose }: {
+export function BirthRecordSlider({ birth, motherChartId, onClose, onCorrect }: {
   birth: BirthRegistrationDoc;
   /** The mother's chart, when she is a registered patient. */
   motherChartId?: string;
   onClose: () => void;
+  /** Present only for a viewer who may change the register; opens the form on this record. */
+  onCorrect?: () => void;
 }) {
   const { t } = useTranslation();
   const none = t('vital.notRecorded');
@@ -47,6 +49,7 @@ export function BirthRecordSlider({ birth, motherChartId, onClose }: {
       onClose={onClose}
       footer={<>
         <button type="button" className="btn btn-secondary" onClick={onClose}>{t('vital.close')}</button>
+        {onCorrect && <button type="button" className="btn btn-secondary" onClick={onCorrect}>{t('vital.correctRecord')}</button>}
         <button type="button" className="btn btn-primary inline-flex items-center gap-2" onClick={() => printBirthNotification(birth)}>
           <Printer className="w-4 h-4" /> {t('vital.printBirthNotification')}
         </button>
@@ -107,9 +110,11 @@ export function BirthRecordSlider({ birth, motherChartId, onClose }: {
   );
 }
 
-export function DeathRecordSlider({ death, onClose }: {
+export function DeathRecordSlider({ death, onClose, onCorrect }: {
   death: DeathRegistrationDoc;
   onClose: () => void;
+  /** Present only for a viewer who may change the register; opens the form on this record. */
+  onCorrect?: () => void;
 }) {
   const { t } = useTranslation();
   const none = t('vital.notRecorded');
@@ -129,6 +134,7 @@ export function DeathRecordSlider({ death, onClose }: {
       onClose={onClose}
       footer={<>
         <button type="button" className="btn btn-secondary" onClick={onClose}>{t('vital.close')}</button>
+        {onCorrect && <button type="button" className="btn btn-secondary" onClick={onCorrect}>{t('vital.correctRecord')}</button>}
         <button type="button" className="btn btn-primary inline-flex items-center gap-2" onClick={() => printDeathCertificate(death)}>
           <Printer className="w-4 h-4" /> {t('vital.printDeathCertificate')}
         </button>

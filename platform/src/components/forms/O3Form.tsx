@@ -337,7 +337,9 @@ export function O3Layout({
                 aria-current={activePage === page.id ? 'true' : undefined}
                 onClick={() => goTo(page.id)}
               >
-                {page.label}
+                {/* The registration rail's corner arrow marks a jump link. */}
+                <span className="tamam-reg-navarrow" aria-hidden>↳</span>
+                <span>{page.label}</span>
               </button>
             ))}
             {actionsInNav && (

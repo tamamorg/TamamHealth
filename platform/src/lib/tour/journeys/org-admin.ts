@@ -9,32 +9,42 @@ import { finishStep, messagingStep } from './_shared';
 // Organization nav group (Profile, Branding, Billing,
 // Security…) actually lives now.
 export const ORG_ADMIN_STEPS: TourStep[] = [
+  // 2026-11-05: the dashboard was redesigned (KPI row, charts, Today's
+  // operations, the Facilities list); the greeting, queue tabs and side cards
+  // these steps pointed at are gone, so they anchor on what is there now.
   {
     id: 'welcome',
     route: '/facility-management',
-    target: '.ehr-care-greeting',
+    target: '.sadb-kpi-row',
     title: 'Welcome, Org Admin',
-    body: 'You run the organization: facilities, staff accounts, branding, and the price list. This is your daily operations home — let’s walk each area.',
+    body: 'You run the organization: facilities, staff accounts, branding, and the price list. The row across the top counts staff, doctors, nurses, patients, free beds and open issues across every facility you run.',
     placement: 'bottom',
   },
   {
-    id: 'facility-queues',
+    id: 'today-ops',
     route: '/facility-management',
-    target: '[data-tour="station-tabs"]',
-    title: 'Inquiries, leave, and staff — one queue',
-    body: 'Patient inquiries, pending leave requests, and your active staff roster share this panel. Switch tabs to work each queue without leaving the dashboard.',
-    placement: 'bottom',
+    target: '.sadb-kv-fill',
+    title: 'Today’s operations',
+    body: 'Today’s shifts, unfilled shifts, pending leave and the staff available now. Schedule, in the card’s corner, opens today’s roster.',
+    placement: 'left',
   },
   {
-    // Replaces the old /org-admin "Org Overview" stop. That page was merged
-    // into this dashboard and deleted on 2026-08-19, and the KPI band it
-    // brought with it was removed the same day, so the tour points at the rail
-    // that actually carries this dashboard's numbers.
     id: 'org-overview',
     route: '/facility-management',
-    target: '[data-tour="side-cards"]',
-    title: 'Your facility at a glance',
-    body: 'Staff, doctors, nurses, patients, beds, open inquiries, pending leave and today’s shifts — every figure opens a preview, and from there the page that owns it. You see only your own organization here: the local device holds every organization’s data, but every screen is filtered down to yours.',
+    target: '.sadb-lower-row',
+    title: 'Your facilities at a glance',
+    body: 'Every facility in your organization with its type, location, beds, patients and status. Search the list, or open a facility for its staff and settings. You see only your own organization: the device holds every organization’s data, but every screen is filtered down to yours.',
+    placement: 'top',
+  },
+  {
+    // Staff accounts no longer have a list of their own (/org-admin/users
+    // and /admin/users redirect to /manage); they live with their facility,
+    // and new ones start from this button.
+    id: 'users-create',
+    route: '/facility-management',
+    target: '[data-action="dashboard-create-staff"]',
+    title: 'Add a staff member',
+    body: 'Set their name, role, and facility. The temporary password shown after creating is theirs to change at first login, so they can sign in on any device. To reset a password or deactivate an account, open their facility from the list, then the person.',
     placement: 'left',
   },
   {
@@ -51,22 +61,6 @@ export const ORG_ADMIN_STEPS: TourStep[] = [
     target: '[data-tour="org-hospitals-add"]',
     title: 'Onboard a new facility',
     body: 'Name, state, town, and facility type — a new site is ready to assign staff and price services against as soon as it’s created.',
-    placement: 'left',
-  },
-  {
-    id: 'users',
-    route: '/manage',
-    target: '[data-tour="org-users-list"]',
-    title: 'Staff accounts',
-    body: 'Every account in the organization: create staff, reset passwords, deactivate. New accounts are provisioned centrally with a temporary password the user must change at first login — so they can sign in on any device.',
-    placement: 'bottom',
-  },
-  {
-    id: 'users-create',
-    route: '/manage',
-    target: '[data-tour="org-users-create-btn"]',
-    title: 'Add a staff member',
-    body: 'Set their name, role, and hospital — the temporary password shown after creating is theirs to change at first login. The same dialog opens from a facility\u2019s Staff tab with that facility already filled in, which is the shorter route when you are hiring into one site.',
     placement: 'left',
   },
   {

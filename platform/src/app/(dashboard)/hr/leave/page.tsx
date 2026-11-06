@@ -88,6 +88,22 @@ export default function HrLeavePage() {
     }
   };
 
+  // The requester withdrawing their own pending request (cancelLeave); the
+  // pill's own confirm step asks first.
+  const cancelOwn = async (id: string) => {
+    if (!currentUser) return;
+    try {
+      const { cancelLeave } = await import('@/lib/services/leave-service');
+      const saved = await cancelLeave(id, { id: currentUser._id || currentUser.username || 'unknown', name: currentUser.name });
+      if (!saved || saved.status !== 'cancelled') throw new Error('not cancelled');
+      showToast(t('hr.leaveCancelled'), 'success');
+      reload();
+    } catch (err) {
+      console.error(err);
+      showToast(t('hr.leaveCancelFailed'), 'error');
+    }
+  };
+
   const q = search.trim().toLowerCase();
   const visibleLeave = leave.filter(r => {
     if (focusedRequestId) return r._id === focusedRequestId;
@@ -213,11 +229,14 @@ export default function HrLeavePage() {
                       ariaLabel={`Leave status for ${r.userName}`}
                       subject={r.userName}
                       style={statusPillStyle(tok)}
-                      options={isApprover && r.status === 'pending' ? [
-                        { value: 'approved', label: t('hr.approve') },
-                        { value: 'rejected', label: t('hr.reject') },
+                      options={r.status === 'pending' ? [
+                        ...(isApprover ? [
+                          { value: 'approved', label: t('hr.approve') },
+                          { value: 'rejected', label: t('hr.reject') },
+                        ] : []),
+                        ...(currentUser && r.userId === currentUser._id ? [{ value: 'cancelled', label: t('hr.cancelRequest') }] : []),
                       ] : []}
-                      onSelect={next => decide(r._id, next as 'approved' | 'rejected')}
+                      onSelect={next => (next === 'cancelled' ? cancelOwn(r._id) : decide(r._id, next as 'approved' | 'rejected'))}
                     />
                     <small>{t('appointments.statusRequested')} {formatHrDate(r.requestedAt, { month: 'short', day: 'numeric' })}</small>
                   </div>

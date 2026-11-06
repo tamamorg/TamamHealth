@@ -115,7 +115,7 @@ export default function TourCard({
             borderRadius: 0,
             pointerEvents: 'none',
             zIndex: 9998,
-            transition: 'left .2s ease, top .2s ease, width .2s ease, height .2s ease',
+            transition: 'left .35s ease, top .35s ease, width .35s ease, height .35s ease',
           }}
         />
       ) : (
@@ -138,7 +138,7 @@ export default function TourCard({
           padding: '16px 18px',
           maxHeight: 'calc(100vh - 24px)',
           overflowY: 'auto',
-          transition: rect ? 'left .2s ease, top .2s ease' : undefined,
+          transition: rect ? 'left .35s ease, top .35s ease' : undefined,
         }}
       >
         {tail && (
@@ -282,6 +282,51 @@ export default function TourCard({
             {isLast ? 'Finish' : 'Next'}
           </button>
         </div>
+      </div>
+    </>
+  );
+}
+
+/**
+ * The tour's pointer while it clicks something for the user: a pulsing ring
+ * on the control and its name underneath ("Click “Patients”"), so a page
+ * change or an opened panel always shows what caused it.
+ */
+export function TourClickHint({ rect, label }: { rect: DOMRect; label: string }) {
+  const { t } = useTranslation();
+  const vw = typeof window === 'undefined' ? 1280 : window.innerWidth;
+  const vh = typeof window === 'undefined' ? 800 : window.innerHeight;
+  const below = rect.bottom + 48 < vh;
+  const left = Math.min(Math.max(rect.left + rect.width / 2, 120), vw - 120);
+  return (
+    <>
+      <div
+        aria-hidden
+        className="tour-spotlight tour-spotlight--click"
+        style={{
+          position: 'fixed',
+          left: rect.left - 6,
+          top: rect.top - 6,
+          width: rect.width + 12,
+          height: rect.height + 12,
+          borderRadius: 10,
+          pointerEvents: 'none',
+          zIndex: 9998,
+        }}
+      />
+      <div
+        role="status"
+        aria-live="polite"
+        className="tour-click-hint"
+        style={{
+          position: 'fixed',
+          left,
+          top: below ? rect.bottom + 14 : rect.top - 14,
+          transform: below ? 'translateX(-50%)' : 'translate(-50%, -100%)',
+          zIndex: 9999,
+        }}
+      >
+        {label ? t('tour.clickNamed', { label }) : t('tour.clickHere')}
       </div>
     </>
   );

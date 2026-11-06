@@ -22,8 +22,6 @@ export default function BiometricsSection({
   const { t } = useTranslation();
   return (
     <>
-      <p className="registration-section-note">{t('patientNew.biometricsNote')}</p>
-
       <div className="registration-inline-panel registration-inline-panel--media">
         <div className="registration-panel-heading">
           <h4>{t('patientNew.patientPhotoHeading')}</h4>
@@ -54,7 +52,6 @@ export default function BiometricsSection({
             </button>
           </div>
           <div className="tamam-reg-photo-aside">
-            <p>{t('patientNew.photoHelp')}</p>
             {photoUrl && (
               <button type="button" onClick={onClearPhoto} className="tamam-reg-photo-remove">
                 {t('action.remove')}

@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Minus, Plus } from '@/components/icons/lucide';
+import { AlertTriangle } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import StockNotice from '@/components/clinical-notes/prescribe/StockNotice';
 import { checkAllergiesStructured } from '@/lib/services/drug-interaction-service';
@@ -26,21 +26,6 @@ import {
 import PatientBanner from './PatientBanner';
 import UnlabelledDrugNotice from '@/components/clinical-notes/prescribe/UnlabelledDrugNotice';
 import NumberInput from '@/components/forms/NumberInput';
-
-/** The −/+ number field O3 uses for durations and refills. */
-function Stepper({ id, value, onChange, min = 0, label }: {
-  id: string; value: string; onChange: (v: string) => void; min?: number; label: string;
-}) {
-  const n = parseInt(value, 10);
-  const step = (d: number) => onChange(String(Math.max(min, (Number.isFinite(n) ? n : min) + d)));
-  return (
-    <div className="obf-stepper">
-      <NumberInput id={id} inputMode="numeric" min={min} value={value} onChange={e => onChange(e.target.value)} />
-      <button type="button" onClick={() => step(-1)} aria-label={`${label} −1`}><Minus aria-hidden /></button>
-      <button type="button" onClick={() => step(1)} aria-label={`${label} +1`}><Plus aria-hidden /></button>
-    </div>
-  );
-}
 
 export default function DrugOrderForm({
   initial, patient, activeMedications, stockFor, facilityName, onSave, onDiscard, onEdited,
@@ -229,7 +214,7 @@ export default function DrugOrderForm({
             <div className="obf-row">
               <div className="obf-field">
                 <label className="obf-label" htmlFor="obf-duration">{t('basket.duration')}</label>
-                <Stepper id="obf-duration" value={order.duration} onChange={v => patch({ duration: v })} label={t('basket.duration')} />
+                <NumberInput id="obf-duration" inputMode="numeric" min={0} value={order.duration} aria-label={t('basket.duration')} onChange={e => patch({ duration: e.target.value })} />
               </div>
               <label className="obf-field">
                 <span className="obf-label">{t('basket.durationUnit')}</span>
@@ -257,7 +242,7 @@ export default function DrugOrderForm({
             {stock && <StockNotice position={stock} facilityName={facilityName} />}
             <div className="obf-field obf-field--half">
               <label className="obf-label" htmlFor="obf-refills">{t('basket.refills')}</label>
-              <Stepper id="obf-refills" value={order.refills} onChange={v => patch({ refills: v })} label={t('basket.refills')} />
+              <NumberInput id="obf-refills" inputMode="numeric" min={0} value={order.refills} aria-label={t('basket.refills')} onChange={e => patch({ refills: e.target.value })} />
             </div>
             <label className="obf-field">
               <span className="obf-label">{t('basket.indication')}</span>

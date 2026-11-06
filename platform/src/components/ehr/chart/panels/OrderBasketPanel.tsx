@@ -13,6 +13,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState, type MutableRefObject } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useDrawerBack } from '../drawer-back';
 import { formatRxSig } from '@/lib/format-utils';
 import { AlertTriangle, ChevronDown, FlaskConical, Pencil, Pill, Plus, Trash2 } from '@/components/icons/lucide';
@@ -22,16 +23,17 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useFacilityName } from '@/lib/hooks/useFacilityName';
 import { useSettings } from '@/lib/settings/SettingsProvider';
 import { useConfirmPrompt } from '@/components/ConfirmDialog';
+import RowActionsMenu from '@/components/RowActionsMenu';
 import { useToast } from '@/components/Toast';
 import { FORMULARY, hasUsLabel, offFormularyDrug } from '@/lib/data/formulary';
 import { catalogFor, searchCatalog, toOrderedTest } from '@/components/lab/order/lab-order-catalog';
 import { stockPositionFor } from '@/lib/pharmacy-stock-position';
-import type { PatientDoc, PharmacyInventoryDoc } from '@/lib/db-types';
+import type { PatientDoc, PharmacyInventoryDoc, PrescriptionDoc } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { describeError } from '@/lib/user-facing-error';
 import type { ChartPanelUser } from './types';
 import {
-  doseText, drugOrderGaps, durationText, frequencyText, newDrugOrder, newTestOrder,
+  doseText, draftFromPrescription, drugOrderGaps, durationText, frequencyText, newDrugOrder, newTestOrder,
   type BasketContext, type BasketRequest, type DrugOrderDraft, type TestOrderDraft,
 } from './order-basket/basket-types';
 import { useOrderBasket } from './order-basket/useOrderBasket';
@@ -42,6 +44,24 @@ import DrugOrderForm from './order-basket/DrugOrderForm';
 import TestOrderForm from './order-basket/TestOrderForm';
 import { AllergyLine } from './order-basket/PatientBanner';
 import './order-basket/order-basket.css';
+
+/**
+ * The Drug orders and Lab orders groups start closed and keep whatever the
+ * clinician last left them as, on this device: open stays open, closed stays
+ * closed, across patients and visits.
+ */
+type BasketGroup = 'drug' | 'lab';
+const GROUP_KEY = 'tamam.orderBasket.open';
+function readGroupOpen(): Record<BasketGroup, boolean> {
+  const closed = { drug: false, lab: false };
+  if (typeof window === 'undefined') return closed;
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(GROUP_KEY) || '{}') as Partial<Record<BasketGroup, unknown>>;
+    return { drug: saved.drug === true, lab: saved.lab === true };
+  } catch {
+    return closed;
+  }
+}
 
 type View =
   | { name: 'basket' }
@@ -79,9 +99,20 @@ export default function OrderBasketPanel({
   const basket = useOrderBasket(patient._id);
   const [view, setView] = useState<View>({ name: 'basket' });
   const [query, setQuery] = useState('');
-  const [drugsOpen, setDrugsOpen] = useState(true);
-  const [labsOpen, setLabsOpen] = useState(true);
+  const [groupOpen, setGroupOpenState] = useState(readGroupOpen);
+  const setGroupOpen = useCallback((group: BasketGroup, open: boolean) => {
+    setGroupOpenState(prev => {
+      const next = { ...prev, [group]: open };
+      try { window.localStorage.setItem(GROUP_KEY, JSON.stringify(next)); } catch { /* private mode: this visit only */ }
+      return next;
+    });
+  }, []);
+  const drugsOpen = groupOpen.drug;
+  const labsOpen = groupOpen.lab;
   const [signing, setSigning] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const router = useRouter();
+  const pathname = usePathname() || `/patients/${patient._id}`;
 
   // Scoped to this patient at the query, not filtered down from the whole
   // facility's orders.
@@ -142,6 +173,12 @@ export default function OrderBasketPanel({
   }, [formEditedRef]);
   useEffect(() => () => markEdited(false), [markEdited]);
   const toBasket = () => { markEdited(false); setQuery(''); setView({ name: 'basket' }); };
+  // An order just added shows where it landed: its group opens (and stays
+  // open, like any other opening).
+  const putOrder = (order: DrugOrderDraft | TestOrderDraft) => {
+    basket.put(order);
+    setGroupOpen(order.kind === 'drug' ? 'drug' : 'lab', true);
+  };
   // The drawer's → goes back to the basket from a search or an order form.
   useDrawerBack(view.name !== 'basket', toBasket);
   const stamp = <T extends DrugOrderDraft | TestOrderDraft>(order: T): T => (
@@ -219,6 +256,47 @@ export default function OrderBasketPanel({
     }
   };
 
+  // ── Signed orders: what can still be done to them ──
+  // The chart tab that holds the order, with the row picked out.
+  const openOrder = (tab: 'prescriptions' | 'labs', id: string) => {
+    router.push(`${pathname}?${new URLSearchParams({ tab, focus: id }).toString()}`);
+  };
+  // Modify, O3's way: the signed order comes into the basket as a draft; the
+  // change is only made when it is signed, and signing stops the old order.
+  const modifyOrder = (rx: PrescriptionDoc) => {
+    const existing = drugOrders.find(o => o.replaces?.id === rx._id);
+    const prnPrefix = t('basket.prnReasonLine', { reason: '' }).trim();
+    setView({ name: 'drug-form', order: existing ?? stamp(draftFromPrescription(rx, prnPrefix)) });
+  };
+  // The same write the Medications and Orders tabs make, reason required.
+  const discontinueOrder = async (rx: PrescriptionDoc) => {
+    const reason = await confirmPrompt({
+      title: t('chart.medicationDiscontinueTitle', { medication: rx.medication }),
+      inputLabel: t('chart.medicationDiscontinueReason'),
+      inputRequired: true,
+      confirmLabel: t('chart.medicationDiscontinue'),
+      tone: 'danger',
+    });
+    if (!reason?.trim()) return;
+    setBusyId(rx._id);
+    try {
+      const { discontinuePrescription } = await import('@/lib/services/prescription-service');
+      const stopped = await discontinuePrescription(
+        rx._id,
+        { id: currentUser?._id, name: currentUser?.name || currentUser?.username },
+        reason.trim(),
+      );
+      if (!stopped) throw new Error('Change not saved. Try again.');
+      // A pending change to the stopped order has nothing left to change.
+      for (const o of drugOrders) if (o.replaces?.id === rx._id) basket.remove(o.id);
+      showToast(t('msg.discontinued', { medication: rx.medication }), 'success');
+    } catch (err) {
+      showToast(describeError(err, t('msg.medicationNotDiscontinuedTryAgain')), 'error');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   // ── Screens ──
   if (view.name === 'drug-search') {
     return (
@@ -241,7 +319,7 @@ export default function OrderBasketPanel({
           onBack={toBasket}
           header={<AllergyLine patient={patient} />}
           onAdd={key => {
-            basket.put(stamp(newDrugOrder(FORMULARY.find(d => d.name === key) ?? offFormularyDrug(key))));
+            putOrder(stamp(newDrugOrder(FORMULARY.find(d => d.name === key) ?? offFormularyDrug(key))));
             toBasket();
           }}
           onForm={key => {
@@ -261,7 +339,7 @@ export default function OrderBasketPanel({
           activeMedications={activeMedications}
           stockFor={stockFor}
           facilityName={facilityName}
-          onSave={order => { basket.put(order); toBasket(); }}
+          onSave={order => { putOrder(order); toBasket(); }}
           onDiscard={toBasket}
           onEdited={markEdited}
         />
@@ -286,7 +364,7 @@ export default function OrderBasketPanel({
           minQuery={1}
           onAdd={key => {
             const test = testCatalog.find(x => x.name === key);
-            if (test) basket.put(stamp(newTestOrder(toOrderedTest(test))));
+            if (test) putOrder(stamp(newTestOrder(toOrderedTest(test))));
             toBasket();
           }}
           onForm={key => {
@@ -303,7 +381,7 @@ export default function OrderBasketPanel({
         <TestOrderForm
           key={view.order.id}
           initial={view.order}
-          onSave={order => { basket.put(order); toBasket(); }}
+          onSave={order => { putOrder(order); toBasket(); }}
           onDiscard={toBasket}
           onEdited={markEdited}
           onBack={toBasket}
@@ -346,7 +424,7 @@ export default function OrderBasketPanel({
   return (
     <div className="tamam-drawer-workspace obk-root">
       <div className="obk-body">
-        {group('drug', t('basket.drugOrders', { count: drugOrders.length + activeDrugOrders.length }), drugsOpen, () => setDrugsOpen(v => !v), canPrescribe, () => { setQuery(''); setView({ name: 'drug-search' }); }, (
+        {group('drug', t('basket.drugOrders', { count: drugOrders.length + activeDrugOrders.length }), drugsOpen, () => setGroupOpen('drug', !drugsOpen), canPrescribe, () => { setQuery(''); setView({ name: 'drug-search' }); }, (
           <>
             {drugOrders.map(o => {
               const gaps = drugOrderGaps(o).length > 0;
@@ -355,7 +433,7 @@ export default function OrderBasketPanel({
                 o.id,
                 <><strong>{o.drug.name}</strong>{sig ? ` — ${sig}` : ''}</>,
                 <>
-                  <span className="obk-tag obk-tag--new">{t('basket.new')}</span>
+                  <span className="obk-tag obk-tag--new">{o.replaces ? t('basket.modify') : t('basket.new')}</span>
                   {gaps && <span className="obk-tag obk-tag--warn">{t('basket.incomplete')}</span>}
                 </>,
                 () => setView({ name: 'drug-form', order: o }),
@@ -367,22 +445,38 @@ export default function OrderBasketPanel({
               const warned = !!(rx.medicationSafety?.allergyWarnings.length
                 || rx.medicationSafety?.interactionWarnings.length
                 || rx.medicationSafety?.duplicateWarnings.length);
+              const changing = drugOrders.some(o => o.replaces?.id === rx._id);
               return (
-                <div className="obk-item" key={rx._id}>
+                <div className="obk-item obk-item--signed" key={rx._id}>
                   <span className="obk-tags">
                     <span className={warned ? 'obk-tag obk-tag--danger' : 'obk-tag'}>{warned ? t('basket.review') : rx.status}</span>
                     {(medCounts.get(medKey(rx.medication)) || 0) > 1 && (
                       <span className="obk-tag obk-tag--warn" title={t('chart.duplicateOrderHint')}>{t('chart.duplicateOrder')}</span>
                     )}
+                    {changing && <span className="obk-tag obk-tag--new">{t('basket.changeInBasket')}</span>}
                   </span>
-                  <p className="obk-line"><strong>{rx.medication}</strong> — {formatRxSig(rx)}</p>
+                  <div className="obk-draft-line">
+                    <p className="obk-line"><strong>{rx.medication}</strong> — {formatRxSig(rx)}</p>
+                    <span className="obk-draft-actions">
+                      <RowActionsMenu
+                        ariaLabel={t('chart.orderRowActions', { name: rx.medication })}
+                        actions={[
+                          { key: 'open', label: t('chart.orderOpenPrescription'), onClick: () => openOrder('prescriptions', rx._id) },
+                          ...(canPrescribe ? [
+                            { key: 'modify', label: changing ? t('basket.editChange') : t('basket.modifyOrder'), disabled: busyId === rx._id, onClick: () => modifyOrder(rx) },
+                            { key: 'stop', label: t('chart.medicationDiscontinue'), tone: 'danger' as const, disabled: busyId === rx._id, onClick: () => void discontinueOrder(rx) },
+                          ] : []),
+                        ]}
+                      />
+                    </span>
+                  </div>
                   {warned && <p className="obk-warn"><AlertTriangle aria-hidden /> {t('basket.safetyWarning')}</p>}
                 </div>
               );
             })}
           </>
         ))}
-        {group('lab', t('basket.labOrders', { count: testOrders.length + activeLabOrders.length }), labsOpen, () => setLabsOpen(v => !v), canOrderLabs, () => { setQuery(''); setView({ name: 'lab-search' }); }, (
+        {group('lab', t('basket.labOrders', { count: testOrders.length + activeLabOrders.length }), labsOpen, () => setGroupOpen('lab', !labsOpen), canOrderLabs, () => { setQuery(''); setView({ name: 'lab-search' }); }, (
           <>
             {testOrders.map(o => draftRow(
               o.id,
@@ -396,9 +490,19 @@ export default function OrderBasketPanel({
             {activeLabOrders.length > 0 && testOrders.length > 0 && <p className="obk-subhead">{t('basket.alreadyOrdered')}</p>}
             {testOrders.length === 0 && activeLabOrders.length === 0 && <p className="obk-empty">{t('basket.noLabOrders')}</p>}
             {activeLabOrders.map(l => (
-              <div className="obk-item" key={l._id}>
+              <div className="obk-item obk-item--signed" key={l._id}>
                 <span className="obk-tag">{l.status.replace('_', ' ')}</span>
-                <p className="obk-line"><strong>{l.testName}</strong> — {l.specimen}{l.tier ? ` · ${l.tier}` : ''}</p>
+                <div className="obk-draft-line">
+                  <p className="obk-line"><strong>{l.testName}</strong> — {l.specimen}{l.tier ? ` · ${l.tier}` : ''}</p>
+                  <span className="obk-draft-actions">
+                    {/* A sent test has no cancel: the lab lifecycle has no
+                        cancelled stage, so the bench is told directly. */}
+                    <RowActionsMenu
+                      ariaLabel={t('chart.orderRowActions', { name: l.testName })}
+                      actions={[{ key: 'open', label: t('chart.orderOpenResult'), onClick: () => openOrder('labs', l._id) }]}
+                    />
+                  </span>
+                </div>
               </div>
             ))}
           </>

@@ -12,9 +12,10 @@ export const MANAGER_STEPS: TourStep[] = [
   {
     id: 'welcome',
     route: '/facility-management',
-    target: '',
+    target: '.sadb-kpi-row',
+    placement: 'bottom',
     title: 'Welcome to Facility Management',
-    body: 'Reviews score, today’s appointments, enquiries, and staff shortcuts — your operational home.',
+    body: 'Your operational home: staff, patients, free beds and open issues across the top, with patient flow, cash flow and today’s operations below.',
   },
   {
     id: 'facility-overview',
@@ -57,14 +58,6 @@ export const MANAGER_STEPS: TourStep[] = [
     target: '',
     title: 'Facility assessments',
     body: 'Periodic readiness assessments — infrastructure, staffing, service availability — that feed straight into your facility’s profile and the performance scores on Facility Overview.',
-  },
-  {
-    id: 'hr-dashboard',
-    route: '/dashboard/hr',
-    target: '[data-tour="station-queue"]',
-    placement: 'right',
-    title: 'Staff & HR at a glance',
-    body: 'Today’s roster status and the queue of pending leave decisions, in the same shape as every other station dashboard. Approve or reject a request right from here, or jump to the full leave, schedule, or payroll registers.',
   },
   {
     id: 'hr-leave',

@@ -14,6 +14,9 @@ import RowActionsMenu from '@/components/RowActionsMenu';
 import AncVisitEditor from '@/components/anc/AncVisitEditor';
 import { ClipboardList } from '@/components/icons/lucide';
 import { FOCUSED_ROW_STYLE } from '@/components/ehr/chart/sections/rowFocus';
+import { useConfirm } from '@/components/ConfirmDialog';
+import { useToast } from '@/components/Toast';
+import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { ANCVisitDoc } from '@/lib/db-types';
 
@@ -29,10 +32,31 @@ export default function PatientAncTab({ visits, canEdit, onRegister, focusId, on
   onChanged?: () => void;
 }) {
   const { t } = useTranslation();
+  const confirm = useConfirm();
+  const { showToast } = useToast();
   const [editing, setEditing] = useState<ANCVisitDoc | null>(null);
   const ordered = [...visits].sort((a, b) => a.visitNumber - b.visitNumber || a.visitDate.localeCompare(b.visitDate));
   const latest = ordered[ordered.length - 1];
   const riskLabel = (r: ANCVisitDoc['riskLevel']) => t(r === 'high' ? 'ancChart.riskHigh' : r === 'moderate' ? 'ancChart.riskModerate' : 'ancChart.riskLow');
+
+  const handleDelete = async (v: ANCVisitDoc) => {
+    const ok = await confirm({
+      title: t('ancChart.deleteTitle', { n: v.visitNumber }),
+      message: t('ancChart.deleteMessage', { date: v.visitDate }),
+      confirmLabel: t('action.delete'),
+      tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      const { deleteANCVisit } = await import('@/lib/services/anc-service');
+      if (!(await deleteANCVisit(v._id))) throw new Error('ANC visit not deleted. Try again.');
+      showToast(t('ancChart.deleted'), 'success');
+      onChanged?.();
+    } catch (err) {
+      console.error(err);
+      showToast(describeError(err, t('ancChart.deleteFailed')), 'error');
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -81,7 +105,10 @@ export default function PatientAncTab({ visits, canEdit, onRegister, focusId, on
                   {canEdit && (
                     <RowActionsMenu
                       ariaLabel={t('ancChart.rowActions')}
-                      actions={[{ key: 'edit', label: t('action.edit'), onClick: () => setEditing(v) }]}
+                      actions={[
+                        { key: 'edit', label: t('action.edit'), onClick: () => setEditing(v) },
+                        { key: 'delete', label: t('action.delete'), tone: 'danger', onClick: () => void handleDelete(v) },
+                      ]}
                     />
                   )}
                 </td>

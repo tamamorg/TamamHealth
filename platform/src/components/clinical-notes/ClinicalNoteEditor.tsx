@@ -1569,7 +1569,8 @@ export default function ClinicalNoteEditor({
                 aria-current={workspaceGroup === g.id ? 'true' : undefined}
                 onClick={() => goToGroup(g.id)}
               >
-                {g.label}
+                <span className="tamam-reg-navarrow" aria-hidden>↳</span>
+                <span>{g.label}</span>
               </button>
             ))}
             {!navCollapsed && !locked && optionalAvailable.length > 0 && (
@@ -1747,7 +1748,8 @@ export default function ClinicalNoteEditor({
                           });
                         }}
                       >
-                        <span>{sectionLabel(t, id)}</span>
+                        <span className="tamam-reg-navarrow" aria-hidden>↳</span>
+                        <span className="cn-section-nav-label">{sectionLabel(t, id)}</span>
                         {filled && <span className="cn-section-nav-badge">•</span>}
                       </button>
                       {removable && (

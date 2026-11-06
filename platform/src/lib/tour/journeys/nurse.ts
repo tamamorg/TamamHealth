@@ -60,36 +60,15 @@ export const NURSE_STEPS: TourStep[] = [
   {
     id: 'triage-rooming',
     route: '/dashboard',
-    target: '',
-    title: 'Triage and rooming',
-    body: 'New arrivals show up in the Rooming queue on the outstanding rail. A patient who hasn’t been triaged yet opens straight into Triage — ETAT ABCC (Airway, Breathing, Circulation, Consciousness) and vitals, with RED / YELLOW / GREEN priority calculated automatically. Once triaged, “Continue rooming” walks them through room assignment and rooming vitals until they’re marked ready — that’s what moves them onto the clinician’s worklist.',
-  },
-  {
-    id: 'rooming-queue',
-    route: '/dashboard',
-    target: '.ehr-outstanding-chips button:nth-child(3)',
-    preClickSelector: '.ehr-outstanding-chips button:nth-child(3)',
+    target: '.ehr-outstanding-card',
     placement: 'left',
-    title: 'Open the rooming queue',
-    body: 'Everyone from check-in through mid-rooming sits here, longest wait first. Tap the “Rooming queue” chip to see who’s waiting.',
+    title: 'Triage and rooming',
+    body: 'New arrivals show up in the Rooming queue under Outstanding items. A patient who hasn’t been triaged yet gets Triage, the ETAT ABCC form (Airway, Breathing, Circulation, Consciousness) and vitals, with RED / YELLOW / GREEN priority calculated automatically. Once triaged, Continue rooming walks them through room assignment and rooming vitals until they’re marked ready, which moves them onto the clinician’s worklist.',
   },
-  {
-    id: 'rooming-continue',
-    route: '/dashboard',
-    target: '.ehr-queue-card',
-    preClickSelector: '.ehr-queue-card',
-    placement: 'top',
-    title: 'Continue rooming',
-    body: 'Tap a patient in the queue to open their rooming record.',
-  },
-  {
-    id: 'rooming-board',
-    route: '/rooming/[patientId]',
-    target: '[data-tour="rooming-board"]',
-    placement: 'top',
-    title: 'Assign a room and take vitals',
-    body: 'Mark them arrived, assign a bed or room, record rooming vitals, then mark ready — that’s what moves them onto the clinician’s worklist.',
-  },
+  // Triage from the worklist comes before the rooming queue: the queue view
+  // stays open on the dashboard once chosen, and "Open a patient's visit"
+  // then clicked a rooming row (which leaves for /rooming) instead of a
+  // worklist row (2026-11-05 tour check).
   {
     id: 'worklist-open',
     route: '/dashboard',
@@ -97,7 +76,7 @@ export const NURSE_STEPS: TourStep[] = [
     preClickSelector: '.ehr-appointment-row',
     placement: 'top',
     title: 'Open a patient’s visit',
-    body: 'Tap any row on your worklist to expand it — the chart, call, and triage actions all live in that expanded view.',
+    body: 'Tap any row on your worklist to open that visit: the chart, call, and triage actions all live in the panel it opens.',
   },
   {
     id: 'start-triage',
@@ -109,12 +88,42 @@ export const NURSE_STEPS: TourStep[] = [
     body: 'Anyone not yet assessed gets this button — it opens the ETAT form pinned to that one patient.',
   },
   {
+    // Triage opens in the patient's chart now (the drawer beside the record,
+    // ?form=triage-form), not on its own page.
     id: 'triage-form',
-    route: '/triage/[patientId]',
+    route: '/patients/[id]',
     target: '[data-tour="triage-form"]',
     placement: 'top',
     title: 'The ETAT assessment',
-    body: 'Airway, Breathing, Circulation, Consciousness, then vitals — RED / YELLOW / GREEN priority is calculated as you go. Save to hand the patient off to the right queue.',
+    body: 'The ETAT form opens beside the patient’s chart: Airway, Breathing, Circulation, Consciousness, then vitals, with RED / YELLOW / GREEN priority calculated as you go. Save to hand the patient on to the right queue.',
+  },
+  {
+    id: 'rooming-queue',
+    route: '/dashboard',
+    target: '.ehr-outstanding-chips button:nth-child(3)',
+    preClickSelector: '.ehr-outstanding-chips button:nth-child(3)',
+    placement: 'left',
+    title: 'Open the rooming queue',
+    body: 'Everyone from check-in through mid-rooming sits here, longest wait first. Tap the “Rooming queue” chip to see who’s waiting.',
+  },
+  {
+    // The rooming queue now opens as the list in the middle of the dashboard
+    // (the old queue cards are gone); each row carries "Continue rooming".
+    id: 'rooming-continue',
+    route: '/dashboard',
+    target: '.ehr-appointment-row .btn-secondary',
+    preClickSelector: '.ehr-appointment-row .btn-secondary',
+    placement: 'left',
+    title: 'Continue rooming',
+    body: 'Each patient in the queue has Continue rooming, which opens their rooming record. The longest wait sits at the top.',
+  },
+  {
+    id: 'rooming-board',
+    route: '/rooming/[patientId]',
+    target: '[data-tour="rooming-board"]',
+    placement: 'top',
+    title: 'Assign a room and take vitals',
+    body: 'Mark them arrived, assign a bed or room, record rooming vitals, then mark ready — that’s what moves them onto the clinician’s worklist.',
   },
   {
     id: 'ward-board',
@@ -136,11 +145,11 @@ export const NURSE_STEPS: TourStep[] = [
   {
     id: 'meds-open',
     route: '/dashboard',
-    target: '.ehr-queue-card',
-    preClickSelector: '.ehr-queue-card',
+    target: '.ehr-appointment-row',
+    preClickSelector: '.ehr-appointment-row',
     placement: 'top',
     title: 'Open a bedside record',
-    body: 'Tap a dose to jump straight to that patient’s MAR — the same grid whether it’s due, overdue, or already given.',
+    body: 'Tap a dose to open that patient’s MAR: the same grid whether it’s due, overdue, or already given.',
   },
   {
     id: 'mar-grid',
@@ -161,14 +170,16 @@ export const NURSE_STEPS: TourStep[] = [
   {
     id: 'anc',
     route: '/anc',
-    target: '',
+    target: '.ehr-list-header-toolbar',
+    placement: 'bottom',
     title: 'Antenatal care',
-    body: 'Mothers grouped with latest visit and risk level. A visit captures gestational age, BP, fundal height, fetal heart rate, screens, and the next-visit date — feeding MCH analytics and DHIS2.',
+    body: 'Mothers grouped with their latest visit and risk level; search them here. Register Visit opens the visit form, which captures gestational age, BP, fundal height, fetal heart rate, screens, and the next-visit date — feeding MCH analytics and DHIS2.',
   },
   {
     id: 'immunizations',
     route: '/immunizations',
-    target: '',
+    target: '.ehr-list-header-toolbar',
+    placement: 'bottom',
     title: 'Immunizations & defaulters',
     body: 'Record doses against each child’s schedule, and work the Defaulters tab — overdue doses can be recalled by SMS to the caregiver, per row or in bulk.',
   },

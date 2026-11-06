@@ -29,10 +29,12 @@ body .tamam-root :is(
 ) {
   font-family: var(--font-platform);
   font-size: 14px;
-  font-weight: 400;
   letter-spacing: normal;
   text-transform: none;
-  color: var(--accent-link, var(--accent-text));
+  /* 2026-11-05: Tamam blue, darker than the link blue, on the white
+     opener (tamam-chart.css GHOST ACTIONS). */
+  color: var(--accent-primary);
+  font-weight: 500;
 }
 
 /* globals.css sets the summary's Customize View and Demographics' Edit to

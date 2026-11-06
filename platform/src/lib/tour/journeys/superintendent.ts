@@ -15,6 +15,25 @@ import { clinicalOfficerTourSteps } from '../clinical-officer-steps';
 // list carries a gear that opens straight onto one, so the stop below anchors
 // on that gear instead of narrating a screen the tour could not reach.
 export const SUPERINTENDENT_STEPS: TourStep[] = [
+  // The superintendent's /dashboard is their own (SuperintendentDashboard:
+  // KPI tiles + Surveillance Signal), not the clinician worklist, so the tour
+  // opens on those panels before the shared clinical stops.
+  {
+    id: 'supt-welcome',
+    route: '/dashboard',
+    target: '.sadb-kpi-row',
+    placement: 'bottom',
+    title: 'Welcome, Superintendent',
+    body: 'Your facility in four figures: active staff, bed occupancy, pending leave, and active alerts with the referrals still waiting. Each one opens the page behind it.',
+  },
+  {
+    id: 'supt-signal',
+    route: '/dashboard',
+    target: '.sadb-card',
+    placement: 'top',
+    title: 'Surveillance signal',
+    body: 'Disease warnings near your catchment, by place and case count. View all opens the full surveillance feed.',
+  },
   ...clinicalOfficerTourSteps.filter(s => s.id !== 'finish'),
   {
     id: 'cosign-oversight',
@@ -32,12 +51,14 @@ export const SUPERINTENDENT_STEPS: TourStep[] = [
     body: 'Completeness, timeliness, and quality scores for everything your facility reports — the detail behind the Data Quality tile on Facility Overview, broken down enough to see exactly where documentation is slipping.',
   },
   {
+    // /dashboard/hr is retired (it lands on the facility dashboard); the
+    // leave register is where those decisions are made now.
     id: 'hr-dashboard-oversight',
-    route: '/dashboard/hr',
-    target: '[data-tour="station-queue"]',
-    placement: 'right',
-    title: 'Staffing at a glance',
-    body: 'Who’s on today, who’s on leave, and every leave request waiting on a decision — approve or reject right from the queue.',
+    route: '/hr/leave',
+    target: '[data-tour="hr-leave-list"]',
+    placement: 'top',
+    title: 'Staffing and leave',
+    body: 'Every leave request and who is away, with the decisions still waiting on you. Schedule and payroll sit beside it in the People & HR section of the ☰ menu.',
   },
   {
     id: 'hr-leave-oversight',

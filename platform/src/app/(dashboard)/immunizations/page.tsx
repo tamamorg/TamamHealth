@@ -26,6 +26,7 @@ import { stopsClickPropagation } from '@/lib/a11y';
 import { describeError } from '@/lib/user-facing-error';
 import { useUrlView } from '@/lib/navigation/use-url-view';
 import NumberInput from '@/components/forms/NumberInput';
+import { useConfirmPrompt } from '@/components/ConfirmDialog';
 
 const VACCINES = ['BCG', 'OPV', 'Penta', 'PCV', 'Rota', 'Measles', 'Yellow Fever', 'Vitamin A'];
 const SITES: Array<'left arm' | 'right arm' | 'left thigh' | 'right thigh' | 'oral'> = ['left arm', 'right arm', 'left thigh', 'right thigh', 'oral'];
@@ -46,7 +47,8 @@ export default function ImmunizationsPage() {
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const { globalSearch } = useUi();
-  const { immunizations, stats, coverage, loading, register, update } = useImmunizations();
+  const { immunizations, stats, coverage, loading, register, update, enterInError } = useImmunizations();
+  const confirmPrompt = useConfirmPrompt();
   const { patients } = usePatients();
   const { canRecordVitalEvents } = usePermissions();
   // Coverage analytics (summary cards, coverage-by-antigen, coverage-by-age) are
@@ -259,6 +261,7 @@ export default function ImmunizationsPage() {
   const childGroups = useMemo(() => {
     const groups = new Map<string, typeof immunizations>();
     for (const imm of immunizations) {
+      if (imm.recordStatus === 'entered_in_error') continue; // retained in the chart, not counted here
       if (!groups.has(imm.patientId)) groups.set(imm.patientId, []);
       groups.get(imm.patientId)!.push(imm);
     }
@@ -332,6 +335,25 @@ export default function ImmunizationsPage() {
     setForm({ patientId: '', patientName: '', gender: 'Male', dateOfBirth: '', vaccine: 'BCG', doseNumber: 1, dateGiven: todayIso(), nextDueDate: '', batchNumber: '', site: 'left arm', adverseReaction: false, adverseReactionDetails: '' });
     } catch (err) {
       showToast(describeError(err, t('msg.immunizationNotRecordedTryAgain')), 'error');
+    }
+  };
+
+  // Retire a dose charted by mistake. Never deleted: the reason and actor stay on the record.
+  const handleMarkError = async (dose: ImmunizationDoc) => {
+    const reason = await confirmPrompt({
+      title: t('immun.markErrorTitle', { vaccine: dose.vaccine }),
+      message: t('immun.markErrorMessage', { name: dose.patientName }),
+      inputLabel: t('immun.markErrorReasonLabel'),
+      inputRequired: true,
+      confirmLabel: t('chart.markError'),
+      tone: 'danger',
+    });
+    if (!reason || reason.trim().length < 3) return;
+    try {
+      await enterInError(dose._id, reason, { id: currentUser?._id, name: currentUser?.name });
+      showToast(t('chart.immunizationMarkedError'), 'success');
+    } catch (err) {
+      showToast(describeError(err, t('chart.immunizationUpdateFailed')), 'error');
     }
   };
 
@@ -833,6 +855,18 @@ export default function ImmunizationsPage() {
                                     style={{ color: 'var(--text-muted)' }}
                                   >
                                     <Edit3 size={12} />
+                                  </button>
+                                )}
+                                {canRecordVitalEvents && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); void handleMarkError(dose); }}
+                                    aria-label={t('chart.markError')}
+                                    title={t('chart.markError')}
+                                    className="p-0.5 rounded hover:bg-[var(--overlay-light)] shrink-0"
+                                    style={{ color: 'var(--text-muted)' }}
+                                  >
+                                    <XCircle size={12} />
                                   </button>
                                 )}
                               </div>

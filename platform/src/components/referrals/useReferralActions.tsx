@@ -20,7 +20,7 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import ReferralCompleteSlider from './ReferralCompleteSlider';
 
-type ReferralMode = 'view' | 'accept' | 'decline' | 'undo' | 'reopen' | 'note';
+type ReferralMode = 'view' | 'accept' | 'decline' | 'undo' | 'reopen' | 'note' | 'withdraw';
 
 export function useReferralActions({ canViewClinical, onChanged, onOpenAll }: {
   canViewClinical: boolean;
@@ -44,7 +44,9 @@ export function useReferralActions({ canViewClinical, onChanged, onOpenAll }: {
   /** What this user can decide on a referral. Only the receiving facility decides. */
   const decisions = (ref: ReferralDoc) => {
     const incoming = canManageReferrals && !!currentUser?.hospitalId && ref.toHospitalId === currentUser.hospitalId;
+    const outgoing = canManageReferrals && !!currentUser?.hospitalId && ref.fromHospitalId === currentUser.hospitalId;
     return {
+      withdraw: outgoing && (ref.status === 'sent' || ref.status === 'received' || ref.status === 'seen'),
       decide: incoming && (ref.status === 'sent' || ref.status === 'received'),
       accepted: incoming && ref.status === 'seen',
       reopen: incoming && ref.status === 'cancelled',
@@ -93,6 +95,13 @@ export function useReferralActions({ canViewClinical, onChanged, onOpenAll }: {
         await updateReferralNotes(ref._id, appendNote(ref, `DECLINED: ${line}`));
       }, t('referrals.toastDeclined'), t('referrals.toastDeclineFailed'));
     }
+    if (mode === 'withdraw') {
+      return write(async () => {
+        await setStatus(ref._id, 'cancelled');
+        const { updateReferralNotes } = await import('@/lib/services/referral-service');
+        await updateReferralNotes(ref._id, appendNote(ref, `WITHDRAWN by sender: ${line}`));
+      }, t('referrals.toastWithdrawn'), t('referrals.toastWithdrawFailed'));
+    }
     if (mode === 'note') {
       return write(async () => {
         const { updateReferralNotes } = await import('@/lib/services/referral-service');
@@ -118,6 +127,7 @@ export function useReferralActions({ canViewClinical, onChanged, onOpenAll }: {
         { key: 'undo', label: t('action.undo'), onClick: () => show(ref, 'undo') },
       ] : []),
       ...(can.reopen ? [{ key: 'reopen', label: t('action.reopen'), onClick: () => show(ref, 'reopen') }] : []),
+      ...(can.withdraw ? [{ key: 'withdraw', label: t('referrals.withdraw'), tone: 'danger' as const, onClick: () => show(ref, 'withdraw') }] : []),
       ...(can.note ? [{ key: 'note', label: t('action.addNote'), onClick: () => show(ref, 'note') }] : []),
       ...(onOpenAll ? [{ key: 'open', label: t('chart.referralOpen'), onClick: onOpenAll }] : []),
     ];
@@ -130,13 +140,14 @@ export function useReferralActions({ canViewClinical, onChanged, onOpenAll }: {
     undo: t('chart.referralUndoTitle'),
     reopen: t('chart.referralReopenTitle'),
     note: t('referrals.addNoteTitle'),
+    withdraw: t('referrals.withdrawTitle'),
   };
 
   const renderSlider = () => {
     if (!open) return null;
     const { referral: ref, mode } = open;
     const can = decisions(ref);
-    const needsText = mode === 'decline' || mode === 'note';
+    const needsText = mode === 'decline' || mode === 'note' || mode === 'withdraw';
     const hint = {
       view: undefined,
       accept: t('chart.referralAcceptHint', { name: ref.patientName }),
@@ -144,10 +155,11 @@ export function useReferralActions({ canViewClinical, onChanged, onOpenAll }: {
       undo: t('chart.referralUndoHint'),
       reopen: t('chart.referralReopenBody', { name: ref.fromHospital }),
       note: t('referrals.addNoteHint'),
+      withdraw: t('referrals.withdrawHint', { name: ref.toHospital }),
     }[mode];
     const confirmLabel = {
       accept: t('referrals.accept'), decline: t('referrals.confirmDecline'), undo: t('action.undo'),
-      reopen: t('action.reopen'), note: t('action.addNote'),
+      reopen: t('action.reopen'), note: t('action.addNote'), withdraw: t('referrals.withdraw'),
     };
     return (
       <FormSlider
@@ -170,8 +182,8 @@ export function useReferralActions({ canViewClinical, onChanged, onOpenAll }: {
         <div className="space-y-4">
           {hint && <p className="tamam-slider-value">{hint}</p>}
           {needsText && (
-            <FormField label={t(mode === 'decline' ? 'billing.reason' : 'action.addNote')} required>
-              {control => <textarea {...control} rows={4} autoFocus value={text} onChange={e => setText(e.target.value)} placeholder={t(mode === 'decline' ? 'referrals.declinePlaceholder' : 'referrals.notePlaceholder')} />}
+            <FormField label={t(mode === 'decline' || mode === 'withdraw' ? 'billing.reason' : 'action.addNote')} required>
+              {control => <textarea {...control} rows={4} autoFocus value={text} onChange={e => setText(e.target.value)} placeholder={t(mode === 'decline' ? 'referrals.declinePlaceholder' : mode === 'withdraw' ? 'referrals.withdrawPlaceholder' : 'referrals.notePlaceholder')} />}
             </FormField>
           )}
           <FormField label={t('chart.referralField.status')}><p className="tamam-slider-value">{t(`referral.${ref.status}`)}</p></FormField>

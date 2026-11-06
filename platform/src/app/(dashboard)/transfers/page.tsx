@@ -21,12 +21,14 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/Toast';
+import RowActionsMenu from '@/components/RowActionsMenu';
+import { useConfirm, useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useAuth } from '@/lib/context';
 import { usePatientTransfers, useTransferQueue } from '@/lib/hooks/usePatientTransfers';
 import {
   describeAssignment, describeTransferSide, isTransferOverdue,
 } from '@/lib/services/patient-transfer-service';
-import { canDecideTransfer } from '@/lib/services/patient-transfer-permissions';
+import { canDecideTransfer, canCancelTransfer } from '@/lib/services/patient-transfer-permissions';
 import type { PatientTransferDoc } from '@/lib/db-types';
 import { ArrowRightLeft, ArrowRight, Check, Clock } from '@/components/icons/lucide';
 import { stopsClickPropagation } from '@/lib/a11y';
@@ -87,7 +89,9 @@ export default function TransfersPage() {
   const { currentUser } = useAuth();
   const hereFacilityId = currentUser?.hospitalId;
   const { incoming, outgoing, loading, reload } = useTransferQueue();
-  const { accept: acceptLocal } = usePatientTransfers();
+  const { accept: acceptLocal, reject: rejectLocal, cancel: cancelLocal } = usePatientTransfers();
+  const confirmPrompt = useConfirmPrompt();
+  const confirm = useConfirm();
   const { showToast } = useToast();
   // In the URL (?view=) so Back returns to the tab the user was on.
   const [tab, setTab] = useUrlView<Tab>(['incoming', 'outgoing'], 'incoming');
@@ -113,6 +117,48 @@ export default function TransfersPage() {
       if (saved?.status === 'accepted') showToast(t('transfers.acceptedWaiting'), 'success', { placement: 'corner' });
     } catch (e) {
       setError(describeError(e, t('msg.transferNotAcceptedTryAgain')));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // Reject needs a reason (the sender gets the patient back and must know why).
+  const rejectWithReason = async (transfer: PatientTransferDoc) => {
+    const reason = await confirmPrompt({
+      title: t('transfers.rejectTitle'),
+      message: t('transfers.rejectHint'),
+      confirmLabel: t('transfers.confirmReject'),
+      tone: 'danger',
+      inputLabel: t('transfers.rejectReason'),
+      inputRequired: true,
+    });
+    if (!reason || !reason.trim()) return;
+    setBusyId(transfer._id);
+    setError(null);
+    try {
+      await rejectLocal(transfer._id, reason.trim());
+      await reload();
+    } catch (e) {
+      showToast(describeError(e, t('msg.changeNotSavedTryAgain')), 'error', { placement: 'corner' });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const withdraw = async (transfer: PatientTransferDoc) => {
+    if (!await confirm({
+      title: t('transfers.withdraw'),
+      message: transfer.patientName,
+      confirmLabel: t('transfers.withdraw'),
+      tone: 'danger',
+    })) return;
+    setBusyId(transfer._id);
+    setError(null);
+    try {
+      await cancelLocal(transfer._id, 'Withdrawn by sender');
+      await reload();
+    } catch (e) {
+      showToast(describeError(e, t('msg.changeNotSavedTryAgain')), 'error', { placement: 'corner' });
     } finally {
       setBusyId(null);
     }
@@ -245,6 +291,9 @@ export default function TransfersPage() {
             {rows.map(transfer => {
               const overdue = isTransferOverdue(transfer);
               const decide = auth ? canDecideTransfer(auth, transfer) : { allowed: false };
+              const pending = transfer.status === 'requested';
+              const canReject = tab === 'incoming' && pending && decide.allowed;
+              const canWithdraw = tab === 'outgoing' && pending && Boolean(auth && canCancelTransfer(auth, transfer).allowed);
               const tone = STATUS_TONE[transfer.status] || STATUS_TONE.withdrawn;
               const counterparty = tab === 'incoming' ? transfer.from : transfer.to;
               return (
@@ -317,6 +366,16 @@ export default function TransfersPage() {
                         style={{ background: tone.bg, color: tone.fg, textTransform: 'capitalize' }}
                       >
                         {STATUS_LABEL[transfer.status] ? t(STATUS_LABEL[transfer.status]) : transfer.status}
+                      </span>
+                    )}
+                    {(canReject || canWithdraw) && (
+                      <span {...stopsClickPropagation}>
+                        <RowActionsMenu
+                          ariaLabel={t('chart.actions')}
+                          actions={canReject
+                            ? [{ key: 'reject', label: t('transfers.reject'), tone: 'danger', disabled: busyId === transfer._id, onClick: () => void rejectWithReason(transfer) }]
+                            : [{ key: 'withdraw', label: t('transfers.withdraw'), tone: 'danger', disabled: busyId === transfer._id, onClick: () => void withdraw(transfer) }]}
+                        />
                       </span>
                     )}
                     {overdue

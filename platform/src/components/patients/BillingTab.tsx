@@ -14,6 +14,7 @@ import { apiFetch } from '@/lib/api-fetch';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
 import { useToast } from '@/components/Toast';
+import { useConfirmPrompt } from '@/components/ConfirmDialog';
 import { formatDate, formatMoney } from '@/lib/format-utils';
 import { summariseLedger, type LedgerSummary } from '@/lib/ledger-summary';
 import { buildAccountLines, type AccountLine } from '@/lib/billing-account-lines';
@@ -190,6 +191,7 @@ export default function BillingTab({
   const { currentUser } = useAuth();
   const scope = useDataScope();
   const { showToast } = useToast();
+  const confirmPrompt = useConfirmPrompt();
   const [data, setData] = useState<FinancialOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [chargeSearch, setChargeSearch] = useState('');
@@ -561,10 +563,76 @@ export default function BillingTab({
   // What can be done to one line of the account, from its own ⋮. Reading it
   // opens the slider; refunds are made from the payment inside it. Adjustments
   // stay with the billing roles, as in Billing actions.
+  // The bill behind a line: the one the ledger charge points at, else the one
+  // bill raised for the same visit. More than one is ambiguous, so none is offered.
+  const billOf = (line: AccountLine) => {
+    const direct = line.chargeRef ? d.bills.find(b => b._id === line.chargeRef) : undefined;
+    if (direct) return direct;
+    if (!line.encounterId) return undefined;
+    const forVisit = d.bills.filter(b => b.encounterId === line.encounterId && b.status !== 'cancelled');
+    return forVisit.length === 1 ? forVisit[0] : undefined;
+  };
+  // Same roles and same rule as the bill page: cancel only while nothing is paid.
+  const cancelBillFor = async (bill: BillingDoc) => {
+    setOpenLineId(null);
+    const reason = await confirmPrompt({
+      title: t('billing.cancelBillTitle', { invoice: bill.invoiceNumber }),
+      message: t('billing.cancelBillMessage'),
+      inputLabel: t('billing.cancelReason'),
+      confirmLabel: t('billing.cancelBill'),
+      tone: 'danger',
+    });
+    if (reason === null) return;
+    try {
+      const { cancelBill } = await import('@/lib/services/billing-service');
+      const result = await cancelBill(bill._id, currentUser?._id ?? '', currentUser?.name ?? '', reason.trim() || undefined);
+      if (!result) throw new Error('Bill not cancelled. It may already have a payment on it.');
+      showToast(t('billing.billCancelled', { invoice: bill.invoiceNumber }), 'success');
+      loadAll();
+      reloadPayments();
+    } catch (err) {
+      console.error(err);
+      showToast(describeError(err, t('billing.billNotCancelled')), 'error');
+    }
+  };
+  const reverseChargeFor = async (bill: BillingDoc) => {
+    setOpenLineId(null);
+    const reason = await confirmPrompt({
+      title: t('billing.reverseChargeTitle', { invoice: bill.invoiceNumber }),
+      message: t('billing.reverseChargeMessage'),
+      inputLabel: t('billing.reverseReason'),
+      inputRequired: true,
+      confirmLabel: t('billing.reverseCharge'),
+      tone: 'danger',
+    });
+    if (!reason?.trim()) return;
+    try {
+      const { reversePaidBillCharge } = await import('@/lib/services/billing-service');
+      const result = await reversePaidBillCharge(bill._id, currentUser?._id ?? '', currentUser?.name ?? '', reason.trim());
+      if (!result) throw new Error('Charge not reversed. It may already be reversed or cancelled.');
+      showToast(t('billing.chargeReversed', { invoice: bill.invoiceNumber }), 'success');
+      loadAll();
+      reloadPayments();
+    } catch (err) {
+      console.error(err);
+      showToast(describeError(err, t('billing.chargeNotReversed')), 'error');
+    }
+  };
   const lineActions = (line: AccountLine): RowAction[] => [
     { key: 'view', label: t('billing.lineView'), onClick: () => setOpenLineId(line.id) },
     ...(canCollect(line) ? [{ key: 'pay', label: t('billing.collectPayment'), onClick: () => collectFor(line) }] : []),
     ...(canCollect(line) && canManageBilling ? [{ key: 'adjust', label: t('billing.adjustmentWriteOff'), onClick: () => adjustFor(line) }] : []),
+    ...(canManageBilling ? (() => {
+      const bill = billOf(line);
+      if (!bill) return [];
+      if (bill.payments.length === 0 && (bill.status === 'draft' || bill.status === 'pending')) {
+        return [{ key: 'cancel-bill', label: t('billing.cancelBill'), tone: 'danger' as const, group: 'undo', onClick: () => void cancelBillFor(bill) }];
+      }
+      if ((bill.amountPaid || 0) > 0 && bill.status !== 'cancelled' && !bill.chargeReversedAt) {
+        return [{ key: 'reverse-charge', label: t('billing.reverseCharge'), tone: 'danger' as const, group: 'undo', onClick: () => void reverseChargeFor(bill) }];
+      }
+      return [];
+    })() : []),
   ];
 
   return (

@@ -107,15 +107,12 @@ export default function OrdersSection({ patientId, canPrescribe, canOrderLabs, o
     if (!reason?.trim()) return;
     setBusyId(row.id);
     try {
-      const { updatePrescription } = await import('@/lib/services/prescription-service');
-      const stopped = await updatePrescription(rx._id, {
-        status: 'discontinued',
-        stoppedAt: new Date().toISOString(),
-        stoppedBy: currentUser?._id,
-        stoppedByName: currentUser?.name || currentUser?.username,
-        stoppedSource: 'clinician',
-        stoppedReason: reason.trim(),
-      });
+      const { discontinuePrescription } = await import('@/lib/services/prescription-service');
+      const stopped = await discontinuePrescription(
+        rx._id,
+        { id: currentUser?._id, name: currentUser?.name || currentUser?.username },
+        reason.trim(),
+      );
       // updatePrescription returns null when the write fails.
       if (!stopped) throw new Error('Change not saved. Try again.');
       showToast(t('msg.discontinued', { medication: rx.medication }), 'success');

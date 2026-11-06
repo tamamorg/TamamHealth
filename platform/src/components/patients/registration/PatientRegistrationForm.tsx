@@ -4,6 +4,7 @@ import { usesAddressLists } from '@/lib/country/country-pack';
 import { isValidDocumentNumber } from '@/lib/country/patient-identity';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Camera, MapPin, User, Users, Wallet } from '@/components/icons/lucide';
 import { type CapturedFingerprint } from '@/components/FingerprintCapture';
 import PhotoCaptureModal from '@/components/patients/PhotoCaptureModal';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -72,6 +73,9 @@ interface PatientRegistrationFormProps {
   returnTo?: string;
   onDraftChange?: (draft: PatientRegistrationDraft) => void;
 }
+
+/** Section icons, in section order (Demographics … Payment Coverage). */
+const SECTION_ICONS = [User, Camera, MapPin, Users, Wallet];
 
 export function PatientRegistrationForm({
   embedded = false,
@@ -614,19 +618,19 @@ export function PatientRegistrationForm({
 
   const sectionProps = { form, errors, update };
 
-  /** Title, note and grey slab shared by every section on the page. */
-  const renderSection = (index: number, anchor: string, children: React.ReactNode) => (
+  /** Title, note and card shared by every section on the page. Each title
+   *  carries its icon, the way the chart's summary cards do. */
+  const renderSection = (index: number, anchor: string, children: React.ReactNode) => {
+    const SectionIcon = SECTION_ICONS[index];
+    return (
     <section className="registration-section tamam-reg-section" id={`reg-${anchor}`}>
       <header className="tamam-reg-sectionhead">
-        <h2>{index + 1}. {sectionLabels[index]}</h2>
-        {/* Only where there is something to mark: Biometrics and Payment
-            Coverage require nothing, so the note would point at asterisks that
-            are not there. */}
-        {sectionProgress[index].total > 0 && <p className="field-required">{t('patientNew.requiredFieldsNote')}</p>}
+        <h2>{SectionIcon && <SectionIcon className="tamam-reg-sectionicon" aria-hidden />}{sectionLabels[index]}</h2>
       </header>
       <div className="tamam-reg-fields">{children}</div>
     </section>
-  );
+    );
+  };
 
   return (
     <>
@@ -636,8 +640,8 @@ export function PatientRegistrationForm({
           {/* Left rail: the form's table of contents and its two actions. */}
           <aside className="tamam-reg-rail" aria-label={t('patientNew.registrationProgressAriaLabel')}>
             {embedded ? <h1 className="tamam-reg-title">{t('patientNew.topBarTitle')}</h1> : <FormPageHead />}
-            {/* Said once, here, instead of under every section heading. */}
-            <p className="tamam-reg-railnote field-required">{t('patientNew.requiredFieldsNote')}</p>
+            {/* No "Required fields marked *" note (removed 2026-11-05 at the
+                user's request): the red asterisk on each field says it. */}
             <p className="tamam-reg-jump">{t('patientNew.jumpTo')}</p>
             <RegistrationJumpNav
               sectionLabels={sectionLabels}

@@ -53,13 +53,17 @@
   flex-direction: column;
   padding: 0 0 16px;
 }
+/* A page link is the registration rail's jump link: corner arrow + label.
+   The chosen page shows in its label and arrow alone, in the accent: no
+   fill behind it. Solid blue is the chart's left panel only. */
 .o3f-nav-item {
-  display: block;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
   width: 100%;
   min-height: 40px;
-  padding: 8px 16px 8px 18px;
+  padding: 9px 16px 9px 14px;
   border: 0;
-  border-inline-start: 6px solid color-mix(in srgb, var(--accent-primary) 22%, transparent);
   background: transparent;
   color: var(--text-primary);
   font: inherit;
@@ -67,12 +71,16 @@
   text-align: start;
   cursor: pointer;
 }
-.o3f-nav-item:hover { background: var(--bg-app); }
-.o3f-nav-item.is-active {
-  border-inline-start-color: var(--accent-primary);
-  background: var(--color-slate-100);
+.o3f-nav-item .tamam-reg-navarrow { color: var(--text-secondary); }
+.o3f-nav-item:hover { color: var(--accent-text, var(--accent-primary)); }
+.o3f-nav-item.is-active,
+.o3f-nav-item.is-active:hover {
+  background: transparent;
+  color: var(--accent-text, var(--accent-primary));
   font-weight: 600;
 }
+.o3f-nav-item.is-active .tamam-reg-navarrow { color: currentColor; }
+.o3f-nav-item:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
 .o3f-nav-actions {
   display: flex;
   flex-direction: column;
@@ -357,20 +365,13 @@
 .o3f { container: o3-form / inline-size; }
 @container o3-form (max-width: 720px) {
   .o3f:not(.o3f--single) .o3f-grid { grid-template-columns: 148px minmax(0, 1fr); }
-  .o3f-nav { border-inline-end: 1px solid var(--border-light); background: var(--bg-app); }
+  .o3f-nav { border-inline-end: 1px solid var(--border-light); background: var(--bg-card-solid, #fff); }
   .o3f-nav-item {
-    padding: 10px 12px;
-    border-inline-start: 3px solid transparent;
+    padding: 10px 10px;
     font-size: 13px;
     line-height: 1.3;
     white-space: normal;
     overflow-wrap: anywhere;
-  }
-  .o3f-nav-item:hover { background: var(--border-light); }
-  .o3f-nav-item.is-active {
-    border-inline-start-color: var(--accent-primary);
-    background: var(--ehr-panel, var(--bg-card-solid));
-    font-weight: 600;
   }
   .o3f-nav-actions { margin: 12px 0 0; padding: 12px; }
   .o3f-section-body { margin-inline-end: 0; padding: 16px; }
