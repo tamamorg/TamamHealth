@@ -52,7 +52,12 @@ export type CsvCell = unknown;
  * is one rule, and it is what both existing CSV writers already did.
  */
 function quote(cell: CsvCell): string {
-  return `"${String(cell ?? '').replace(/"/g, '""')}"`;
+  let text = String(cell ?? '');
+  // Spreadsheet formula-injection guard: a cell a program like Excel would
+  // execute (leading =, +, -, @, after optional whitespace) is prefixed with an
+  // apostrophe so it stays text. RFC 4180 quoting alone does not stop this.
+  if (/^[\t\r ]*[=+\-@]/.test(text)) text = `'${text}`;
+  return `"${text.replace(/"/g, '""')}"`;
 }
 
 /**

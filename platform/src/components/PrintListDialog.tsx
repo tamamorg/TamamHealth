@@ -91,7 +91,12 @@ export function buildPrintListHtml(
 }
 
 function downloadCsv(filename: string, sections: PrintListSection[]) {
-  const quote = (cell: string) => `"${String(cell).replace(/"/g, '""')}"`;
+  const quote = (cell: string) => {
+    let text = String(cell);
+    // Formula-injection guard: keep a cell a spreadsheet would run as text.
+    if (/^[\t\r ]*[=+\-@]/.test(text)) text = `'${text}`;
+    return `"${text.replace(/"/g, '""')}"`;
+  };
   // Sections can carry different column sets, so each becomes its own block
   // (label line, header, rows) rather than being forced into one grid.
   const blocks = sections.map(section => {

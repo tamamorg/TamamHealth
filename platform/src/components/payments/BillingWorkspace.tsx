@@ -42,6 +42,7 @@ import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/component
 import FormSlider from '@/components/overlay/FormSlider';
 import { getMethodConfig } from '@/lib/payment-method-config';
 import { toIsoDate, todayIso } from '@/lib/date-utils';
+import { escapeCsvCell } from '@/lib/csv';
 import { isPathAllowed } from '@/lib/role-routes';
 import type { PaymentDoc, ClaimDoc, PaymentPlanDoc, PaymentMethodType } from '@/lib/db-types-payments';
 import type { BillingDoc } from '@/lib/db-types-billing';
@@ -114,7 +115,7 @@ interface PaymentsData {
 /** Downloads `rows` as a CSV, matching the list-page download elsewhere. */
 function downloadCsv(filename: string, header: string[], rows: (string | number)[][]) {
   const csv = [header, ...rows]
-    .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    .map(row => row.map(escapeCsvCell).join(','))
     .join('\n');
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   const link = document.createElement('a');

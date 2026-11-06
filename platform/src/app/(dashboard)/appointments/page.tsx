@@ -56,6 +56,7 @@ import { appointmentCalendarClinicalAction } from '@/lib/appointment-calendar-ro
 import { describeError } from '@/lib/user-facing-error';
 import { useUrlView } from '@/lib/navigation/use-url-view';
 import { chartFormHref } from '@/components/ehr/chart/panels/role-form-access';
+import { escapeCsvCell } from '@/lib/csv';
 
 // react-big-calendar (and its CSS) is a heavy client-only library. Split it out
 // of the route's initial bundle so it loads only when the calendar view renders.
@@ -556,7 +557,7 @@ export default function AppointmentsPage() {
         t(statusLabelKey[a.status]),
       ]);
     const csv = [header, ...rows]
-      .map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .map(r => r.map(escapeCsvCell).join(','))
       .join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');

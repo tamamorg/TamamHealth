@@ -52,7 +52,10 @@ const RANGE_MS: Record<Exclude<RangeFilter, 'all'>, number> = {
 };
 
 function csvCell(v: string): string {
-  return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  // Formula-injection guard before RFC 4180 quoting: an apostrophe keeps a cell
+  // a spreadsheet would execute (leading =, +, -, @) as plain text.
+  const text = /^[\t\r ]*[=+\-@]/.test(v) ? `'${v}` : v;
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
 export default function AuditLogsPage() {
