@@ -25,9 +25,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/context';
 import { RefreshCw, Check } from '@/components/icons/lucide';
 import {
-  getDhis2SyncLog, recordDhis2SyncResult, recordDhis2SyncFailure, isDhis2Configured,
+  getDhis2SyncLog, isDhis2Configured,
   groupDhis2DataValues, type Dhis2SyncLogDoc,
 } from '@/lib/services/dhis2-sync-log-service';
+import { recordDhis2SyncResult, recordDhis2SyncFailure } from '@/lib/services/dhis2-sync-log-client';
 import type { DHIS2ExportScope } from '@/lib/services/dhis2-export-service';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
