@@ -23,9 +23,10 @@ export function useDataScope(): DataScope | undefined {
             facilityIds: currentUser.facilityIds,
             role: currentUser.role,
             userId: currentUser._id,
+            specialtyCode: currentUser.specialtyCode,
           }
         : undefined,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currentUser?.orgId, currentUser?.hospitalId, currentUser?.facilityIds, currentUser?.role, currentUser?._id],
+    [currentUser?.orgId, currentUser?.hospitalId, currentUser?.facilityIds, currentUser?.role, currentUser?._id, currentUser?.specialtyCode],
   );
 }
