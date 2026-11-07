@@ -133,3 +133,53 @@ describe('catalogue wiring', () => {
     for (const type of Object.keys(catalog.types)) expect(DOC_WRITE_ROLES[type]).toBeDefined();
   });
 });
+
+// ── Review of #256 (2026-11-07) ─────────────────────────────────────────────
+describe('arrays from another JS context (as CouchDB hands them over)', () => {
+  // CouchDB evaluates the validator in its own context; a document's arrays are
+  // not `instanceof Array` there. vm gives the same situation in Node.
+   
+  const vm = require('node:vm') as typeof import('node:vm');
+  const foreign = <T,>(value: T): T => vm.runInNewContext(`(${JSON.stringify(value)})`) as T;
+
+  it('still finds plaintext inside a catalogued array path', () => {
+    const doc = foreign({
+      _id: 'msg-1', type: 'message', orgId: 'org-a', body: SEALED,
+      editHistory: [{ body: 'plain earlier wording', at: '2026-11-07T10:00:00Z' }],
+    });
+    expect(Array.isArray(doc.editHistory) && !(doc.editHistory instanceof Array)).toBe(true);
+    expect(reason(doc, null)).toMatch(/message field editHistory\[0\]\.body must be encrypted/);
+  });
+
+  it('passes the same array when it is sealed', () => {
+    const doc = foreign({
+      _id: 'msg-1', type: 'message', orgId: 'org-a', body: SEALED,
+      editHistory: [{ body: SEALED, at: '2026-11-07T10:00:00Z' }],
+    });
+    expect(reason(doc, null)).toBeNull();
+  });
+});
+
+describe('a conflicting branch whose parent the server does not hold', () => {
+  it('stores an untouched-legacy branch (oldDoc null, revision past the first) instead of stranding it', () => {
+    expect(reason(problem({ _rev: '3-abc', name: 'legacy plaintext' }), null)).toBeNull();
+  });
+
+  it('still judges a first revision (a create) with no oldDoc', () => {
+    expect(reason(problem({ _rev: '1-abc', name: 'plain text' }), null)).toMatch(/must be encrypted/);
+    expect(reason(problem({ name: 'plain text' }), null)).toMatch(/must be encrypted/);
+  });
+});
+
+describe('robustness', () => {
+  it('a document key named hasOwnProperty does not break the walk', () => {
+    expect(reason(problem({ name: 'plain', hasOwnProperty: 'x' }), null)).toMatch(/must be encrypted/);
+  });
+
+  it('an update with nothing unsealed never needs the old revision', () => {
+    const huge = problem({ attachmentsBlob: 'x'.repeat(5_000_000) });
+    const started = Date.now();
+    expect(reason(problem({ status: 'resolved' }), huge)).toBeNull();
+    expect(Date.now() - started).toBeLessThan(500);
+  });
+});
