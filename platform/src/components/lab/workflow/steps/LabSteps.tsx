@@ -6,6 +6,7 @@
  * each is small and they are only ever rendered by LabWorkflowPanel.
  */
 
+import { useState } from 'react';
 import { AlertTriangle, CheckCircle2, Pencil, Printer } from '@/components/icons/lucide';
 import { formatDateTime } from '@/lib/format-utils';
 import { useToast } from '@/components/Toast';
@@ -20,6 +21,7 @@ import { ObfQuestion, ObfSelectField, ObfTextField, ObfValue } from '@/component
 import { labProfilePage } from '@/lib/forms/o3-form-definitions';
 import { resolveLabResultProfile } from '../lab-result-catalog';
 import { getLabReferenceRange } from '@/lib/services/lab-critical-flag';
+import PendingCorrectionNotice from '../PendingCorrectionNotice';
 
 const SPECIMEN_CONDITIONS: { value: NonNullable<LabResultDoc['specimenCondition']>; label: string }[] = [
   { value: 'acceptable', label: 'Acceptable' },
@@ -511,7 +513,20 @@ export function ReportStep({
               by: order.amendedBy || '—',
               reason: order.amendmentReason || '—',
             })}
+            {order.correctionVerifiedBy && (
+              <> {t('labFlow.correctionVerifiedLine', {
+                by: order.correctionVerifiedBy,
+                at: order.correctionVerifiedAt ? formatDateTime(order.correctionVerifiedAt) : '—',
+              })}</>
+            )}
           </p>
+        )}
+        {/* Outside the print area on purpose: the printed report carries the
+            filed value only, never one still under review. */}
+        {order.pendingCorrection && (
+          <PendingCorrectionNotice correction={order.pendingCorrection}>
+            <CorrectionReview ctrl={ctrl} />
+          </PendingCorrectionNotice>
         )}
         <div id="lab-result-print" className="lwf-section-body labord-print">
           {order.amended && (
@@ -596,6 +611,66 @@ export function ReportStep({
   );
 }
 
+/**
+ * The second lab tech's side of a proposed correction. The proposer is told it
+ * waits for someone else; a viewer who is not a lab tech sees the notice only.
+ */
+function CorrectionReview({ ctrl }: { ctrl: LabWorkflowController }) {
+  const { t } = useTranslation();
+  const { showToast } = useToast();
+  const [rejecting, setRejecting] = useState(false);
+
+  if (ctrl.correctionReview === 'own') {
+    return <p className="lab-pcorr-help">{t('labFlow.correctionOwnWaits')}</p>;
+  }
+  if (ctrl.correctionReview !== 'can_review') return null;
+
+  const press = async (fn: () => Promise<boolean>, okKey: string) => {
+    const ok = await fn();
+    showToast(ok ? t(okKey) : t(ctrl.lastError.current || 'labFlow.errGeneric'), ok ? 'success' : 'error', { placement: 'corner' });
+    if (ok) setRejecting(false);
+  };
+
+  return (
+    <>
+      {!rejecting && (
+        <div className="lab-pcorr-actions">
+          <button type="button" className="labord-btn labord-btn--primary" disabled={ctrl.busy} onClick={() => void press(ctrl.approveCorrection, 'labFlow.okCorrectionApproved')}>
+            {t('labFlow.correctionApprove')}
+          </button>
+          <button type="button" className="labord-btn" disabled={ctrl.busy} onClick={() => setRejecting(true)}>
+            {t('labFlow.correctionReject')}
+          </button>
+        </div>
+      )}
+      {rejecting && (
+        <div className="lab-pcorr-reject">
+          <ObfTextField
+            id="labflow-correction-reject-reason"
+            label={t('labFlow.correctionRejectReason')}
+            multiline
+            value={ctrl.correctionRejectReason}
+            onChange={ctrl.setCorrectionRejectReason}
+          />
+          <div className="lab-pcorr-actions">
+            <button
+              type="button"
+              className="labord-btn labord-btn--primary"
+              disabled={ctrl.busy || !ctrl.correctionRejectReason.trim()}
+              onClick={() => void press(ctrl.rejectCorrection, 'labFlow.okCorrectionRejected')}
+            >
+              {t('labFlow.correctionRejectConfirm')}
+            </button>
+            <button type="button" className="labord-btn" disabled={ctrl.busy} onClick={() => { setRejecting(false); ctrl.setCorrectionRejectReason(''); }}>
+              {t('action.cancel')}
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 /** Once filed, the record's facts the report does not already show. */
 export function FiledRecord({ order }: { order: LabResultDoc }) {
   const { t } = useTranslation();
@@ -615,6 +690,18 @@ export function FiledRecord({ order }: { order: LabResultDoc }) {
           <Field label={t('labFlow.orderedAt')} value={order.orderedAt ? formatDateTime(order.orderedAt) : undefined} />
           {order.requestSource && <Field label={t('labIntake.source')} value={t(`labIntake.source_${order.requestSource}`)} />}
           {order.externalReference && <Field label={t('labIntake.reference')} value={order.externalReference} />}
+          {(order.rejectedCorrections || []).map(rejected => (
+            <Field
+              key={`${rejected.proposedAt}-${rejected.rejectedAt}`}
+              label={t('labFlow.correctionRejectedLabel')}
+              value={t('labFlow.correctionRejectedLine', {
+                value: resultWithUnit(rejected.result, rejected.unit) || '—',
+                proposedBy: rejected.proposedBy,
+                rejectedBy: rejected.rejectedBy,
+                reason: rejected.rejectionReason,
+              })}
+            />
+          ))}
         </div>
       </div>
     </div>

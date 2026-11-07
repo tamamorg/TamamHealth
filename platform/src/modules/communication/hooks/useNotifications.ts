@@ -469,6 +469,16 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
           out.push({ id: `lab-ready-${l._id}`, type: 'lab', severity: 'info', title: nameFirst(l.patientName, 'Result ready'), subtitle: `${l.testName} · ready to review`, time: l.completedAt || l.updatedAt || l.createdAt, href: labResultHref(l) });
         }
       }
+      // A correction one lab tech entered waits for a second to approve it.
+      // Only the other techs are asked: the proposer cannot approve their own.
+      if (currentUser?.role === 'lab_tech' && currentUser._id) {
+        const awaitingReview = labs
+          .filter(x => x.pendingCorrection && x.pendingCorrection.proposedById !== currentUser._id)
+          .slice(0, perSourceLimit);
+        for (const l of awaitingReview) {
+          out.push({ id: `lab-correction-${l._id}`, type: 'lab', severity: 'warning', title: nameFirst(l.patientName, 'Correction to review'), subtitle: `${l.testName} · correction awaiting review`, time: l.pendingCorrection!.proposedAt || l.updatedAt || l.createdAt, href: labResultHref(l) });
+        }
+      }
     } catch { /* offline */ }
 
     // Appointments — approvals needed + patients checked in and waiting.

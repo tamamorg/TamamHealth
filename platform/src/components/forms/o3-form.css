@@ -377,3 +377,7 @@
   .o3f-section-body { margin-inline-end: 0; padding: 16px; }
   .o3f-page-head, .o3f-section-head { padding-inline: 16px; }
 }
+
+/* A required confirmation tick (triage "Medication list reviewed"): sentence
+   case, not the global uppercase label. */
+.o3f-choice.o3f-confirm { margin: 0; text-transform: none; letter-spacing: normal; font-weight: 500; }

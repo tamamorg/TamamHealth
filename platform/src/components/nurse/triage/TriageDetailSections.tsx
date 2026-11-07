@@ -62,14 +62,20 @@ export function TriageVitalsSection({ f }: { f: TriageFormState }) {
 }
 
 export function TriageIntakeHistory({ f }: { f: TriageFormState }) {
-  const { t, currentMedications, setCurrentMedications, chronicConditionsSelected, setChronicConditionsSelected } = f;
-  // Current medications + chronic conditions — light-touch intake. TriageDoc
-  // has no dedicated column for either (that data lives on PatientDoc as a
-  // standing record), so both fold into the saved notes as labelled lines.
+  const { t, currentMedications, setCurrentMedications, chronicConditionsSelected, setChronicConditionsSelected, selectedTriagePatient } = f;
+  // Chronic conditions — light-touch intake with no TriageDoc column (that data
+  // lives on PatientDoc as a standing record), folded into the saved notes as
+  // a labelled line. What the patient takes is the Medication list review
+  // below once the patient is known; the old free-text box stays only before
+  // that, or while it still holds text (a restored draft), so nothing typed
+  // into it is lost — it folds into the notes as before.
+  const showFreeTextMedications = !selectedTriagePatient || Boolean(currentMedications.trim());
   return (
     <div className="o3f-fields">
-      <O3TextField id="triage-current-medications" label={t('triageForm.currentMedications')} value={currentMedications}
-        placeholder={t('triageO3.medicationsPlaceholder')} onChange={setCurrentMedications} />
+      {showFreeTextMedications && (
+        <O3TextField id="triage-current-medications" label={t('triageForm.currentMedications')} value={currentMedications}
+          placeholder={t('triageO3.medicationsPlaceholder')} onChange={setCurrentMedications} />
+      )}
       <O3MultiSelectField
         id="triage-chronic-conditions"
         label={t('triageForm.chronicConditions')}

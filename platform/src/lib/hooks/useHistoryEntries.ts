@@ -68,7 +68,15 @@ export function useHistoryEntries(patientId?: string) {
     return doc;
   }, [load, scope]);
 
+  const stop = useCallback(async (id: string, actor?: { userId?: string; userName?: string }) => {
+    const { stopHistoryEntry } = await import('../services/history-service');
+    if (!scope) return null;
+    const doc = await stopHistoryEntry(id, scope, actor);
+    await load();
+    return doc;
+  }, [load, scope]);
+
   const entries = useMemo(() => activeHistory(all), [all]);
 
-  return { entries, loading, error, create, update, markInError, reload: load };
+  return { entries, loading, error, create, update, markInError, stop, reload: load };
 }

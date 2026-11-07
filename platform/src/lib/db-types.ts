@@ -628,6 +628,42 @@ export interface LabResultDoc extends BaseDoc {
   amendedFrom?: string;
   /** Why it changed — required by the amend form. */
   amendmentReason?: string;
+  /** The second lab tech who approved the correction now on the result. */
+  correctionVerifiedBy?: string;
+  correctionVerifiedById?: string;
+  correctionVerifiedAt?: string;
+
+  /**
+   * A correction one lab tech has entered and a second must approve. The filed
+   * value above stays what clinicians read until it is approved; staff screens
+   * show this beside it and the patient portal never sees it. One at a time.
+   */
+  pendingCorrection?: LabResultCorrection;
+  /** Corrections a second lab tech turned down, kept for the audit trail. */
+  rejectedCorrections?: LabResultRejectedCorrection[];
+}
+
+/** A proposed value for a filed lab result, awaiting a second lab tech. */
+export interface LabResultCorrection {
+  result: string;
+  unit: string;
+  referenceRange: string;
+  observations?: LabResultObservation[];
+  abnormal: boolean;
+  critical: boolean;
+  /** Why the filed value is wrong. */
+  reason: string;
+  proposedBy: string;
+  /** User `_id` of the proposer: the approver must be someone else. */
+  proposedById: string;
+  proposedAt: string;
+}
+
+export interface LabResultRejectedCorrection extends LabResultCorrection {
+  rejectedBy: string;
+  rejectedById: string;
+  rejectedAt: string;
+  rejectionReason: string;
 }
 
 export interface LabResultObservation {
@@ -2126,6 +2162,26 @@ export type TriageDisposition = 'emergency' | 'general_clinic' | 'specialty_clin
  *  worklist; the desk decides what happens next. */
 export type TriageHandoffStatus = 'awaiting_room' | 'awaiting_provider' | 'assigned' | 'acknowledged' | 'in_consultation' | 'completed' | 'returned_to_desk';
 
+/**
+ * "Medication list reviewed", captured with a triage: who confirmed it, when,
+ * and what changed on the list while triage was open. The list itself lives
+ * in `history_entry` documents (domain 'medication'); this is only the record
+ * of the review. Medicine names are sealed (phi-field-catalog.json).
+ */
+export interface TriageMedicationReview {
+  reviewedAt: string;
+  /** User id of the nurse who confirmed the review. */
+  reviewedBy: string;
+  reviewedByName: string;
+  /** Medicines on the current list when the review was confirmed. */
+  activeCount: number;
+  added: string[];
+  edited: string[];
+  stopped: string[];
+  /** Entries marked as entered in error during the review. */
+  removed: string[];
+}
+
 export interface TriageDoc extends BaseDoc {
   type: 'triage';
   patientId: string;
@@ -2189,6 +2245,8 @@ export interface TriageDoc extends BaseDoc {
   symptomDuration?: string;   // free text, e.g. "2 days"
   referralSource?: string;    // referring facility / person
   knownAllergies?: string;    // free text; "" / "None known" when none
+  /** The nurse confirmed the patient's medication list at this triage. */
+  medicationReview?: TriageMedicationReview;
   /** WHO/ICRC/MSF IITT presentation and danger-sign screen. */
   presentationCategory?: 'medical' | 'trauma' | 'obstetric' | 'mental_health' | 'other';
   triagePathway?: 'adult_12_plus' | 'pediatric_under_12';

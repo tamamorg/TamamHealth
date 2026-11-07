@@ -118,7 +118,7 @@ export default function MedicationsSection({
   const [busyId, setBusyId] = useState<string | null>(null);
   /** The order whose copy is being handed to the patient (print or text). */
   const [copyFor, setCopyFor] = useState<PrescriptionDoc | null>(null);
-  const { entries: historyEntries, error: historyFailed, markInError } = useHistoryEntries(patientId);
+  const { entries: historyEntries, error: historyFailed, markInError, stop: stopReportedMed } = useHistoryEntries(patientId);
   const reportedMeds = useMemo(
     () => historyForDomain(historyEntries, MEDICATION_HISTORY_DOMAIN),
     [historyEntries],
@@ -372,6 +372,7 @@ export default function MedicationsSection({
         adding={recordingMed}
         onCloseAdd={() => setRecordingMed(false)}
         markInError={markInError}
+        stop={stopReportedMed}
       />
     </ChartSection>
     {copyFor && (

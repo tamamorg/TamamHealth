@@ -13,6 +13,7 @@ import { formatDateTime, formatRxSig } from '@/lib/format-utils';
 import { fallbackAccessionNumber, resultWithUnit } from '@/components/lab/workflow/lab-workflow-types';
 import type { LabResultDoc, PrescriptionDoc } from '@/lib/db-types';
 import ReportSheet, { ReportDesk, printReportSheet, type ReportTone } from './ReportSheet';
+import PendingCorrectionNotice from '@/components/lab/workflow/PendingCorrectionNotice';
 
 const SHEET_ID = 'chart-report-sheet';
 
@@ -39,6 +40,10 @@ export function LabReportSheet({ order }: { order: LabResultDoc }) {
     : [{ id: order._id, tone, cells: [order.testName, bareValue(order.result, order.unit), order.unit, order.referenceRange] as ReactNode[] }];
   const showRange = !order.observations?.length;
   return (
+    <>
+    {/* Above the sheet, never on it: the printed report carries the filed
+        value only, not one still under review. */}
+    {order.pendingCorrection && <PendingCorrectionNotice correction={order.pendingCorrection} />}
     <ReportSheet
       id={SHEET_ID}
       documentLabel={t('print.labReport')}
@@ -79,6 +84,7 @@ export function LabReportSheet({ order }: { order: LabResultDoc }) {
         },
       ]}
     />
+    </>
   );
 }
 

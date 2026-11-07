@@ -99,8 +99,14 @@ export interface HistoryEntryDoc extends BaseDoc {
   /**
    * 'entered_in_error' retires a mistaken entry without deleting it, so the
    * chart can still show that something was recorded and withdrawn.
+   * 'stopped' (medication entries) means the patient no longer takes it: true
+   * when recorded, off the current list now.
    */
-  status: 'active' | 'entered_in_error';
+  status: 'active' | 'entered_in_error' | 'stopped';
+  /** Medication entries: when and by whom it was marked as no longer taken. */
+  stoppedAt?: string;
+  stoppedBy?: string;
+  stoppedByName?: string;
   /** Clinical note this entry was recorded from, when it was added mid-note. */
   sourceNoteId?: string;
   recordedBy?: string;

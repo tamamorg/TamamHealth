@@ -23,6 +23,7 @@ import { clickable } from '@/lib/a11y';
 import type { LabResultDoc } from '@/lib/db-types';
 import { useColumnSort } from '@/components/table/useColumnSort';
 import RowActionsMenu from '@/components/RowActionsMenu';
+import PendingCorrectionNotice from '@/components/lab/workflow/PendingCorrectionNotice';
 import { hasLabReport } from '@/components/reports/clinical-reports';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { canCancelLabOrder, useCancelLabOrder } from '@/components/lab/useCancelLabOrder';
@@ -171,6 +172,11 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
                 <td style={{ fontWeight: 600 }}>{l.testName}</td>
                 <td style={{ color: l.abnormal ? (l.critical ? 'var(--color-danger-text)' : 'var(--color-warning-text)') : 'inherit', fontWeight: l.abnormal ? 700 : 400 }}>
                   {l.result || '—'}{l.unit ? ` ${l.unit}` : ''}
+                  {/* A proposed correction is not the result yet: say so beside
+                      the filed value, which stays what the row reads. */}
+                  {l.pendingCorrection && (
+                    <div style={{ marginTop: 4 }}><PendingCorrectionNotice correction={l.pendingCorrection} compact /></div>
+                  )}
                 </td>
                 <td>{l.referenceRange || '—'}</td>
                 <td>{lifecycleStatus === 'cancelled' ? '—' : t(benchActionLabel(lifecycleStatus))}</td>

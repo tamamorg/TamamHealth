@@ -132,7 +132,7 @@ export async function createHistoryEntry(input: CreateHistoryEntryInput): Promis
 
 /** Fields an edit may change. Ownership and identity are fixed at creation. */
 export type HistoryEntryPatch = Partial<Pick<HistoryEntryDoc,
-  'title' | 'relation' | 'factor' | 'when' | 'facility' | 'detail' | 'status'>>;
+  'title' | 'relation' | 'factor' | 'when' | 'facility' | 'detail' | 'status' | 'stoppedAt' | 'stoppedBy' | 'stoppedByName'>>;
 
 export async function updateHistoryEntry(
   id: string,
@@ -170,7 +170,9 @@ export async function updateHistoryEntry(
   await logAuditSafe(
     updated.status === 'entered_in_error' && existing.status !== 'entered_in_error'
       ? 'HISTORY_ENTRY_MARKED_IN_ERROR'
-      : 'HISTORY_ENTRY_UPDATED',
+      : updated.status === 'stopped' && existing.status !== 'stopped'
+        ? 'HISTORY_ENTRY_STOPPED'
+        : 'HISTORY_ENTRY_UPDATED',
     actor.userId,
     actor.userName,
     `History entry ${id} updated; domain=${updated.domain}`,
@@ -195,4 +197,29 @@ export function markHistoryEntryInError(
   actor: { userId?: string; userName?: string } = {},
 ): Promise<HistoryEntryDoc | null> {
   return updateHistoryEntry(id, { status: 'entered_in_error' }, scope, actor);
+}
+
+/**
+ * The patient no longer takes this medicine. It leaves the current list and
+ * stays on disk. Medication entries only: a history of an illness is not
+ * something a patient stops.
+ */
+export async function stopHistoryEntry(
+  id: string,
+  scope: DataScope,
+  actor: { userId?: string; userName?: string } = {},
+): Promise<HistoryEntryDoc | null> {
+  let existing: HistoryEntryDoc;
+  try {
+    existing = await historyEntriesDB().get(id) as HistoryEntryDoc;
+  } catch {
+    return null;
+  }
+  if (existing.domain !== 'medication') throw new Error('Only a medicine on the medication list can be stopped.');
+  return updateHistoryEntry(id, {
+    status: 'stopped',
+    stoppedAt: new Date().toISOString(),
+    stoppedBy: actor.userId,
+    stoppedByName: actor.userName,
+  }, scope, actor);
 }
