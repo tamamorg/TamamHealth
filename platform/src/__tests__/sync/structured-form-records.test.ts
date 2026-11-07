@@ -9,12 +9,16 @@ import PouchDB from 'pouchdb-browser';
 import memoryAdapter from 'pouchdb-adapter-memory';
 import { wrapEncrypted } from '@/lib/encrypted-db';
 import { isOrgEncrypted } from '@/lib/org-data-cipher';
-import { ORG_SCOPED_VALIDATE_FN } from '@/lib/sync/validate-doc-update';
+import { buildValidateDocUpdateFn } from '@/lib/sync/write-permissions';
+
+// These fixtures test ROLE rules with readable plaintext values. Catalogued-field
+// sealing (audit M3) is covered by sync/validator-sealed-phi.test.ts.
+const ROLE_RULES_ONLY = buildValidateDocUpdateFn(undefined, undefined, undefined, undefined, undefined, {});
 
 PouchDB.plugin(memoryAdapter);
 
 type UserCtx = { name?: string; roles: string[] };
-const validate = new Function(`return (${ORG_SCOPED_VALIDATE_FN});`)() as (
+const validate = new Function(`return (${ROLE_RULES_ONLY});`)() as (
   newDoc: Record<string, unknown>, oldDoc: Record<string, unknown> | null, userCtx: UserCtx, secObj?: unknown,
 ) => void;
 const refusal = (doc: Record<string, unknown>, old: Record<string, unknown> | null, user: UserCtx) => {
