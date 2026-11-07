@@ -88,7 +88,7 @@ describe('shared surfaces route through the mask', () => {
 
   const PHONE_SURFACES = [
     'components/ehr/EhrTopRail.tsx',
-    'components/ehr/EhrClinicalDashboard.tsx',
+    'components/ehr/clinical-dashboard/EhrClinicalDashboard.tsx',
     'components/lab/order/LabOrderPatientStrip.tsx',
     'app/(dashboard)/dashboard/front-desk/page.tsx',
     'app/(dashboard)/referrals/page.tsx',

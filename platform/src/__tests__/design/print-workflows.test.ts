@@ -117,7 +117,7 @@ describe('print actions are scoped', () => {
     'components/patients/BillingTab.tsx',
     'components/clinical-notes/CareCoordinationModal.tsx',
     'components/clinical-notes/prescribe/PrescribeModal.tsx',
-    'components/ehr/EhrClinicalDashboard.tsx',
+    'components/ehr/clinical-dashboard/EhrClinicalDashboard.tsx',
     'app/(dashboard)/billing/[id]/page.tsx',
     'app/(dashboard)/pharmacy/page.tsx',
     'lib/services/receipt-service.ts',
