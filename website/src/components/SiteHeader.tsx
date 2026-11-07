@@ -302,7 +302,7 @@ export default function SiteHeader() {
             {/* The rail's one call to action, in the brand accent rather than
                 the deep blue the header itself is drawn in. */}
             <Link href="/contact" className="btn blueprint" style={{ marginInlineStart: 14, padding: "11px 20px", fontSize: 15, color: "#113055", whiteSpace: "nowrap", background: "#FF7F00", borderColor: "#FF7F00" }}>
-              {t("Get in touch")}
+              {t("Contact us")}
               <Corners />
             </Link>
           </nav>
@@ -354,7 +354,7 @@ export default function SiteHeader() {
               </Link>
             ))}
             <Link href="/contact" className="btn btn-primary" style={{ margin: "16px 28px 0", padding: "14px 0", fontSize: 16, color: "#113055" }}>
-              {t("Get in touch")}
+              {t("Contact us")}
             </Link>
           </div>
         )}
@@ -363,7 +363,7 @@ export default function SiteHeader() {
         {util === "search" && (
           <div style={{ borderTop: "1px solid var(--color-divider)", background: "var(--color-surface)", padding: "56px 32px 60px", boxShadow: "var(--shadow-md)" }}>
             <div style={{ maxWidth: 760, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
-              <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0, textAlign: "center" }}>{t("What can we help you with?")}</h2>
+              <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0, textAlign: "center" }}>{t("Search the site")}</h2>
               {/* A form, so Enter submits the way it does in every other search
                   field on the web — and so the magnifier is a submit button
                   rather than decoration. Enter opens whichever result the
@@ -437,7 +437,7 @@ export default function SiteHeader() {
                   search box feel broken. */}
               {hits.length === 0 && query.trim().length >= 2 && (
                 <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: "var(--color-neutral-700)", textAlign: "center" }}>
-                  {t("Nothing on the site matches that. Try a product name (HMIS, pharmacy), a place, or what you are trying to do: reporting, referrals, donate.")}
+                  {t("No results found. Try a product name (HMIS, pharmacy), a location, or a task such as reporting, referrals or donations.")}
                 </p>
               )}
 

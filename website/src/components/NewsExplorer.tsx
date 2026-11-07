@@ -92,7 +92,7 @@ export default function NewsExplorer() {
         {/* Filter rail */}
         <aside style={{ display: "flex", flexDirection: "column", gap: 22 }}>
           <h2 style={{ margin: 0, fontSize: 26, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-            {filtered.length === 1 ? t("1 Story") : t("{{count}} News", { count: filtered.length })}
+            {filtered.length === 1 ? t("1 Article") : t("{{count}} Articles", { count: filtered.length })}
           </h2>
           <div className="blueprint" style={{ position: "relative", display: "flex", alignItems: "center", background: "#FFFFFF", padding: "2px 10px 2px 16px" }}>
             <Corners />
@@ -132,9 +132,9 @@ export default function NewsExplorer() {
         ) : (
           <div className="blueprint" style={{ position: "relative", background: "#FFFFFF", padding: "46px 40px", display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-start" }}>
             <Corners />
-            <h3 style={{ margin: 0, fontSize: 22 }}>{t("Nothing matches that search")}</h3>
+            <h3 style={{ margin: 0, fontSize: 22 }}>{t("No results found")}</h3>
             <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: "var(--color-neutral-700)" }}>
-              {t("Try a different word, or clear the filters to see every update.")}
+              {t("Try a different search term, or clear the filters to view all updates.")}
             </p>
           </div>
         )}

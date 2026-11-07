@@ -23,7 +23,7 @@ export default function LevelsExplorer() {
         <div style={{ maxWidth: 640 }}>
           <h2 style={{ fontSize: "clamp(25px, 3.6vw, 40px)", margin: "0 0 10px" }}>{t("The six levels of care")}</h2>
           <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
-            {t("From the community health worker to the national referral hospital. Tamam covers every tier, so a patient’s record follows them up and down the referral chain.")}
+            {t("From the community health worker to the national referral hospital, Tamam covers every tier, so that a patient’s record accompanies them throughout the referral chain.")}
           </p>
         </div>
         <div className="tm-desk-steppers" style={{ display: "flex", gap: 8 }}>

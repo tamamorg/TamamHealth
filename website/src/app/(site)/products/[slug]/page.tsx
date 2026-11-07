@@ -94,7 +94,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             <Corners />
             <h3 style={{ fontSize: 21, margin: "0 0 6px" }}>{d.lifecycleTitle}</h3>
             <p style={{ margin: "0 0 20px", fontSize: 14, lineHeight: 1.6, color: "var(--color-neutral-800)" }}>
-              {t("Statuses are a real state machine, not free text: every transition is stamped and audited.")}
+              {t("Statuses follow a defined state machine rather than free text. Every transition is recorded and audited.")}
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {d.lifecycle.map((l) => (
@@ -122,7 +122,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
       <section style={{ padding: "56px 32px 40px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-          <h2 style={{ fontSize: "clamp(22px, 3vw, 32px)", margin: "0 0 22px", paddingBottom: 16, borderBottom: "1px solid var(--color-divider)" }}>{t("What’s inside")}</h2>
+          <h2 style={{ fontSize: "clamp(22px, 3vw, 32px)", margin: "0 0 22px", paddingBottom: 16, borderBottom: "1px solid var(--color-divider)" }}>{t("Features")}</h2>
           <div className="tm-g4" style={{ gap: 14 }}>
             {p.modules.map((m) => (
               <div key={m} style={{ padding: "16px 18px", background: "var(--color-surface)", border: "1px solid var(--color-divider)", fontSize: 14.5, fontWeight: 600 }}>{m}</div>

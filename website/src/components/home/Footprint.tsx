@@ -54,10 +54,10 @@ export default function Footprint() {
     <section id="footprint" style={{ padding: "90px 32px 80px", background: "#FFFFFF" }}>
       <div style={{ maxWidth: 1320, margin: "0 auto" }}>
         <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
-          <h2 style={{ fontSize: "clamp(27px, 4vw, 44px)", margin: 0, maxWidth: 760 }}>{t("Starting in Juba, built to scale across sub-Saharan Africa")}</h2>
+          <h2 style={{ fontSize: "clamp(27px, 4vw, 44px)", margin: 0, maxWidth: 760 }}>{t("Initial deployment in Juba, designed to scale across sub-Saharan Africa")}</h2>
           <span className="tm-rule" style={{ display: "block", width: 380, height: 3, background: "var(--color-accent)" }} />
           <p style={{ margin: 0, maxWidth: 640, fontSize: 15.5, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
-            {emphasise(t("We’re raising **$100,000** to launch TamamHealth in 10 clinics across Juba and greater South Sudan: proof that offline-first digital records can work in the hardest conditions, and a foundation built to scale across sub-Saharan Africa."))}
+            {emphasise(t("TamamHealth is raising **$100,000** to launch in 10 clinics across Juba and greater South Sudan, to demonstrate that offline-first digital records can operate in the most demanding conditions and to establish a foundation for expansion across sub-Saharan Africa."))}
           </p>
         </div>
         <div className="tm-map tm-split" style={{ position: "relative", marginTop: 34, display: "grid", gridTemplateColumns: "400px 1fr", alignItems: "center", gap: 0 }}>

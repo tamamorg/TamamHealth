@@ -8,7 +8,7 @@ import { getTranslator } from "@/lib/i18n/server";
 export const metadata: Metadata = {
   title: "Goal",
   description:
-    "$100,000 puts ten clinics on one record. Every gift buys something physical: a tablet, a solar panel, a trained front desk.",
+    "TamamHealth is raising $100,000 to bring ten clinics onto one record. Each gift funds equipment and training: tablets, solar panels and front-desk training.",
 };
 
 export default async function DonatePage() {
@@ -21,9 +21,9 @@ export default async function DonatePage() {
       <section id="donate" style={{ background: "#113055", color: "#FFFFFF", padding: "74px 32px 80px" }}>
         <div className="tm-donate-hero" style={{ maxWidth: 1320, margin: "0 auto", display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 64, alignItems: "start" }}>
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <h1 style={{ fontSize: "clamp(31px, 5.2vw, 56px)", margin: "0 0 16px", color: "#FFFFFF" }}>{t("$100,000 puts ten clinics on one record")}</h1>
+            <h1 style={{ fontSize: "clamp(31px, 5.2vw, 56px)", margin: "0 0 16px", color: "#FFFFFF" }}>{t("$100,000 to bring ten clinics onto one record")}</h1>
             <p style={{ margin: "0 0 auto", maxWidth: 620, fontSize: 16.5, lineHeight: 1.7, color: "rgba(255,255,255,0.82)" }}>
-              {t("We’re raising $100,000 to launch TamamHealth in 10 clinics across Juba and greater South Sudan: proof that offline-first digital records can work in the hardest conditions, and the first step toward the same system across sub-Saharan Africa. Every gift buys something physical: a tablet, a solar panel, a trained front desk.")}
+              {t("TamamHealth is raising $100,000 to launch the platform in 10 clinics across Juba and greater South Sudan. The pilot is intended to show that offline-first digital records can operate in the most difficult conditions, and is the first step toward the same system across sub-Saharan Africa. Each gift funds equipment and training: tablets, solar panels and front-desk training.")}
             </p>
             <div className="tm-goal-row" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 28, paddingTop: 30, borderTop: "1px solid rgba(255,255,255,0.2)" }}>
               {GOALS.map((g) => (
@@ -56,7 +56,7 @@ export default async function DonatePage() {
       {/* How it works */}
       <section style={{ background: "var(--color-surface)", borderTop: "1px solid var(--color-divider)", padding: "76px 32px 84px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-          <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: "0 0 34px" }}>{t("How your donation works")}</h2>
+          <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: "0 0 34px" }}>{t("How donations are used")}</h2>
           <div className="tm-g4" style={{ gap: 26 }}>
             {DONATION_STEPS.map((s) => (
               <div key={s.n} style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 18, borderTop: "1px solid var(--color-divider)" }}>
@@ -73,9 +73,9 @@ export default async function DonatePage() {
       <section style={{ padding: "76px 32px 90px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 40, flexWrap: "wrap", paddingBottom: 20, borderBottom: "1px solid var(--color-divider)" }}>
-            <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0 }}>{t("Questions donors ask")}</h2>
+            <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0 }}>{t("Frequently asked questions")}</h2>
             <p style={{ margin: 0, fontSize: 15.5, lineHeight: 1.65, color: "var(--color-neutral-800)" }}>
-              {t("Anything not answered here, write to")} <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
+              {t("For other questions, please write to")} <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
             </p>
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>

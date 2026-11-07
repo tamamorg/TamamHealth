@@ -1,58 +1,29 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Corners from "@/components/Corners";
-import { emphasise } from "@/components/emphasise";
 import { ADVISORS as ADVISORS_EN, TEAM as TEAM_EN } from "@/lib/site-data";
 import { getTranslator } from "@/lib/i18n/server";
 
 export const metadata: Metadata = {
-  title: "About",
+  title: "Team",
   description:
-    "Why Tamam exists, what the data says, and the team building it: founded at Tufts University, starting in South Sudan, built for sub-Saharan Africa.",
+    "The advisors and team members building TamamHealth, offline-first digital health records for South Sudan.",
 };
 
-export default async function AboutPage() {
+export default async function TeamPage() {
   const { t, content } = await getTranslator();
   const TEAM = content(TEAM_EN);
   const ADVISORS = content(ADVISORS_EN);
   return (
     <main>
-      {/* Crisis / origin */}
-      <section id="crisis" style={{ background: "#113055", color: "#FFFFFF", padding: "74px 32px 86px" }}>
-        <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-          <div className="tm-origin" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 52 }}>
-            <div>
-              <h1 style={{ fontSize: "clamp(28px, 4.4vw, 46px)", margin: "0 0 20px", color: "#FFFFFF" }}>{t("Our story & Purpose")}</h1>
-              <p style={{ margin: "0 0 16px", fontSize: 16.5, lineHeight: 1.75, color: "rgba(255,255,255,0.84)" }}>
-                {t("We did not start from a market study. We started from waiting rooms we have sat in: as patients, as relatives, and alongside clinicians in South Sudan who are asked to practise medicine without a record to practise from. We watched a nurse rebuild a child’s history by asking the mother to remember it, and a lab result walk across a compound in a hand and never arrive.")}
-              </p>
-              <p style={{ margin: 0, fontSize: 16.5, lineHeight: 1.75, color: "rgba(255,255,255,0.84)" }}>
-                {t("That is the problem we set out to fix, and it is why every design decision starts from the constraint rather than the ideal: it has to work on a tablet, on battery, with no signal, run by staff who were trained in a morning. Tamam is built by people who know what the paper system costs, because we have watched it cost them.")}
-              </p>
-            </div>
-            {/* The story's own picture, not the award's.
-
-                This column carried the $10,000 Recognition card and, under it,
-                the thirteen-frame competition gallery. Both moved out on
-                2026-08-26: the competition has its own article at
-                /news/tufts-new-ventures-competition, which is where a prize
-                belongs, and repeating it here made the origin story share its
-                opening with a trophy. */}
-            <div
-              className="blueprint tm-figure tm-minh280"
-              style={{ position: "relative", minHeight: 340, borderColor: "rgba(255,255,255,0.28)", alignSelf: "start" }}
-            >
-              <Corners light />
-              <Image
-                src="/assets/images/pediatric-ward-interior.jpeg"
-                alt={t("Mothers waiting beside their children’s cots in a busy paediatric ward, a nurse working the row")}
-                fill
-                sizes="(max-width: 760px) 100vw, 50vw"
-                preload
-                style={{ objectFit: "cover" }}
-              />
-            </div>
-          </div>
+      {/* Intro band, the same anatomy as the one on /news. */}
+      <section style={{ background: "#113055", color: "#FFFFFF", padding: "70px 32px 76px" }}>
+        <div style={{ maxWidth: 1320, margin: "0 auto", display: "flex", flexDirection: "column", gap: 18 }}>
+          <h1 style={{ fontSize: "clamp(30px, 4.6vw, 50px)", margin: 0, color: "#FFFFFF" }}>{t("Team")}</h1>
+          <span style={{ width: 100, height: 3, background: "#7CC7FF" }} />
+          <p style={{ margin: 0, maxWidth: 680, fontSize: 16.5, lineHeight: 1.7, color: "rgba(255,255,255,0.84)" }}>
+            {t("The advisors and team members building TamamHealth.")}
+          </p>
         </div>
       </section>
 
@@ -65,7 +36,7 @@ export default async function AboutPage() {
       <section id="leadership" style={{ background: "var(--color-surface)", borderTop: "1px solid var(--color-divider)", padding: "72px 32px 82px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto", display: "flex", flexDirection: "column", gap: 32 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <h2 style={{ fontSize: "clamp(26px, 3.8vw, 42px)", margin: 0 }}>{t("Our Leadership")}</h2>
+            <h2 style={{ fontSize: "clamp(26px, 3.8vw, 42px)", margin: 0 }}>{t("Leadership")}</h2>
             <p style={{ margin: 0, fontSize: 16, lineHeight: 1.7, color: "var(--color-neutral-800)" }}>{t("Advisors to TamamHealth.")}</p>
           </div>
           <div className="tm-lead-grid">
@@ -107,7 +78,7 @@ export default async function AboutPage() {
       <section id="team" style={{ padding: "80px 32px 90px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto", display: "flex", flexDirection: "column", gap: 34 }}>
           <div>
-            <h2 style={{ fontSize: "clamp(26px, 3.8vw, 42px)", margin: 0 }}>{t("Built by people who’ve lived this")}</h2>
+            <h2 style={{ fontSize: "clamp(26px, 3.8vw, 42px)", margin: 0 }}>{t("Team members")}</h2>
           </div>
           <div className="tm-g6" style={{ gap: 22 }}>
             {TEAM.map((t) => (
