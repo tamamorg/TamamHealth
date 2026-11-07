@@ -256,7 +256,7 @@ function logRequest(
   }
 }
 
-export async function proxy(request: NextRequest) {
+async function proxyInner(request: NextRequest) {
   const startTime = Date.now();
   const { pathname } = request.nextUrl;
 
@@ -280,30 +280,11 @@ export async function proxy(request: NextRequest) {
     return nextWithCsp(request);
   }
 
-  // Auth API routes — always public (needed for login/logout flow, and for a
-  // new user redeeming an invitation, who has no session by definition).
-  if (
-    pathname === '/api/auth/login' ||
-    pathname === '/api/auth/logout' ||
-    pathname === '/api/auth/me' ||
-    pathname === '/api/auth/accept-invite' ||
-    // Second-factor hand-off. The caller has proved a password and holds a
-    // short-lived signed token, but has no session yet — that is exactly what
-    // this endpoint issues.
-    // "I forgot my password." By definition there is no session, and the route
-    // answers identically whatever it finds, so nothing is learnable from it.
-    pathname === '/api/auth/forgot-password' ||
-    // The minimum length this deployment enforces, so the invitation and reset
-    // pages can state the same rule the server will apply. Not a secret.
-    pathname === '/api/auth/password-policy'
-  ) {
-    return nextWithCsp(request);
-  }
-
   // CSRF defence layer 1: Origin/Host check on state-changing API requests.
-  // Runs BEFORE the patient-portal early-return so the patient portal still
-  // gets cross-site protection — only the cookie+header CSRF gate is skipped
-  // for that path (it uses Bearer auth instead, see below).
+  // Runs BEFORE every public early-return below (the /api/auth/* routes
+  // included: login-CSRF and forced logout are cross-site writes too), so the
+  // patient portal and the auth routes still get cross-site protection — only
+  // the cookie+header CSRF gate is skipped for them.
   if (pathname.startsWith('/api/') && !isMachineCallerRequest(pathname, request)) {
     const method = request.method.toUpperCase();
     if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
@@ -328,6 +309,41 @@ export async function proxy(request: NextRequest) {
         }
       }
     }
+  }
+
+  // Auth routes read a JSON body. Refusing every other content type closes the
+  // "simple request" door: a cross-site <form> can only send urlencoded,
+  // multipart or text/plain without a CORS preflight, so none of those may
+  // reach login, change-password, accept-invite or forgot-password. Logout
+  // carries no body (the client posts it bare), so it may omit the header but
+  // may not send a non-JSON one.
+  if (pathname.startsWith('/api/auth/') && !['GET', 'HEAD', 'OPTIONS'].includes(request.method.toUpperCase())) {
+    const contentType = (request.headers.get('content-type') || '').toLowerCase();
+    const isJson = /^application\/json\s*(;|$)/.test(contentType);
+    const bodyless = !contentType && (pathname === '/api/auth/logout' || pathname === '/api/auth/logout-all');
+    if (!isJson && !bodyless) {
+      return NextResponse.json({ error: 'Content-Type must be application/json' }, { status: 415 });
+    }
+  }
+
+  // Auth API routes — always public (needed for login/logout flow, and for a
+  // new user redeeming an invitation, who has no session by definition).
+  if (
+    pathname === '/api/auth/login' ||
+    pathname === '/api/auth/logout' ||
+    pathname === '/api/auth/me' ||
+    pathname === '/api/auth/accept-invite' ||
+    // Second-factor hand-off. The caller has proved a password and holds a
+    // short-lived signed token, but has no session yet — that is exactly what
+    // this endpoint issues.
+    // "I forgot my password." By definition there is no session, and the route
+    // answers identically whatever it finds, so nothing is learnable from it.
+    pathname === '/api/auth/forgot-password' ||
+    // The minimum length this deployment enforces, so the invitation and reset
+    // pages can state the same rule the server will apply. Not a secret.
+    pathname === '/api/auth/password-policy'
+  ) {
+    return nextWithCsp(request);
   }
 
   // Patient portal API — uses its own JWT auth (not staff auth). The Origin
@@ -566,6 +582,29 @@ export async function proxy(request: NextRequest) {
   }
 
   logRequest(request, response, userId, role, Date.now() - startTime);
+  return response;
+}
+
+/**
+ * API paths that are public reference data and may be cached by design. Every
+ * other /api response can carry PHI or session state, so it must never be
+ * stored by a browser, a shared proxy or the service worker.
+ */
+function isCacheableApiPath(pathname: string): boolean {
+  return pathname.startsWith('/api/booking/')
+    || pathname.startsWith('/api/terminology/')
+    || pathname === '/api/fhir/metadata'
+    || pathname === '/api/country/metadata'
+    || pathname === '/api/health'
+    || pathname.startsWith('/api/health/');
+}
+
+export async function proxy(request: NextRequest) {
+  const response = await proxyInner(request);
+  const { pathname } = request.nextUrl;
+  if (pathname.startsWith('/api/') && !isCacheableApiPath(pathname)) {
+    response.headers.set('Cache-Control', 'no-store, private');
+  }
   return response;
 }
 
