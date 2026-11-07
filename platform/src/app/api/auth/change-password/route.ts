@@ -133,6 +133,11 @@ export async function POST(request: NextRequest) {
       mustChangePassword: false,
       passwordUpdatedAt: updatedUser.passwordUpdatedAt,
       persist,
+      // Same sign-in, same session id and ceiling: a password change must
+      // neither extend the session past its absolute limit nor orphan it from
+      // a later logout.
+      sid: auth.sid,
+      sessionStart: auth.sat,
     });
 
     // The bootstrap credentials file has now served its only purpose: it

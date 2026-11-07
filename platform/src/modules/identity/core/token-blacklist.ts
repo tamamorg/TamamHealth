@@ -51,7 +51,16 @@ import { SESSION_TTL_SEC } from '@/modules/identity/core/session';
 interface RevocationEntry {
   /** Unix epoch *seconds* when the JWT itself expires. */
   expSec: number;
+  /** User-wide entries only: every token ISSUED at or before this instant
+   *  (unix seconds) is revoked. Later sign-ins are unaffected. */
+  issuedBefore?: number;
 }
+
+// Store keys. A JWT always contains dots, so neither prefix can collide with a
+// token key. `sid:` revokes one whole sign-in (every renewal of it); `usr:`
+// revokes every session a user held up to a cutoff ("sign out everywhere").
+const SID_PREFIX = 'sid:';
+const USER_PREFIX = 'usr:';
 
 const SWEEP_INTERVAL_MS = 60_000;
 const PERSIST_DEBOUNCE_MS = 250;
@@ -196,43 +205,33 @@ function readExpFromJwt(token: string): number {
 
 const REVOKED_PREFIX = 'revoked:';
 
-async function upstashRevoke(token: string, expSec: number): Promise<void> {
+async function upstashRevoke(storeKey: string, expSec: number, value = '1'): Promise<void> {
   const cfg = getUpstashConfig();
   if (!cfg) throw new Error('upstash not configured');
   const ttlSec = Math.max(1, expSec - Math.floor(Date.now() / 1000));
-  const key = REVOKED_PREFIX + (await hashKey(token, 'tamam-revoked'));
-  await withRetry(() => upstashPipeline(cfg, [['SET', key, '1', 'EX', ttlSec]]), 'token-blacklist');
+  const key = REVOKED_PREFIX + (await hashKey(storeKey, 'tamam-revoked'));
+  await withRetry(() => upstashPipeline(cfg, [['SET', key, value, 'EX', ttlSec]]), 'token-blacklist');
 }
 
-async function upstashIsRevoked(token: string): Promise<boolean> {
+/** The stored value for `storeKey`, or null when absent. */
+async function upstashGet(storeKey: string): Promise<string | null> {
   const cfg = getUpstashConfig();
   if (!cfg) throw new Error('upstash not configured');
-  const key = REVOKED_PREFIX + (await hashKey(token, 'tamam-revoked'));
+  const key = REVOKED_PREFIX + (await hashKey(storeKey, 'tamam-revoked'));
   const res = await withRetry(() => upstashPipeline(cfg, [['GET', key]]), 'token-blacklist');
-  return res[0]?.result != null;
+  const v = res[0]?.result;
+  return v == null ? null : String(v);
 }
 
 /**
- * Mark a token as revoked. The store is durable across server restarts —
- * once added, the token cannot be replayed until its `exp` passes.
- *
- * Writes to BOTH backends when Upstash is configured. The local file is kept as
- * a warm fallback so a later Upstash outage degrades to "revocations this
- * replica recorded" rather than to "nothing is revoked".
+ * Write one revocation entry to both backends (shared first, then the local
+ * file as a warm fallback). Shared failures are logged, never swallowed
+ * silently, and never block the local write.
  */
-export async function revokeToken(token: string): Promise<void> {
-  if (!token) return;
-  // Clamp the stored lifetime to at most one session TTL. A legitimately issued
-  // token's `exp` is always within one TTL of now, so this is a no-op for real
-  // logouts; it caps a forged `exp` (e.g. the year 9999) that would otherwise
-  // create an entry the sweeper never evicts and the Upstash TTL keeps for
-  // centuries. Defence in depth behind the verify check at the logout route.
-  const maxExpSec = Math.floor(Date.now() / 1000) + SESSION_TTL_SEC;
-  const expSec = Math.min(readExpFromJwt(token), maxExpSec);
-
+async function writeRevocation(storeKey: string, entry: RevocationEntry): Promise<void> {
   if (getUpstashConfig()) {
     try {
-      await upstashRevoke(token, expSec);
+      await upstashRevoke(storeKey, entry.expSec, entry.issuedBefore !== undefined ? String(entry.issuedBefore) : '1');
     } catch (err) {
       // Do not swallow: a failed revocation means logout did not actually
       // invalidate the session. The local write below still happens, so this
@@ -243,7 +242,7 @@ export async function revokeToken(token: string): Promise<void> {
   }
 
   await ensureLoaded();
-  store!.set(token, { expSec });
+  store!.set(storeKey, entry);
   if (getUpstashConfig() || process.env.NODE_ENV !== 'production') {
     schedulePersist();
   } else {
@@ -256,6 +255,76 @@ export async function revokeToken(token: string): Promise<void> {
     }
     await flushDurably();
   }
+}
+
+function clampedExp(expSec: number): number {
+  // Clamp the stored lifetime to at most one session TTL. A legitimately issued
+  // token's `exp` is always within one TTL of now, so this is a no-op for real
+  // logouts; it caps a forged `exp` (e.g. the year 9999) that would otherwise
+  // create an entry the sweeper never evicts and the Upstash TTL keeps for
+  // centuries. Defence in depth behind the verify check at the logout route.
+  return Math.min(expSec, Math.floor(Date.now() / 1000) + SESSION_TTL_SEC);
+}
+
+/** Decode (WITHOUT verifying) the claims we need to look a token up. Only ever
+ *  used to choose which store keys to consult; a forged claim fails
+ *  verifyToken afterwards, and a forged `sid` can only match a real session. */
+function readClaims(token: string): { sid?: string; sub?: string; iat?: number } {
+  const parts = token.split('.');
+  if (parts.length !== 3) return {};
+  try {
+    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+    const c = JSON.parse(Buffer.from(padded, 'base64').toString('utf8')) as Record<string, unknown>;
+    return {
+      sid: typeof c.sid === 'string' && c.sid.length <= 128 ? c.sid : undefined,
+      sub: typeof c.sub === 'string' && c.sub.length <= 256 ? c.sub : undefined,
+      iat: typeof c.iat === 'number' ? c.iat : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Mark a token as revoked. The store is durable across server restarts —
+ * once added, the token cannot be replayed until its `exp` passes.
+ *
+ * Writes to BOTH backends when Upstash is configured. The local file is kept as
+ * a warm fallback so a later Upstash outage degrades to "revocations this
+ * replica recorded" rather than to "nothing is revoked".
+ */
+export async function revokeToken(token: string): Promise<void> {
+  if (!token) return;
+  const expSec = clampedExp(readExpFromJwt(token));
+  await writeRevocation(token, { expSec });
+  // Revoke the whole sign-in, not just this string: every renewal of a session
+  // shares its `sid`, so a stolen earlier copy (or the next renewal of this
+  // one) stops working too. Tokens minted before `sid` existed have none and
+  // are covered by the exact-string entry above.
+  const { sid } = readClaims(token);
+  if (sid) await revokeSession(sid);
+}
+
+/** Revoke one session (the renewal family sharing `sid`). Safe to repeat. */
+export async function revokeSession(sid: string): Promise<void> {
+  if (!sid) return;
+  // Held for one full TTL: every token of the family dies within one TTL of
+  // its last renewal, and renewal itself is refused once the session is revoked.
+  await writeRevocation(SID_PREFIX + sid, { expSec: clampedExp(Number.MAX_SAFE_INTEGER) });
+}
+
+/**
+ * Sign a user out everywhere: every token issued to `userId` at or before now
+ * stops working. A later sign-in (iat after the cutoff) is unaffected.
+ */
+export async function revokeUserSessions(userId: string): Promise<void> {
+  if (!userId) return;
+  const nowSec = Math.floor(Date.now() / 1000);
+  await writeRevocation(USER_PREFIX + userId, {
+    expSec: clampedExp(Number.MAX_SAFE_INTEGER),
+    issuedBefore: nowSec,
+  });
 }
 
 let writing: Promise<void> | null = null;
@@ -291,10 +360,16 @@ function flushDurably(): Promise<void> {
  */
 export async function isTokenRevoked(token: string): Promise<boolean> {
   if (!token) return false;
+  const { sid, sub, iat } = readClaims(token);
 
   if (getUpstashConfig()) {
     try {
-      if (await upstashIsRevoked(token)) return true;
+      if (await upstashGet(token) !== null) return true;
+      if (sid && await upstashGet(SID_PREFIX + sid) !== null) return true;
+      if (sub) {
+        const cutoff = await upstashGet(USER_PREFIX + sub);
+        if (cutoff !== null && (iat === undefined || iat <= Number(cutoff))) return true;
+      }
     } catch (err) {
       console.error('[token-blacklist] shared lookup failed — falling back to local store:', err);
       captureException(err, { tag: '[token-blacklist] shared lookup failed — falling back to local store:' });
@@ -302,15 +377,24 @@ export async function isTokenRevoked(token: string): Promise<boolean> {
   }
 
   await ensureLoaded();
-  const entry = store!.get(token);
-  if (!entry) return false;
   const nowSec = Math.floor(Date.now() / 1000);
-  if (entry.expSec <= nowSec) {
-    store!.delete(token);
-    schedulePersist();
-    return false;
+  const live = (key: string): RevocationEntry | null => {
+    const entry = store!.get(key);
+    if (!entry) return null;
+    if (entry.expSec <= nowSec) {
+      store!.delete(key);
+      schedulePersist();
+      return null;
+    }
+    return entry;
+  };
+  if (live(token)) return true;
+  if (sid && live(SID_PREFIX + sid)) return true;
+  if (sub) {
+    const entry = live(USER_PREFIX + sub);
+    if (entry && (iat === undefined || iat <= (entry.issuedBefore ?? Infinity))) return true;
   }
-  return true;
+  return false;
 }
 
 /**

@@ -31,6 +31,10 @@ export interface AuthPayload {
   state?: string;
   /** True when the user must set a new password before using the app. */
   mustChangePassword?: boolean;
+  /** Session id (renewal family) and original sign-in time; absent on tokens
+   *  minted before session ids existed. */
+  sid?: string;
+  sat?: number;
 }
 
 /**

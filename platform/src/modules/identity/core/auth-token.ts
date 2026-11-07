@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify } from 'jose';
-import { SESSION_TTL_SEC } from '@/modules/identity/core/session';
+import { SESSION_TTL_SEC, SESSION_ABSOLUTE_MAX_SEC } from '@/modules/identity/core/session';
 import { resolveJwtSecret } from '@/modules/identity/core/jwt-secret';
 
 // Server-side secret (never leaves Node). All authoritative token creation and
@@ -11,7 +11,20 @@ const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const JWT_SECRET = new TextEncoder().encode(resolveJwtSecret());
 
 const JWT_ISSUER = 'tamamhealth';
-const JWT_AUDIENCE = 'tamamhealth-web';
+const JWT_AUDIENCE_BASE = 'tamamhealth-web';
+// Optional per-deployment audience (JWT_DEPLOYMENT_ID, server-side only). New
+// tokens are minted for `tamamhealth-web:<id>`; verification accepts that AND
+// the bare legacy audience, so turning the variable on does not sign anybody
+// out. Tokens carrying the bare audience age out within one session TTL (each
+// renewal re-mints with the deployment audience). The signing secret already
+// differs per deployment; this is a second, independent tie.
+const DEPLOYMENT_ID = (process.env.JWT_DEPLOYMENT_ID || '').trim();
+const JWT_AUDIENCE = DEPLOYMENT_ID ? `${JWT_AUDIENCE_BASE}:${DEPLOYMENT_ID}` : JWT_AUDIENCE_BASE;
+const ACCEPTED_AUDIENCES = DEPLOYMENT_ID ? [JWT_AUDIENCE, JWT_AUDIENCE_BASE] : [JWT_AUDIENCE_BASE];
+
+function newSessionId(): string {
+  return globalThis.crypto.randomUUID();
+}
 
 /**
  * Check if Web Crypto API is available.
@@ -48,12 +61,17 @@ function verifyFallbackToken(token: string): Record<string, unknown> | null {
   // literal "dev-fallback" signature could reach a production verifier is
   // token forgery, so reject unconditionally.
   if (IS_PRODUCTION) return null;
+  // Non-production servers may be reachable from the network (`next dev` binds
+  // every interface), and an unsigned token is a login for any role. So it is
+  // an explicit opt-in for a developer on loopback, not a default.
+  if (process.env.ALLOW_INSECURE_DEV_TOKENS !== 'true') return null;
   try {
     const parts = token.split('.');
     if (parts.length !== 3 || parts[2] !== 'dev-fallback') return null;
     const payload = JSON.parse(atob(parts[1]));
     if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
-    if (payload.iss !== JWT_ISSUER || payload.aud !== JWT_AUDIENCE) return null;
+    if (payload.iss !== JWT_ISSUER || !ACCEPTED_AUDIENCES.includes(payload.aud)) return null;
+    if (typeof payload.sat === 'number' && payload.sat + SESSION_ABSOLUTE_MAX_SEC < Math.floor(Date.now() / 1000)) return null;
     return payload;
   } catch {
     return null;
@@ -71,8 +89,14 @@ export function pwdAtClaim(passwordUpdatedAt?: string): number | undefined {
   return Number.isFinite(ms) ? Math.floor(ms / 1000) : undefined;
 }
 
-export async function createToken(user: { _id: string; username: string; role: string; actualRole?: string; name: string; hospitalId?: string; hospitalName?: string; facilityIds?: string[]; orgId?: string; countryId?: string; payam?: string; county?: string; state?: string; mustChangePassword?: boolean; passwordUpdatedAt?: string; pwdAt?: number; ttlSeconds?: number; persist?: boolean }): Promise<string> {
+export async function createToken(user: { _id: string; username: string; role: string; actualRole?: string; name: string; hospitalId?: string; hospitalName?: string; facilityIds?: string[]; orgId?: string; countryId?: string; payam?: string; county?: string; state?: string; mustChangePassword?: boolean; passwordUpdatedAt?: string; pwdAt?: number; ttlSeconds?: number; persist?: boolean; sid?: string; sessionStart?: number }): Promise<string> {
   const payload = {
+    // Session id + original sign-in time. `sid` is minted at sign-in and
+    // copied across every renewal, so revoking it kills the whole renewal
+    // family (a stolen copy of an older token included). `sat` anchors the
+    // absolute session ceiling. See session.ts / token-blacklist.ts.
+    sid: user.sid ?? newSessionId(),
+    sat: user.sessionStart ?? Math.floor(Date.now() / 1000),
     sub: user._id,
     username: user.username,
     role: user.role,
@@ -154,6 +178,11 @@ export interface VerifiedTokenPayload {
   /** Second-factor enrolment is required for this role and not yet done. */
   /** Password epoch (unix seconds) — see createToken. */
   pwdAt?: number;
+  /** Session id shared by every token in one sign-in's renewal chain. Absent
+   *  on tokens minted before it existed. */
+  sid?: string;
+  /** When the original sign-in happened (unix seconds). Absent on old tokens. */
+  sat?: number;
   /** Expiry (unix seconds). */
   exp?: number;
   /** Issued-at (unix seconds) — drives sliding session renewal. */
@@ -169,9 +198,21 @@ export async function verifyToken(token: string): Promise<VerifiedTokenPayload |
     try {
       const { payload } = await jwtVerify(token, JWT_SECRET, {
         issuer: JWT_ISSUER,
-        audience: JWT_AUDIENCE,
+        audience: ACCEPTED_AUDIENCES,
+        // Pin the algorithm (never trust the header) and refuse tokens that
+        // omit the claims every check downstream relies on.
+        algorithms: ['HS256'],
+        requiredClaims: ['exp', 'iat', 'sub'],
       });
-      return payload as unknown as VerifiedTokenPayload;
+      const claims = payload as unknown as VerifiedTokenPayload;
+      // Absolute session ceiling. Tokens without `sat` (minted before this
+      // existed) are accepted until their own exp; /api/auth/me anchors them
+      // on first renewal.
+      if (typeof claims.sat === 'number'
+          && claims.sat + SESSION_ABSOLUTE_MAX_SEC < Math.floor(Date.now() / 1000)) {
+        return null;
+      }
+      return claims;
     } catch {
       // Fall through to try fallback
     }
@@ -195,6 +236,8 @@ export async function verifyToken(token: string): Promise<VerifiedTokenPayload |
       mustChangePassword: fallback.mustChangePassword as boolean | undefined,
       pwdAt: fallback.pwdAt as number | undefined,
       iat: fallback.iat as number | undefined,
+      sid: fallback.sid as string | undefined,
+      sat: fallback.sat as number | undefined,
       persist: fallback.persist as boolean | undefined,
     };
   }

@@ -47,10 +47,10 @@ export {
 export { hashPassword, verifyPassword, bcryptCost } from './core/auth';
 export {
   applySessionCookies, SESSION_COOKIE_NAME,
-  SESSION_TTL_SEC, SESSION_RENEW_AFTER_SEC,
+  SESSION_TTL_SEC, SESSION_RENEW_AFTER_SEC, SESSION_ABSOLUTE_MAX_SEC,
 } from './core/session';
 export { mintCsrfToken, verifyCsrfToken, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from './core/csrf';
-export { isTokenRevoked, revokeToken } from './core/token-blacklist';
+export { isTokenRevoked, revokeToken, revokeSession, revokeUserSessions } from './core/token-blacklist';
 export {
   authenticateUser, isStandaloneDemo, UsersDbUnavailableError, type ServerUser,
 } from './core/server-users';
