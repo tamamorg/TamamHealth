@@ -102,10 +102,9 @@ export async function POST(request: NextRequest) {
     const ipRateKey = `login:ip:${clientIp}`;
     // Shared Redis counters are used whenever configured; the limiter falls
     // back to bounded per-instance counters only for local/single-replica use.
-    const [userVerdict, ipVerdict, accountVerdict] = await Promise.all([
+    const [userVerdict, ipVerdict] = await Promise.all([
       rateLimit({ key: userRateKey, limit: USER_LOCK_THRESHOLD, windowMs: USER_LOCK_MS }),
       rateLimit({ key: ipRateKey, limit: IP_LOCK_THRESHOLD, windowMs: IP_LOCK_MS }),
-      rateLimit({ key: accountRateKey, limit: ACCOUNT_SLOWDOWN_THRESHOLD, windowMs: USER_LOCK_MS }),
     ]);
     if (!userVerdict.allowed || !ipVerdict.allowed) {
       // The single most interesting row in this log: repeated failures against
@@ -130,8 +129,11 @@ export async function POST(request: NextRequest) {
       return response;
     }
 
-    // Progressive delay for an account under distributed guessing. Only
-    // reached by a request that passed its own address's limits.
+    // Progressive delay for an account under distributed guessing. The
+    // account-wide counter is consumed only here, by a request that passed its
+    // own address's limits, so a locked address hammering the account (429s
+    // above) cannot push the real owner into the slowdown.
+    const accountVerdict = await rateLimit({ key: accountRateKey, limit: ACCOUNT_SLOWDOWN_THRESHOLD, windowMs: USER_LOCK_MS });
     if (!accountVerdict.allowed) {
       await new Promise((resolve) => setTimeout(resolve, ACCOUNT_SLOWDOWN_MS));
     }

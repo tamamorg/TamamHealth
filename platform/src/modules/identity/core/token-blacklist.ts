@@ -213,14 +213,18 @@ async function upstashRevoke(storeKey: string, expSec: number, value = '1'): Pro
   await withRetry(() => upstashPipeline(cfg, [['SET', key, value, 'EX', ttlSec]]), 'token-blacklist');
 }
 
-/** The stored value for `storeKey`, or null when absent. */
-async function upstashGet(storeKey: string): Promise<string | null> {
+/** Stored values for `storeKeys` (null when absent), in ONE round trip. */
+async function upstashGetMany(storeKeys: string[]): Promise<Array<string | null>> {
   const cfg = getUpstashConfig();
   if (!cfg) throw new Error('upstash not configured');
-  const key = REVOKED_PREFIX + (await hashKey(storeKey, 'tamam-revoked'));
-  const res = await withRetry(() => upstashPipeline(cfg, [['GET', key]]), 'token-blacklist');
-  const v = res[0]?.result;
-  return v == null ? null : String(v);
+  const cmds = await Promise.all(
+    storeKeys.map(async (k) => ['GET', REVOKED_PREFIX + (await hashKey(k, 'tamam-revoked'))]),
+  );
+  const res = await withRetry(() => upstashPipeline(cfg, cmds), 'token-blacklist');
+  return storeKeys.map((_, i) => {
+    const v = res[i]?.result;
+    return v == null ? null : String(v);
+  });
 }
 
 /**
@@ -228,7 +232,14 @@ async function upstashGet(storeKey: string): Promise<string | null> {
  * file as a warm fallback). Shared failures are logged, never swallowed
  * silently, and never block the local write.
  */
-async function writeRevocation(storeKey: string, entry: RevocationEntry): Promise<void> {
+async function writeRevocation(
+  storeKey: string,
+  entry: RevocationEntry,
+  /** Throw (after the local write) when a CONFIGURED shared store rejects the
+   *  write, so a caller that reports success to the user can report failure. */
+  strict = false,
+): Promise<void> {
+  let sharedFailure: unknown = null;
   if (getUpstashConfig()) {
     try {
       await upstashRevoke(storeKey, entry.expSec, entry.issuedBefore !== undefined ? String(entry.issuedBefore) : '1');
@@ -238,6 +249,7 @@ async function writeRevocation(storeKey: string, entry: RevocationEntry): Promis
       // replica is protected, but the operator needs to see it.
       console.error('[token-blacklist] shared revocation failed — token is revoked on THIS replica only:', err);
       captureException(err, { tag: '[token-blacklist] shared revocation failed — token is revoked on THIS replica only:' });
+      sharedFailure = err;
     }
   }
 
@@ -255,6 +267,9 @@ async function writeRevocation(storeKey: string, entry: RevocationEntry): Promis
     }
     await flushDurably();
   }
+  if (strict && sharedFailure) {
+    throw sharedFailure instanceof Error ? sharedFailure : new Error('shared revocation failed');
+  }
 }
 
 function clampedExp(expSec: number): number {
@@ -269,7 +284,7 @@ function clampedExp(expSec: number): number {
 /** Decode (WITHOUT verifying) the claims we need to look a token up. Only ever
  *  used to choose which store keys to consult; a forged claim fails
  *  verifyToken afterwards, and a forged `sid` can only match a real session. */
-function readClaims(token: string): { sid?: string; sub?: string; iat?: number } {
+function readClaims(token: string): { sid?: string; sub?: string; iat?: number; sat?: number } {
   const parts = token.split('.');
   if (parts.length !== 3) return {};
   try {
@@ -280,6 +295,7 @@ function readClaims(token: string): { sid?: string; sub?: string; iat?: number }
       sid: typeof c.sid === 'string' && c.sid.length <= 128 ? c.sid : undefined,
       sub: typeof c.sub === 'string' && c.sub.length <= 256 ? c.sub : undefined,
       iat: typeof c.iat === 'number' ? c.iat : undefined,
+      sat: typeof c.sat === 'number' ? c.sat : undefined,
     };
   } catch {
     return {};
@@ -303,15 +319,15 @@ export async function revokeToken(token: string): Promise<void> {
   // one) stops working too. Tokens minted before `sid` existed have none and
   // are covered by the exact-string entry above.
   const { sid } = readClaims(token);
-  if (sid) await revokeSession(sid);
+  if (sid) await revokeSession(sid, { strict: false });
 }
 
 /** Revoke one session (the renewal family sharing `sid`). Safe to repeat. */
-export async function revokeSession(sid: string): Promise<void> {
+export async function revokeSession(sid: string, opts: { strict?: boolean } = {}): Promise<void> {
   if (!sid) return;
   // Held for one full TTL: every token of the family dies within one TTL of
   // its last renewal, and renewal itself is refused once the session is revoked.
-  await writeRevocation(SID_PREFIX + sid, { expSec: clampedExp(Number.MAX_SAFE_INTEGER) });
+  await writeRevocation(SID_PREFIX + sid, { expSec: clampedExp(Number.MAX_SAFE_INTEGER) }, opts.strict ?? true);
 }
 
 /**
@@ -324,7 +340,7 @@ export async function revokeUserSessions(userId: string): Promise<void> {
   await writeRevocation(USER_PREFIX + userId, {
     expSec: clampedExp(Number.MAX_SAFE_INTEGER),
     issuedBefore: nowSec,
-  });
+  }, true);
 }
 
 let writing: Promise<void> | null = null;
@@ -360,15 +376,23 @@ function flushDurably(): Promise<void> {
  */
 export async function isTokenRevoked(token: string): Promise<boolean> {
   if (!token) return false;
-  const { sid, sub, iat } = readClaims(token);
+  const { sid, sub, iat, sat } = readClaims(token);
+  // A user-wide cutoff applies to the SIGN-IN, not the individual token: a
+  // renewal minted after the cutoff (iat later) still belongs to a session
+  // that began before it. `sat` is the session start; older tokens lack it.
+  const started = sat ?? iat;
 
   if (getUpstashConfig()) {
     try {
-      if (await upstashGet(token) !== null) return true;
-      if (sid && await upstashGet(SID_PREFIX + sid) !== null) return true;
+      const keys = [token];
+      if (sid) keys.push(SID_PREFIX + sid);
+      if (sub) keys.push(USER_PREFIX + sub);
+      const vals = await upstashGetMany(keys);
+      if (vals[0] !== null) return true;
+      if (sid && vals[1] !== null) return true;
       if (sub) {
-        const cutoff = await upstashGet(USER_PREFIX + sub);
-        if (cutoff !== null && (iat === undefined || iat <= Number(cutoff))) return true;
+        const cutoff = vals[vals.length - 1];
+        if (cutoff !== null && (started === undefined || started <= Number(cutoff))) return true;
       }
     } catch (err) {
       console.error('[token-blacklist] shared lookup failed — falling back to local store:', err);
@@ -392,7 +416,7 @@ export async function isTokenRevoked(token: string): Promise<boolean> {
   if (sid && live(SID_PREFIX + sid)) return true;
   if (sub) {
     const entry = live(USER_PREFIX + sub);
-    if (entry && (iat === undefined || iat <= (entry.issuedBefore ?? Infinity))) return true;
+    if (entry && (started === undefined || started <= (entry.issuedBefore ?? Infinity))) return true;
   }
   return false;
 }
