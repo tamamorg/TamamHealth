@@ -103,7 +103,6 @@
 
 .lg-form { display: flex; flex-direction: column; gap: 20px; }
 .lg-field { display: block; }
-.lg-field--rel { position: relative; }
 .lg-field > label { display: block; font-size: 12px; margin-bottom: 5px; color: rgba(17, 48, 85, 0.7); text-transform: none; letter-spacing: normal; }
 /* The .lg-root scoping is load-bearing: globals.css paints every
    input[type=...] with --bg-card-solid at specificity 0,1,1, which
@@ -120,28 +119,12 @@
 .lg-inputwrap { display: flex; align-items: center; border: 1px solid var(--lg-divider); background: var(--lg-field); }
 .lg-inputwrap:focus-within { border-color: var(--lg-accent); }
 .lg-input--bare { border: 0 !important; background: transparent !important; }
-.lg-inputicon { margin-left: 13px; flex-shrink: 0; color: var(--lg-neutral-600); }
-.lg-clear, .lg-eye {
+.lg-eye {
   appearance: none; border: 0; background: none; cursor: pointer; height: 44px;
   display: grid; place-items: center;
 }
-.lg-clear { width: 40px; color: var(--lg-neutral-600); font-size: 17px; }
 .lg-eye { width: 44px; color: var(--lg-accent-700); }
 
-.lg-rolelist {
-  position: absolute; top: 100%; left: 0; right: 0; z-index: 40; background: var(--lg-field);
-  border: 1px solid var(--lg-divider); border-top: 0; max-height: 232px; overflow-y: auto;
-  box-shadow: 0 3px 10px rgba(17, 48, 85, 0.16);
-}
-.lg-rolerow {
-  appearance: none; border: 0; border-bottom: 1px solid var(--lg-divider); background: var(--lg-field);
-  cursor: pointer; width: 100%; text-align: left; padding: 11px 14px;
-  display: flex; flex-direction: column; gap: 2px; font: inherit;
-}
-.lg-rolerow:hover, .lg-rolerow.is-selected { background: var(--lg-accent-100); }
-.lg-rolerow-name { font-family: var(--font-barlow-condensed), 'Barlow Condensed', system-ui, sans-serif; font-weight: 600; font-size: 15px; color: var(--lg-text); }
-.lg-rolerow-scope { font-size: 12.5px; color: var(--lg-neutral-600); }
-.lg-rolelist-empty { display: block; padding: 14px; font-size: 13.5px; color: var(--lg-neutral-600); }
 
 /* text-transform guard: globals.css uppercases every label. */
 .lg-keep { display: flex; align-items: center; gap: 9px; font-size: 14px; color: var(--lg-neutral-800); text-transform: none; letter-spacing: normal; }

@@ -1,11 +1,19 @@
 /* ═══════════════════════════════════════════════════════════════════
    TamamHealth — Root Entry Point
-   Redirects straight to staff sign-in — this is a clinical EHR, not a
-   marketing site.
+   The welcome page: choose the door (facility staff, ministry and county,
+   patient portal, platform console), then sign in with credentials. A
+   signed-in visitor (the installed app opens here) goes straight on to
+   their workspace. See components/login/WelcomePage.tsx.
    ═══════════════════════════════════════════════════════════════════ */
 
-import { redirect } from "next/navigation";
+import type { Metadata } from 'next';
+import WelcomePage from '@/components/login/WelcomePage';
+
+export const metadata: Metadata = {
+  title: 'Welcome',
+  description: 'Sign in to Tamam: facility staff, ministry and county health, or the patient portal.',
+};
 
 export default function RootPage() {
-  redirect("/login");
+  return <WelcomePage />;
 }

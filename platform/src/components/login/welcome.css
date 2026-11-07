@@ -1,0 +1,187 @@
+/**
+ * Welcome page (`/`). Builds on login-chrome.css: `.lg-root` supplies the
+ * tokens (navy ink, Tamam blue, the one orange action), Barlow and the
+ * blueprint frame. Everything here is `.wl-*`, and the bare `label`,
+ * `svg.lucide` and `a` rules in globals.css are answered explicitly.
+ *
+ * Layout after Tebra's welcome: two equal halves the height of the window,
+ * the greeting and the doors on the left, a navy brand panel on the right,
+ * one thin footer across both.
+ */
+
+.wl-root { --wl-panel: #113055; --wl-panel-ink: #FFFFFF; --wl-panel-soft: rgba(255, 255, 255, 0.78); --wl-arc: #5FB4E5; }
+
+.wl-split { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 0; }
+
+/* ── Left: greeting and doors ── */
+.wl-main { display: flex; flex-direction: column; padding: 28px clamp(24px, 4vw, 56px) 40px; }
+.wl-brand a { display: inline-flex; }
+.wl-logo { height: 30px; width: auto; display: block; }
+
+.wl-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0;
+  padding: 48px 0 24px;
+}
+.wl-root .wl-title { font-size: clamp(40px, 4.4vw, 56px); font-weight: 500; margin: 0; letter-spacing: -0.02em; }
+.wl-lede { margin: 12px 0 0; font-size: 17px; color: var(--lg-neutral-800); max-width: 440px; line-height: 1.5; }
+
+.wl-doors {
+  list-style: none;
+  margin: 40px 0 0;
+  padding: 0;
+  width: 100%;
+  max-width: 760px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.wl-door {
+  height: 100%;
+  min-height: 196px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 26px 18px 22px;
+  background: var(--lg-field);
+  color: var(--lg-text);
+  text-decoration: none;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+.wl-door:hover { border-color: var(--lg-accent); background: var(--lg-accent-100); }
+.wl-door:focus-visible { outline: 2px solid var(--lg-accent); outline-offset: 4px; }
+.wl-door-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 6px;
+  color: var(--lg-accent-700);
+}
+.wl-root .wl-door-icon svg { width: 26px; height: 26px; color: inherit; stroke: currentColor; stroke-width: 1.5; }
+.wl-door-title {
+  font-family: var(--font-barlow-condensed), 'Barlow Condensed', system-ui, sans-serif;
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+/* Tebra's "previously Kareo" line: what the door is for, one quiet line. */
+.wl-door-meta {
+  font-size: 13.5px;
+  color: var(--lg-neutral-700);
+  line-height: 1.45;
+}
+.wl-door-go {
+  margin-top: auto;
+  padding-top: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--lg-accent-700);
+}
+.wl-door:hover .wl-door-go { text-decoration: underline; text-underline-offset: 3px; }
+.wl-door-arrow {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid currentColor;
+}
+.wl-root .wl-door-arrow svg { width: 14px; height: 14px; color: inherit; stroke: currentColor; stroke-width: 2; }
+
+.wl-more, .wl-admin { margin: 0; font-size: 15px; color: var(--lg-neutral-800); }
+.wl-more { margin-top: 32px; }
+.wl-admin { margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--lg-neutral-700); }
+.wl-root .wl-admin > svg { width: 16px; height: 16px; color: var(--lg-neutral-600); stroke: currentColor; }
+.wl-more a, .wl-admin a { color: var(--lg-accent-700); font-weight: 600; text-underline-offset: 3px; }
+
+/* ── Right: the brand panel ── */
+.wl-panel {
+  background: var(--wl-panel);
+  color: var(--wl-panel-ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px clamp(24px, 5vw, 80px);
+}
+.wl-ring {
+  position: relative;
+  width: min(320px, 70%);
+  aspect-ratio: 1;
+  margin: 0 0 40px;
+}
+.wl-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.wl-ring-arc { fill: none; stroke: var(--wl-arc); stroke-width: 3; stroke-linecap: round; }
+.wl-ring-mark { position: absolute; left: 50%; top: 50%; width: 34%; height: auto; transform: translate(-50%, -50%); }
+.wl-ring-node {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  transform: translate(-50%, -50%);
+  color: var(--wl-panel-ink);
+}
+.wl-root .wl-ring-node svg { width: 28px; height: 28px; color: inherit; stroke: currentColor; stroke-width: 1.5; }
+
+.wl-root .wl-panel-title { font-size: clamp(26px, 2.4vw, 32px); font-weight: 500; margin: 0; color: var(--wl-panel-ink); }
+.wl-panel-copy { margin: 12px 0 0; max-width: 460px; font-size: 15.5px; line-height: 1.6; color: var(--wl-panel-soft); }
+.wl-panel-link {
+  margin-top: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--wl-panel-ink);
+  text-decoration: none;
+}
+.wl-panel-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+/* ── Footer across both halves ── */
+.wl-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px clamp(24px, 4vw, 56px);
+  border-top: 1px solid var(--lg-divider);
+  font-size: 14px;
+  color: var(--lg-neutral-800);
+}
+.wl-footer nav { display: flex; gap: 28px; }
+.wl-footer a { color: var(--lg-neutral-800); text-decoration: none; }
+.wl-footer a:hover { color: var(--lg-accent-700); text-decoration: underline; text-underline-offset: 3px; }
+
+/* The panel stays navy at night; the left half follows .lg-root's dark tokens. */
+:root[data-theme="dark"] .wl-root { --wl-panel: var(--color-slate-75, #0E1C2E); }
+
+/* ── Narrow screens: one column, doors stacked, panel below ── */
+/* Three across only where each card has room for its words (about 190px);
+   below that, the doors stack as rows, icon to the left. */
+@media (max-width: 1279px) {
+  .wl-doors { grid-template-columns: minmax(0, 1fr); max-width: 440px; gap: 18px; }
+  .wl-door { min-height: 0; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; text-align: start; column-gap: 12px; padding: 16px 18px; }
+  .wl-door-icon { margin: 0; }
+  .wl-door-title { flex: 1 1 auto; }
+  .wl-door-meta { flex: 1 0 100%; padding-inline-start: 52px; }
+  .wl-door-go { flex: 1 0 100%; padding: 6px 0 0 52px; margin: 0; }
+}
+@media (max-width: 860px) {
+  .wl-split { grid-template-columns: minmax(0, 1fr); }
+  .wl-main { padding: 20px 16px 32px; }
+  .wl-body { padding: 32px 0 8px; }
+  .wl-panel { padding: 40px 16px; }
+  .wl-ring { width: min(240px, 70%); margin-bottom: 28px; }
+  .wl-footer { flex-direction: column; align-items: flex-start; padding: 16px; }
+}
