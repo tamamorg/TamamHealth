@@ -11,8 +11,19 @@ import { getClientIp } from '@/lib/request-utils';
 import { rateLimit, refundRateLimit, resetRateLimit } from '@/lib/rate-limit';
 import { logAuditSafe } from '@/lib/services/audit-service';
 
-const USER_LOCK_THRESHOLD = 5;       // failed tries before user lock
+// Lockout is keyed on (username, client IP), NOT on the username alone. A
+// username-only key let anyone who knew a name (superadmin is in the repo) burn
+// five attempts from anywhere and lock the real owner out, who then got 429
+// even with the right password. Now five bad tries from one address lock that
+// address out of that account; the owner on another address is unaffected.
+const USER_LOCK_THRESHOLD = 5;       // failed tries per (account, address) before lock
 const USER_LOCK_MS = 15 * 60 * 1000; // 15 minutes
+// Distributed guessing (many addresses, one account) is slowed, never blocked:
+// past this many attempts across ALL addresses each further attempt waits
+// ACCOUNT_SLOWDOWN_MS before the password is checked. A correct password still
+// signs in, so the slowdown cannot be used to deny service.
+const ACCOUNT_SLOWDOWN_THRESHOLD = 30;
+const ACCOUNT_SLOWDOWN_MS = 2000;
 const IP_LOCK_THRESHOLD = 20;        // failed tries from one IP before IP lock
 const IP_LOCK_MS = 15 * 60 * 1000;   // 15 minutes
 
@@ -86,13 +97,15 @@ export async function POST(request: NextRequest) {
     const sanitizedUsername = trimmedUsername;
 
     const clientIp = getClientIp(request);
-    const userRateKey = `login:user:${sanitizedUsername}`;
+    const userRateKey = `login:user:${sanitizedUsername}:${clientIp}`;
+    const accountRateKey = `login:account:${sanitizedUsername}`;
     const ipRateKey = `login:ip:${clientIp}`;
     // Shared Redis counters are used whenever configured; the limiter falls
     // back to bounded per-instance counters only for local/single-replica use.
-    const [userVerdict, ipVerdict] = await Promise.all([
+    const [userVerdict, ipVerdict, accountVerdict] = await Promise.all([
       rateLimit({ key: userRateKey, limit: USER_LOCK_THRESHOLD, windowMs: USER_LOCK_MS }),
       rateLimit({ key: ipRateKey, limit: IP_LOCK_THRESHOLD, windowMs: IP_LOCK_MS }),
+      rateLimit({ key: accountRateKey, limit: ACCOUNT_SLOWDOWN_THRESHOLD, windowMs: USER_LOCK_MS }),
     ]);
     if (!userVerdict.allowed || !ipVerdict.allowed) {
       // The single most interesting row in this log: repeated failures against
@@ -102,7 +115,7 @@ export async function POST(request: NextRequest) {
       auditLogin(
         'login_failed',
         sanitizedUsername,
-        `Locked out (${!userVerdict.allowed ? 'per-account' : 'per-IP'} limit)`,
+        `Locked out (${!userVerdict.allowed ? 'per-account-and-address' : 'per-IP'} limit)`,
         request,
       );
       const resetAt = Math.max(
@@ -115,6 +128,12 @@ export async function POST(request: NextRequest) {
       );
       response.headers.set('Retry-After', String(Math.max(1, Math.ceil((resetAt - Date.now()) / 1000))));
       return response;
+    }
+
+    // Progressive delay for an account under distributed guessing. Only
+    // reached by a request that passed its own address's limits.
+    if (!accountVerdict.allowed) {
+      await new Promise((resolve) => setTimeout(resolve, ACCOUNT_SLOWDOWN_MS));
     }
 
     // Server-safe user authentication (no PouchDB — reads the shared users DB)
@@ -157,7 +176,7 @@ export async function POST(request: NextRequest) {
     // success would let an attacker log into their own account between
     // guesses and never trip the IP limit. The IP bucket gets back only this
     // one attempt, so it counts failures rather than sign-ins.
-    await Promise.all([resetRateLimit(userRateKey), refundRateLimit(ipRateKey)]);
+    await Promise.all([resetRateLimit(userRateKey), refundRateLimit(ipRateKey), refundRateLimit(accountRateKey)]);
 
     const identity = await resolveEffectiveIdentity(user, requestedRole);
     if (!identity.ok) {
