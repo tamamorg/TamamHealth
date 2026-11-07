@@ -36,6 +36,13 @@ import { Corners } from '@/components/login/login-chrome';
 import { portalFromParam, shotForPortal, DEFAULT_PORTAL, type LoginPortal } from '@/components/login/portal-imagery';
 import { FormError } from '@/components/overlay/FormNotices';
 
+/** What the heading says for each door the welcome page offers. */
+const DOOR_COPY: Record<LoginPortal, { eyebrowKey: string; ledeKey: string }> = {
+  staff: { eyebrowKey: 'welcome.staffTitle', ledeKey: 'login.subheadingIssued' },
+  ministry: { eyebrowKey: 'welcome.ministryTitle', ledeKey: 'login.subheadingMinistry' },
+  admin: { eyebrowKey: 'login.doorAdmin', ledeKey: 'login.subheadingAdmin' },
+};
+
 /**
  * One seeded demo account, as `/api/demo-credentials` returns it. The roster
  * and its passwords are per-deployment state fetched at runtime — nothing
@@ -79,7 +86,13 @@ export default function LoginPage() {
   /* Which of the site's four doors this visit came through (`?portal=`).
      The photograph beside the form answers it — a ministry official and a
      platform operator both used to land on a picture of clinical work. */
-  const [portal, setPortal] = useState<LoginPortal>(DEFAULT_PORTAL);
+  const [portalParam, setPortal] = useState<LoginPortal | null>(null);
+  /* null until the address bar has been read after hydration. The photograph
+     can show the staff picture meanwhile; the door line above the form cannot,
+     or a console or ministry visitor reads "issued by your facility
+     administrator" for a moment first. */
+  const portal = portalParam ?? DEFAULT_PORTAL;
+  const portalKnown = portalParam !== null;
   /* Set when someone signed in already asks for a different account. Without
      it this page bounced any existing session straight to its dashboard, so
      "sign in as someone else" was impossible — you were returned to whoever
@@ -301,9 +314,20 @@ export default function LoginPage() {
       <div className="lg-grid">
         {/* ── Left: the form ── */}
         <div className="lg-col">
+          {/* The door chosen on the welcome page, named above the form, and
+              who issues that kind of account. Without it the facility and
+              ministry cards led to one identical page, and a ministry
+              official read that a facility administrator issued their
+              password. The form itself is the same for every door: the
+              account decides the workspace. */}
           <div>
+            <span className="lg-eyebrow" style={portalKnown ? undefined : { visibility: 'hidden' }}>
+              {t(DOOR_COPY[portal].eyebrowKey)}
+            </span>
             <h1 className="lg-h1">{t('login.logIn')}</h1>
-            <p className="lg-lede">{t('login.subheadingIssued')}</p>
+            <p className="lg-lede" style={portalKnown ? undefined : { visibility: 'hidden' }}>
+              {t(DOOR_COPY[portal].ledeKey)}
+            </p>
           </div>
 
           {/* Informational only. This used to also DISABLE the submit button,

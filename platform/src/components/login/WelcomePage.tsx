@@ -93,10 +93,11 @@ export default function WelcomePage() {
       <div className="wl-split">
         <section className="wl-main" aria-labelledby="wl-title">
           <header className="wl-brand">
-            <a href="https://tamamhealth.org" aria-label={t('login.backToSite')}>
-              {/* eslint-disable-next-line @next/next/no-img-element -- fixed-height SVG logo */}
-              <img src="/assets/tamamhealth-logo-full.svg" alt={t('ui.tamamHealthcareSystem')} className="wl-logo" />
-            </a>
+            {/* On every front-step page the logo is the way home, and home is
+                this page, so here it is not a link. The website is in the
+                footer, as on the other front-step pages. */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- fixed-height SVG logo */}
+            <img src="/assets/tamamhealth-logo-full.svg" alt={t('ui.tamamHealthcareSystem')} className="wl-logo" />
           </header>
 
           <div className="wl-body">
@@ -123,10 +124,15 @@ export default function WelcomePage() {
               })}
             </ul>
 
+            {/* A patient's first visit here is with the activation slip the
+                desk printed at registration. That is their way in, so it sits
+                beside the doors rather than one click behind the portal's
+                sign-in form. */}
             <p className="wl-more">
-              {t('welcome.noAccount')}{' '}
-              <a href="https://tamamhealth.org/contact">{t('welcome.requestAccess')}</a>
+              {t('welcome.activateLine')}{' '}
+              <a href="/patient-portal/activate">{t('welcome.activateLink')}</a>
             </p>
+            <p className="wl-more wl-more-quiet">{t('welcome.noAccount')}</p>
             <p className="wl-admin">
               <ShieldCheck aria-hidden="true" />
               {t('welcome.adminLine')}{' '}
@@ -172,6 +178,7 @@ export default function WelcomePage() {
         <nav aria-label={t('welcome.legal')}>
           <a href="/terms">{t('login.termsAndConditions')}</a>
           <a href="/privacy">{t('login.privacyPolicy')}</a>
+          <a href="https://tamamhealth.org">{t('login.backToSite')}</a>
         </nav>
       </footer>
     </div>

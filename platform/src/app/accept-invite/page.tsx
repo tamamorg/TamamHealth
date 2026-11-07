@@ -21,6 +21,7 @@
  */
 
 import { Suspense, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DEFAULT_MIN_PASSWORD_LENGTH } from '@/modules/identity/client';
 import { Corners } from '@/components/login/login-chrome';
@@ -193,10 +194,10 @@ export default function AcceptInvitePage() {
   return (
     <div className="lg-root">
       <header className="lg-topbar">
-        <a href="https://tamamhealth.org" className="lg-topbar-link">
+        <Link href="/" className="lg-topbar-link">
           {/* eslint-disable-next-line @next/next/no-img-element -- fixed-height SVG logo */}
           <img src="/assets/tamamhealth-logo-full.svg" alt={t('ui.tamamHealthcareSystem')} className="lg-topbar-logo" />
-        </a>
+        </Link>
       </header>
 
       <div className="lg-grid">

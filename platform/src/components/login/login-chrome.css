@@ -21,8 +21,8 @@
   --lg-accent: #2191D0;
   --lg-accent-100: #F2FCFF;
   --lg-accent-700: #015697;
-  --lg-cta: #FF7F00;
-  --lg-cta-hover: #E67200;
+  --lg-cta: var(--accent-primary);
+  --lg-cta-hover: var(--accent-hover);
   --lg-neutral-600: #6B7F96;
   --lg-neutral-700: #5D728B;
   --lg-neutral-800: #3C5574;
@@ -37,7 +37,7 @@
 
 /* Sign-in is part of the product, not a permanently light marketing island.
    Keep the same blueprint language at night: ink canvas, navy fields, cool
-   blue rules, and the orange submit as the one warm action. */
+   blue rules, and the blue submit as the one filled action. */
 :root[data-theme="dark"] .lg-root {
   --lg-text: var(--color-slate-900);
   --lg-divider: var(--border-medium);
@@ -98,6 +98,8 @@
 .lg-grid:has(.lg-demo) { padding-top: 24px; }
 .lg-col { display: flex; flex-direction: column; gap: 20px; }
 .lg-h1 { font-size: 36px; margin: 0 0 4px; }
+/* The door named above the sign-in heading (staff, ministry, console). */
+.lg-col .lg-eyebrow { display: block; margin-bottom: 8px; }
 .lg-h2 { font-size: 30px; margin: 0; }
 .lg-lede { margin: 0; font-size: 15px; color: var(--lg-neutral-700); }
 
@@ -130,15 +132,15 @@
 .lg-keep { display: flex; align-items: center; gap: 9px; font-size: 14px; color: var(--lg-neutral-800); text-transform: none; letter-spacing: normal; }
 .lg-keep input { width: 16px; height: 16px; accent-color: var(--lg-accent-700); }
 
-/* Amber on navy ink, the site's primary call to action (.btn-primary in
-   website/globals.css). Every other blue on this screen is structural —
-   the links, the headings, the field focus ring — so the one button that
-   submits is the one warm colour on the page. White text on amber misses
-   4.5:1; navy ink carries it. */
+/* The platform's action blue (2026-11-07, user: recolour the orange sign-in
+   buttons). These pages are the first screen of the product, not the
+   website, and inside the product every action is --accent-primary with
+   white text; amber here was the one place that broke the rule. It rides the
+   token, not a hex, so a branded tenant's sign-in follows its brand. */
 .lg-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   width: 100%; padding: 15px 0; font-family: var(--font-barlow-condensed), 'Barlow Condensed', system-ui, sans-serif;
-  font-weight: 600; font-size: 16px; color: var(--tm-ink); background: var(--lg-cta);
+  font-weight: 600; font-size: 16px; color: var(--color-white, #FFFFFF); background: var(--lg-cta);
   border: 1px solid var(--lg-cta); border-radius: 0; cursor: pointer;
 }
 .lg-btn:hover:not(:disabled) { background: var(--lg-cta-hover); border-color: var(--lg-cta-hover); }
