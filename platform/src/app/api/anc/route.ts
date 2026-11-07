@@ -88,6 +88,8 @@ async function postHandler(request: NextRequest) {
       const ctx = await resolveCreateContext(auth, rawPatientId, body.facilityId);
       if (!isContext(ctx)) return ctx.response;
       visitDoc.patientId = ctx.patient._id;
+      // The mother id is the chart's id, never a different one from the body.
+      visitDoc.motherId = ctx.patient._id;
       if (ctx.hospitalId) visitDoc.facilityId = ctx.hospitalId;
       if (ctx.facility?.name) visitDoc.facilityName = ctx.facility.name;
       if (ctx.orgId) visitDoc.orgId = ctx.orgId;

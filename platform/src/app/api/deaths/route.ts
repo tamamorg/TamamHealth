@@ -7,8 +7,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import { authorizeJson } from '@/lib/api-json-guard';
-import { isContext, resolveCreateContext, stripReserved } from '@/lib/api-create-guard';
+import { isContext, pickAllowed, resolveCreateContext, resolveRegisterFacility } from '@/lib/api-create-guard';
 import { VITAL_EVENTS_READ_ROLES as READ_ROLES, VITAL_EVENTS_REGISTER_ROLES as WRITE_ROLES } from '@/lib/api-capabilities';
+/**
+ * Client-settable death fields. Void state, attribution, tenancy, ids and
+ * timestamps are server-owned. `patientId`, `encounterId`, `facilityId` and
+ * `orgId` (cross-org roles only) are checked below before use.
+ */
+const DEATH_FIELDS = [
+  'deceasedFirstName', 'deceasedSurname', 'deceasedGender', 'dateOfBirth', 'dateOfDeath',
+  'ageAtDeath', 'placeOfDeath', 'immediateCause', 'immediateICD11', 'antecedentCause1',
+  'antecedentICD11_1', 'antecedentCause2', 'antecedentICD11_2', 'underlyingCause',
+  'underlyingICD11', 'contributingConditions', 'contributingICD11', 'mannerOfDeath',
+  'maternalDeath', 'pregnancyRelated', 'certifiedBy', 'certifierRole', 'state', 'county',
+  'certificateNumber', 'deathNotified', 'deathRegistered',
+] as const;
 export async function GET(request: NextRequest) {
   try {
     const auth = await getAuthPayload(request);
@@ -66,31 +79,43 @@ async function postHandler(request: NextRequest) {
         { status: 400 }
       );
     }
-    stripReserved(body);
+    const data: Record<string, unknown> = pickAllowed(body, DEATH_FIELDS);
     // Linking a death to a patient marks that chart deceased, so the patient
     // must be inside the caller's tenant and facility scope.
     if (body.patientId !== undefined && body.patientId !== null && body.patientId !== '') {
       const ctx = await resolveCreateContext(auth, body.patientId, undefined);
       if (!isContext(ctx)) return ctx.response;
-      body.patientId = ctx.patient._id;
-    } else {
-      delete body.patientId;
+      data.patientId = ctx.patient._id;
+      // A visit id is kept only when it belongs to this patient inside the caller's scope.
+      if (typeof body.encounterId === 'string' && body.encounterId) {
+        try {
+          const { resolvePatientEncounter } = await import('@/lib/services/encounter-service');
+          const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
+          const enc = await resolvePatientEncounter(body.encounterId, ctx.patient._id, buildScopeFromAuth(auth));
+          if (enc?._id) data.encounterId = enc._id;
+        } catch { /* unverifiable: treated as absent */ }
+      }
     }
+    // Facility: the caller's own, or another one they are entitled to in the same org.
+    const fac = await resolveRegisterFacility(auth, body.facilityId);
+    if ('response' in fac) return fac.response;
+    if (fac.hospitalId) data.facilityId = fac.hospitalId;
+    if (fac.facility?.name) data.facilityName = fac.facility.name;
+    if (fac.facility?.state) data.state = fac.facility.state;
     // Attribution is stamped from the verified auth claim, never trusted from
     // the client: the person recorded as having made this record cannot be forged.
-    body.registeredBy = auth.sub;
-    body.registeredByName = auth.name;
-    if (!body.facilityId && auth.hospitalId) body.facilityId = auth.hospitalId;
+    data.registeredBy = auth.sub;
+    data.registeredByName = auth.name;
     // Tenancy is stamped from the verified auth claim, never trusted from the
-    // client -- a non-admin must not inject records into another org's tenant DB.
-    // Platform/national admins may still target a specific org explicitly.
-    if (auth.role !== 'super_admin' && auth.role !== 'government') {
-      if (auth.orgId) body.orgId = auth.orgId;
-      else delete body.orgId;
+    // client. Platform/national admins may still target a specific org explicitly.
+    if (auth.role === 'super_admin' || auth.role === 'government') {
+      if (typeof body.orgId === 'string' && body.orgId) data.orgId = body.orgId;
+    } else if (auth.orgId) {
+      data.orgId = auth.orgId;
     }
     const { createDeath } = await import('@/lib/services/death-service');
     const death = await createDeath(
-      body as Parameters<typeof createDeath>[0],
+      data as unknown as Parameters<typeof createDeath>[0],
       (await import('@/lib/services/data-scope')).buildScopeFromAuth(auth),
     );
     return NextResponse.json({ death }, { status: 201 });
