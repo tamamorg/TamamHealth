@@ -10,20 +10,37 @@ import { findByType } from './db-query';
 import { resolveRegisterOrgId } from './register-org';
 
 /**
- * Look up ANC visits for a mother by name (case-insensitive). Used after a
- * birth is registered so the prenatal record can be linked back. We do a name
- * match because ANC and birth records aren't always created with the same
- * patient ID — many mothers in rural settings don't carry an ID.
+ * Look up the ANC visits that belong to a birth's mother so the prenatal record
+ * can be linked back. Always confined to the birth's own organisation (and to
+ * the caller's facility entitlement via `filterByScope`): a mother of the same
+ * name in another tenant must never be linked.
+ *
+ * An explicit id wins over a name. `linkedAncMotherId` matches the ANC
+ * `motherId`; `motherPatientId` matches the ANC `motherId` or `patientId`. When
+ * an explicit id was given and nothing matches, there is NO fall back to the
+ * name. The name match remains only for mothers with no id at all (rural
+ * settings), still inside the scope above.
  */
-async function findAncVisitsForMother(motherName: string): Promise<ANCVisitDoc[]> {
-  /* istanbul ignore next -- defensive: callers always pass non-empty string */
-  if (!motherName) return [];
+async function findAncVisitsForMother(
+  link: { motherName?: string; motherPatientId?: string; linkedAncMotherId?: string },
+  orgId: string,
+  scope: DataScope,
+): Promise<ANCVisitDoc[]> {
   try {
     const db = ancDB();
-    const target = motherName.trim().toLowerCase();
     const docs = await findByType<ANCVisitDoc>(db, 'anc_visit');
+    const live = docs.filter(d => d && d.isDeleted !== true && d.orgId === orgId);
+    const visible = filterByScope(live, scope);
+    if (link.linkedAncMotherId) {
+      return visible.filter(d => d.motherId === link.linkedAncMotherId);
+    }
+    if (link.motherPatientId) {
+      return visible.filter(d => d.motherId === link.motherPatientId || d.patientId === link.motherPatientId);
+    }
+    const target = (link.motherName || '').trim().toLowerCase();
+    if (!target) return [];
     /* istanbul ignore next -- defensive null-safety in filter */
-    return docs.filter(d => d && d.isDeleted !== true && (d.motherName || '').trim().toLowerCase() === target);
+    return visible.filter(d => (d.motherName || '').trim().toLowerCase() === target);
   } catch {
     return [];
   }
@@ -65,15 +82,13 @@ export async function createBirth(data: Omit<BirthRegistrationDoc, '_id' | '_rev
   // bidirectionally link the prenatal history with the birth record.
   let linkedAncMotherId: string | undefined;
   let ancVisits: ANCVisitDoc[] = [];
-  if (!data.linkedAncMotherId && data.motherName) {
-    try {
-      ancVisits = await findAncVisitsForMother(data.motherName);
-      if (ancVisits.length > 0) {
-        linkedAncMotherId = ancVisits[0].motherId;
-      }
-    } catch {
-      // ignore — birth registration must not fail because of ANC linkage
+  try {
+    ancVisits = await findAncVisitsForMother(data, orgId, scope);
+    if (!data.linkedAncMotherId && ancVisits.length > 0) {
+      linkedAncMotherId = ancVisits[0].motherId;
     }
+  } catch {
+    // ignore — birth registration must not fail because of ANC linkage
   }
 
   const doc: BirthRegistrationDoc = {
@@ -81,7 +96,8 @@ export async function createBirth(data: Omit<BirthRegistrationDoc, '_id' | '_rev
     type: 'birth',
     ...data,
     orgId,
-    linkedAncMotherId: data.linkedAncMotherId || linkedAncMotherId,
+    // Kept only when it resolved to an ANC record in this org and scope.
+    linkedAncMotherId: ancVisits.length > 0 ? (data.linkedAncMotherId || linkedAncMotherId) : undefined,
     createdAt: now,
     updatedAt: now,
   };

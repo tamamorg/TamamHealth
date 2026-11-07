@@ -117,6 +117,39 @@ export async function resolveCreateContext(
   return { patient, orgId, hospitalId, facility };
 }
 
+/**
+ * Facility for a register entry that has no patient chart to derive it from
+ * (births). The caller's home facility wins; a different one is honoured only
+ * inside the caller's facility entitlement AND the same organisation.
+ */
+export async function resolveRegisterFacility(
+  auth: AuthPayload,
+  requestedFacilityId: unknown,
+): Promise<{ hospitalId: string | undefined; facility: HospitalDoc | null } | { response: NextResponse }> {
+  const requested = typeof requestedFacilityId === 'string' && requestedFacilityId ? requestedFacilityId : undefined;
+  const { getHospitalById } = await import('@/lib/services/hospital-service');
+  const hospitalId = auth.hospitalId;
+  if (requested && requested !== auth.hospitalId) {
+    const { entitlementFor } = await import('@/lib/sync/facility-entitlements');
+    const entitlement = entitlementFor(auth);
+    if (!(entitlement.allFacilities || entitlement.facilityIds.includes(requested))) {
+      return { response: forbidden('That facility is outside your assignment.') };
+    }
+    const facility = await getHospitalById(requested);
+    const crossOrgRole = auth.role === 'super_admin' || auth.role === 'government';
+    if (!facility || (!crossOrgRole && (!auth.orgId || facility.orgId !== auth.orgId))) {
+      return { response: forbidden('That facility is outside your organization.') };
+    }
+    return { hospitalId: requested, facility };
+  }
+  let facility: HospitalDoc | null = null;
+  if (hospitalId) {
+    try { facility = await getHospitalById(hospitalId); } catch { facility = null; }
+    if (facility && auth.orgId && facility.orgId && facility.orgId !== auth.orgId) facility = null;
+  }
+  return { hospitalId, facility };
+}
+
 export function isContext(v: CreateContext | { response: NextResponse }): v is CreateContext {
   return !('response' in v);
 }
