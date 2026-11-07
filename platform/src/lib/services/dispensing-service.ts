@@ -101,6 +101,12 @@ export interface DispenseInput {
   counsellingConfirmed?: boolean;
   /** The pharmacist's written reason for dispensing past an unanswered allergy conflict. */
   allergyReview?: string;
+  /**
+   * Online only: ask the server to clear its own copy before dispensing (see
+   * `clearForDispensing`). The device's clearance may not have replicated yet.
+   * The local transaction ignores it; the device already holds the cleared copy.
+   */
+  clearForDispensing?: boolean;
 }
 
 export interface DispenseResult {
@@ -623,6 +629,30 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
     }
   }
 
+  // Checked before stock and the stage gate below: a discontinued order
+  // must never be dispensable, independent of whatever effectivePrescriptionStatus
+  // resolves `orderStatus` to. Checked explicitly rather than trusted to the
+  // stage function alone, since a stopped drug reaching a patient is the
+  // failure this gate exists to prevent.
+  if (rx.status === 'discontinued') {
+    throw new DispenseError(
+      'This medication was discontinued and can no longer be dispensed.',
+      'NOT_CLEARED',
+    );
+  }
+  // Stock first. With nothing on the shelf, clearing the order cannot make the
+  // dispense possible, so "must be reviewed and cleared" told the pharmacist
+  // to do something that would not help (2026-11-07 report). The read is
+  // the same one the allocation below uses; nothing has been written yet.
+  const batches = await getDispensableBatches(rx.medication, input.facilityId);
+  if (batches.length === 0) {
+    throw new DispenseError(
+      `${rx.medication} is not currently in stock. Record a stock-out or refer the patient to an outside pharmacy.`,
+      'STOCK_OUT',
+      0,
+    );
+  }
+
   // Legacy prescriptions carry no `orderStatus`. The gate used to read the raw
   // field as `if (stage && !DISPENSABLE_STAGES.has(stage))`, so an absent value
   // skipped the check completely and an uncleared order could be dispensed
@@ -632,17 +662,6 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
   if (!DISPENSABLE_STAGES.has(stage)) {
     throw new DispenseError(
       'This order must be reviewed and cleared before it can be dispensed.',
-      'NOT_CLEARED',
-    );
-  }
-  // Belt-and-suspenders on top of the stage check above: a discontinued order
-  // must never be dispensable, independent of whatever effectivePrescriptionStatus
-  // resolves `orderStatus` to. Checked explicitly rather than trusted to the
-  // stage function alone, since a stopped drug reaching a patient is the
-  // failure this gate exists to prevent.
-  if (rx.status === 'discontinued') {
-    throw new DispenseError(
-      'This medication was discontinued and can no longer be dispensed.',
       'NOT_CLEARED',
     );
   }
@@ -663,15 +682,6 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
     );
   }
   const outcome: 'full' | 'partial' = totalDispensed < requested ? 'partial' : 'full';
-
-  const batches = await getDispensableBatches(rx.medication, input.facilityId);
-  if (batches.length === 0) {
-    throw new DispenseError(
-      `${rx.medication} is out of stock at this facility.`,
-      'STOCK_OUT',
-      0,
-    );
-  }
 
   // Defence in depth behind medicationMatches: if the order still resolves to
   // more than one distinct product, FEFO would allocate by expiry date across

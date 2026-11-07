@@ -29,7 +29,7 @@ import type { UserRole } from '@/lib/db-types';
  * without a runtime import cycle.
  */
 export type NotificationKind =
-  | 'alert' | 'triage' | 'referral' | 'lab'
+  | 'alert' | 'triage' | 'referral' | 'lab' | 'lab_request'
   | 'appointment' | 'prescription' | 'progress' | 'transfer' | 'visit' | 'message';
 
 /**
@@ -76,6 +76,10 @@ const KIND_RELEVANT_ROLES: Record<NotificationKind, readonly UserRole[] | 'all'>
   // produced them.
   lab: ['doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',
     'lab_tech', 'medical_superintendent'],
+  // New orders waiting at the bench: the lab's own queue. This kind alone
+  // drives the lab shortcut's badge (module-badges.ts), so the number means
+  // "new requests came in", not "results went out".
+  lab_request: ['lab_tech', 'medical_superintendent'],
   // Providers see their own slots (rule 1); scheduling roles see the floor.
   appointment: ['doctor', 'clinical_officer', 'clinician', 'nurse', 'midwife',
     'front_desk', 'clinic_clerk', 'central_registration_clerk', 'data_entry_clerk',
