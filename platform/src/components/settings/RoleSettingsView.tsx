@@ -34,6 +34,7 @@ import { getUserPrefs, setUserPrefs } from '@/lib/user-prefs';
 import {
   hasLockPin, setLockPin, clearLockPin,
   idleChoiceMinutes, lockIsMandatory, policyLockMinutes, USER_LOCK_KEY, USER_IDLE_KEY,
+  isValidNewPin,
 } from '@/lib/hooks/useAutoLock';
 import { getRoleConfig } from '@/lib/permissions';
 import { isPathAllowed } from '@/lib/role-routes';
@@ -630,7 +631,7 @@ export default function RoleSettingsView() {
   };
 
   const handleSetPin = async () => {
-    if (!/^\d{4,6}$/.test(pinForm.next)) { showToast(t('msg.enterAPinOf4'), 'error'); return; }
+    if (!isValidNewPin(pinForm.next)) { showToast(t('msg.enterAPinOf4'), 'error'); return; }
     if (pinForm.next !== pinForm.confirm) { showToast(t('lock.pinsDoNotMatch'), 'error'); return; }
     setPinSaving(true);
     try {

@@ -5,10 +5,10 @@
  */
 import { createRoot, type Root } from 'react-dom/client';
 import { act } from 'react';
-import { useAutoLock, setLockPin, clearLockPin, lockPinLength, NEW_PIN_LENGTH } from '@/lib/hooks/useAutoLock';
+import { useAutoLock, setLockPin, clearLockPin, lockPinLength, NEW_PIN_LENGTH, isValidNewPin } from '@/lib/hooks/useAutoLock';
 import { setSettings } from '@/lib/settings/settings-store';
 import { DEFAULT_FACILITY_SETTINGS } from '@/lib/settings/facility-settings';
-import { clearRoleSettings } from '@/lib/settings/role-settings-store';
+import { clearRoleSettings, setRoleSettings } from '@/lib/settings/role-settings-store';
 import {
   readLockState, writeLockState, clearLockState, shouldStartLocked, lockStateKey, MAX_PIN_ATTEMPTS,
 } from '@/lib/security/lock-state';
@@ -36,14 +36,21 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-function mount() {
+function mount(platformMinutes: number | null = 10) {
   let latest!: ReturnType<typeof useAutoLock>;
-  function Harness() {
-    latest = useAutoLock(true, undefined, 10, undefined, 'u1');
+  function Harness({ minutes }: { minutes: number | null }) {
+    latest = useAutoLock(true, undefined, minutes ?? undefined, undefined, 'u1');
     return null;
   }
-  act(() => { root.render(<Harness />); });
-  return () => latest;
+  act(() => { root.render(<Harness minutes={platformMinutes} />); });
+  const get = () => latest;
+  get.rerender = (minutes: number | null) => act(() => { root.render(<Harness minutes={minutes} />); });
+  return get;
+}
+
+function setHidden(hidden: boolean) {
+  Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden });
+  document.dispatchEvent(new Event('visibilitychange'));
 }
 
 describe('lock state helpers', () => {
@@ -167,5 +174,116 @@ describe('inert behind the overlay', () => {
     undo();
     expect(document.getElementById('main')!.hasAttribute('inert')).toBe(false);
     expect(document.getElementById('portal')!.hasAttribute('aria-hidden')).toBe(false);
+  });
+});
+
+describe('tab switching', () => {
+  afterEach(() => { setHidden(false); sessionStorage.clear(); });
+
+  it('hiding a tab locks that tab only: nothing shared is written, so the other tab stays unlocked', () => {
+    const latest = mount();
+    act(() => { setHidden(true); });
+    expect(latest().isLocked).toBe(true);
+    expect(readLockState('u1').locked).toBe(false);
+
+    // Tab B: shares localStorage but has its own sessionStorage.
+    sessionStorage.clear();
+    const containerB = document.createElement('div');
+    document.body.appendChild(containerB);
+    const rootB = createRoot(containerB);
+    let b!: ReturnType<typeof useAutoLock>;
+    function HarnessB() { b = useAutoLock(true, undefined, 10, undefined, 'u1'); return null; }
+    act(() => { rootB.render(<HarnessB />); });
+    expect(b.isLocked).toBe(false);
+    act(() => { window.dispatchEvent(new StorageEvent('storage', { key: lockStateKey('u1'), newValue: '{}' })); });
+    expect(b.isLocked).toBe(false);
+    act(() => rootB.unmount());
+    containerB.remove();
+  });
+
+  it('another tab routine activity write does not unlock the tab that was left', () => {
+    const latest = mount();
+    act(() => { setHidden(true); });
+    writeLockState('u1', { at: Date.now() });
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: lockStateKey('u1'),
+        oldValue: JSON.stringify({ locked: false, at: 1, fails: 0 }),
+        newValue: JSON.stringify({ locked: false, at: 2, fails: 0 }),
+      }));
+    });
+    expect(latest().isLocked).toBe(true);
+  });
+
+  it('a reload of the tab that was left comes back locked; unlock clears it', () => {
+    let latest = mount();
+    act(() => { setHidden(true); });
+    act(() => root.unmount());
+    root = createRoot(container);
+    setHidden(false);
+    latest = mount();
+    expect(latest().isLocked).toBe(true);
+    act(() => { latest().unlock(); });
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it('explicit lock still locks every tab', () => {
+    const latest = mount();
+    act(() => { latest().lock(); });
+    expect(readLockState('u1').locked).toBe(true);
+  });
+});
+
+describe('late-loading policy', () => {
+  beforeEach(() => { setRoleSettings({ 'security.lock': true, 'security.idle': 'Off' }); });
+  it('a stored lock survives a first render where the policy has not loaded yet', () => {
+    writeLockState('u1', { locked: true, at: Date.now() });
+    const latest = mount(null);
+    expect(latest().lockEnabled).toBe(false);
+    expect(readLockState('u1').locked).toBe(true);
+    latest.rerender(10);
+    expect(latest().lockEnabled).toBe(true);
+    expect(latest().isLocked).toBe(true);
+  });
+
+  it('an idle window already passed is honoured once the policy arrives', () => {
+    writeLockState('u1', { locked: false, at: Date.now() - 11 * 60_000 });
+    const latest = mount(null);
+    expect(latest().isLocked).toBe(false);
+    latest.rerender(10);
+    expect(latest().isLocked).toBe(true);
+  });
+
+  it('does not overwrite the stored activity time while the policy is unknown', () => {
+    const at = Date.now() - 5 * 60_000;
+    writeLockState('u1', { locked: false, at });
+    mount(null);
+    expect(readLockState('u1').at).toBe(at);
+  });
+});
+
+describe('new PIN length', () => {
+  it('accepts exactly six digits', () => {
+    expect(isValidNewPin('123456')).toBe(true);
+    expect(isValidNewPin('1234')).toBe(false);
+    expect(isValidNewPin('12345')).toBe(false);
+    expect(isValidNewPin('1234567')).toBe(false);
+    expect(isValidNewPin('12345a')).toBe(false);
+  });
+});
+
+describe('inertOutside restores prior attributes', () => {
+  it('keeps inert/aria-hidden the page already had', () => {
+    document.body.innerHTML = `
+      <div id="app"><main id="pre" inert aria-hidden="true"></main><main id="plain"></main><div id="lock"></div></div>`;
+    const undo = inertOutside(document.getElementById('lock')!);
+    undo();
+    const pre = document.getElementById('pre')!;
+    expect(pre.hasAttribute('inert')).toBe(true);
+    expect(pre.getAttribute('aria-hidden')).toBe('true');
+    expect(pre.hasAttribute('data-lock-inert')).toBe(false);
+    const plain = document.getElementById('plain')!;
+    expect(plain.hasAttribute('inert')).toBe(false);
+    expect(plain.hasAttribute('aria-hidden')).toBe(false);
   });
 });

@@ -16,6 +16,7 @@ import ConnectivityNotice from '@/components/ConnectivityNotice';
 
 import { TourProvider } from '@/lib/tour/tour-context';
 
+import { describeLoginFailure } from '@/lib/login-failure-message';
 import { useAutoLock } from '@/lib/hooks/useAutoLock';
 import { Loader2 } from '@/components/icons/lucide';
 import { useIsMobileViewport } from '@/lib/hooks/useIsMobileViewport';
@@ -36,7 +37,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { t } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, currentUser, dbReady, logout, platformPolicy } = useAuth();
+  const { isAuthenticated, currentUser, dbReady, logout, platformPolicy, login, lastLoginFailure } = useAuth();
   // Management modules wear the patient chart's frame (app/management-frame.css).
   const managementSurface = isManagementSurface(pathname, currentUser?.role);
   // Audit rows written from this browser are filed under the signed-in user's
@@ -97,6 +98,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login');
   }, [logout, router]);
 
+  /**
+   * Password unlock from the lock screen: the same user signs in again through
+   * the normal path (device credential offline, server online) while the
+   * session, local data and offline credential stay. Resolves null on success,
+   * else the failure message.
+   */
+  const unlockWithPassword = useCallback(async (password: string): Promise<string | null> => {
+    if (!currentUser) return t('login.errorLoginFailed');
+    // A super-admin acting as another role keeps that role.
+    const asRole = currentUser.actualRole && currentUser.actualRole !== currentUser.role ? currentUser.role : undefined;
+    const result = await login(currentUser.username, password, undefined, asRole);
+    if (result) return null;
+    return describeLoginFailure(t, lastLoginFailure(), t('login.errorInvalidCredentials'));
+  }, [currentUser, login, lastLoginFailure, t]);
+
   useEffect(() => {
     if (dbReady && !isAuthenticated) {
       router.push('/login');
@@ -150,6 +166,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           pinLength={pinLength}
           lockedOut={pinLockedOut}
           onVerifyPin={verifyPin}
+          onPasswordUnlock={unlockWithPassword}
           onSetPin={setPin}
           onUnlock={unlock}
           onLogout={switchUser}

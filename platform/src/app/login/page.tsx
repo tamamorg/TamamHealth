@@ -23,6 +23,7 @@
  */
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { describeLoginFailure as describeLoginFailureMessage } from '@/lib/login-failure-message';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
@@ -212,40 +213,7 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, currentUser, sessionMode, router, loading, signedIn, switching]);
 
-  /**
-   * Name the actual refusal. Every failed sign-in used to read "Invalid
-   * credentials", so a stopped database or a lockout sent people back to
-   * retyping a password that was already correct.
-   */
-  const describeLoginFailure = (fallback: string) => {
-    const failure = lastLoginFailure();
-    if (!failure) return fallback;
-
-    // Codes first. A code is the most specific thing the refusal could tell us,
-    // and unlike a status it says *why* rather than merely which layer said no.
-    // Two of these never involve the network at all.
-    switch (failure.code) {
-      // Policy: the password was already verified before these were decided.
-      case 'impersonation_disabled': return t('login.errorImpersonationDisabled');
-      case 'role_not_permitted': return t('login.errorRoleNotPermitted');
-      // Offline: the request never left the device.
-      case 'offline_no_credential': return t('login.errorOfflineNoCredential');
-      case 'offline_bad_password': return t('login.errorOfflineBadPassword');
-      default: break;
-    }
-
-    if (failure.status === 429) {
-      const minutes = failure.retryAfterSeconds ? Math.ceil(failure.retryAfterSeconds / 60) : 0;
-      return minutes > 0
-        ? t('login.errorTooManyAttemptsIn', { minutes })
-        : t('login.errorTooManyAttempts');
-    }
-    if (failure.status >= 500) return t('login.errorServiceUnavailable');
-    // An unrecognised 403 still beats the credentials message: the server's own
-    // prose is at least about the real reason, even if it is untranslated.
-    if (failure.status === 403 && failure.message) return failure.message;
-    return fallback;
-  };
+  const describeLoginFailure = (fallback: string) => describeLoginFailureMessage(t, lastLoginFailure(), fallback);
 
   /** One tap = filled form + signed in, so a demo never stalls on a password. */
   const signInAsDemo = async (account: DemoAccount) => {

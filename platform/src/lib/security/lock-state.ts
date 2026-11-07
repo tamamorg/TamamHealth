@@ -59,9 +59,43 @@ export function writeLockState(userId: string | undefined, patch: Partial<LockSt
   return next;
 }
 
+/**
+ * A lock that belongs to ONE tab: the tab the user just left (hidden, screen
+ * off). It must not be broadcast through the shared state or every tab switch
+ * would force a PIN in the tab being switched TO. sessionStorage is per tab and
+ * survives a reload of that tab, so the reloaded tab still comes back locked.
+ */
+const TAB_LOCK_PREFIX = 'tamamhealth-tab-lock';
+const tabLockKey = (userId: string) => `${TAB_LOCK_PREFIX}.${userId}`;
+
+export function markTabLocked(userId: string | undefined): void {
+  if (!userId || typeof window === 'undefined') return;
+  try { window.sessionStorage.setItem(tabLockKey(userId), '1'); } catch { /* in-memory lock still holds */ }
+}
+
+export function isTabLocked(userId: string | undefined): boolean {
+  if (!userId || typeof window === 'undefined') return false;
+  try { return window.sessionStorage.getItem(tabLockKey(userId)) === '1'; } catch { return false; }
+}
+
+export function clearTabLocked(userId: string | undefined): void {
+  if (!userId || typeof window === 'undefined') return;
+  try { window.sessionStorage.removeItem(tabLockKey(userId)); } catch { /* nothing to do */ }
+}
+
 /** Forget every user's lock state on this device (logout, handover). */
 export function clearLockState(): void {
   if (typeof window === 'undefined') return;
+  try {
+    const tabKeys: string[] = [];
+    for (let i = 0; i < window.sessionStorage.length; i++) {
+      const key = window.sessionStorage.key(i);
+      if (key && key.startsWith(`${TAB_LOCK_PREFIX}.`)) tabKeys.push(key);
+    }
+    tabKeys.forEach(key => window.sessionStorage.removeItem(key));
+  } catch {
+    // sessionStorage blocked: nothing was written there either.
+  }
   try {
     const keys: string[] = [];
     for (let i = 0; i < window.localStorage.length; i++) {
