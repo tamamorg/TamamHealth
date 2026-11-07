@@ -4649,6 +4649,7 @@ const en: TranslationMap = {
   'lock.incorrectPin': 'Incorrect PIN. Try again.',
   'lock.pinSetupFailed': 'PIN not set. Try again.',
   'lock.pinsDoNotMatch': 'The PINs do not match. Enter the same PIN in both fields.',
+  'lock.tooManyAttempts': 'Too many wrong PINs, so PIN unlock is switched off. Sign in with your password to continue.',
   'lock.pinUnavailableInsecure': 'PIN unlock needs a secure connection, which this device does not have right now. Sign in again to continue.',
   'lock.setPin': 'Set a PIN',
   'lock.skipForNow': 'Skip for now',

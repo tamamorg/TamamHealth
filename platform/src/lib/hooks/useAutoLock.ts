@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { getSettings, subscribeSettings } from '@/lib/settings/settings-store';
 import { getRoleChoice, getRoleSettings, subscribeRoleSettings } from '@/lib/settings/role-settings-store';
 import type { RoleSettingsValues } from '@/lib/role-settings';
+import {
+  readLockState, writeLockState, shouldStartLocked, pinLockedOut, isLockStateKey, MAX_PIN_ATTEMPTS,
+} from '@/lib/security/lock-state';
 
 /**
  * Auto-lock hook for shared device security.
@@ -69,7 +72,14 @@ interface StoredPinHash {
   /** Base64 of the PBKDF2-derived key. */
   hash: string;
   iterations: number;
+  /** Digits in the PIN. Absent on PINs set before 6-digit support = 4. */
+  len?: number;
 }
+
+/** Length of every NEW PIN. Existing 4-digit PINs keep working: the stored
+ *  hash records its own length (`len`, absent = 4) and the keypad follows it. */
+export const NEW_PIN_LENGTH = 6;
+const LEGACY_PIN_LENGTH = 4;
 
 /**
  * Whether this context can hash a PIN at all. `crypto.subtle` requires a
@@ -143,6 +153,15 @@ export function hasLockPin(userId?: string): boolean {
   return false;
 }
 
+/** Digits the keypad must collect for this user: the stored PIN's own length,
+ *  or the new-PIN length when none is set yet. */
+export function lockPinLength(userId?: string): number {
+  if (typeof window === 'undefined') return NEW_PIN_LENGTH;
+  const raw = localStorage.getItem(pinHashStorageKey(userId));
+  const stored = raw ? parseStoredPin(raw) : null;
+  return stored ? (stored.len ?? LEGACY_PIN_LENGTH) : NEW_PIN_LENGTH;
+}
+
 /** Set (or replace) the screen-lock PIN for this device.
  *
  * Throws when this context cannot hash a PIN safely (see
@@ -155,7 +174,7 @@ export async function setLockPin(pin: string, userId?: string): Promise<void> {
   }
   const salt = crypto.getRandomValues(new Uint8Array(PIN_SALT_BYTES));
   const hash = await derivePinHash(pin, salt, PBKDF2_ITERATIONS);
-  const stored: StoredPinHash = { v: PIN_HASH_VERSION, salt: bytesToBase64(salt), hash, iterations: PBKDF2_ITERATIONS };
+  const stored: StoredPinHash = { v: PIN_HASH_VERSION, salt: bytesToBase64(salt), hash, iterations: PBKDF2_ITERATIONS, len: pin.length };
   localStorage.setItem(pinHashStorageKey(userId), JSON.stringify(stored));
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(PIN_CHANGED_EVENT));
 }
@@ -277,6 +296,9 @@ export function useAutoLock(
   const mandatory = lockIsMandatory(platformLockPolicy);
   const [isLocked, setIsLocked] = useState(false);
   const [hasPin, setHasPin] = useState(false);
+  const [pinFails, setPinFails] = useState(0);
+  const [pinLength, setPinLength] = useState(NEW_PIN_LENGTH);
+  const seededForRef = useRef<string | undefined>(undefined);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLockedRef = useRef(false);
   const isAuthRef = useRef(isAuthenticated);
@@ -314,7 +336,10 @@ export function useAutoLock(
   // Check if user has a PIN set — and stay in sync when it changes (e.g. the
   // user sets/removes their PIN from the Settings page, or another tab does).
   useEffect(() => {
-    const sync = () => setHasPin(hasLockPin(userId));
+    const sync = () => {
+      setHasPin(hasLockPin(userId));
+      setPinLength(lockPinLength(userId));
+    };
     sync();
     if (typeof window === 'undefined') return;
     window.addEventListener(PIN_CHANGED_EVENT, sync);
@@ -363,21 +388,63 @@ export function useAutoLock(
     if (timerRef.current) clearTimeout(timerRef.current);
     if (!isAuthenticated || isAutoLockDisabled() || !lockEnabled) return;
 
-    timerRef.current = setTimeout(() => {
-      setIsLocked(true);
-    }, getTimeout());
-  }, [isAuthenticated, getTimeout, lockEnabled]);
+    const timeout = getTimeout();
+    const arm = (ms: number) => {
+      timerRef.current = setTimeout(() => {
+        // Another tab may have seen activity since: only lock when the whole
+        // device has been idle for the window, otherwise wait out the rest.
+        const idleFor = userId ? Date.now() - readLockState(userId).at : timeout;
+        if (idleFor < timeout - 1000) { arm(timeout - idleFor); return; }
+        writeLockState(userId, { locked: true });
+        setIsLocked(true);
+      }, ms);
+    };
+    arm(timeout);
+  }, [isAuthenticated, getTimeout, lockEnabled, userId]);
 
   const lock = useCallback(() => {
     if (isAutoLockDisabled() || !lockEnabled) return;
+    writeLockState(userId, { locked: true });
     setIsLocked(true);
     if (timerRef.current) clearTimeout(timerRef.current);
-  }, [lockEnabled]);
+  }, [lockEnabled, userId]);
 
   const unlock = useCallback(() => {
+    writeLockState(userId, { locked: false, at: Date.now(), fails: 0 });
+    setPinFails(0);
     setIsLocked(false);
     resetTimer();
-  }, [resetTimer]);
+  }, [resetTimer, userId]);
+
+  // Cold restore (reload, new tab, reopened browser): the in-memory flag is
+  // gone, so start locked from the persisted state. Derived during render so
+  // the app never paints unlocked first. Runs once per signed-in user.
+  if (isAuthenticated && userId && seededForRef.current !== userId && typeof window !== 'undefined') {
+    seededForRef.current = userId;
+    const stored = readLockState(userId);
+    setPinFails(stored.fails);
+    if (!isAutoLockDisabled() && shouldStartLocked(stored, lockEnabled, getTimeout())) {
+      setIsLocked(true);
+    } else {
+      // Restored and active now: anchor the idle clock the timers compare to.
+      writeLockState(userId, { at: Date.now() });
+    }
+  }
+
+  // Every tab follows the lock: locking, unlocking or a PIN failure in one
+  // tab reaches the others through the storage event.
+  useEffect(() => {
+    if (!userId) return;
+    const onStorage = (e: StorageEvent) => {
+      if (!isLockStateKey(e.key)) return;
+      const state = readLockState(userId);
+      setPinFails(state.fails);
+      if (state.locked && lockEnabled && !isAutoLockDisabled()) setIsLocked(true);
+      else if (!state.locked && isLockedRef.current) { setIsLocked(false); resetTimer(); }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [userId, lockEnabled, resetTimer]);
 
   /** Verify a PIN against the stored hash. Returns true if valid.
    *
@@ -397,9 +464,17 @@ export function useAutoLock(
   const verifyPin = useCallback(async (pin: string): Promise<boolean> => {
     if (!hasLockPin(userId)) return false; // No usable PIN set = nothing to verify against
     if (!pinHashingSupported()) return false;
+    // Too many wrong entries: the PIN is no longer accepted at all (not even
+    // the right one). Only a password sign-in clears this - see lock-state.
+    if (pinLockedOut(readLockState(userId))) return false;
     const stored = parseStoredPin(localStorage.getItem(pinHashStorageKey(userId))!)!;
     const candidate = await derivePinHash(pin, base64ToBytes(stored.salt), stored.iterations);
-    return candidate === stored.hash;
+    const ok = candidate === stored.hash;
+    if (!ok) {
+      const next = writeLockState(userId, { fails: readLockState(userId).fails + 1 });
+      setPinFails(next.fails);
+    }
+    return ok;
   }, [userId]);
 
   /** Set (or update) the user's PIN. Throws on a context that cannot hash one
@@ -424,14 +499,22 @@ export function useAutoLock(
   // Activity listeners + visibility change
   useEffect(() => {
     if (!isAuthenticated || isAutoLockDisabled() || !lockEnabled) {
-      setIsLocked(false);
+      // A persisted lock is never dropped just because a policy value has not
+      // loaded yet (that would unlock a cold restore); it ends by unlock() or
+      // by signing out, which clears the stored state.
+      if (!(isAuthenticated && userId && readLockState(userId).locked)) setIsLocked(false);
       return;
     }
 
     resetTimer();
 
+    let lastWrite = 0;
     const handleActivity = () => {
-      if (!isLockedRef.current) resetTimer();
+      if (isLockedRef.current) return;
+      const now = Date.now();
+      // Throttled: localStorage is synchronous.
+      if (now - lastWrite > 5000) { lastWrite = now; writeLockState(userId, { at: now }); }
+      resetTimer();
     };
 
     for (const event of ACTIVITY_EVENTS) {
@@ -453,7 +536,7 @@ export function useAutoLock(
       }
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [isAuthenticated, lock, resetTimer, lockEnabled]);
+  }, [isAuthenticated, lock, resetTimer, lockEnabled, userId]);
 
   return {
     isLocked,
@@ -466,6 +549,11 @@ export function useAutoLock(
      *  uses this to decide whether to offer the PIN pad — false means "sign
      *  in again" is the only way to unlock, never a weaker check. */
     pinSupported: pinHashingSupported(),
+    /** Wrong-PIN limit reached: the keypad is withdrawn and the account
+     *  password (sign in again) is the only way back. */
+    pinLockedOut: pinFails >= MAX_PIN_ATTEMPTS,
+    /** Digits the keypad collects (stored PIN's length; 6 for a new PIN). */
+    pinLength,
     lock,
     unlock,
     verifyPin,

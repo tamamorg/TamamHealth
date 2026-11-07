@@ -130,11 +130,15 @@ export default function LabPage() {
   const now = useNow(60_000);
   // Per-column filters (replace the old search + status-tabs top bar).
   const searchParams = useSearchParams();
-  const [colFilters, setColFilters] = useState({ patient: '', test: '', specimen: '', status: '', orderedBy: '', worklist: '' });
-  // Deep link from a patient chart: /lab?patient=<name> pre-filters the queue.
+  const [colFilters, setColFilters] = useState({ patient: '', patientId: '', test: '', specimen: '', status: '', orderedBy: '', worklist: '' });
+  // Deep link from a patient chart: /lab?patientId=<id> pre-filters the queue.
+  // The id, never the name, goes in the URL (browser history, the service
+  // worker's page cache). A legacy ?patient=<name> link still filters by text.
   useEffect(() => {
-    const patientParam = searchParams?.get('patient');
-    if (patientParam) setColFilters(f => ({ ...f, patient: patientParam }));
+    const idParam = searchParams?.get('patientId');
+    const legacyName = searchParams?.get('patient');
+    if (idParam) setColFilters(f => ({ ...f, patientId: idParam }));
+    else if (legacyName) setColFilters(f => ({ ...f, patient: legacyName }));
   }, [searchParams]);
   const setColFilter = (k: string, v: string) => setColFilters(f => ({ ...f, [k]: v }));
   const anyColFilter = Object.values(colFilters).some(Boolean);
@@ -142,7 +146,7 @@ export default function LabPage() {
   // existing per-column filter funnels below).
   const [quickSearch, setQuickSearch] = useState('');
   const anyFilterActive = anyColFilter || !!quickSearch;
-  const clearColFilters = () => { setColFilters({ patient: '', test: '', specimen: '', status: '', orderedBy: '', worklist: '' }); setQuickSearch(''); };
+  const clearColFilters = () => { setColFilters({ patient: '', patientId: '', test: '', specimen: '', status: '', orderedBy: '', worklist: '' }); setQuickSearch(''); };
   // Header "Filters" popover (test type + status) — mirrors the patients
   // registry's Filters pattern, separate from the per-column funnels. The
   // popover itself now belongs to the search field (EhrSearchFilter), so only
@@ -236,6 +240,7 @@ export default function LabPage() {
     const f = colFilters;
     if (globalSearch && !((o.patientName || '').toLowerCase().includes(globalSearch.toLowerCase()) || (o.testName || '').toLowerCase().includes(globalSearch.toLowerCase()))) return false;
     if (quickSearch && !`${o.patientName || ''} ${o.hospitalNumber || ''} ${o.testName || ''} ${o.orderedBy || ''}`.toLowerCase().includes(quickSearch.toLowerCase())) return false;
+    if (f.patientId && o.patientId !== f.patientId) return false;
     if (f.patient && !`${o.patientName || ''} ${o.hospitalNumber || ''}`.toLowerCase().includes(f.patient.toLowerCase())) return false;
     if (f.test && !(o.testName || '').toLowerCase().includes(f.test.toLowerCase())) return false;
     if (f.specimen && !(o.specimen || '').toLowerCase().includes(f.specimen.toLowerCase())) return false;
