@@ -71,30 +71,6 @@ export default async function AboutPage() {
         </div>
       </section>
 
-      {/* Where we are: the milestones so far and the next one. */}
-      <section id="milestones" style={{ padding: "64px 32px 30px" }}>
-        <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-          <h2 style={{ fontSize: "clamp(24px, 3.2vw, 36px)", margin: "0 0 30px" }}>{t("Where we are")}</h2>
-          <ol className="tm-track">
-            {[
-              { when: t("April 2026"), what: t("Second place, Tufts New Ventures Competition"), href: "/news/tufts-new-ventures-competition" },
-              { when: t("November 2026"), what: t("Registered in Massachusetts"), href: "/news/incorporated-in-massachusetts" },
-              { when: t("November 2026"), what: t("Fiscal sponsorship by Elimisha Kakuma"), href: "/news/elimisha-kakuma-fiscal-sponsor" },
-              { when: t("Now"), what: t("Testing at Iteru Medical Center, Juba"), href: "/news/iteru-medical-center-testing" },
-              { when: t("Next"), what: t("10-clinic pilot, $100,000 goal"), href: "/donate", next: true },
-            ].map((m, i) => (
-              <li key={m.what} className={m.next ? "is-next" : undefined} style={{ ["--i" as string]: i } as React.CSSProperties}>
-                <span className="tm-track-node" aria-hidden="true" />
-                <Link href={m.href} className="tm-track-card">
-                  <span className="tm-track-when">{m.when}</span>
-                  <span className="tm-track-what">{m.what}</span>
-                </Link>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
       {/* What we stand for, and the facts a partner checks: one light band. */}
       <section id="values" style={{ padding: "64px 32px 68px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto", display: "flex", flexDirection: "column", gap: 34 }}>
