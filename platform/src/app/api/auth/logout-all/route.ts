@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     logApiError('[auth/logout-all] revocation failed:', error);
     return NextResponse.json(
-      { error: 'Sessions not signed out. Try again, or contact IT.' },
+      { error: 'Sessions not signed out. Try again.' },
       { status: 503 },
     );
   }

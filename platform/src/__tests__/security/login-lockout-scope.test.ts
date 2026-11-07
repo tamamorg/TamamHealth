@@ -18,11 +18,15 @@ jest.mock('@/modules/identity/core/login-session', () => ({
   resolveEffectiveIdentity: jest.fn(async (u: { role: string }) => ({ ok: true, effective: { role: u.role } })),
   issueSessionResponse: jest.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 })),
 }));
+jest.mock('@/lib/rate-limit', () => {
+  const actual = jest.requireActual('@/lib/rate-limit');
+  return { ...actual, rateLimit: jest.fn(actual.rateLimit) };
+});
 jest.mock('@/lib/services/audit-service', () => ({ logAuditSafe: jest.fn(async () => undefined) }));
 
 import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/auth/login/route';
-import { _resetRateLimitForTest } from '@/lib/rate-limit';
+import { _resetRateLimitForTest, rateLimit } from '@/lib/rate-limit';
 
 const GOOD = 'Correct-Horse-9';
 const USER = { _id: 'u1', username: 'superadmin', role: 'super_admin', name: 'S' };
@@ -63,6 +67,15 @@ describe('lockout scope', () => {
     for (let i = 0; i < 6; i++) await POST(login('203.0.113.9', 'wrong', 'superadmin'));
     authenticateUser.mockImplementation(async (u: string, pw: string) => (pw === GOOD ? { ...USER, username: u } : null));
     expect((await POST(login('203.0.113.9', GOOD, 'dr.wani'))).status).toBe(200);
+  });
+
+  it('does not count 429s from a locked address toward the account-wide slowdown', async () => {
+    const spy = rateLimit as jest.Mock;
+    for (let i = 0; i < 5; i++) await POST(login('203.0.113.9', 'wrong'));
+    spy.mockClear();
+    expect((await POST(login('203.0.113.9', 'wrong'))).status).toBe(429);
+    const keys = spy.mock.calls.map((c: [{ key: string }]) => c[0].key);
+    expect(keys.some((k: string) => k.startsWith('login:account:'))).toBe(false);
   });
 
   it('still enforces the per-IP limit across usernames', async () => {
