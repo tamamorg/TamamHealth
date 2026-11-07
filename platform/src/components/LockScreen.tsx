@@ -45,6 +45,15 @@ interface LockScreenProps {
    *  (Switch User) gets back in. */
   lockedOut?: boolean;
   onVerifyPin: (pin: string) => Promise<boolean>;
+  /**
+   * Re-verify the SAME user's account password (through the normal sign-in
+   * path: the device credential offline, the server online) without ending the
+   * session. Resolves to `null` on success, or the message to show. When
+   * given, the PIN-less / locked-out screen offers a password field next to
+   * Switch User, so an offline tablet is never stranded at the lock screen
+   * (Switch User signs out and wipes the offline credential).
+   */
+  onPasswordUnlock?: (password: string) => Promise<string | null>;
   /** Registers a new PIN (demo/dev first-lock setup only). Required for the
    *  setup path to render. */
   onSetPin?: (pin: string) => Promise<void>;
@@ -115,7 +124,7 @@ export function shouldPromptPinSetup(opts: {
     && opts.pinSupported && !opts.hasPin && !opts.lockOverlayOffersSetup;
 }
 
-export default function LockScreen({ userName, hasPin, variant = 'lock', pinSupported = true, allowSetup = false, pinLength = 6, lockedOut = false, onVerifyPin, onSetPin, onUnlock, onLogout, onDismiss }: LockScreenProps) {
+export default function LockScreen({ userName, hasPin, variant = 'lock', pinSupported = true, allowSetup = false, pinLength = 6, lockedOut = false, onVerifyPin, onPasswordUnlock, onSetPin, onUnlock, onLogout, onDismiss }: LockScreenProps) {
   const { t } = useTranslation();
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
@@ -126,6 +135,25 @@ export default function LockScreen({ userName, hasPin, variant = 'lock', pinSupp
   const [setupFirst, setSetupFirst] = useState<string | null>(null);
   const autoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordBusy, setPasswordBusy] = useState(false);
+
+  const submitPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onPasswordUnlock || !password || passwordBusy) return;
+    setPasswordBusy(true);
+    setPasswordError('');
+    try {
+      const failure = await onPasswordUnlock(password);
+      if (failure === null) { setPassword(''); onUnlock(); return; }
+      setPasswordError(failure);
+      setPassword('');
+    } catch {
+      setPasswordError(t('login.errorLoginFailed'));
+    }
+    setPasswordBusy(false);
+  };
 
   // Everything behind the overlay is unreachable while it is up: not just
   // covered, but inert for keyboard, pointer and screen readers.
@@ -238,10 +266,38 @@ export default function LockScreen({ userName, hasPin, variant = 'lock', pinSupp
               </p>
             )}
           </div>
+          {onPasswordUnlock && (
+            <form onSubmit={submitPassword} className="flex flex-col gap-2 w-full" data-lock-password-form>
+              <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{t('lock.signInWithPassword')}</p>
+              <input
+                type="password"
+                autoComplete="current-password"
+                aria-label={t('login.passwordLabel')}
+                placeholder={t('login.passwordLabel')}
+                value={password}
+                onChange={e => { setPassword(e.target.value); setPasswordError(''); }}
+                className="w-full px-3 py-2.5 text-sm rounded-lg"
+                style={{ border: '1px solid var(--border-medium)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+              />
+              {passwordError && (
+                <p role="alert" className="text-xs" style={{ color: 'var(--color-danger-text)' }}>{passwordError}</p>
+              )}
+              <button
+                type="submit"
+                disabled={!password || passwordBusy}
+                className="text-xs font-bold px-4 py-2.5 rounded-lg transition-colors"
+                style={{ color: 'var(--accent-on)', background: 'var(--tamamhealth-blue)', opacity: !password || passwordBusy ? 0.6 : 1 }}
+              >
+                {t('lock.unlockWithPassword')}
+              </button>
+            </form>
+          )}
           <button
             onClick={onLogout}
             className="flex items-center gap-2 text-xs font-bold mt-1 px-4 py-2.5 rounded-lg transition-colors"
-            style={{ color: 'var(--accent-on)', background: 'var(--tamamhealth-blue)' }}
+            style={onPasswordUnlock
+              ? { color: 'var(--text-muted)', background: 'var(--overlay-subtle)' }
+              : { color: 'var(--accent-on)', background: 'var(--tamamhealth-blue)' }}
           >
             <LogOut className="w-3.5 h-3.5" />
             {t('auth.switchUser')}
