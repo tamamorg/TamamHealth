@@ -29,6 +29,8 @@
  */
 
 import { LOCAL_DATABASE_NAMES } from '../db';
+import { clearLockState } from './lock-state';
+import { purgeServiceWorkerCaches } from './sw-cache-purge';
 
 export type WipeReason =
   | 'logout'
@@ -240,6 +242,15 @@ export async function wipeLocalData(
   // clinic tablet that has just been updated and taken offline is exactly the
   // moment offline sign-in has to work.
   if (reason === 'logout' || reason === 'session-expired' || reason === 'user-changed') {
+    // Screen-lock state (locked flag, wrong-PIN count) ends with the session:
+    // signing in with the password is what resets a PIN lockout.
+    clearLockState();
+    // Cached page responses that can hold PHI go too; the sign-in shell stays.
+    try {
+      await purgeServiceWorkerCaches();
+    } catch {
+      // Never block a wipe on this.
+    }
     try {
       const { clearOfflineCredential } = await import('@/modules/identity/core/offline-credential');
       clearOfflineCredential();
