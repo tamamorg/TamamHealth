@@ -7,6 +7,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { authorizeJson } from '@/lib/api-json-guard';
 import { withAuditLog } from '@/lib/audit/with-audit';
+import { isContext, patientDisplayName, pickAllowed, resolveCreateContext } from '@/lib/api-create-guard';
+/** Client-settable bill fields. Everything else is server-owned. */
+const BILL_FIELDS = [
+  'facilityLevel', 'encounterDate', 'encounterId', 'appointmentId', 'items', 'discount',
+  'discountReason', 'taxRate', 'currency', 'insuranceProvider', 'insurancePolicyNumber',
+  'insuranceCoveragePercent', 'state', 'county', 'notes',
+] as const;
 import type { UserRole } from '@/lib/db-types';
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer',
@@ -136,17 +143,35 @@ async function postHandler(request: NextRequest) {
         { status: 400 }
       );
     }
-    body.generatedBy = auth.sub;
-    body.generatedByName = auth.name;
-    // Tenancy is stamped from the verified auth claim, never trusted from the
-    // client — see the matching comment in /api/referrals for the rationale.
-    if (auth.orgId) {
-      body.orgId = auth.orgId;
-    } else if (!(auth.role === 'super_admin' || auth.role === 'government')) {
-      delete body.orgId;
+    if (!Array.isArray(body.items) || body.items.some((it) => {
+      const line = it as Record<string, unknown> | null;
+      return !line || typeof line !== 'object'
+        || typeof line.quantity !== 'number' || !Number.isFinite(line.quantity) || line.quantity <= 0
+        || typeof line.unitPrice !== 'number' || !Number.isFinite(line.unitPrice) || line.unitPrice < 0;
+    })) {
+      return NextResponse.json({ error: 'Each bill item needs a quantity above zero and a price of zero or more' }, { status: 400 });
     }
+    // The patient must exist inside the caller's tenant and facility scope;
+    // org, facility and the patient's identity come from the session and chart.
+    const ctx = await resolveCreateContext(auth, body.patientId, body.facilityId);
+    if (!isContext(ctx)) return ctx.response;
+    // Allow-list. `exemptReason` is NOT accepted: it creates a pre-waived,
+    // zero-balance bill, and a waiver goes through the `waive` action (which
+    // records who and why). Attribution, ids and timestamps are server-owned.
+    const bill0: Record<string, unknown> = {
+      ...pickAllowed(body, BILL_FIELDS),
+      patientId: ctx.patient._id,
+      patientName: patientDisplayName(ctx.patient),
+      hospitalNumber: ctx.patient.hospitalNumber,
+      generatedBy: auth.sub,
+      generatedByName: auth.name,
+    };
+    if (ctx.hospitalId) bill0.facilityId = ctx.hospitalId;
+    if (ctx.facility?.name) bill0.facilityName = ctx.facility.name;
+    if (ctx.facility?.facilityLevel) bill0.facilityLevel = ctx.facility.facilityLevel;
+    if (ctx.orgId) bill0.orgId = ctx.orgId;
     const { createBill } = await import('@/lib/services/billing-service');
-    const bill = await createBill(body as unknown as Parameters<typeof createBill>[0]);
+    const bill = await createBill(bill0 as unknown as Parameters<typeof createBill>[0]);
     return NextResponse.json({ bill }, { status: 201 });
   } catch (err) {
     logApiError('[API /billing POST]', err);

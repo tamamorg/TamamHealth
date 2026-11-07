@@ -37,6 +37,14 @@ jest.mock('@/lib/services/follow-up-service', () => ({
 }));
 jest.mock('@/lib/services/data-scope', () => ({
   buildScopeFromAuth: jest.fn(() => ({ role: actor.role, orgId: actor.orgId })),
+  filterByScope: jest.fn((docs: unknown[]) => docs),
+}));
+// The ANC and follow-up routes now prove the patient is in scope first.
+jest.mock('@/lib/services/patient-service', () => ({
+  getPatientById: jest.fn(async (id: string) => ({ _id: id, orgId: actor.orgId, firstName: 'Pat', surname: 'Ient' })),
+}));
+jest.mock('@/lib/services/hospital-service', () => ({
+  getHospitalById: jest.fn(async (id: string) => ({ _id: id, orgId: actor.orgId, name: 'Facility' })),
 }));
 
 import { NextRequest } from 'next/server';

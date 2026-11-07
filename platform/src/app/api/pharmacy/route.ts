@@ -8,6 +8,7 @@ import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthori
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
 import { authorizeJson } from '@/lib/api-json-guard';
+import { stripReserved } from '@/lib/api-create-guard';
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse',
   'pharmacist', 'medical_superintendent',
@@ -97,6 +98,7 @@ async function postHandler(request: NextRequest) {
         { status: 400 }
       );
     }
+    stripReserved(body);
     body.hospitalId = auth.hospitalId;
     body.orgId = auth.orgId;
     const { createInventoryItem } = await import('@/lib/services/pharmacy-inventory-service');

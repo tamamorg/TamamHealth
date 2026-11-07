@@ -7,6 +7,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import { authorizeJson } from '@/lib/api-json-guard';
+import { isContext, patientDisplayName, pickAllowed, resolveCreateContext } from '@/lib/api-create-guard';
+/** Client-settable dose fields. Everything else on an immunization is server-owned. */
+const DOSE_FIELDS = [
+  'encounterId', 'noteId', 'vaccine', 'doseNumber', 'dateGiven', 'nextDueDate', 'state',
+  'administeredBy', 'batchNumber', 'site', 'adverseReaction', 'adverseReactionDetails',
+] as const;
 import { VITAL_EVENTS_READ_ROLES as READ_ROLES, VITAL_EVENTS_REGISTER_ROLES as WRITE_ROLES } from '@/lib/api-capabilities';
 export async function GET(request: NextRequest) {
   try {
@@ -72,21 +78,33 @@ async function postHandler(request: NextRequest) {
         { status: 400 }
       );
     }
-    // Attribution is stamped from the verified auth claim, never trusted from
-    // the client: the person recorded as having made this record cannot be forged.
-    body.recordedBy = auth.sub;
-    body.recordedByName = auth.name;
-    if (!body.facilityId && auth.hospitalId) body.facilityId = auth.hospitalId;
-    // Tenancy is stamped from the verified auth claim, never trusted from the
-    // client -- a non-admin must not inject records into another org's tenant DB.
-    // Platform/national admins may still target a specific org explicitly.
-    if (auth.role !== 'super_admin' && auth.role !== 'government') {
-      if (auth.orgId) body.orgId = auth.orgId;
-      else delete body.orgId;
+    // The patient must exist inside the caller's tenant and facility scope;
+    // org, facility and the patient's identity come from the session and chart.
+    const ctx = await resolveCreateContext(auth, body.patientId, body.facilityId);
+    if (!isContext(ctx)) return ctx.response;
+    const status = body.status === undefined ? 'completed' : body.status;
+    if (status !== 'completed' && status !== 'scheduled') {
+      return NextResponse.json({ error: 'status must be completed or scheduled' }, { status: 400 });
     }
+    // Allow-list the dose details. Attribution (recordedBy), the correction
+    // fields (recordStatus, statusReason, statusChanged*), ids, timestamps and
+    // tenancy are server-owned.
+    const dose: Record<string, unknown> = {
+      ...pickAllowed(body, DOSE_FIELDS),
+      status,
+      patientId: ctx.patient._id,
+      patientName: patientDisplayName(ctx.patient),
+      gender: ctx.patient.gender,
+      dateOfBirth: ctx.patient.dateOfBirth,
+      recordedBy: auth.sub,
+      recordedByName: auth.name,
+    };
+    if (ctx.hospitalId) dose.facilityId = ctx.hospitalId;
+    if (ctx.facility?.name) dose.facilityName = ctx.facility.name;
+    if (ctx.orgId) dose.orgId = ctx.orgId;
     const { createImmunization } = await import('@/lib/services/immunization-service');
     const immunization = await createImmunization(
-      body as Parameters<typeof createImmunization>[0],
+      dose as Parameters<typeof createImmunization>[0],
       (await import('@/lib/services/data-scope')).buildScopeFromAuth(auth),
     );
     return NextResponse.json({ immunization }, { status: 201 });

@@ -8,6 +8,12 @@ import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthori
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
 import { authorizeJson } from '@/lib/api-json-guard';
+import { isContext, patientDisplayName, pickAllowed, resolveCreateContext } from '@/lib/api-create-guard';
+/** Client-settable follow-up fields. Everything else is server-owned. */
+const FOLLOW_UP_FIELDS = [
+  'encounterId', 'geocodeId', 'condition', 'facilityLevel', 'scheduledDate', 'notes',
+  'state', 'county', 'sourceVisitId',
+] as const;
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'nurse',
   'medical_superintendent',
@@ -80,17 +86,23 @@ async function postHandler(request: NextRequest) {
         { status: 400 }
       );
     }
-    body.assignedWorker = body.assignedWorker || auth.sub;
-    body.assignedWorkerName = body.assignedWorkerName || auth.name;
-    // Tenancy is stamped from the verified auth claim, never trusted from the
-    // client -- a non-admin must not inject records into another org's tenant DB.
-    // Platform/national admins may still target a specific org explicitly.
-    if (auth.role !== 'super_admin' && auth.role !== 'government') {
-      if (auth.orgId) body.orgId = auth.orgId;
-      else delete body.orgId;
-    }
+    const ctx = await resolveCreateContext(auth, body.patientId, body.hospitalId);
+    if (!isContext(ctx)) return ctx.response;
+    // Allow-list. `assignedWorker` is an assignment target (a supervisor hands
+    // a follow-up to a CHW), so it is honoured; status/outcome/completion are
+    // server-owned on create (a follow-up always starts active).
+    const doc: Record<string, unknown> = {
+      ...pickAllowed(body, FOLLOW_UP_FIELDS),
+      patientId: ctx.patient._id,
+      patientName: patientDisplayName(ctx.patient),
+      status: 'active',
+    };
+    doc.assignedWorker = body.assignedWorker || auth.sub;
+    doc.assignedWorkerName = body.assignedWorkerName || auth.name;
+    if (ctx.hospitalId) doc.hospitalId = ctx.hospitalId;
+    if (ctx.orgId) doc.orgId = ctx.orgId;
     const { createFollowUp } = await import('@/lib/services/follow-up-service');
-    const followUp = await createFollowUp(body as Parameters<typeof createFollowUp>[0]);
+    const followUp = await createFollowUp(doc as Parameters<typeof createFollowUp>[0]);
     return NextResponse.json({ followUp }, { status: 201 });
   } catch (err) {
     logApiError('[API /follow-ups POST]', err);
