@@ -16,69 +16,65 @@ export default async function AboutPage() {
   const ADVISORS = content(ADVISORS_EN);
   return (
     <main>
-      {/* Intro band, the same anatomy as the one on /news. */}
-      <section style={{ background: "#113055", color: "#FFFFFF", padding: "70px 32px 76px" }}>
-        <div style={{ maxWidth: 1320, margin: "0 auto", display: "flex", flexDirection: "column", gap: 18 }}>
-          <h1 style={{ fontSize: "clamp(30px, 4.6vw, 50px)", margin: 0, color: "#FFFFFF" }}>{t("About")}</h1>
-          <span style={{ width: 100, height: 3, background: "#7CC7FF" }} />
-          <p style={{ margin: 0, maxWidth: 680, fontSize: 16.5, lineHeight: 1.7, color: "rgba(255,255,255,0.84)" }}>
-            {t("TamamHealth is a nonprofit organization building offline-first digital health records for South Sudan and sub-Saharan Africa.")}
-          </p>
-        </div>
-      </section>
-
-      {/* Who we are: the nonprofit first, then what the organisation stands
-          for, then the facts a funder or partner checks. */}
-      <section id="who-we-are" style={{ padding: "76px 32px 84px" }}>
-        <div style={{ maxWidth: 1320, margin: "0 auto", display: "flex", flexDirection: "column", gap: 40 }}>
-          <div className="tm-split" style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: 56, alignItems: "start" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-700)", fontWeight: 700 }}>{t("Who we are")}</span>
-              <h2 style={{ fontSize: "clamp(26px, 3.8vw, 42px)", margin: 0 }}>{t("A nonprofit, first")}</h2>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <p style={{ margin: 0, fontSize: 16.5, lineHeight: 1.75, color: "var(--color-text)" }}>
-                {t("TamamHealth is a nonprofit organization. Our purpose is to give health facilities in South Sudan a reliable patient record: one that works without a stable power supply or internet connection, follows the patient from the community health worker to the referral hospital, and supports the national reporting the Ministry of Health relies on.")}
-              </p>
-              <p style={{ margin: 0, fontSize: 16.5, lineHeight: 1.75, color: "var(--color-text)" }}>
-                {t("As a nonprofit, our work is directed by need rather than by revenue. Grants and donations fund the equipment, training and support that each facility needs to adopt the platform.")}
-              </p>
-            </div>
+      {/* About: one band. Who we are and what we stand for on the left, a
+          photograph on the right with the organisation's key facts set on
+          its lower edge. On a phone it stacks: copy, photo, facts. */}
+      <section id="who-we-are" className="tm-about-hero" style={{ background: "#113055", color: "#FFFFFF", padding: "64px 32px 72px" }}>
+        <div className="tm-split" style={{ maxWidth: 1320, margin: "0 auto", display: "grid", gridTemplateColumns: "1.05fr 1fr", gap: 56, alignItems: "center" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "#7CC7FF", fontWeight: 700 }}>{t("About TamamHealth")}</span>
+            <h1 style={{ fontSize: "clamp(32px, 4.6vw, 52px)", margin: 0, color: "#FFFFFF" }}>{t("A nonprofit, first")}</h1>
+            <span style={{ width: 100, height: 3, background: "#7CC7FF" }} />
+            <p style={{ margin: 0, maxWidth: 560, fontSize: 17, lineHeight: 1.7, color: "rgba(255,255,255,0.84)" }}>
+              {t("We build patient records that work without reliable power or internet, so care in South Sudan continues from one visit to the next.")}
+            </p>
+            <ul className="tm-about-values" style={{ listStyle: "none", margin: "14px 0 0", padding: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "22px 28px" }}>
+              {[
+                { k: t("Nonprofit"), v: t("Funded by grants and donations, guided by need."), d: "M12 21s-7-4.4-9.3-9A5.2 5.2 0 0 1 12 6.6 5.2 5.2 0 0 1 21.3 12C19 16.6 12 21 12 21Z" },
+                { k: t("Offline-first"), v: t("Runs on tablets and solar power."), d: "M5 4h14v12H5zM9 20h6M12 16v4" },
+                { k: t("Aligned"), v: t("Six levels of care, reported through DHIS2."), d: "M12 3 3 8l9 5 9-5-9-5ZM3 13l9 5 9-5" },
+                { k: t("Accountable"), v: t("Every change to a record is audited."), d: "M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3ZM9 12l2 2 4-4" },
+              ].map((c) => (
+                <li key={c.k} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                  <span aria-hidden="true" style={{ flex: "none", width: 40, height: 40, display: "grid", placeItems: "center", background: "#7CC7FF" }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#113055" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d={c.d} /></svg>
+                  </span>
+                  <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                    <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 18, color: "#FFFFFF" }}>{c.k}</span>
+                    <span style={{ fontSize: 14, lineHeight: 1.5, color: "rgba(255,255,255,0.72)" }}>{c.v}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
 
-          <div>
-            <h3 style={{ fontSize: 22, margin: "0 0 18px", paddingBottom: 14, borderBottom: "1px solid var(--color-divider)" }}>{t("What we stand for")}</h3>
-            <div className="tm-g4" style={{ gap: 22 }}>
+          <div className="tm-about-media" style={{ position: "relative", paddingBottom: 56 }}>
+            <div className="blueprint tm-figure" style={{ position: "relative", height: 520, borderColor: "rgba(255,255,255,0.28)", overflow: "hidden" }}>
+              <Corners light />
+              <Image
+                src="/assets/clinician-with-tablet.jpg"
+                alt={t("A clinician reviewing a patient record on a tablet")}
+                fill
+                sizes="(max-width: 1100px) 100vw, 45vw"
+                preload
+                style={{ objectFit: "cover", objectPosition: "center 30%" }}
+              />
+            </div>
+            <dl className="blueprint tm-about-facts" style={{ position: "absolute", insetInlineStart: -28, insetInlineEnd: 28, bottom: 0, margin: 0, background: "#FFFFFF", color: "var(--color-text)", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 26px", padding: "20px 24px" }}>
+              <Corners />
               {[
-                { k: t("Nonprofit"), v: t("TamamHealth operates as a nonprofit organization, fiscally sponsored by Elimisha Kakuma, a U.S. 501(c)(3) nonprofit.") },
-                { k: t("Built for real conditions"), v: t("The platform works offline first, on affordable tablets and solar power, in a health system where 4% of facilities have a computer with internet.") },
-                { k: t("Aligned with the health system"), v: t("The platform follows the six levels of care in the Ministry of Health's 2025 Essential Health Services Package and reports through DHIS2.") },
-                { k: t("Accountable"), v: t("Every change to a record is audited, and results are reported against the same indicators the Ministry of Health uses.") },
-              ].map((c) => (
-                <div key={c.k} className="blueprint" style={{ position: "relative", background: "#FFFFFF", padding: "24px 24px 26px", display: "flex", flexDirection: "column", gap: 10, borderTop: "3px solid var(--tm-deep)" }}>
-                  <Corners />
-                  <h4 style={{ margin: 0, fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 19, color: "var(--color-text)" }}>{c.k}</h4>
-                  <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.65, color: "var(--color-neutral-800)" }}>{c.v}</p>
+                { k: t("Fiscal sponsor"), v: t("Elimisha Kakuma, 501(c)(3)") },
+                { k: t("Registered"), v: t("Massachusetts") },
+                { k: t("Founded"), v: t("Tufts University") },
+                { k: t("Now"), v: t("Testing at Iteru Medical Center, Juba") },
+              ].map((r) => (
+                <div key={r.k}>
+                  <dt className="fs115" style={{ letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--color-accent-700)", fontWeight: 700 }}>{r.k}</dt>
+                  <dd style={{ margin: "4px 0 0", fontSize: 14.5, lineHeight: 1.45, color: "var(--color-text)" }}>{r.v}</dd>
                 </div>
               ))}
-            </div>
+            </dl>
           </div>
-
-          <dl className="tm-explain" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 46px", margin: 0 }}>
-            {[
-              { k: t("Status"), v: t("Nonprofit organization") },
-              { k: t("Fiscal sponsor"), v: t("Elimisha Kakuma, a U.S. 501(c)(3) nonprofit") },
-              { k: t("Registration"), v: t("Commonwealth of Massachusetts") },
-              { k: t("Origin"), v: t("Founded at Tufts University") },
-              { k: t("Focus"), v: t("South Sudan first, then sub-Saharan Africa") },
-              { k: t("Current work"), v: t("Platform testing at Iteru Medical Center, Juba") },
-            ].map((r) => (
-              <div key={r.k} style={{ borderTop: "1px solid var(--color-divider)", padding: "16px 0 18px" }}>
-                <dt className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-700)", fontWeight: 700 }}>{r.k}</dt>
-                <dd style={{ margin: "8px 0 0", fontSize: 15.5, lineHeight: 1.6, color: "var(--color-neutral-800)" }}>{r.v}</dd>
-              </div>
-            ))}
-          </dl>
         </div>
       </section>
 
@@ -88,7 +84,7 @@ export default async function AboutPage() {
           plate, then a footer that answers what they do, where, and in what
           field. No paragraph — three facts read faster than a bio, and the
           portrait is doing the introducing. */}
-      <section id="leadership" style={{ background: "var(--color-surface)", borderTop: "1px solid var(--color-divider)", padding: "72px 32px 82px" }}>
+      <section id="leadership" style={{ background: "var(--color-surface)", padding: "72px 32px 82px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto", display: "flex", flexDirection: "column", gap: 32 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <h2 style={{ fontSize: "clamp(26px, 3.8vw, 42px)", margin: 0 }}>{t("Leadership")}</h2>
