@@ -243,7 +243,7 @@ export function useDeskActions({
     } catch (error) {
       showToast(error instanceof Error && error.message.includes('DISCHARGE_OVERRIDE') ? t('postConsult.clinicianAuthorization') : t('msg.patientNotCheckedOutTry'), 'error');
     }
-  }, [updateAppointmentStatus, updateTriage, showToast, currentUser, scope, t]);
+  }, [updateAppointmentStatus, updateTriage, showToast, currentUser, scope, t, setCheckoutTarget]);
 
   // ── Appointment check-in lives in CheckInModal: the shared Start a visit
   //    form, with the booking pre-selected, which checks it in
@@ -261,7 +261,7 @@ export function useDeskActions({
     } finally {
       setNoShowTarget(null);
     }
-  }, [updateAppointmentStatus, showToast, t]);
+  }, [updateAppointmentStatus, showToast, t, setNoShowTarget]);
 
   // ── A walk-in has no booking, so its rung lives on the triage record. The
   //    desk sets it from the same dropdown a booked patient uses; triage's own
@@ -310,7 +310,7 @@ export function useDeskActions({
     if (status === 'no_show') { setNoShowTarget(appt); return; }
     if (status === 'cancelled') { setCancelReason(''); setCancelTarget({ appt, triage: mirrorTriage }); return; }
     setStatusTarget({ appt, triage: mirrorTriage, status });
-  }, [encounters]);
+  }, [encounters, setCancelReason, setCancelTarget, setCheckInTarget, setCheckoutTarget, setNoShowTarget, setStatusTarget]);
 
   // ── A plain rung, after StatusChangeSlider confirms it. ──
   const applyAppointmentStatus = useCallback(async (
@@ -400,14 +400,14 @@ export function useDeskActions({
       setCancelTarget(null);
       setCancelReason('');
     }
-  }, [cancelTarget, cancelReason, updateAppointmentStatus, updateTriage, handleWalkInStatusChange, showToast, currentUser, t]);
+  }, [cancelTarget, cancelReason, updateAppointmentStatus, updateTriage, handleWalkInStatusChange, showToast, currentUser, t, setCancelReason, setCancelTarget]);
 
   // ── Move an appointment to a new date/time without leaving the desk. ──
   const openReschedule = useCallback((appt: AppointmentDoc) => {
     setRescheduleDate(isoDateKey(appt.appointmentDate));
     setRescheduleTime(appt.appointmentTime || '09:00');
     setRescheduleTarget(appt);
-  }, []);
+  }, [setRescheduleDate, setRescheduleTarget, setRescheduleTime]);
 
   const submitReschedule = useCallback(async () => {
     if (!rescheduleTarget || !rescheduleDate || !rescheduleTime) return;
@@ -422,7 +422,7 @@ export function useDeskActions({
     } finally {
       setReschedSaving(false);
     }
-  }, [rescheduleTarget, rescheduleDate, rescheduleTime, rescheduleAppointment, showToast, t]);
+  }, [rescheduleTarget, rescheduleDate, rescheduleTime, rescheduleAppointment, showToast, t, setReschedSaving, setRescheduleTarget]);
 
   // ── Reverse an appointment check-in: send the patient back to scheduled so
   //    a mistaken "arrived" can be corrected. Appointment status has no
@@ -436,7 +436,7 @@ export function useDeskActions({
     } catch {
       showToast(t('msg.checkInNotReversedTry'), 'error');
     }
-  }, [updateAppointmentStatus, showToast, t]);
+  }, [updateAppointmentStatus, showToast, t, setCheckInTarget]);
 
   // ── Reverse a completed checkout for an APPOINTMENT-sourced visit: set the
   //    appointment back to checked_in so the patient re-enters the live queue.

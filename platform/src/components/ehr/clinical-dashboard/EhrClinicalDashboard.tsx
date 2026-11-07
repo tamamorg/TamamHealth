@@ -1017,7 +1017,7 @@ export default function EhrClinicalDashboard({
     const appointment = openAppointment;
     const body = `
       <section class="section keep">
-        <h2 class="section-title">Visit Details</h2>
+        <h2 class="section-title">${escapeHtml(t('print.visitDetails'))}</h2>
         ${printFields([
           { label: 'Reason for Visit', value: appointment.reason || typeLabel(appointment.appointmentType) },
           { label: 'Visit Type', value: typeLabel(appointment.appointmentType) },
@@ -1032,7 +1032,7 @@ export default function EhrClinicalDashboard({
           { label: 'Appointment ID', value: appointment._id },
         ])}
       </section>
-      ${appointment.notes ? `<section class="section"><h2 class="section-title">Booking Notes</h2><p class="notice">${escapeHtml(appointment.notes).replace(/\n/g, '<br>')}</p></section>` : ''}
+      ${appointment.notes ? `<section class="section"><h2 class="section-title">${escapeHtml(t('print.bookingNotes'))}</h2><p class="notice">${escapeHtml(appointment.notes).replace(/\n/g, '<br>')}</p></section>` : ''}
       ${appointment.cancelledReason ? `<section class="section"><h2 class="section-title">Cancellation</h2><p class="notice"><strong>Reason:</strong> ${escapeHtml(appointment.cancelledReason)}${appointment.cancelledByName ? `<br><strong>Recorded by:</strong> ${escapeHtml(appointment.cancelledByName)}` : ''}</p></section>` : ''}`;
     const html = buildClinicalPrintDocument({
       title: appointment.patientName,
