@@ -122,7 +122,10 @@ describe('the nurse on a worklist row', () => {
     // directly above an editor whose Staff dropdown named the nurse. Both
     // front-desk mappers now use the same ladder the doctor cell always had:
     // patient-level assignment first, the booking second.
-    const frontDesk = source('app/(dashboard)/dashboard/front-desk/page.tsx');
+    const frontDesk = [
+      source('components/front-desk/desk-board/desk-row-rules.tsx'),
+      source('components/front-desk/desk-board/desk-queue-rules.ts'),
+    ].join('\n');
     const pendingRow = frontDesk
       .split('\n')
       .find(l => l.includes('careTeamSecondary:') && l.includes('appointment.staffName'));

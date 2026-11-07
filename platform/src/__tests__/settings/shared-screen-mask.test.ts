@@ -10,7 +10,7 @@
  */
 jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import {
   initRoleSettings,
@@ -84,18 +84,26 @@ describe('shared-screen formatters', () => {
 });
 
 describe('shared surfaces route through the mask', () => {
-  const read = (rel: string) => readFileSync(path.join(process.cwd(), 'src', rel), 'utf8');
+  // A surface may be a folder (the front-desk board is split across
+  // components/front-desk/desk-board/): read every source file under it.
+  const read = (rel: string): string => {
+    const abs = path.join(process.cwd(), 'src', rel);
+    if (!statSync(abs).isDirectory()) return readFileSync(abs, 'utf8');
+    return readdirSync(abs)
+      .map(name => read(path.join(rel, name)))
+      .join('\n');
+  };
 
   const PHONE_SURFACES = [
     'components/ehr/EhrTopRail.tsx',
     'components/ehr/EhrClinicalDashboard.tsx',
     'components/lab/order/LabOrderPatientStrip.tsx',
-    'app/(dashboard)/dashboard/front-desk/page.tsx',
+    'components/front-desk/desk-board',
     'app/(dashboard)/referrals/page.tsx',
   ];
   const LOCATION_SURFACES = [
     'app/(dashboard)/patients/page.tsx',
-    'app/(dashboard)/dashboard/front-desk/page.tsx',
+    'components/front-desk/desk-board',
     'app/(dashboard)/referrals/page.tsx',
   ];
 

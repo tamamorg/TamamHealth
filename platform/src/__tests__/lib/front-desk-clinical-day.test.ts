@@ -16,8 +16,10 @@ describe('desk clinical day', () => {
 });
 
 describe('desk Completed always runs the checkout gate', () => {
-  const src = fs.readFileSync(
-    path.join(__dirname, '../../app/(dashboard)/dashboard/front-desk/page.tsx'), 'utf8');
+  const board = (file: string) => fs.readFileSync(
+    path.join(__dirname, '../../components/front-desk/desk-board', file), 'utf8');
+  // Row rules hold the row builder; the board-state hook holds the clinical day.
+  const src = [board('desk-row-rules.tsx'), board('useDeskBoardState.ts')].join('\n');
   it('routes a booking-less queue row to CheckoutModal, and never writes completed bare', () => {
     expect(src).toMatch(/else if \(next === 'completed'\)[\s\S]{0,600}setCheckoutTarget/);
     expect(src).not.toMatch(/if \(status === 'completed'\) patch\.status = 'discharged'/);
