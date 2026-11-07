@@ -8,6 +8,15 @@ import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthori
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
 import { authorizeJson } from '@/lib/api-json-guard';
+import { isContext, patientDisplayName, pickAllowed, resolveCreateContext } from '@/lib/api-create-guard';
+/** Client-settable requisition fields. Everything else on a lab order is server-owned. */
+const ORDER_FIELDS = [
+  'testName', 'specimen', 'tier', 'encounterId', 'orderKind', 'clinicalNotes', 'orderComment',
+  'priority', 'indications', 'aoeAnswers', 'fasting', 'collectionTiming', 'scheduledCollectionAt',
+  'processing', 'orderGroupId', 'requestSource', 'externalFacility', 'externalRequester',
+  'externalReference', 'specimenCollectedOutside',
+  'modality', 'bodyRegion', 'laterality', 'contrast', 'studyScheduledAt', 'safetyChecks',
+] as const;
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse',
   'midwife', 'lab_tech', 'medical_superintendent', 'radiologist',
@@ -67,17 +76,36 @@ async function postHandler(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (!body.orderedBy) body.orderedBy = auth.name;
-    // Tenancy is stamped from the verified auth claim, never trusted from the
-    // client — see the matching comment in /api/referrals for the rationale.
-    if (auth.orgId) {
-      body.orgId = auth.orgId;
-    } else if (!(auth.role === 'super_admin' || auth.role === 'government')) {
-      delete body.orgId;
-    }
-    if (!body.hospitalId && auth.hospitalId) body.hospitalId = auth.hospitalId;
+    // The patient must exist inside the caller's tenant and facility scope, and
+    // orgId / facility / patient identity come from the session and the chart.
+    const ctx = await resolveCreateContext(auth, body.patientId, body.hospitalId);
+    if (!isContext(ctx)) return ctx.response;
+    const now = new Date().toISOString();
+    // Allow-list: the requisition. Status, result values, flags, attribution,
+    // timestamps and ids are server-owned -- an order always starts pending
+    // and empty, so a body cannot mint a "completed" or "critical" result.
+    const order: Record<string, unknown> = {
+      ...pickAllowed(body, ORDER_FIELDS),
+      patientId: ctx.patient._id,
+      patientName: patientDisplayName(ctx.patient),
+      hospitalNumber: ctx.patient.hospitalNumber || '',
+      status: 'pending',
+      orderStatus: 'ordered',
+      result: '',
+      unit: '',
+      referenceRange: '',
+      abnormal: false,
+      critical: false,
+      orderedBy: auth.name,
+      orderedById: auth.sub,
+      orderedAt: now,
+      completedAt: '',
+    };
+    if (ctx.orgId) order.orgId = ctx.orgId;
+    if (ctx.hospitalId) order.hospitalId = ctx.hospitalId;
+    if (ctx.facility?.name) order.hospitalName = ctx.facility.name;
     const { createLabResult } = await import('@/lib/services/lab-service');
-    const result = await createLabResult(body as Parameters<typeof createLabResult>[0]);
+    const result = await createLabResult(order as Parameters<typeof createLabResult>[0]);
     return NextResponse.json({ labResult: result }, { status: 201 });
   } catch (err) {
     logApiError('[API /lab POST]', err);

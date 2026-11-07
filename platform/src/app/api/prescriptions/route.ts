@@ -9,6 +9,16 @@ import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthori
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
 import { authorizeJson } from '@/lib/api-json-guard';
+import { isContext, patientDisplayName, pickAllowed, resolveCreateContext } from '@/lib/api-create-guard';
+/** Client-settable prescription fields. Everything else is server-owned. */
+const ORDER_FIELDS = [
+  'medication', 'dose', 'route', 'frequency', 'duration', 'indication',
+  'allowSubstitution', 'refills', 'effectiveOn', 'pharmacyInstructions', 'fulfilment',
+  'criticalityTier', 'offFormularyReason', 'encounterId', 'medicalRecordId',
+  'quantityToDispense', 'urgency',
+  // admissionId is deliberately absent: the service resolves the patient's own
+  // active admission, and a body id could point at another tenant's ward.
+] as const;
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse',
   'pharmacist', 'medical_superintendent',
@@ -53,18 +63,33 @@ async function postHandler(request: NextRequest) {
     const guarded = await authorizeJson(request, CREATE_ROLES);
     if (guarded.response) return guarded.response;
     const { auth, body } = guarded;
-    if (!body.prescribedBy) body.prescribedBy = auth.name;
-    // Tenancy is stamped from the verified auth claim, never trusted from the
-    // client — see the matching comment in /api/referrals for the rationale.
-    if (auth.orgId) {
-      body.orgId = auth.orgId;
-    } else if (!(auth.role === 'super_admin' || auth.role === 'government')) {
-      delete body.orgId;
+    // The patient must exist inside the caller's tenant and facility scope.
+    const ctx = await resolveCreateContext(auth, body.patientId, body.hospitalId);
+    if (!isContext(ctx)) return ctx.response;
+    // Allow-list the order. Status and lifecycle (status, orderStatus), the
+    // dispensing/administration record, safety assessment, prescriber
+    // attribution, ids and timestamps are all server-owned.
+    const order: Record<string, unknown> = {
+      ...pickAllowed(body, ORDER_FIELDS),
+      patientId: ctx.patient._id,
+      patientName: patientDisplayName(ctx.patient),
+      status: 'pending',
+      prescribedBy: auth.name,
+    };
+    if (body.medicationSafetyAcknowledgement && typeof body.medicationSafetyAcknowledgement === 'object') {
+      const ack = body.medicationSafetyAcknowledgement as Record<string, unknown>;
+      // Who reviewed it is the signed-in prescriber, not a name from the body.
+      order.medicationSafetyAcknowledgement = {
+        reviewedBy: auth.name,
+        reason: typeof ack.reason === 'string' ? ack.reason : '',
+      };
     }
-    if (!body.hospitalId && auth.hospitalId) body.hospitalId = auth.hospitalId;
+    if (ctx.orgId) order.orgId = ctx.orgId;
+    if (ctx.hospitalId) order.hospitalId = ctx.hospitalId;
+    if (ctx.facility?.name) order.hospitalName = ctx.facility.name;
     const { createPrescription } = await import('@/lib/services/prescription-service');
     const { buildScopeFromAuth } = await import('@/lib/services/data-scope');
-    const result = await createPrescription(body as Parameters<typeof createPrescription>[0], buildScopeFromAuth(auth));
+    const result = await createPrescription(order as Parameters<typeof createPrescription>[0], buildScopeFromAuth(auth));
     return NextResponse.json({
       prescription: result.prescription,
       interactionWarnings: result.interactionWarnings,

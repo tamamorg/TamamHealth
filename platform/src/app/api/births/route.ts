@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import { authorizeJson } from '@/lib/api-json-guard';
+import { stripReserved } from '@/lib/api-create-guard';
 import { VITAL_EVENTS_READ_ROLES as READ_ROLES, VITAL_EVENTS_REGISTER_ROLES as WRITE_ROLES } from '@/lib/api-capabilities';
 export async function GET(request: NextRequest) {
   try {
@@ -69,6 +70,7 @@ async function postHandler(request: NextRequest) {
         { status: 400 }
       );
     }
+    stripReserved(body);
     // Attribution is stamped from the verified auth claim, never trusted from
     // the client: the person recorded as having made this record cannot be forged.
     body.registeredBy = auth.sub;

@@ -8,6 +8,15 @@ import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthori
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
 import { authorizeJson } from '@/lib/api-json-guard';
+import { isContext, pickAllowed, resolveCreateContext } from '@/lib/api-create-guard';
+/** Client-settable ANC contact fields. Everything else is server-owned. */
+const VISIT_FIELDS = [
+  'motherId', 'motherName', 'motherAge', 'gravida', 'parity', 'visitNumber', 'visitDate',
+  'gestationalAge', 'facilityId', 'facilityName', 'state', 'bloodPressure', 'weight',
+  'fundalHeight', 'fetalHeartRate', 'hemoglobin', 'urineProtein', 'bloodGroup', 'rhFactor',
+  'hivStatus', 'malariaTest', 'syphilisTest', 'ironFolateGiven', 'tetanusVaccine', 'iptpDose',
+  'riskFactors', 'riskLevel', 'birthPlan', 'nextVisitDate', 'notes',
+] as const;
 import { VITAL_EVENTS_REGISTER_ROLES } from '@/lib/api-capabilities';
 const READ_ROLES: UserRole[] = [
   'super_admin', 'org_admin', 'doctor', 'clinical_officer', 'clinician', 'nurse',
@@ -66,20 +75,32 @@ async function postHandler(request: NextRequest) {
         { status: 400 }
       );
     }
-    // Attribution is stamped from the verified auth claim, never trusted from
-    // the client: the person recorded as having attended cannot be forged.
-    body.attendedBy = auth.sub;
-    body.attendedByRole = auth.role;
-    // Tenancy is stamped from the verified auth claim, never trusted from the
-    // client -- a non-admin must not inject records into another org's tenant DB.
-    // Platform/national admins may still target a specific org explicitly.
-    if (auth.role !== 'super_admin' && auth.role !== 'government') {
-      if (auth.orgId) body.orgId = auth.orgId;
-      else delete body.orgId;
+    // Allow-list the clinical fields. Attribution, tenancy, the birth link,
+    // soft-delete flag, ids and timestamps are server-owned.
+    const visitDoc: Record<string, unknown> = { ...pickAllowed(body, VISIT_FIELDS) };
+    visitDoc.attendedBy = auth.sub;
+    visitDoc.attendedByRole = auth.role;
+    // A mother who is a registered patient must be inside the caller's tenant
+    // and facility scope. A mother not yet registered carries a device-minted
+    // `mother-new-` id and has no chart to protect.
+    const rawPatientId = body.patientId ?? (String(body.motherId).startsWith('mother-new-') ? undefined : body.motherId);
+    if (rawPatientId !== undefined) {
+      const ctx = await resolveCreateContext(auth, rawPatientId, body.facilityId);
+      if (!isContext(ctx)) return ctx.response;
+      visitDoc.patientId = ctx.patient._id;
+      if (ctx.hospitalId) visitDoc.facilityId = ctx.hospitalId;
+      if (ctx.facility?.name) visitDoc.facilityName = ctx.facility.name;
+      if (ctx.orgId) visitDoc.orgId = ctx.orgId;
+    } else {
+      delete visitDoc.patientId;
+      // No chart to derive a facility from: the caller's own facility, never the body's.
+      if (auth.hospitalId) visitDoc.facilityId = auth.hospitalId;
+      else delete visitDoc.facilityId;
+      if (auth.orgId) visitDoc.orgId = auth.orgId;
     }
     const { createANCVisit } = await import('@/lib/services/anc-service');
     const visit = await createANCVisit(
-      body as Parameters<typeof createANCVisit>[0],
+      visitDoc as Parameters<typeof createANCVisit>[0],
       (await import('@/lib/services/data-scope')).buildScopeFromAuth(auth),
     );
     return NextResponse.json({ visit }, { status: 201 });

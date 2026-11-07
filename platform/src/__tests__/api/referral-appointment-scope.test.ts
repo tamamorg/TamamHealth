@@ -241,6 +241,7 @@ describe('BUG 2 — /api/appointments update_status / reschedule scope guard', (
 
 describe('BUG 3 — auth wins over a client-supplied orgId on create', () => {
   test('lab order create stamps orgId + hospitalId from auth even when the body supplies a different org', async () => {
+    await putDoc(patientsDB(), { _id: 'pat-4', type: 'patient', orgId: ORG_A, registrationHospital: HOSP_A } as unknown as { _id: string });
     mockGetAuth.mockResolvedValue(authFor(ORG_A, HOSP_A));
     const res = await labPOST(postRequest('http://test/api/lab', {
       patientId: 'pat-4', testName: 'CBC', orgId: ORG_B,
@@ -252,6 +253,7 @@ describe('BUG 3 — auth wins over a client-supplied orgId on create', () => {
   });
 
   test('prescription create stamps orgId + hospitalId from auth even when the body supplies a different org', async () => {
+    await putDoc(patientsDB(), { _id: 'pat-5', type: 'patient', orgId: ORG_A, registrationHospital: HOSP_A } as unknown as { _id: string });
     mockGetAuth.mockResolvedValue(authFor(ORG_A, HOSP_A));
     const res = await prescriptionsPOST(postRequest('http://test/api/prescriptions', {
       patientId: 'pat-5', medication: 'Amoxicillin', dose: '500mg', frequency: 'TID', orgId: ORG_B,
@@ -289,7 +291,8 @@ describe('BUG 3 — auth wins over a client-supplied orgId on create', () => {
     expect(body.appointment.orgId).toBe(ORG_A);
   });
 
-  test('a national-role caller with no orgId of their own may still supply one', async () => {
+  test('a national-role caller with no orgId files under the patient org', async () => {
+    await putDoc(patientsDB(), { _id: 'pat-8', type: 'patient', orgId: ORG_B, registrationHospital: HOSP_B } as unknown as { _id: string });
     mockGetAuth.mockResolvedValue({
       sub: 'user-super', username: 'super', role: 'super_admin', name: 'Super Admin',
     });

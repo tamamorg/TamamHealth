@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import { authorizeJson } from '@/lib/api-json-guard';
+import { isContext, resolveCreateContext, stripReserved } from '@/lib/api-create-guard';
 import { VITAL_EVENTS_READ_ROLES as READ_ROLES, VITAL_EVENTS_REGISTER_ROLES as WRITE_ROLES } from '@/lib/api-capabilities';
 export async function GET(request: NextRequest) {
   try {
@@ -64,6 +65,16 @@ async function postHandler(request: NextRequest) {
         { error: 'deceasedFirstName, deceasedSurname, and dateOfDeath are required' },
         { status: 400 }
       );
+    }
+    stripReserved(body);
+    // Linking a death to a patient marks that chart deceased, so the patient
+    // must be inside the caller's tenant and facility scope.
+    if (body.patientId !== undefined && body.patientId !== null && body.patientId !== '') {
+      const ctx = await resolveCreateContext(auth, body.patientId, undefined);
+      if (!isContext(ctx)) return ctx.response;
+      body.patientId = ctx.patient._id;
+    } else {
+      delete body.patientId;
     }
     // Attribution is stamped from the verified auth claim, never trusted from
     // the client: the person recorded as having made this record cannot be forged.
