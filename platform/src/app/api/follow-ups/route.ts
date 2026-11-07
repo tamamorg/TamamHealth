@@ -97,8 +97,23 @@ async function postHandler(request: NextRequest) {
       patientName: patientDisplayName(ctx.patient),
       status: 'active',
     };
-    doc.assignedWorker = body.assignedWorker || auth.sub;
-    doc.assignedWorkerName = body.assignedWorkerName || auth.name;
+    // The assignee must be an active user of the patient's organisation; the
+    // display name comes from that user record, never from the body.
+    if (body.assignedWorker && body.assignedWorker !== auth.sub) {
+      if (typeof body.assignedWorker !== 'string') {
+        return NextResponse.json({ error: 'assignedWorker must be a user id' }, { status: 400 });
+      }
+      const { getUserById } = await import('@/modules/identity/services/user-service');
+      const assignee = await getUserById(body.assignedWorker);
+      if (!assignee || assignee.isActive === false || !ctx.orgId || assignee.orgId !== ctx.orgId) {
+        return NextResponse.json({ error: 'Assignee not found' }, { status: 404 });
+      }
+      doc.assignedWorker = assignee._id;
+      doc.assignedWorkerName = assignee.name;
+    } else {
+      doc.assignedWorker = auth.sub;
+      doc.assignedWorkerName = auth.name;
+    }
     if (ctx.hospitalId) doc.hospitalId = ctx.hospitalId;
     if (ctx.orgId) doc.orgId = ctx.orgId;
     const { createFollowUp } = await import('@/lib/services/follow-up-service');

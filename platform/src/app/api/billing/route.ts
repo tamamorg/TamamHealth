@@ -151,6 +151,28 @@ async function postHandler(request: NextRequest) {
     })) {
       return NextResponse.json({ error: 'Each bill item needs a quantity above zero and a price of zero or more' }, { status: 400 });
     }
+    // Money fields are bounded. A discount that clears the whole bill is a
+    // waiver and must go through the audited `waive` action; a larger one
+    // would make a negative total. taxRate is a percentage (see calculateTotals).
+    const subtotal = (body.items as Array<{ quantity: number; unitPrice: number }>)
+      .reduce((sum, it) => sum + Math.round(it.quantity * it.unitPrice * 100) / 100, 0);
+    if (body.discount !== undefined && body.discount !== null) {
+      if (typeof body.discount !== 'number' || !Number.isFinite(body.discount) || body.discount < 0) {
+        return NextResponse.json({ error: 'discount must be a number of zero or more' }, { status: 400 });
+      }
+      if (body.discount > 0 && body.discount >= subtotal) {
+        return NextResponse.json({ error: 'discount must be less than the bill subtotal. To clear the whole bill, use the waive action.' }, { status: 400 });
+      }
+    }
+    if (body.taxRate !== undefined && body.taxRate !== null
+      && (typeof body.taxRate !== 'number' || !Number.isFinite(body.taxRate) || body.taxRate < 0 || body.taxRate > 100)) {
+      return NextResponse.json({ error: 'taxRate must be a percentage between 0 and 100' }, { status: 400 });
+    }
+    if (body.insuranceCoveragePercent !== undefined && body.insuranceCoveragePercent !== null
+      && (typeof body.insuranceCoveragePercent !== 'number' || !Number.isFinite(body.insuranceCoveragePercent)
+        || body.insuranceCoveragePercent < 0 || body.insuranceCoveragePercent > 100)) {
+      return NextResponse.json({ error: 'insuranceCoveragePercent must be a percentage between 0 and 100' }, { status: 400 });
+    }
     // The patient must exist inside the caller's tenant and facility scope;
     // org, facility and the patient's identity come from the session and chart.
     const ctx = await resolveCreateContext(auth, body.patientId, body.facilityId);

@@ -32,6 +32,9 @@ jest.mock('@/lib/services/birth-service', () => ({
 jest.mock('@/lib/services/anc-service', () => ({
   createANCVisit: jest.fn(async (doc: Record<string, unknown>) => { captured.anc = doc; return { _id: 'a1', ...doc }; }),
 }));
+jest.mock('@/modules/identity/services/user-service', () => ({
+  getUserById: jest.fn(async (id: string) => (id === 'chw-7' ? { _id: 'chw-7', name: 'CHW Seven', orgId: 'org-a', isActive: true } : null)),
+}));
 jest.mock('@/lib/services/follow-up-service', () => ({
   createFollowUp: jest.fn(async (doc: Record<string, unknown>) => { captured.followUp = doc; return { _id: 'f1', ...doc }; }),
 }));

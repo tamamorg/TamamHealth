@@ -15,9 +15,12 @@ const JWT_AUDIENCE_BASE = 'tamamhealth-web';
 // Optional per-deployment audience (JWT_DEPLOYMENT_ID, server-side only). New
 // tokens are minted for `tamamhealth-web:<id>`; verification accepts that AND
 // the bare legacy audience, so turning the variable on does not sign anybody
-// out. Tokens carrying the bare audience age out within one session TTL (each
-// renewal re-mints with the deployment audience). The signing secret already
-// differs per deployment; this is a second, independent tie.
+// out. NOTE: the bare audience is accepted INDEFINITELY (nothing drops it), so
+// JWT_DEPLOYMENT_ID does not yet isolate deployments: a token for the bare
+// audience still verifies everywhere that shares the signing secret. It only
+// isolates once the bare audience is removed from ACCEPTED_AUDIENCES, which
+// signs out every session still carrying it, so that is a deliberate later
+// step. Until then the per-deployment signing secret is the real isolation.
 const DEPLOYMENT_ID = (process.env.JWT_DEPLOYMENT_ID || '').trim();
 const JWT_AUDIENCE = DEPLOYMENT_ID ? `${JWT_AUDIENCE_BASE}:${DEPLOYMENT_ID}` : JWT_AUDIENCE_BASE;
 const ACCEPTED_AUDIENCES = DEPLOYMENT_ID ? [JWT_AUDIENCE, JWT_AUDIENCE_BASE] : [JWT_AUDIENCE_BASE];

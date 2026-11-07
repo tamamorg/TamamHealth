@@ -98,6 +98,8 @@
 .lg-grid:has(.lg-demo) { padding-top: 24px; }
 .lg-col { display: flex; flex-direction: column; gap: 20px; }
 .lg-h1 { font-size: 36px; margin: 0 0 4px; }
+/* The door named above the sign-in heading (staff, ministry, console). */
+.lg-col .lg-eyebrow { display: block; margin-bottom: 8px; }
 .lg-h2 { font-size: 30px; margin: 0; }
 .lg-lede { margin: 0; font-size: 15px; color: var(--lg-neutral-700); }
 
@@ -134,7 +136,8 @@
    website/globals.css). Every other blue on this screen is structural —
    the links, the headings, the field focus ring — so the one button that
    submits is the one warm colour on the page. White text on amber misses
-   4.5:1; navy ink carries it. */
+   4.5:1; navy ink carries it. Kept on purpose (2026-11-07: tried blue, the
+   user wants the sign-in buttons orange). */
 .lg-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   width: 100%; padding: 15px 0; font-family: var(--font-barlow-condensed), 'Barlow Condensed', system-ui, sans-serif;
