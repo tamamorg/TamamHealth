@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import Corners from "@/components/Corners";
-import CountUp from "@/components/CountUp";
 import { ADVISORS as ADVISORS_EN, TEAM as TEAM_EN } from "@/lib/site-data";
 import { getTranslator } from "@/lib/i18n/server";
 
@@ -17,55 +17,82 @@ export default async function AboutPage() {
   const ADVISORS = content(ADVISORS_EN);
   return (
     <main>
-      {/* About hero: a large statement and a mosaic of photographs (the
-          product on screen among them) over the blueprint grid, then the
-          figures the work is measured by. TamamHealth's own language
-          throughout: Barlow Condensed, square frames, corner marks. */}
-      <section id="who-we-are" className="tm-about-hero tm-bp-grid" style={{ background: "#113055", color: "#FFFFFF", padding: "72px 32px 76px" }}>
-        <div className="tm-split" style={{ maxWidth: 1320, margin: "0 auto", display: "grid", gridTemplateColumns: "0.95fr 1.25fr", gap: 56, alignItems: "center" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 22, alignItems: "flex-start" }}>
+      {/* About hero. TamamHealth is a records organisation, so it introduces
+          itself the way the platform presents a patient: as a record sheet,
+          with a photo field, labelled fields and a status line. */}
+      <section id="who-we-are" className="tm-about-hero tm-bp-grid" style={{ background: "#113055", color: "#FFFFFF", padding: "72px 32px 80px" }}>
+        <div className="tm-split" style={{ maxWidth: 1320, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20, alignItems: "flex-start" }}>
             <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "#7CC7FF", fontWeight: 700 }}>{t("About TamamHealth")}</span>
-            <h1 className="tm-about-title" style={{ margin: 0, fontWeight: 400, fontSize: "clamp(40px, 5.4vw, 70px)", lineHeight: 1.02, letterSpacing: "-0.01em", color: "#FFFFFF" }}>
-              {t("A nonprofit building health records for South Sudan")}
-            </h1>
-            <p style={{ margin: 0, maxWidth: 480, fontSize: 17, lineHeight: 1.7, color: "rgba(255,255,255,0.8)" }}>
+            <h1 style={{ margin: 0, fontSize: "clamp(32px, 4.4vw, 52px)", color: "#FFFFFF" }}>{t("A nonprofit building health records for South Sudan")}</h1>
+            <span style={{ width: 100, height: 3, background: "#7CC7FF" }} />
+            <p style={{ margin: 0, maxWidth: 520, fontSize: 17, lineHeight: 1.7, color: "rgba(255,255,255,0.82)" }}>
               {t("We build patient records that work without reliable power or internet, so care in South Sudan continues from one visit to the next.")}
             </p>
-            <a href="#values" aria-label={t("Continue to what we stand for")} className="tm-about-down">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6" /></svg>
-            </a>
+            <div className="tm-btn-pair" style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 6 }}>
+              <Link href="/donate" className="btn btn-primary blueprint" style={{ padding: "14px 24px", fontSize: 16 }}>{t("Support the 10-clinic pilot")}<Corners /></Link>
+              <Link href="/contact" className="btn" style={{ padding: "14px 24px", fontSize: 16, color: "#FFFFFF", borderColor: "rgba(255,255,255,0.5)" }}>{t("Contact us")}</Link>
+            </div>
           </div>
 
-          <div className="blueprint tm-about-mosaic" style={{ borderColor: "rgba(255,255,255,0.22)" }}>
-            <Corners light />
-            {[
-              { src: "/assets/clinician-with-tablet.jpg", alt: t("A clinician reviewing a patient record on a tablet"), pos: "center 30%", cls: "m1" },
-              { src: "/assets/doctor-tablet-review.jpg", alt: t("A doctor reviewing results on a tablet"), pos: "center", cls: "m2" },
-              { src: "/assets/platform-patient-chart.png", alt: t("The TamamHealth patient chart"), pos: "left top", cls: "m3" },
-              { src: "/assets/community-health-worker.jpg", alt: t("A community health worker with a patient"), pos: "center 35%", cls: "m4" },
-            ].map((m) => (
-              <div key={m.src} className={`tm-about-tile ${m.cls}`}>
-                <Image src={m.src} alt={m.alt} fill sizes="(max-width: 1100px) 50vw, 25vw" preload={m.cls === "m1"} style={{ objectFit: "cover", objectPosition: m.pos }} />
+          {/* The record sheet. */}
+          <div className="blueprint tm-record" style={{ position: "relative", background: "#FFFFFF", color: "var(--color-text)" }}>
+            <Corners />
+            <div className="tm-record-head">
+              <span>{t("Organization record")}</span>
+              <span className="tm-record-badge">{t("Nonprofit")}</span>
+            </div>
+            <div className="tm-record-body">
+              <div className="tm-record-photo">
+                <Image src="/assets/clinician-with-tablet.jpg" alt={t("A clinician reviewing a patient record on a tablet")} fill sizes="140px" preload style={{ objectFit: "cover", objectPosition: "center 30%" }} />
               </div>
-            ))}
+              <div className="tm-record-name">
+                <span className="tm-record-label">{t("Name")}</span>
+                <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 30, lineHeight: 1.05 }}>TamamHealth</span>
+                <span style={{ fontSize: 14, color: "var(--color-neutral-700)" }}>{t("Offline-first health records")}</span>
+              </div>
+            </div>
+            <dl className="tm-record-fields">
+              {[
+                { k: t("Type"), v: t("Nonprofit organization") },
+                { k: t("Fiscal sponsor"), v: t("Elimisha Kakuma, 501(c)(3)") },
+                { k: t("Registered"), v: t("Commonwealth of Massachusetts") },
+                { k: t("Founded"), v: t("Tufts University") },
+                { k: t("Focus"), v: t("South Sudan, then sub-Saharan Africa") },
+                { k: t("Status"), v: t("Testing at Iteru Medical Center, Juba"), live: true },
+              ].map((r) => (
+                <div key={r.k}>
+                  <dt className="tm-record-label">{r.k}</dt>
+                  <dd>{r.live && <span className="tm-record-live" aria-hidden="true" />}{r.v}</dd>
+                </div>
+              ))}
+            </dl>
           </div>
         </div>
+      </section>
 
-        <dl className="tm-about-stats" style={{ maxWidth: 1320, margin: "64px auto 0", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 28 }}>
-          {[
-            { to: 6, display: t("6"), label: t("levels of care on one record") },
-            { to: 10, display: t("10"), label: t("clinics in the first pilot") },
-            { to: 100, prefix: "$", suffix: "K", display: t("$100K"), label: t("pilot funding goal") },
-            { to: 1, display: t("1"), label: t("hospital testing the platform today") },
-          ].map((st) => (
-            <div key={st.label} className="tm-stat">
-              <dt style={{ fontFamily: "var(--font-heading)", fontWeight: 400, fontSize: "clamp(44px, 5vw, 72px)", lineHeight: 1, color: "#FFFFFF" }}>
-                <CountUp to={st.to} prefix={st.prefix} suffix={st.suffix} display={st.display} />
-              </dt>
-              <dd style={{ margin: "12px 0 0", fontSize: 15.5, lineHeight: 1.4, color: "rgba(255,255,255,0.78)" }}>{st.label}</dd>
-            </div>
-          ))}
-        </dl>
+      {/* Where we are: the milestones so far and the next one. */}
+      <section id="milestones" style={{ padding: "64px 32px 30px" }}>
+        <div style={{ maxWidth: 1320, margin: "0 auto" }}>
+          <h2 style={{ fontSize: "clamp(24px, 3.2vw, 36px)", margin: "0 0 30px" }}>{t("Where we are")}</h2>
+          <ol className="tm-track">
+            {[
+              { when: t("April 2026"), what: t("Second place, Tufts New Ventures Competition"), href: "/news/tufts-new-ventures-competition" },
+              { when: t("November 2026"), what: t("Registered in Massachusetts"), href: "/news/incorporated-in-massachusetts" },
+              { when: t("November 2026"), what: t("Fiscal sponsorship by Elimisha Kakuma"), href: "/news/elimisha-kakuma-fiscal-sponsor" },
+              { when: t("Now"), what: t("Testing at Iteru Medical Center, Juba"), href: "/news/iteru-medical-center-testing" },
+              { when: t("Next"), what: t("10-clinic pilot, $100,000 goal"), href: "/donate", next: true },
+            ].map((m, i) => (
+              <li key={m.what} className={m.next ? "is-next" : undefined} style={{ ["--i" as string]: i } as React.CSSProperties}>
+                <span className="tm-track-node" aria-hidden="true" />
+                <Link href={m.href} className="tm-track-card">
+                  <span className="tm-track-when">{m.when}</span>
+                  <span className="tm-track-what">{m.what}</span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </div>
       </section>
 
       {/* What we stand for, and the facts a partner checks: one light band. */}
@@ -89,19 +116,6 @@ export default async function AboutPage() {
               </li>
             ))}
           </ul>
-          <dl className="tm-about-facts-row" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0 28px", margin: 0 }}>
-            {[
-              { k: t("Fiscal sponsor"), v: t("Elimisha Kakuma, 501(c)(3)") },
-              { k: t("Registered"), v: t("Massachusetts") },
-              { k: t("Founded"), v: t("Tufts University") },
-              { k: t("Now"), v: t("Testing at Iteru Medical Center, Juba") },
-            ].map((r) => (
-              <div key={r.k} style={{ borderTop: "1px solid var(--color-divider)", padding: "14px 0 4px" }}>
-                <dt className="fs115" style={{ letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--color-accent-700)", fontWeight: 700 }}>{r.k}</dt>
-                <dd style={{ margin: "6px 0 0", fontSize: 15, lineHeight: 1.5, color: "var(--color-text)" }}>{r.v}</dd>
-              </div>
-            ))}
-          </dl>
         </div>
       </section>
 

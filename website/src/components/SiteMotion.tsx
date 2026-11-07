@@ -13,8 +13,60 @@
    mounted across pages). Does nothing when the visitor asks for reduced
    motion or the browser has no IntersectionObserver. */
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
+
+/** A bare figure: "$100,000", "4%", "1.42", "12mo", "10". */
+const FIGURE = /^(\$?)(\d{1,3}(?:,\d{3})+|\d+)(\.\d+)?(%|K|M|\+|mo)?$/;
+
+/** Count every large bare figure on the page up from zero as it scrolls into
+    view. English only (the translated figures use Arabic-Indic digits), and
+    the element always ends on its original text. */
+function countFigures(): () => void {
+  const fold = window.innerHeight * 0.9;
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      io.unobserve(e.target);
+      const el = e.target as HTMLElement;
+      const final = el.dataset.tmFinal ?? "";
+      const m = final.match(FIGURE);
+      if (!m) continue;
+      const [, pre, int, dec = "", suf = ""] = m;
+      const target = parseFloat(int.replace(/,/g, "") + dec);
+      const places = dec ? dec.length - 1 : 0;
+      const commas = int.includes(",");
+      const start = performance.now();
+      const tick = (now: number) => {
+        const p = Math.min(1, (now - start) / 1100);
+        const v = target * (1 - Math.pow(1 - p, 3));
+        if (p >= 1) { el.textContent = final; return; }
+        const n = places ? v.toFixed(places) : String(Math.round(v));
+        el.textContent = pre + (commas ? Number(n).toLocaleString("en-US", { minimumFractionDigits: places, maximumFractionDigits: places }) : n) + suf;
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+  }, { threshold: 0.5 });
+  const els: HTMLElement[] = [];
+  document.querySelectorAll<HTMLElement>("main *").forEach((el) => {
+    if (el.childElementCount || el.closest("[data-countup]")) return;
+    const text = (el.textContent ?? "").trim();
+    // Step numbers ("01", "02") are labels, not quantities.
+    if (!FIGURE.test(text) || /^0\d/.test(text) || parseFloat(getComputedStyle(el).fontSize) < 28) return;
+    if (el.getBoundingClientRect().top < fold) return;
+    el.dataset.tmFinal = text;
+    const m = text.match(FIGURE);
+    el.textContent = `${m?.[1] ?? ""}0${m?.[4] ?? ""}`;
+    els.push(el);
+    io.observe(el);
+  });
+  return () => {
+    io.disconnect();
+    els.forEach((el) => { if (el.dataset.tmFinal) el.textContent = el.dataset.tmFinal; });
+  };
+}
 
 /** Grid-like containers whose children arrive one by one. */
 const STAGGER_PARENTS = [
@@ -27,6 +79,35 @@ const BLOCKS = "main section > div > *, main section > div > div > h2, main sect
 
 export default function SiteMotion() {
   const pathname = usePathname();
+  const { locale, t } = useLanguage();
+  const [showTop, setShowTop] = useState(false);
+
+  // Scroll state: a progress line under the top accent bar, the header's
+  // scrolled look, and the back-to-top button.
+  useEffect(() => {
+    const root = document.documentElement;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const max = root.scrollHeight - window.innerHeight;
+      const y = window.scrollY;
+      root.style.setProperty("--tm-scroll", String(max > 0 ? Math.min(1, y / max) : 0));
+      root.classList.toggle("tm-scrolled", y > 8);
+      setShowTop(y > window.innerHeight * 1.2);
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update); };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => { window.removeEventListener("scroll", onScroll); window.removeEventListener("resize", onScroll); cancelAnimationFrame(raf); };
+  }, [pathname]);
+
+  // Figures count up (English only).
+  useEffect(() => {
+    if (!("IntersectionObserver" in window) || locale !== "en") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    return countFigures();
+  }, [pathname, locale]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("IntersectionObserver" in window)) return;
@@ -89,5 +170,18 @@ export default function SiteMotion() {
     };
   }, [pathname]);
 
-  return null;
+  return (
+    <>
+      <div className="tm-progress" aria-hidden="true" />
+      <button
+        type="button"
+        className={`tm-totop${showTop ? " is-on" : ""}`}
+        aria-label={t("Back to top")}
+        tabIndex={showTop ? 0 : -1}
+        onClick={() => window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg>
+      </button>
+    </>
+  );
 }

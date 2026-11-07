@@ -313,7 +313,7 @@ export default function SiteHeader() {
 
         {/* mega menu */}
         {m && (
-          <div style={{ borderTop: "1px solid var(--color-divider)", background: "#FFFFFF", boxShadow: "var(--shadow-md)" }}>
+          <div className="tm-panel" style={{ borderTop: "1px solid var(--color-divider)", background: "#FFFFFF", boxShadow: "var(--shadow-md)" }}>
             <div className="tm-inset tm-split" style={{ maxWidth: 1320, margin: "0 auto", padding: "0 32px", display: "grid", gridTemplateColumns: "330px 1fr" }}>
               <div style={{ background: "var(--color-surface)", padding: "40px 36px 44px", display: "flex", flexDirection: "column", gap: 14 }}>
                 <h3 style={{ fontSize: 30, margin: 0 }}>{m.title}</h3>
@@ -343,7 +343,7 @@ export default function SiteHeader() {
 
         {/* mobile drawer */}
         {util === "drawer" && (
-          <div style={{ borderTop: "1px solid var(--color-divider)", background: "#FFFFFF", boxShadow: "var(--shadow-md)", display: "flex", flexDirection: "column", padding: "6px 0 18px", maxHeight: "calc(100vh - 130px)", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+          <div className="tm-panel tm-drawer" style={{ borderTop: "1px solid var(--color-divider)", background: "#FFFFFF", boxShadow: "var(--shadow-md)", display: "flex", flexDirection: "column", padding: "6px 0 18px", maxHeight: "calc(100vh - 130px)", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
             {NAV_ITEMS.map((item) => (
               <Link
                 key={item.href}
@@ -361,7 +361,7 @@ export default function SiteHeader() {
 
         {/* search panel */}
         {util === "search" && (
-          <div style={{ borderTop: "1px solid var(--color-divider)", background: "var(--color-surface)", padding: "56px 32px 60px", boxShadow: "var(--shadow-md)" }}>
+          <div className="tm-panel" style={{ borderTop: "1px solid var(--color-divider)", background: "var(--color-surface)", padding: "56px 32px 60px", boxShadow: "var(--shadow-md)" }}>
             <div style={{ maxWidth: 760, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
               <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0, textAlign: "center" }}>{t("Search the site")}</h2>
               {/* A form, so Enter submits the way it does in every other search
