@@ -1018,7 +1018,6 @@ export const apd: Dictionary = {
   "Elimisha Kakuma, 501(c)(3)": "إليميشا كاكوما، 501(c)(3)",
   "Registered": "مسجلة",
   "Tufts University": "جامعة تافتس",
-  "Now": "هسة",
   "Testing at Iteru Medical Center, Juba": "تجربة في مركز إيتيرو الطبي، جوبا",
   "A nonprofit building health records for South Sudan": "منظمة غير ربحية بتبني السجلات الصحية لجنوب السودان",
   "What we stand for": "مبادئنا",
@@ -1041,4 +1040,10 @@ export const apd: Dictionary = {
   "Founding university": "الجامعة المؤسسة",
   "Working with": "بنشتغل مع",
   "Partners and supporters": "الشركاء والداعمين",
+  "We believe every patient in South Sudan deserves a health record that is there when they need it.": "بنؤمن إنو كل عيان في جنوب السودان يستاهل سجل صحي يكون موجود وقت ما يحتاجو.",
+  "TamamHealth is a nonprofit organization founded at Tufts University. We are building one patient record for South Sudan's health facilities, designed for the conditions they work in: intermittent power, limited connectivity and paper records that cannot follow the patient.": "تمام هيلث منظمة غير ربحية اتأسست في جامعة تافتس. بنبني سجل عيان واحد للمرافق الصحية في جنوب السودان، مصمم للظروف البتشتغل فيها: كهربا متقطعة، واتصال محدود، وسجلات ورقية ما بتقدر تتابع العيان.",
+  "The platform is being tested at Iteru Medical Center in Juba, ahead of a 10-clinic pilot across Juba and greater South Sudan, and is designed to extend across sub-Saharan Africa.": "المنصة بتتجرب في مركز إيتيرو الطبي في جوبا، قبل مشروع تجريبي في ١٠ عيادات في جوبا وجنوب السودان الكبرى، ومصممة عشان تتوسع في أفريقيا جنوب الصحرا.",
+  "Map of South Sudan drawn in dots": "خريطة جنوب السودان مرسومة بالنقط",
+  "Juba: testing now": "جوبا: التجربة هسة",
+  "Juba is where testing is under way; the other sites are state hospitals in the deployment plan. Boundaries: geoBoundaries, CC BY 4.0.": "جوبا هي المحل البتحصل فيهو التجربة هسة؛ المواقع التانية مستشفيات ولايات في خطة التشغيل. الحدود: geoBoundaries، CC BY 4.0.",
 };

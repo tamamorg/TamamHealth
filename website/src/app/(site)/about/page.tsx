@@ -4,6 +4,7 @@ import Link from "next/link";
 import Corners from "@/components/Corners";
 import { ADVISORS as ADVISORS_EN, TEAM as TEAM_EN } from "@/lib/site-data";
 import { getTranslator } from "@/lib/i18n/server";
+import { SS_DOTS, ssPoint } from "@/lib/south-sudan-dots";
 
 export const metadata: Metadata = {
   title: "About",
@@ -67,6 +68,59 @@ export default async function AboutPage() {
                 </div>
               ))}
             </dl>
+          </div>
+        </div>
+      </section>
+
+      {/* What we believe: the conviction in one line, the facts beneath it,
+          and South Sudan drawn in dots (the mark is made of them) with the
+          sites the work is planned around. Juba, where testing is under way,
+          is the live marker. */}
+      <section id="belief" style={{ padding: "84px 32px 80px", background: "#FFFFFF" }}>
+        <div style={{ maxWidth: 1320, margin: "0 auto", display: "flex", flexDirection: "column", gap: 44 }}>
+          <h2 className="tm-belief" style={{ margin: 0, maxWidth: 1080, fontSize: "clamp(32px, 4.6vw, 60px)", lineHeight: 1.06, color: "var(--color-text)" }}>
+            {t("We believe every patient in South Sudan deserves a health record that is there when they need it.")}
+          </h2>
+          <div className="tm-split" style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.85fr) minmax(0, 1.15fr)", gap: 56, alignItems: "center" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+              <span style={{ width: 100, height: 3, background: "var(--color-accent)" }} />
+              <p style={{ margin: 0, fontSize: 17, lineHeight: 1.75, color: "var(--color-neutral-800)" }}>
+                {t("TamamHealth is a nonprofit organization founded at Tufts University. We are building one patient record for South Sudan's health facilities, designed for the conditions they work in: intermittent power, limited connectivity and paper records that cannot follow the patient.")}
+              </p>
+              <p style={{ margin: 0, fontSize: 17, lineHeight: 1.75, color: "var(--color-neutral-800)" }}>
+                {t("The platform is being tested at Iteru Medical Center in Juba, ahead of a 10-clinic pilot across Juba and greater South Sudan, and is designed to extend across sub-Saharan Africa.")}
+              </p>
+            </div>
+            <figure className="tm-dotmap" style={{ margin: 0 }}>
+              <div style={{ position: "relative", width: "100%", aspectRatio: `${SS_DOTS.width} / ${SS_DOTS.height}` }}>
+                <svg viewBox={`0 0 ${SS_DOTS.width} ${SS_DOTS.height}`} width="100%" height="100%" role="img" aria-label={t("Map of South Sudan drawn in dots")} style={{ position: "absolute", inset: 0, overflow: "visible" }}>
+                  {SS_DOTS.bands.map((d, i) => (
+                    <path key={i} d={d} className="tm-dotband" style={{ ["--b" as string]: i } as React.CSSProperties} />
+                  ))}
+                </svg>
+                {[
+                  { name: t("Juba"), lat: 4.85, lng: 31.58, live: true, label: t("Juba: testing now") },
+                  { name: t("Wau"), lat: 7.70, lng: 27.99 },
+                  { name: t("Malakal"), lat: 9.53, lng: 31.66 },
+                  { name: t("Bentiu"), lat: 9.26, lng: 29.80 },
+                  { name: t("Rumbek"), lat: 6.80, lng: 29.68 },
+                  { name: t("Bor"), lat: 6.21, lng: 31.56 },
+                  { name: t("Yambio"), lat: 4.57, lng: 28.40 },
+                  { name: t("Torit"), lat: 4.41, lng: 32.57, below: true },
+                ].map((c, i) => {
+                  const pt = ssPoint(c.lat, c.lng);
+                  return (
+                    <span key={c.name} className={`tm-pin${c.live ? " is-live" : ""}${"below" in c && c.below ? " is-below" : ""}`} style={{ left: `${pt.x}%`, top: `${pt.y}%`, ["--i" as string]: i } as React.CSSProperties}>
+                      <span className="tm-pin-dot" aria-hidden="true" />
+                      <span className="tm-pin-tag">{c.label ?? c.name}</span>
+                    </span>
+                  );
+                })}
+              </div>
+              <figcaption className="fs125" style={{ marginTop: 14, color: "var(--color-neutral-600)" }}>
+                {t("Juba is where testing is under way; the other sites are state hospitals in the deployment plan. Boundaries: geoBoundaries, CC BY 4.0.")}
+              </figcaption>
+            </figure>
           </div>
         </div>
       </section>

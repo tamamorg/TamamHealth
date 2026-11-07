@@ -1325,3 +1325,36 @@ footer a:not(.btn):hover, footer a:not(.btn):focus-visible { background-size: 10
   .tm-partner-mark { width: 56px; height: 56px; }
   .tm-fp-figures dt { font-size: 28px !important; }
 }
+
+/* ── About › What we believe: South Sudan in dots ── */
+.tm-dotband { fill: none; stroke: var(--tm-deep); stroke-width: 6.2; stroke-linecap: round; opacity: 0.55; }
+.tm-pin { position: absolute; transform: translate(-50%, -50%); z-index: 1; }
+.tm-pin-dot { display: block; width: 12px; height: 12px; background: #113055; border: 2px solid #ffffff; box-shadow: 0 0 0 1px #113055; }
+.tm-pin-tag {
+  position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%);
+  white-space: nowrap; padding: 4px 9px 3px; background: #ffffff; border: 1px solid rgba(17, 48, 85, 0.35);
+  font-family: var(--font-heading); font-weight: 700; font-size: 12.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #113055;
+}
+.tm-pin.is-live { z-index: 2; }
+.tm-pin.is-live .tm-pin-dot { width: 16px; height: 16px; background: #ff7f00; box-shadow: 0 0 0 1px #ff7f00; }
+.tm-pin.is-live .tm-pin-tag { background: #ff7f00; border-color: #ff7f00; color: #001d3f; font-size: 13px; }
+@keyframes tm-dot-wave { 0%, 100% { opacity: 0.38; } 50% { opacity: 0.85; } }
+@keyframes tm-pin-ping { 0% { box-shadow: 0 0 0 1px #ff7f00, 0 0 0 0 rgba(255, 127, 0, 0.55); } 100% { box-shadow: 0 0 0 1px #ff7f00, 0 0 0 18px rgba(255, 127, 0, 0); } }
+@keyframes tm-pin-in { from { opacity: 0; transform: translate(-50%, -30%); } to { opacity: 1; transform: translate(-50%, -50%); } }
+@media (prefers-reduced-motion: no-preference) {
+  .tm-dotband { animation: tm-dot-wave 4.2s ease-in-out infinite; animation-delay: calc(var(--b, 0) * 0.28s); }
+  .tm-pin { animation: tm-pin-in .5s cubic-bezier(.2, .65, .25, 1) backwards; animation-delay: calc(.3s + var(--i, 0) * .09s); }
+  .tm-pin.is-live .tm-pin-dot { animation: tm-pin-ping 1.8s ease-out infinite; }
+}
+@media (max-width: 639px) {
+  .tm-pin-tag { font-size: 10px; padding: 2px 5px 1px; bottom: calc(100% + 5px); letter-spacing: 0.06em; }
+  .tm-pin.is-live .tm-pin-tag { font-size: 11px; }
+  .tm-pin-dot { width: 9px; height: 9px; }
+  .tm-pin.is-live .tm-pin-dot { width: 12px; height: 12px; }
+  .tm-dotband { stroke-width: 7; }
+}
+.tm-pin.is-below .tm-pin-tag { bottom: auto; top: calc(100% + 8px); }
+@media (max-width: 639px) {
+  main h2.tm-belief { font-size: 30px !important; line-height: 1.1 !important; }
+  .tm-pin.is-below .tm-pin-tag { top: calc(100% + 5px); }
+}
