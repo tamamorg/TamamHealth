@@ -59,7 +59,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // The platform's own idle policy is a ceiling over the facility/org/user
   // chain — see useAutoLock. It was displayed on /admin/security and read by
   // nothing until this was wired.
-  const { isLocked, hasPin, lockEnabled, pinSupported, unlock, verifyPin, setPin } = useAutoLock(
+  const { isLocked, hasPin, lockEnabled, pinSupported, pinLockedOut, pinLength, unlock, verifyPin, setPin } = useAutoLock(
     isAuthenticated, orgTimeout, platformPolicy.sessionTimeoutMinutes, platformPolicy, currentUser?._id,
   );
   // First-run PIN prompt: shown after sign-in when the session
@@ -147,6 +147,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           /* Demo/dev only: let a PIN-less locked session set a PIN here and
              unlock. Production keeps the secure "set it in Settings" rule. */
           allowSetup={process.env.NEXT_PUBLIC_DEMO_MODE === 'true'}
+          pinLength={pinLength}
+          lockedOut={pinLockedOut}
           onVerifyPin={verifyPin}
           onSetPin={setPin}
           onUnlock={unlock}

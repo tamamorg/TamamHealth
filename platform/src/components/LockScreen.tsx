@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { inertOutside } from '@/lib/security/inert-outside';
 import { Lock, LogOut } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
@@ -37,6 +38,12 @@ interface LockScreenProps {
    * who they are. See `canOfferPinSetup`.
    */
   allowSetup?: boolean;
+  /** Digits to collect. Follows the stored PIN (4 for PINs set before 6-digit
+   *  support); new PINs are 6. Defaults 6. */
+  pinLength?: number;
+  /** Too many wrong PINs: the keypad is withdrawn; only a password sign-in
+   *  (Switch User) gets back in. */
+  lockedOut?: boolean;
   onVerifyPin: (pin: string) => Promise<boolean>;
   /** Registers a new PIN (demo/dev first-lock setup only). Required for the
    *  setup path to render. */
@@ -66,8 +73,8 @@ interface LockScreenProps {
  * asserting the branch logic is done by testing these decisions directly
  * rather than rendering the component.
  */
-export function canOfferPinEntry(hasPin: boolean, pinSupported: boolean): boolean {
-  return hasPin && pinSupported;
+export function canOfferPinEntry(hasPin: boolean, pinSupported: boolean, lockedOut = false): boolean {
+  return hasPin && pinSupported && !lockedOut;
 }
 
 /**
@@ -108,7 +115,7 @@ export function shouldPromptPinSetup(opts: {
     && opts.pinSupported && !opts.hasPin && !opts.lockOverlayOffersSetup;
 }
 
-export default function LockScreen({ userName, hasPin, variant = 'lock', pinSupported = true, allowSetup = false, onVerifyPin, onSetPin, onUnlock, onLogout, onDismiss }: LockScreenProps) {
+export default function LockScreen({ userName, hasPin, variant = 'lock', pinSupported = true, allowSetup = false, pinLength = 6, lockedOut = false, onVerifyPin, onSetPin, onUnlock, onLogout, onDismiss }: LockScreenProps) {
   const { t } = useTranslation();
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
@@ -118,11 +125,19 @@ export default function LockScreen({ userName, hasPin, variant = 'lock', pinSupp
    *  to confirm. `null` = still on the first entry. */
   const [setupFirst, setSetupFirst] = useState<string | null>(null);
   const autoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Everything behind the overlay is unreachable while it is up: not just
+  // covered, but inert for keyboard, pointer and screen readers.
+  useEffect(() => {
+    if (!rootRef.current) return;
+    return inertOutside(rootRef.current);
+  }, []);
 
   // The 'setup' variant is rendered to a just-authenticated user, so it
   // authorizes PIN creation the way `allowSetup` does for demo/dev — still
   // through `canOfferPinSetup`, which keeps the pinSupported/hasPin guards.
-  const setupMode = canOfferPinSetup(hasPin, pinSupported, variant === 'setup' || allowSetup) && !!onSetPin;
+  const setupMode = !lockedOut && canOfferPinSetup(hasPin, pinSupported, variant === 'setup' || allowSetup) && !!onSetPin;
 
   const triggerShake = () => {
     setShake(true);
@@ -134,10 +149,10 @@ export default function LockScreen({ userName, hasPin, variant = 'lock', pinSupp
     setError('');
 
     setPin(prev => {
-      if (prev.length >= 4) return prev; // max 4 digits
+      if (prev.length >= pinLength) return prev;
       const next = prev + digit;
 
-      if (next.length === 4) {
+      if (next.length === pinLength) {
         if (autoRef.current) clearTimeout(autoRef.current);
         autoRef.current = setTimeout(async () => {
           if (setupMode) {
@@ -184,7 +199,7 @@ export default function LockScreen({ userName, hasPin, variant = 'lock', pinSupp
 
       return next;
     });
-  }, [busy, setupMode, setupFirst, onSetPin, onVerifyPin, onUnlock, t]);
+  }, [busy, setupMode, setupFirst, onSetPin, onVerifyPin, onUnlock, t, pinLength]);
 
   const handleBackspace = useCallback(() => {
     setPin(prev => prev.slice(0, -1));
@@ -196,9 +211,9 @@ export default function LockScreen({ userName, hasPin, variant = 'lock', pinSupp
   // ONLY way through is a fresh sign-in: no digit pad, and no "set up a PIN"
   // prompt on an unauthenticated screen. See `canOfferPinEntry` /
   // `canOfferPinSetup`.
-  if (!canOfferPinEntry(hasPin, pinSupported) && !setupMode) {
+  if (!canOfferPinEntry(hasPin, pinSupported, lockedOut) && !setupMode) {
     return (
-      <div className="fixed inset-0 z-[10000] flex flex-col items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
+      <div ref={rootRef} role="dialog" aria-modal="true" aria-label={t('auth.sessionLocked')} data-lock-screen className="fixed inset-0 z-[10000] flex flex-col items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
         <div className="flex flex-col items-center gap-4 w-full max-w-xs px-6 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/assets/tamamhealth-logo.svg" alt={t('app.name')} className="w-16 h-16" />
@@ -212,6 +227,11 @@ export default function LockScreen({ userName, hasPin, variant = 'lock', pinSupp
                 simply PIN-less device needs no extra explanation beyond the
                 sign-in button below, and inventing one risks implying the
                 setup flow this component no longer offers. */}
+            {lockedOut && (
+              <p className="text-[11px] mt-2 max-w-[240px]" style={{ color: 'var(--text-muted)' }}>
+                {t('lock.tooManyAttempts')}
+              </p>
+            )}
             {!pinSupported && (
               <p className="text-[11px] mt-2 max-w-[240px]" style={{ color: 'var(--text-muted)' }}>
                 {t('lock.pinUnavailableInsecure')}
@@ -237,7 +257,7 @@ export default function LockScreen({ userName, hasPin, variant = 'lock', pinSupp
     : t('lock.enterYourPin');
 
   return (
-    <div className="fixed inset-0 z-[10000] flex flex-col items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
+    <div ref={rootRef} role="dialog" aria-modal="true" aria-label={t('auth.sessionLocked')} data-lock-screen className="fixed inset-0 z-[10000] flex flex-col items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
       <div className="flex flex-col items-center gap-4 w-full max-w-xs px-6">
         {/* TamamHealth logo */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -255,7 +275,7 @@ export default function LockScreen({ userName, hasPin, variant = 'lock', pinSupp
 
         {/* PIN dots */}
         <div className={`flex gap-3 my-1 ${shake ? 'animate-shake' : ''}`}>
-          {[0, 1, 2, 3].map(i => (
+          {Array.from({ length: pinLength }, (_, i) => i).map(i => (
             <div
               key={i}
               className="w-3.5 h-3.5 rounded-full transition-all duration-150"
