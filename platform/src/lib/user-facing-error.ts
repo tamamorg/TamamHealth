@@ -104,7 +104,7 @@ const USER_FACING_ERRORS = new Set([
 ]);
 
 /** Text that gives away an internal message: codes, identifiers, HTTP, JS runtime noise. */
-const TECHNICAL = /\b\w+_\w+\b|\bHTTP\b|\bstatus \d{3}\b|undefined|\bnull\b|\[object|Cannot read|is not a function|Unexpected token|JSON|\bfetch\b|pouch|couch|Upstash|\[[A-Z-]+\]/i;
+const TECHNICAL = /\b\w+_\w+\b|\bHTTP\b|\bstatus \d{3}\b|undefined|\bnull\b|\[object|Cannot read|is not a function|Unexpected token|JSON|\bfetch\b|pouch|couch|Upstash|\[[A-Z-]+\]|IDBDatabase|IndexedDB|Failed to execute/i;
 
 /** Developer messages that happen to read like sentences (API validation, crypto, config). */
 const DEVELOPER_TEXT = /^(Invalid|Malformed|Unsupported)\b|^(Internal server error|Not found|Range too wide)$|unsupported fields|\bnonce\b|Web Crypto|production configuration|has no id\b|Seeded data|does not belong to this practice|schema id|Terminology identifiers|canonical organization ID/i;

@@ -37,6 +37,15 @@ describe('describeError', () => {
     expect(describeError(null, FALLBACK)).toBe(FALLBACK);
   });
 
+  // 2026-11-07: the raw IndexedDB text read as a sentence and reached the screen.
+  it('hides browser storage errors behind the action\'s own sentence', () => {
+    const closing = Object.assign(
+      new Error("Failed to execute 'transaction' on 'IDBDatabase': The database connection is closing."),
+      { name: 'InvalidStateError' },
+    );
+    expect(describeError(closing, FALLBACK)).toBe(FALLBACK);
+  });
+
   it('names the real cause for offline, conflict and session failures', () => {
     expect(describeError(new TypeError('Failed to fetch'), FALLBACK)).toBe(OFFLINE_MESSAGE);
     expect(describeError({ status: 409, name: 'conflict', message: 'Document update conflict' }, FALLBACK)).toBe(CONFLICT_MESSAGE);

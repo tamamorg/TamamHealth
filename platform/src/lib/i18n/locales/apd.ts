@@ -10339,6 +10339,7 @@ const apd: TranslationMap = {
   'unsaved.leave': 'التغييرات ما اتحفظت. تطلع من الصفحة دي برضو؟',
   'reload.reason.update': 'في تحديث جاهز.',
   'reload.reason.chartArrived': 'الملف المحوّل وصل.',
+  'reload.reason.sessionChanged': 'في زول طلع أو غيّر المستخدم في تاب تاني.',
   'reload.keepTyping': 'حدّث الصفحة لما تكون جاهز. الكتبته محفوظ في الجهاز ده.',
   'reload.now': 'حدّث هسع',
   'routeContext.transfers': 'التحويلات',
