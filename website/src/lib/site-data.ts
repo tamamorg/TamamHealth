@@ -707,6 +707,7 @@ export const DONATION_FAQ = [
   { q: "Where exactly does the money go?", a: "Devices and solar power, deployment and staff training, connectivity and sync, and measurement. The $100,000 pilot goal covers all ten clinics over twelve months, from equipment to measurement and scale." },
   { q: "Can I fund a specific clinic?", a: "Yes. Tell us in the message and we will assign your gift to one of the ten pilot facilities and report on that facility directly." },
   { q: "Can my organisation partner instead of donating?", a: "Facility, NGO, funder, or ministry: write to support.tamam@gmail.com and we will scope a deployment with you." },
+  { q: "Can I give through a registered charity?", a: "Yes. TamamHealth is fiscally sponsored by Elimisha Kakuma, a U.S. 501(c)(3) nonprofit. Write to support.tamam@gmail.com and we will send the details for giving through Elimisha Kakuma." },
   { q: "How do I know it worked?", a: "Every level writes to the same patient record and rolls up into DHIS2-ready national reports: the pilot is designed to be measured, not asserted." },
 ];
 
@@ -1113,6 +1114,11 @@ export interface NewsExplainer {
   title: string;
   intro: string;
   rows: { k: string; v: string }[];
+  /** A partner's own logo, shown at the head of the panel. Used as the
+      organisation supplies it, never redrawn. */
+  logo?: { src: string; alt: string; w: number; h: number };
+  /** The partner's own site or page, linked under the rows. */
+  link?: { label: string; href: string };
 }
 
 export interface NewsItem {
@@ -1152,10 +1158,87 @@ const derby = (file: string): Photo => {
   return p;
 };
 
-/** Newest first — the home band leads on the first item (and returns to its
-    four-up strip once there are several), /news lists them all. One story for
-    now; the next update is one more entry at the top of this array. */
+/** Newest first — the home band shows the first four as its card strip (a
+    single story runs as a full-width feature instead), /news lists them all.
+    The next update is one more entry at the top of this array. */
 export const NEWS: NewsItem[] = [
+  {
+    slug: "iteru-medical-center-testing",
+    tag: "Field testing",
+    date: "November 2026",
+    dateISO: "2026-11",
+    title: "Iteru Medical Center in Juba is testing the TamamHealth platform",
+    image: "/assets/news/iteru-medical-center-testing.jpg",
+    imageAlt: "The TamamHealth logo beside the Iteru Medical Center logo, under the line: pre-launch testing, Juba, South Sudan",
+    summary:
+      "Our first hospital testing partner: the staff at Iteru Medical Center are working through the record system before we launch there.",
+    body: [
+      "TamamHealth is now being tested at Iteru Medical Center, a private medical center in Juba, South Sudan. It is the first hospital to put the platform in front of its own staff, and it is where we plan to launch once testing is complete.",
+      "Testing means the people who will use the system every day work through it before anyone depends on it: registering patients, moving them through triage and consultation, ordering and resulting lab tests, dispensing, and closing the day. Every gap they find is one we fix before launch rather than after it.",
+      "That is the order we have always wanted to work in. A record system earns its place in a clinic by surviving the clinic's own routine, power cuts and network gaps included, and the only way to know it does is to watch it happen with the team that has to live with it.",
+      "What we learn at Iteru shapes the launch there, and then the hospitals that follow. We will share what we find here as the testing goes on.",
+    ],
+    explainer: {
+      title: "About Iteru Medical Center",
+      intro: "A private medical center in Juba, working under the line \"Your Health Is Our Priority.\" Iteru is the first hospital to test TamamHealth ahead of launch.",
+      rows: [
+        { k: "Where", v: "Juba, South Sudan" },
+        { k: "Role", v: "Testing partner: the first hospital to test the platform with its own staff" },
+        { k: "What testing covers", v: "Registration, triage, consultation, lab, pharmacy and the end-of-day reports, run by the people who will use them" },
+        { k: "Next", v: "Launch at Iteru once testing is complete, then the hospitals that follow" },
+      ],
+      logo: { src: "/assets/partners/iteru-medical-center-logo.jpg", alt: "Iteru Medical Center logo", w: 720, h: 720 },
+      link: { label: "Iteru Medical Center on Facebook", href: "https://www.facebook.com/p/Iteru-Medical-Center-100078338706817/" },
+    },
+    link: { label: "See how the platform works", href: "/platform" },
+  },
+  {
+    slug: "elimisha-kakuma-fiscal-sponsor",
+    tag: "Partnership",
+    date: "November 2026",
+    dateISO: "2026-11",
+    title: "Elimisha Kakuma is now TamamHealth's fiscal sponsor",
+    image: "/assets/news/elimisha-kakuma-fiscal-sponsor.jpg",
+    imageAlt: "The TamamHealth logo beside the Elimisha Kakuma tree logo, under the words fiscal sponsor",
+    summary:
+      "A U.S. 501(c)(3) founded by former Kakuma refugees now sponsors our work, so gifts to TamamHealth can be made through a registered charity.",
+    body: [
+      "TamamHealth has a fiscal sponsor: Elimisha Kakuma, a U.S. 501(c)(3) nonprofit that opens the way to higher education for high school graduates in Kakuma Refugee Camp in Kenya. Elimisha means \"educate\" in Swahili.",
+      "A fiscal sponsor is an established charity that takes a younger project under its wing. Elimisha Kakuma can receive grants and donations for TamamHealth's charitable work and holds them to that purpose, which means funders and donors who give through registered charities can support the work now.",
+      "The fit is not an accident. Elimisha Kakuma was founded in 2021 by former Kakuma refugees and their former teacher, to open the doors they once needed. Our founder, Teny Makuach, grew up in Kakuma too. Both organisations start from the same conviction: people from the camp should not have to wait for someone else to build what they need.",
+      "For donors, it means a gift to the 10-clinic pilot can now go through a registered U.S. charity. Write to us and we will send the details.",
+    ],
+    explainer: {
+      title: "About Elimisha Kakuma",
+      intro: "Elimisha Kakuma provides access to higher education opportunities for high school graduates in Kakuma Refugee Camp through academic preparation, mentorship, and college counseling.",
+      rows: [
+        { k: "Founded", v: "2021, by former Kakuma refugees and their former teacher" },
+        { k: "Where", v: "Kakuma Refugee Camp, Kenya" },
+        { k: "Status", v: "U.S. 501(c)(3) nonprofit" },
+        { k: "For TamamHealth", v: "Fiscal sponsor: receives grants and donations for our charitable work" },
+      ],
+      logo: { src: "/assets/partners/elimisha-kakuma-logo.png", alt: "Elimisha Kakuma logo, a tree", w: 500, h: 500 },
+      link: { label: "Visit elimishakakuma.org", href: "https://elimishakakuma.org" },
+    },
+    link: { label: "Support the 10-clinic pilot", href: "/donate" },
+  },
+  {
+    slug: "incorporated-in-massachusetts",
+    tag: "Milestone",
+    date: "November 2026",
+    dateISO: "2026-11",
+    title: "TamamHealth is now a registered corporation in Massachusetts",
+    image: "/assets/news/massachusetts-incorporation.jpg",
+    imageAlt: "TamamHealth mark above the words: officially registered, incorporated in Massachusetts",
+    summary:
+      "TamamHealth is officially incorporated in the Commonwealth of Massachusetts: a legal home for the company that grew out of Tufts.",
+    body: [
+      "TamamHealth is now officially registered as a corporation in the Commonwealth of Massachusetts.",
+      "It is the step that turns a project into an organisation that can sign agreements with hospitals, take on funding, and be held to account for both. The platform started at Tufts University, and Massachusetts is where the company that carries it now lives.",
+      "The work itself has not moved. It is still built for South Sudan, still being tested in Juba, and still aimed at ten clinics on one record. Registration gives that work a stable legal home, alongside our fiscal sponsor, Elimisha Kakuma, for the charitable side of what we do.",
+    ],
+    link: { label: "Meet the team behind it", href: "/about#team" },
+  },
   {
     slug: "tufts-new-ventures-competition",
     tag: "Competition",

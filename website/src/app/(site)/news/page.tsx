@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import NewsExplorer from "@/components/NewsExplorer";
+import SubscribeBand from "@/components/SubscribeBand";
 import { getTranslator } from "@/lib/i18n/server";
 
 export const metadata: Metadata = {
   title: "News & updates",
   description:
-    "What TamamHealth is building and where the work has landed: starting with second place in the Healthcare & Life Science track at the Tufts New Ventures Competition.",
+    "What TamamHealth is building and where the work has landed: testing at Iteru Medical Center in Juba, our fiscal sponsor Elimisha Kakuma, incorporation in Massachusetts, and the Tufts New Ventures Competition.",
 };
 
 export default async function NewsPage() {
@@ -24,6 +25,8 @@ export default async function NewsPage() {
       </section>
 
       <NewsExplorer />
+
+      <SubscribeBand />
     </main>
   );
 }

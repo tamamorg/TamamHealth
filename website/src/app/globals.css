@@ -1000,3 +1000,12 @@ header > div { min-width: 0; }
   h1, h2, h3 { break-after: avoid; }
   a { text-decoration: none !important; }
 }
+
+/* News sign-up (SubscribeBand): the field and the button share a row until a
+   phone, where the button drops under the field at full width. The band's own
+   frame padding tightens with it. */
+@media (max-width: 639px) {
+  .tm-subscribe-row { flex-direction: column; }
+  .tm-subscribe-row > button { width: 100%; }
+  #subscribe > .blueprint { padding: 30px 22px !important; }
+}
