@@ -1080,3 +1080,98 @@ header > div { min-width: 0; }
   .tm-newscard-meta { font-size: 11px; }
   .tm-newscard-fig { border-bottom: 0; border-inline-end: 1px solid var(--color-divider); }
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   Motion and phone density (2026-11 pass). Kept last so it wins over the
+   page rules above. Every animation sits behind prefers-reduced-motion.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── Scroll reveal (SiteMotion.tsx adds .tm-rv after hydration, only below
+   the fold, and removes it again once the element has settled) ── */
+.tm-rv {
+  opacity: 0;
+  transform: translate3d(0, 22px, 0);
+  transition: opacity .7s cubic-bezier(.2, .65, .25, 1), transform .7s cubic-bezier(.2, .65, .25, 1);
+  transition-delay: var(--rv-d, 0ms);
+}
+.tm-rv.is-in { opacity: 1; transform: none; }
+@media print { .tm-rv { opacity: 1 !important; transform: none !important; } }
+
+/* ── Page entrance: the first band of every page settles in on load ── */
+@keyframes tm-rise { from { opacity: 0; transform: translate3d(0, 16px, 0); } to { opacity: 1; transform: none; } }
+@keyframes tm-settle { from { transform: scale(1.06); } to { transform: scale(1); } }
+@media (prefers-reduced-motion: no-preference) {
+  /* fill-mode `backwards`: once finished, the element's own styles rule
+     again, so nothing here can pin a crossfading slide to visible. The home
+     hero's card stack is left out for the same reason. */
+  main > section:first-of-type h1 { animation: tm-rise .7s cubic-bezier(.2, .65, .25, 1) backwards; }
+  main > section:first-of-type h1 ~ p,
+  main > section:first-of-type h1 ~ div { animation: tm-rise .7s .12s cubic-bezier(.2, .65, .25, 1) backwards; }
+  main > section:first-of-type .tm-figure:not(.tm-hero-img) { animation: tm-rise .8s .2s cubic-bezier(.2, .65, .25, 1) backwards; }
+  .tm-hero-img img { animation: tm-settle 2.4s cubic-bezier(.2, .65, .25, 1) backwards; }
+}
+
+/* ── Hover feedback on linked cards, figures and buttons ── */
+main a.blueprint { transition: border-color .18s ease, background-color .18s ease; }
+main a.blueprint:hover, main a.blueprint:focus-visible { border-color: var(--tm-deep); }
+main a.tm-chalcard:hover, main a.tm-chalcard:focus-visible { border-color: #7cc7ff !important; }
+main a.blueprint .tm-figure img,
+main a .tm-newscard-fig img { transition: transform .5s cubic-bezier(.2, .65, .25, 1); }
+main a.blueprint:hover .tm-figure img,
+main a.blueprint:focus-visible .tm-figure img { transform: scale(1.04); }
+.btn { transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .15s ease; }
+.btn:active { transform: translateY(1px); }
+main button[type="submit"] { transition: filter .15s ease, transform .15s ease; }
+main button[type="submit"]:hover:not(:disabled) { filter: brightness(.94); }
+main button[type="submit"]:active:not(:disabled) { transform: translateY(1px); }
+@media (prefers-reduced-motion: reduce) {
+  main a.blueprint .tm-figure img, main a .tm-newscard-fig img, .btn, main button[type="submit"] { transition: none; }
+  main a.blueprint:hover .tm-figure img { transform: none; }
+}
+
+/* ── Phones: a tighter type and spacing scale ──
+   Most copy carries its size inline (desktop-tuned 16–18px), so the phone
+   scale keys on the serialised inline value rather than on each component. */
+@media (max-width: 639px) {
+  main p[style*="font-size:15.5px"],
+  main p[style*="font-size:16px"],
+  main p[style*="font-size:16.5px"],
+  main p[style*="font-size:17px"],
+  main p[style*="font-size:17.5px"],
+  main p[style*="font-size:18px"],
+  main li[style*="font-size:15.5px"],
+  main li[style*="font-size:16px"],
+  main li[style*="font-size:16.5px"],
+  main li[style*="font-size:17px"] { font-size: 15px !important; line-height: 1.6 !important; }
+  main h1[style*="clamp("] { font-size: 29px !important; line-height: 1.12 !important; }
+  main h2[style*="clamp("] { font-size: 23px !important; line-height: 1.18 !important; }
+  main h3[style*="font-size:2"],
+  main h3[style*="clamp("] { font-size: 19px !important; line-height: 1.25 !important; }
+  main .blueprint[style*="padding:3"],
+  main .blueprint[style*="padding:4"],
+  main .blueprint[style*="padding:5"] { padding: 22px 18px !important; }
+  main section:not(.tm-hero):not(.tm-hero-nav) { padding-top: 36px !important; padding-bottom: 40px !important; }
+
+  /* Home products band: no second gap above its heading. */
+  .tm-products-band .tm-prod-grid > div:first-child { padding-top: 0 !important; }
+
+  /* Platform "A patient day, end to end": a vertical timeline instead of a
+     sideways rail whose second column was cut off at the screen edge. */
+  .tm-flow-rail { flex-direction: column !important; flex-wrap: nowrap !important; overflow: visible !important; margin-top: 24px !important; }
+  .tm-flow-step { flex: none !important; position: relative; gap: 5px !important; padding: 0 0 20px !important; padding-inline-start: 28px !important; }
+  .tm-flow-step > div:first-child { position: absolute; inset-inline-start: 0; top: 5px; bottom: 0; flex-direction: column; width: 11px; gap: 6px !important; }
+  .tm-flow-step > div:first-child > span:last-child { flex: 1 !important; width: 1px !important; height: auto !important; }
+  .tm-flow-step h3 { font-size: 16.5px !important; }
+}
+
+/* ── News cards on a phone ──
+   In a swipe carousel (home band, "More news") a card is 86% of the screen
+   wide, so it stacks: the whole cover on top, text below. In the /news list
+   it stays a row, but the thumbnail keeps the cover's 4:3 frame instead of
+   stretching to the row height, which cropped the logo covers to fragments. */
+@media (max-width: 639px) {
+  .tm-carousel .tm-newscard { flex-direction: column !important; }
+  .tm-carousel .tm-newscard-fig { width: 100% !important; aspect-ratio: 4 / 3 !important; min-height: 0 !important; border-inline-end: 0 !important; border-bottom: 1px solid var(--color-divider) !important; }
+  .tm-carousel .tm-newscard-body { padding: 16px 16px 14px !important; }
+  .tm-newscard:not(.tm-carousel .tm-newscard) .tm-newscard-fig { aspect-ratio: 4 / 3 !important; min-height: 0 !important; align-self: flex-start; }
+}
