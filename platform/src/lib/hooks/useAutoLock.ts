@@ -28,10 +28,6 @@ export const pinHashStorageKey = (userId?: string) => userId ? `${PIN_HASH_KEY}.
  *  risk (shift change in a ward). Override via org config or localStorage. */
 const DEFAULT_TIMEOUT_MS = 600_000;
 
-/** How long after mount a late-arriving lock policy still counts as part of the
- *  cold restore. */
-const POLICY_GRACE_MS = 5 * 60_000;
-
 const ACTIVITY_EVENTS = ['mousedown', 'keydown', 'touchstart', 'scroll'] as const;
 
 /**
@@ -304,16 +300,20 @@ export function useAutoLock(
   userId?: string,
 ) {
   const mandatory = lockIsMandatory(platformLockPolicy);
-  const [isLocked, setIsLocked] = useState(false);
+  const [isLocked, setIsLocked] = useState(() => {
+    if (!isAuthenticated || !userId || typeof window === 'undefined') return false;
+    return readLockState(userId).locked || isTabLocked(userId);
+  });
   const [hasPin, setHasPin] = useState(false);
-  const [pinFails, setPinFails] = useState(0);
+  const [pinFails, setPinFails] = useState(() => {
+    if (!isAuthenticated || !userId || typeof window === 'undefined') return 0;
+    return readLockState(userId).fails;
+  });
   const [pinLength, setPinLength] = useState(NEW_PIN_LENGTH);
-  const seededForRef = useRef<string | undefined>(undefined);
   /** Cold-restore lock decision applied for this user. Waits for the lock
    *  policy to be known: seeding while it is still loading would find
    *  `lockEnabled` false and throw away the persisted state. */
   const lockSeededForRef = useRef<string | undefined>(undefined);
-  const seedSnapshotRef = useRef<{ state: ReturnType<typeof readLockState>; at: number } | null>(null);
   /** This tab was locked by leaving it (hidden), not by a lock every tab shares. */
   const tabOnlyLockRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -444,36 +444,30 @@ export function useAutoLock(
     resetTimer();
   }, [resetTimer, userId]);
 
-  // Cold restore (reload, new tab, reopened browser): the in-memory flag is
-  // gone, so start locked from the persisted state. Derived during render so
-  // the app never paints unlocked first. Runs once per signed-in user, but the
-  // LOCK decision waits until the lock policy is known (`lockEnabled`): on the
-  // first authenticated render the platform policy may not have loaded yet, and
-  // deciding then would overwrite the stored state and reload a locked tab
-  // unlocked.
-  if (isAuthenticated && userId && typeof window !== 'undefined') {
-    if (seededForRef.current !== userId) {
-      seededForRef.current = userId;
-      const stored = readLockState(userId);
-      setPinFails(stored.fails);
-      seedSnapshotRef.current = { state: stored, at: Date.now() };
+  // Cold restore (reload, new tab, reopened browser). An explicitly persisted
+  // lock is covered by the lazy state initializer above so it never paints
+  // unlocked. The idle-window decision waits for policy to arrive, then runs
+  // once per signed-in user. Keeping storage reads and ref writes in an effect
+  // also keeps render pure under React 19.
+  useEffect(() => {
+    if (!isAuthenticated || !userId) {
+      lockSeededForRef.current = undefined;
+      return;
     }
-    if (lockSeededForRef.current !== userId && lockEnabled && !isAutoLockDisabled()) {
-      lockSeededForRef.current = userId;
-      const snap = seedSnapshotRef.current;
-      // The policy normally lands seconds after mount. A switch turned on much
-      // later is a new choice, not a restore: don't lock off a stale snapshot.
-      const fresh = snap && Date.now() - snap.at < POLICY_GRACE_MS;
-      const stored = fresh ? snap.state : readLockState(userId);
-      if (isTabLocked(userId) || shouldStartLocked(stored, true, getTimeout())) {
-        if (isTabLocked(userId)) tabOnlyLockRef.current = true;
-        setIsLocked(true);
-      } else {
-        // Restored and active now: anchor the idle clock the timers compare to.
-        writeLockState(userId, { at: Date.now() });
-      }
+    if (!lockEnabled || isAutoLockDisabled() || lockSeededForRef.current === userId) return;
+
+    lockSeededForRef.current = userId;
+    const stored = readLockState(userId);
+    const tabLocked = isTabLocked(userId);
+    setPinFails(stored.fails);
+    if (tabLocked || shouldStartLocked(stored, true, getTimeout())) {
+      tabOnlyLockRef.current = tabLocked;
+      setIsLocked(true);
+      return;
     }
-  }
+    // Restored and active now: anchor the idle clock the timers compare to.
+    writeLockState(userId, { at: Date.now() });
+  }, [getTimeout, isAuthenticated, lockEnabled, userId]);
 
   // Every tab follows the lock: locking, unlocking or a PIN failure in one
   // tab reaches the others through the storage event.
