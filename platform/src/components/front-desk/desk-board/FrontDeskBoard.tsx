@@ -372,7 +372,7 @@ export default function FrontDeskBoard() {
   const actions = useMemo<EhrCareDashboardAction[]>(() => ([
     { label: 'Book appointment', icon: Plus, onClick: () => { setBookingPatientId(undefined); setBookingOpen(true); }, tone: 'primary' as const },
     ...(canUseRoute('/patients') ? [{ label: t('frontDesk.registerNewPatient'), icon: UserPlus, onClick: () => setRegisterOpen(true) }] : []),
-  ]), [canUseRoute, t]);
+  ]), [canUseRoute, setRegisterOpen, t]);
 
   const frontDeskRows = useMemo<EhrCareDashboardRow[]>(() => buildFrontDeskRows({
       patients, visiblePendingAppointments, hospitalName: currentUser?.hospitalName, canSetAppointmentStatus,
@@ -390,6 +390,7 @@ export default function FrontDeskBoard() {
     canConsult,
     canSetAppointmentStatus,
     currentUser?.hospitalName,
+    deskStatusChoices,
     encounterById,
     filteredQueue,
     filteredRegisteredPatients,
