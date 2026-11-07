@@ -20,6 +20,9 @@ import Select from '@/components/Select';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import NumberInput from '@/components/forms/NumberInput';
+import { usePharmacyInventory } from '@/lib/hooks/usePharmacyInventory';
+import { isControlledMedicine } from '@/lib/data/formulary';
+import { matchControlledInventoryItem, registerInventoryId } from '@/components/pharmacy/controlled-register-helpers';
 
 const SCHEDULES: ControlledSubstanceLogDoc['schedule'][] = ['I', 'II', 'III', 'IV', 'V'];
 const MOVEMENTS: ControlledSubstanceLogDoc['movement'][] = ['intake', 'dispense', 'waste', 'reconciliation', 'transfer'];
@@ -41,6 +44,11 @@ function slugify(name: string): string {
 
 const blankForm = {
   medicationName: '',
+  /** Real inventory item this movement is against, when the drug was matched to
+   *  the facility's controlled stock — so the register reconciles against real
+   *  balances instead of a synthetic per-name id (security audit 2026-11-05,
+   *  §2.1 #7). Empty when the drug is typed free-hand (off-catalogue). */
+  selectedInventoryId: '',
   schedule: 'II' as ControlledSubstanceLogDoc['schedule'],
   movement: 'dispense' as ControlledSubstanceLogDoc['movement'],
   quantity: '',
@@ -57,6 +65,10 @@ export default function ControlledSubstancesPage() {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const scope = useDataScope();
+  // The facility's controlled stock, so a register movement can tie to a real
+  // inventory item (real balances) instead of a synthetic per-name id.
+  const { items: inventory } = usePharmacyInventory();
+  const controlledItems = inventory.filter(i => i.controlledSchedule || i.requiresWitness || isControlledMedicine(i.medicationName));
 
   const [movements, setMovements] = useState<ControlledSubstanceLogDoc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,7 +130,7 @@ export default function ControlledSubstancesPage() {
     }
 
     const input: RecordMovementInput = {
-      inventoryId: `csub-${slugify(form.medicationName) || 'item'}`,
+      inventoryId: registerInventoryId(form.selectedInventoryId, form.medicationName),
       medicationName: form.medicationName.trim(),
       schedule: form.schedule,
       movement: form.movement,
@@ -267,7 +279,30 @@ export default function ControlledSubstancesPage() {
               <div className="space-y-3" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                 <div>
                   <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('hospitals.colMedication')}</label>
-                  <input type="text" value={form.medicationName} onChange={e => setForm({ ...form, medicationName: e.target.value })} placeholder={t('ui.eGMorphineSulfate')} />
+                  <input
+                    type="text"
+                    list="csub-med-list"
+                    value={form.medicationName}
+                    onChange={e => {
+                      const name = e.target.value;
+                      // Tie the movement to a real inventory item when the name
+                      // matches the facility's controlled stock; carry its id,
+                      // schedule and unit so balances reconcile. Otherwise keep
+                      // it free-hand (off-catalogue) with no synthetic link.
+                      const match = matchControlledInventoryItem(name, controlledItems);
+                      setForm({
+                        ...form,
+                        medicationName: name,
+                        selectedInventoryId: match?._id || '',
+                        schedule: match?.controlledSchedule || form.schedule,
+                        unit: match?.unit || form.unit,
+                      });
+                    }}
+                    placeholder={t('ui.eGMorphineSulfate')}
+                  />
+                  <datalist id="csub-med-list">
+                    {controlledItems.map(i => <option key={i._id} value={i.medicationName} />)}
+                  </datalist>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
