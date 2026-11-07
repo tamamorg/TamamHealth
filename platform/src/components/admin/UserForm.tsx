@@ -18,6 +18,7 @@
 import { useMemo, useState } from 'react';
 import { Hospital, Eye, EyeOff, RefreshCw, ShieldCheck, UserPlus } from '@/components/icons/lucide';
 import Select from '@/components/Select';
+import DepartmentSelect from '@/components/DepartmentSelect';
 import CreateFacilityModal from '@/components/admin/CreateFacilityModal';
 import {
   generateTempPassword, roleNeedsFacility, roleNeedsOrganization,
@@ -31,7 +32,6 @@ import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { UserDoc, UserRole } from '@/lib/db-types';
-import { useDepartments } from '@/lib/hooks/useDepartments';
 import { CLINICAL_SPECIALTIES, specialtyLabel, type ClinicalSpecialty } from '@/modules/departments/client';
 import { describeError } from '@/lib/user-facing-error';
 import { FormError } from '@/components/overlay/FormNotices';
@@ -64,7 +64,7 @@ const ROLE_OPTIONS: UserRole[] = [
 const EMPTY = {
   name: '', username: '', email: '', password: '',
   role: 'nurse' as UserRole, orgId: '', hospitalId: '', facilityIds: [] as string[],
-  departmentId: '', specialtyCode: '' as ClinicalSpecialty | '',
+  department: '', departmentId: '', specialtyCode: '' as ClinicalSpecialty | '',
 };
 
 export interface UserFormProps {
@@ -97,7 +97,6 @@ export function UserForm({
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(true);
   const [showAddFacility, setShowAddFacility] = useState(false);
-  const { departments } = useDepartments(form.hospitalId || undefined, form.orgId || undefined);
 
   const roleLabel = (role: string) => t(`adminUsers.role_${role}`);
   const needsOrg = roleNeedsOrganization(form.role);
@@ -126,6 +125,9 @@ export function UserForm({
       ...f,
       role,
       hospitalId: roleNeedsFacility(role) ? f.hospitalId : '',
+      // A facility's department record does not travel to an account
+      // without that facility; the department name does.
+      departmentId: roleNeedsFacility(role) ? f.departmentId : '',
       facilityIds: roleNeedsFacility(role) ? f.facilityIds : [],
     }));
   };
@@ -174,7 +176,7 @@ export function UserForm({
         hospitalName: hospital?.name,
         facilityIds: form.facilityIds,
         departmentId: form.departmentId || undefined,
-        department: departments.find(item => item._id === form.departmentId)?.name,
+        department: form.department || undefined,
         specialtyCode: form.specialtyCode || undefined,
         specialty: specialtyLabel(form.specialtyCode),
       });
@@ -319,21 +321,28 @@ export function UserForm({
               )}
             </div>
           )}
-          {needsFacility && form.hospitalId && (
-            <div className="uf-field">
-              <span className="uf-label">{t('adminUsers.department')}</span>
-              <Select
-                className="uf-input" value={form.departmentId}
-                onChange={event => setForm(current => ({ ...current, departmentId: event.target.value }))}
-              >
-                <option value="">{t('adminUsers.selectDepartment')}</option>
-                {departments.map(department => (
-                  <option key={department._id} value={department._id}>{department.name}</option>
-                ))}
-              </Select>
-              <small className="uf-hint">{t('adminUsers.departmentHint')}</small>
-            </div>
-          )}
+          {/* Every account has a department, whatever its scope: Nursing,
+              Laboratory, Records & HMIS, or Administration and Public Health
+              for an organization or ministry account. Chosen, never typed.
+              A facility's own department record is linked when the name is
+              one, so its queue and reports find the person. */}
+          <div className="uf-field">
+            <span className="uf-label">{t('adminUsers.department')}</span>
+            <DepartmentSelect
+              className="uf-input"
+              value={form.department}
+              facilityId={needsFacility ? form.hospitalId || undefined : undefined}
+              orgId={form.orgId || undefined}
+              placeholder={t('adminUsers.selectDepartment')}
+              aria-label={t('adminUsers.department')}
+              onChange={(name, choice) => setForm(current => ({
+                ...current,
+                department: name,
+                departmentId: needsFacility && current.hospitalId ? choice?.departmentId ?? '' : '',
+              }))}
+            />
+            <small className="uf-hint">{t('adminUsers.departmentHint')}</small>
+          </div>
           {(['doctor', 'clinical_officer', 'clinician', 'radiologist'] as UserRole[]).includes(form.role) && (
             <div className="uf-field">
               <span className="uf-label">{t('adminUsers.specialty')}</span>

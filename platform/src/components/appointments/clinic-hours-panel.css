@@ -1,0 +1,68 @@
+/* Clinic hours, in the Appointments left rail under the status filters. The
+   rail's own type: 14px rows, a 13px secondary line, hairline rules. */
+
+.chp {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-light);
+}
+.chp-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.chp .chp-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-family: var(--font-platform);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--accent-text, var(--text-primary));
+}
+.chp-title svg.lucide { color: var(--accent-primary); stroke: currentColor; }
+.chp-date { font-size: 13px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+
+.chp-empty { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; color: var(--text-secondary); }
+
+.chp-list { margin: 0; padding: 0; list-style: none; }
+.chp-row { padding: 10px 0; border-bottom: 1px solid var(--border-light); }
+.chp-row:last-child { border-bottom: 0; }
+
+.chp-line { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.chp-name { min-width: 0; font-size: 14px; font-weight: 600; color: var(--text-primary); }
+
+/* Where the clinician's day stands, today only. Tinted chips on the rung of
+   their text colour; "in clinic" is the one that matters most to the desk. */
+.chp-state {
+  flex: 0 0 auto;
+  max-width: 55%;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+  text-align: end;
+}
+.chp-state[data-tone="in"] { background: var(--color-success-bg); color: var(--color-success-text, var(--color-success-700)); }
+.chp-state[data-tone="break"] { background: var(--color-warning-bg); color: var(--color-warning-text, var(--color-warning-700)); }
+.chp-state[data-tone="later"] { background: var(--bg-secondary); color: var(--text-secondary); }
+.chp-state[data-tone="done"] { background: var(--bg-secondary); color: var(--text-muted); }
+
+.chp-hours { margin-top: 2px; font-size: 13px; color: var(--text-secondary); }
+.chp-hours b { font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+.chp-breaks { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 4px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.chp-breaks li::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-inline-end: 5px; border-radius: 50%; background: var(--color-warning-500, #E3A008); vertical-align: 1px; }
+
+.chp-remove {
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-link, var(--accent-text));
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.chp-remove:hover { text-decoration: underline; text-underline-offset: 3px; }
+.chp-remove:disabled { opacity: 0.6; cursor: default; }

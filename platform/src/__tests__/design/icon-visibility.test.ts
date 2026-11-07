@@ -43,6 +43,8 @@ const NO_ICON = new Set([
   // Dashboard worklist lane, chosen: a label and a count, never an icon.
   '.ehr-day-tabs > button:is(.is-selected, .is-active, .active, [aria-selected="true"])',
   // ANC visit form step numbers: a digit in a circle, never an icon.
+  // Clinic hours weekday toggles, chosen: a day name, never an icon.
+  '.avp-day[aria-pressed="true"]',
   // Order basket status tag: text only, never an icon.
   '.obk-tag--danger',
   // Chart banner avatar: the patient's photo or initials, never an icon.

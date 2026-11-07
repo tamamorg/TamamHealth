@@ -1,5 +1,5 @@
 'use client';
-import DepartmentInput from '@/components/DepartmentInput';
+import DepartmentSelect from '@/components/DepartmentSelect';
 
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import Select from '@/components/Select';
@@ -74,7 +74,7 @@ export default function ReferralFilterFields({
       </label>
       <label className="flex flex-col gap-1">
         <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('referrals.department')}</span>
-        <DepartmentInput type="text" value={filters.department} onChange={e => setFilter('department', e.target.value)} placeholder={t('referrals.department')} className="w-full text-sm py-2 px-3" style={fieldStyle} />
+        <DepartmentSelect value={filters.department} onChange={name => setFilter('department', name)} placeholder={t('patients.all')} aria-label={t('referrals.department')} className="w-full text-sm py-2 px-3" style={fieldStyle} />
       </label>
       <label className="flex flex-col gap-1">
         <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('consultation.urgency')}</span>

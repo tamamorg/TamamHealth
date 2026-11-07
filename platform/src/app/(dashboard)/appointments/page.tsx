@@ -4,6 +4,7 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import AppointmentEditModal from '@/components/appointments/AppointmentEditModal';
 import BookAppointmentModal from '@/components/appointments/BookAppointmentModal';
 import AvailabilityModal from '@/components/AvailabilityModal';
+import ClinicHoursPanel from '@/components/appointments/ClinicHoursPanel';
 import {
   APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS, APPOINTMENT_STATUS_I18N_KEYS,
   APPOINTMENT_STATUS_FLOW, APPOINTMENT_STATUS_EXITS,
@@ -184,6 +185,7 @@ export default function AppointmentsPage() {
   const router = useRouter();
   const [showWalkIn, setShowWalkIn] = useState(false);
   const [showAvailability, setShowAvailability] = useState(false);
+  const [clinicHoursKey, setClinicHoursKey] = useState(0);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterDepartment, setFilterDepartment] = useState<string>('all');
@@ -743,6 +745,10 @@ export default function AppointmentsPage() {
                 </button>
               ))}
             </div>
+
+            {/* Who works the day on screen, with their breaks: what the desk
+                reads before booking or sending a patient to a clinician. */}
+            <ClinicHoursPanel date={anchorDate} today={today} reloadKey={clinicHoursKey} />
           </aside>
 
           <section className="ehr-center-panel">
@@ -857,7 +863,7 @@ export default function AppointmentsPage() {
         {/* Clinic hours — publishes a bookable window for the signed-in
             provider, which is what gives the booking wizard slots to offer. */}
         {showAvailability && canPublishAvailability && (
-          <AvailabilityModal onClose={() => setShowAvailability(false)} />
+          <AvailabilityModal onClose={() => setShowAvailability(false)} onCreated={() => setClinicHoursKey(key => key + 1)} />
         )}
 
         {/* Walk-In */}

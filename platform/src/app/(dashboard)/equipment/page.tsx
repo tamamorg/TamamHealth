@@ -1,6 +1,6 @@
 'use client';
 import { defaultCurrency } from '@/lib/country/country-pack';
-import DepartmentInput from '@/components/DepartmentInput';
+import DepartmentSelect from '@/components/DepartmentSelect';
 
 import { useState, useMemo } from 'react';
 import FormSlider from '@/components/overlay/FormSlider';
@@ -369,7 +369,7 @@ export default function AssetsPage() {
                 </div>
                 <div>
                   <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelDepartment')}</label>
-                  <DepartmentInput value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} placeholder={t('equipment.placeholderDepartment')} />
+                  <DepartmentSelect value={form.department} onChange={name => setForm({ ...form, department: name })} />
                 </div>
                 <div>
                   <label className="text-xs font-semibold mb-1 block" style={{ color: 'var(--text-muted)' }}>{t('equipment.labelLocation')}</label>
