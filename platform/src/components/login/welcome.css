@@ -99,6 +99,7 @@
 
 .wl-more, .wl-admin { margin: 0; font-size: 15px; color: var(--lg-neutral-800); }
 .wl-more { margin-top: 32px; }
+.wl-more-quiet { margin-top: 10px; max-width: 46ch; font-size: 14px; color: var(--lg-neutral-700); }
 .wl-admin { margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--lg-neutral-700); }
 .wl-root .wl-admin > svg { width: 16px; height: 16px; color: var(--lg-neutral-600); stroke: currentColor; }
 .wl-more a, .wl-admin a { color: var(--lg-accent-700); font-weight: 600; text-underline-offset: 3px; }
@@ -184,4 +185,7 @@
   .wl-panel { padding: 40px 16px; }
   .wl-ring { width: min(240px, 70%); margin-bottom: 28px; }
   .wl-footer { flex-direction: column; align-items: flex-start; padding: 16px; }
+  /* Three links: wrap whole links onto a second row, never mid-label. */
+  .wl-footer nav { flex-wrap: wrap; gap: 8px 20px; }
+  .wl-footer a { white-space: nowrap; }
 }
