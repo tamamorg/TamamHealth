@@ -6,7 +6,7 @@ import { getTranslator } from "@/lib/i18n/server";
 export const metadata: Metadata = {
   title: "News & updates",
   description:
-    "What TamamHealth is building and where the work has landed: testing at Iteru Medical Center in Juba, our fiscal sponsor Elimisha Kakuma, incorporation in Massachusetts, and the Tufts New Ventures Competition.",
+    "News and announcements from TamamHealth, including platform testing at Iteru Medical Center, fiscal sponsorship by Elimisha Kakuma, incorporation in Massachusetts, and the Tufts New Ventures Competition.",
 };
 
 export default async function NewsPage() {

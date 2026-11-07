@@ -1009,3 +1009,74 @@ header > div { min-width: 0; }
   .tm-subscribe-row > button { width: 100%; }
   #subscribe > .blueprint { padding: 30px 22px !important; }
 }
+
+/* ── News card (NewsCard.tsx) ──
+   Flat blueprint card: no shadow and no radius. On hover the frame and a 3px
+   top rule turn blue, the cover eases in, and the arrow steps forward. The
+   card is a link, so keyboard focus gets the same treatment as hover. */
+.tm-newscard { transition: border-color .18s ease; }
+.tm-newscard::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 3px;
+  background: var(--tm-deep);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .22s ease;
+  z-index: 1;
+}
+[dir="rtl"] .tm-newscard::before { transform-origin: right; }
+.tm-newscard-fig { border-bottom: 1px solid var(--color-divider); background: var(--color-accent-100); }
+.tm-newscard-fig img { transition: transform .4s ease; }
+.tm-newscard-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-600); }
+.tm-newscard-tag { font-family: var(--font-heading); font-weight: 700; letter-spacing: 0.14em; color: var(--color-accent-700); }
+.tm-newscard-tag::after { content: ""; display: inline-block; width: 4px; height: 4px; margin-inline-start: 10px; vertical-align: middle; background: var(--color-neutral-300); }
+.tm-newscard-sum {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--color-neutral-700);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tm-newscard-more {
+  margin-top: auto;
+  margin-inline: -22px;
+  padding: 14px 22px 16px;
+  border-top: 1px solid var(--color-divider);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--color-accent-700);
+  transition: background-color .18s ease;
+}
+.tm-newscard-arrow { display: inline-block; font-size: 18px; transition: transform .2s ease; }
+[dir="rtl"] .tm-newscard-arrow { transform: scaleX(-1); }
+.tm-newscard-sum + .tm-newscard-more { margin-top: auto; }
+.tm-newscard-body { row-gap: 10px; }
+.tm-newscard-body > .tm-newscard-sum { margin-bottom: 18px; }
+.tm-newscard:hover, .tm-newscard:focus-visible { border-color: var(--tm-deep); }
+.tm-newscard:hover::before, .tm-newscard:focus-visible::before { transform: scaleX(1); }
+.tm-newscard:hover .tm-newscard-fig img, .tm-newscard:focus-visible .tm-newscard-fig img { transform: scale(1.04); }
+.tm-newscard:hover .tm-newscard-more, .tm-newscard:focus-visible .tm-newscard-more { background: var(--color-accent-100); }
+.tm-newscard:hover .tm-newscard-arrow, .tm-newscard:focus-visible .tm-newscard-arrow { transform: translateX(4px); }
+[dir="rtl"] .tm-newscard:hover .tm-newscard-arrow, [dir="rtl"] .tm-newscard:focus-visible .tm-newscard-arrow { transform: scaleX(-1) translateX(4px); }
+@media (prefers-reduced-motion: reduce) {
+  .tm-newscard::before, .tm-newscard-fig img, .tm-newscard-arrow { transition: none; }
+  .tm-newscard:hover .tm-newscard-fig img { transform: none; }
+}
+/* Phone: the card is a thumbnail row (see the ≤639px block above), so the
+   summary drops out and the foot loses its full-width rule. */
+@media (max-width: 639px) {
+  .tm-newscard-sum { display: none; }
+  .tm-newscard-more { margin-inline: 0; padding: 6px 0 0; border-top: 0; justify-content: flex-start; gap: 8px; }
+  .tm-newscard-meta { font-size: 11px; }
+  .tm-newscard-fig { border-bottom: 0; border-inline-end: 1px solid var(--color-divider); }
+}

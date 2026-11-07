@@ -1,7 +1,14 @@
 "use client";
 
-/* One news card — image, date, title, "Read more". Used by the home band's
-   four-up strip and the /news explorer grid; links to the item's article.
+/* One news card: cover, category and date, title, a short summary, and a
+   "Read more" foot. Used by the home band's four-up strip, the /news explorer
+   grid and an article's "More news"; links to the item's article.
+
+   The look lives in globals.css under `.tm-newscard` (hover needs CSS, not
+   inline style): a flat blueprint frame whose border and top rule turn blue
+   on hover, the cover easing in a few percent, and the arrow stepping right.
+   On a phone the card turns into a row with a thumbnail and the summary drops
+   out (see the ≤639px block).
 
    A client component because /news renders it from NewsExplorer, which is
    client-side (it filters as you type). It therefore reads the language from
@@ -31,13 +38,16 @@ export default function NewsCard({ item }: { item: NewsItem }) {
           style={{ objectFit: "cover" }}
         />
       </div>
-      <div className="tm-newscard-body" style={{ display: "flex", flexDirection: "column", gap: 10, padding: "20px 22px 24px", flex: 1 }}>
-        <time dateTime={item.dateISO} className="fs12" style={{ letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-neutral-600)" }}>
-          {item.date}
-        </time>
-        <h3 style={{ margin: 0, fontSize: 18, lineHeight: 1.35, color: "var(--color-text)" }}>{item.title}</h3>
-        <span style={{ marginTop: "auto", paddingTop: 10, fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 16, color: "var(--color-accent-700)" }}>
-          {t("Read more  ›")}
+      <div className="tm-newscard-body" style={{ display: "flex", flexDirection: "column", gap: 10, padding: "20px 22px 0", flex: 1 }}>
+        <div className="tm-newscard-meta">
+          <span className="tm-newscard-tag">{item.tag}</span>
+          <time dateTime={item.dateISO}>{item.date}</time>
+        </div>
+        <h3 className="tm-newscard-title" style={{ margin: 0, fontSize: 19, lineHeight: 1.3, color: "var(--color-text)" }}>{item.title}</h3>
+        <p className="tm-newscard-sum">{item.summary}</p>
+        <span className="tm-newscard-more">
+          {t("Read more")}
+          <span aria-hidden="true" className="tm-newscard-arrow">→</span>
         </span>
       </div>
     </Link>

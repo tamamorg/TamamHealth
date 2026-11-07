@@ -8,7 +8,6 @@ import Image from "next/image";
 import Corners from "@/components/Corners";
 import NewsCard from "@/components/NewsCard";
 import CardCarousel from "@/components/CardCarousel";
-import SubscribeBand from "@/components/SubscribeBand";
 import { getTranslator } from "@/lib/i18n/server";
 import { NEWS as NEWS_EN } from "@/lib/site-data";
 
@@ -70,7 +69,6 @@ export default async function NewsBand() {
             ))}
           </CardCarousel>
         )}
-        <SubscribeBand compact />
       </div>
     </section>
   );
