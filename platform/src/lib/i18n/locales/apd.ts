@@ -4124,6 +4124,8 @@ const apd: TranslationMap = {
   'labFlow.orderedAt': 'اتطلب في',
   'labFlow.printReport': 'اطبع التقرير',
   'print.patientInformation': 'معلومات العيان',
+  'print.visitDetails': 'تفاصيل الزيارة',
+  'print.bookingNotes': 'ملاحظات الحجز',
   'print.patientName': 'اسم العيان',
   'print.patientId': 'رقم العيان',
   'print.status': 'الحالة',
