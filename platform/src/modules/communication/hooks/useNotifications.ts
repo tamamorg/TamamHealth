@@ -226,7 +226,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         // Accepting can move the patient to the receiving facility, after which
         // the sender cannot open the chart: they get the referral list instead.
         const onChart = isOutgoing && x.status !== 'sent' && !(await chartOpens(x.patientId))
-          ? `/referrals?tab=outgoing&patient=${encodeURIComponent(x.patientName || '')}`
+          ? `/referrals?tab=outgoing&patient=${encodeURIComponent(x.patientId)}`
           : `/patients/${encodeURIComponent(x.patientId)}?tab=referrals&focus=${encodeURIComponent(x._id)}`;
         const stepAt = (status: string) =>
           [...(x.statusHistory ?? [])].reverse().find(step => step.status === status)?.at || x.updatedAt || x.referralDate || x.createdAt;

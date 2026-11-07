@@ -55,7 +55,7 @@ export default function PharmacyPage() {
   // Per-column filters: queue table (q*) + inventory table (medication name).
   // Category / stock-status filtering now lives in the shared header + table
   // toolbar (categoryFilter / statusFilter below) rather than per-column funnels.
-  const [colFilters, setColFilters] = useState({ qPatient: '', qMedication: '', qPrescribedBy: '', iMedication: '' });
+  const [colFilters, setColFilters] = useState({ qPatient: '', qPatientId: '', qMedication: '', qPrescribedBy: '', iMedication: '' });
   // Header filters (category + stock status) live inside the search field —
   // see EhrSearchFilter, which owns the popover. Only the applied count is
   // still this page's business.
@@ -63,11 +63,14 @@ export default function PharmacyPage() {
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
   const { currentUser } = useAuth();
   const { globalSearch, setGlobalSearch } = useUi();
-  // Deep link from a patient chart: /pharmacy?patient=<name> pre-filters via
-  // the shared global search (combined with the table's own search below).
+  // Deep link from a patient chart: /pharmacy?patientId=<id> pre-filters the
+  // queue by id (never put a name in a URL). A legacy ?patient=<name> link
+  // still filters via the shared global search below.
   useEffect(() => {
+    const idParam = searchParams?.get('patientId');
     const patientParam = searchParams?.get('patient');
-    if (patientParam) setGlobalSearch(patientParam);
+    if (idParam) setColFilters(f => ({ ...f, qPatientId: idParam }));
+    else if (patientParam) setGlobalSearch(patientParam);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
   const { canDispense } = usePermissions();
@@ -99,7 +102,7 @@ export default function PharmacyPage() {
   const q = tableSearch || globalSearch;
   const anyColFilter = Object.values(colFilters).some(Boolean) || !!tableSearch || statusFilter !== 'all' || categoryFilter !== 'all';
   const clearColFilters = () => {
-    setColFilters({ qPatient: '', qMedication: '', qPrescribedBy: '', iMedication: '' });
+    setColFilters({ qPatient: '', qPatientId: '', qMedication: '', qPrescribedBy: '', iMedication: '' });
     setTableSearch('');
     setStatusFilter('all');
     setCategoryFilter('all');
@@ -310,6 +313,7 @@ export default function PharmacyPage() {
   const filteredQueue = rxQueue.filter(rx => {
     if (!isActivePharmacyStage(pharmacyStage(rx)) || pharmacyStage(rx) === 'prescribed' || rx.status === 'discontinued') return false;
     if (q && !(rx.patientName.toLowerCase().includes(q.toLowerCase()) || rx.medication.toLowerCase().includes(q.toLowerCase()) || rx.prescribedBy.toLowerCase().includes(q.toLowerCase()))) return false;
+    if (colFilters.qPatientId && rx.patientId !== colFilters.qPatientId) return false;
     if (colFilters.qPatient && !rx.patientName.toLowerCase().includes(colFilters.qPatient.toLowerCase())) return false;
     if (colFilters.qMedication && !rx.medication.toLowerCase().includes(colFilters.qMedication.toLowerCase())) return false;
     if (colFilters.qPrescribedBy && !rx.prescribedBy.toLowerCase().includes(colFilters.qPrescribedBy.toLowerCase())) return false;
