@@ -52,6 +52,26 @@ export const SESSION_RENEW_AFTER_SEC = Math.min(24 * HOUR_SEC, Math.floor(SESSIO
 
 export const SESSION_COOKIE_NAME = 'tamamhealth-token';
 
+/**
+ * Absolute ceiling on one sign-in, however actively it is used.
+ *
+ * Sliding renewal (above) means a session that is used at least once per TTL
+ * never expires. Without a ceiling, a stolen token that is replayed against
+ * /api/auth/me every few hours renews forever. Every token therefore carries
+ * `sat` (the moment the ORIGINAL sign-in happened), copied unchanged across
+ * renewals; /api/auth/me stops renewing once `sat` is this old and
+ * `verifyToken` refuses the token outright past it, so the person signs in
+ * again. 30 days matches the "keep me signed in" cookie people expect.
+ * Operators may change it with SESSION_MAX_DAYS.
+ */
+function maxDaysFromEnv(): number {
+  const raw = process.env.SESSION_MAX_DAYS;
+  const parsed = raw ? Number(raw) : NaN;
+  if (!Number.isFinite(parsed) || parsed <= 0) return 30;
+  return parsed;
+}
+export const SESSION_ABSOLUTE_MAX_SEC = maxDaysFromEnv() * 24 * HOUR_SEC;
+
 /** Anything with a `set(name, value, options)` — NextResponse.cookies fits. */
 interface CookieSetter {
   set(name: string, value: string, options: {

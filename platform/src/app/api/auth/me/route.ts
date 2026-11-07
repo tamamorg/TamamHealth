@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { CSRF_COOKIE_NAME, SESSION_RENEW_AFTER_SEC, SESSION_TTL_SEC, applySessionCookies, createToken, isTokenRevoked, mintCsrfToken, verifyToken } from '@/modules/identity';
+import { CSRF_COOKIE_NAME, SESSION_ABSOLUTE_MAX_SEC, SESSION_RENEW_AFTER_SEC, SESSION_TTL_SEC, applySessionCookies, createToken, isTokenRevoked, mintCsrfToken, verifyToken } from '@/modules/identity';
 
 /**
  * The display name of an organization, for accounts whose own record predates
@@ -204,7 +204,16 @@ export async function GET(request: NextRequest) {
   // this existed, rather than silently downgrading it to a browser-session
   // cookie on its first renewal.
   const persist = payload.persist !== false;
-  if (tokenAgeSec > SESSION_RENEW_AFTER_SEC && (liveUser || isDemoDeployment)) {
+  // Absolute session ceiling (see session.ts). `sat` is the original sign-in
+  // time, copied across renewals. A token minted before `sat` existed is
+  // anchored on its own iat: it renews once into a sid-bearing token whose
+  // clock starts now, so the ceiling is enforced from the first renewal after
+  // deploy without signing anyone out.
+  const sessionStart = typeof payload.sat === 'number'
+    ? payload.sat
+    : (typeof payload.iat === 'number' ? payload.iat : nowSec);
+  const absoluteLeftSec = sessionStart + SESSION_ABSOLUTE_MAX_SEC - nowSec;
+  if (tokenAgeSec > SESSION_RENEW_AFTER_SEC && absoluteLeftSec > 0 && (liveUser || isDemoDeployment)) {
     try {
       const renewed = await createToken({
         _id: payload.sub,
@@ -238,9 +247,17 @@ export async function GET(request: NextRequest) {
         persist,
         // An impersonated session must not be extended past the lifetime it
         // was originally capped to: renew with only the remaining life.
-        ...(fresh.actualRole && typeof payload.exp === 'number'
-          ? { ttlSeconds: Math.max(60, payload.exp - nowSec) }
-          : {}),
+        //
+        // Carry the session id and original sign-in time: logout revokes the
+        // sid (the whole renewal family), and `sat` is the ceiling's anchor.
+        // A renewal never reaches past the ceiling, so the last token of a
+        // 30-day session expires at it rather than a TTL later.
+        sid: payload.sid,
+        sessionStart,
+        ttlSeconds: Math.max(60, Math.min(
+          fresh.actualRole && typeof payload.exp === 'number' ? payload.exp - nowSec : Infinity,
+          absoluteLeftSec,
+        )),
       });
       const csrf = await mintCsrfToken(payload.sub);
       applySessionCookies(response.cookies, renewed, csrf, persist);

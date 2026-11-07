@@ -106,6 +106,7 @@ export async function verifyPatientToken(
     const verified = await jwtVerify(token, JWT_SECRET, {
       issuer: JWT_ISSUER,
       audience: JWT_AUDIENCE,
+      algorithms: ['HS256'],
     });
     payload = verified.payload as unknown as PatientTokenPayload;
   } catch {
