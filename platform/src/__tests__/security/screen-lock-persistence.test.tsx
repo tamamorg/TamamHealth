@@ -10,7 +10,7 @@ import { setSettings } from '@/lib/settings/settings-store';
 import { DEFAULT_FACILITY_SETTINGS } from '@/lib/settings/facility-settings';
 import { clearRoleSettings, setRoleSettings } from '@/lib/settings/role-settings-store';
 import {
-  readLockState, writeLockState, clearLockState, shouldStartLocked, lockStateKey, MAX_PIN_ATTEMPTS,
+  readLockState, writeLockState, clearLockState, shouldStartLocked, lockStateKey, MAX_PIN_ATTEMPTS, isTabLocked,
 } from '@/lib/security/lock-state';
 import { inertOutside } from '@/lib/security/inert-outside';
 import { canOfferPinEntry } from '@/components/LockScreen';
@@ -225,6 +225,45 @@ describe('tab switching', () => {
     expect(latest().isLocked).toBe(true);
     act(() => { latest().unlock(); });
     expect(sessionStorage.length).toBe(0);
+  });
+
+  // 2026-11-07: leaving the page (reload, typed address) hides the document
+  // too, and that hide wrote the per-tab lock, so every refresh came back on
+  // "Session Locked".
+  it('a reload of an unlocked tab does not lock it (pagehide before hidden)', () => {
+    let latest = mount();
+    act(() => { window.dispatchEvent(new Event('pagehide')); setHidden(true); });
+    expect(isTabLocked('u1')).toBe(false);
+    act(() => root.unmount());
+    root = createRoot(container);
+    setHidden(false);
+    latest = mount();
+    expect(latest().isLocked).toBe(false);
+  });
+
+  it('a browser that hides before pagehide still does not leave the tab locked', () => {
+    mount();
+    act(() => { setHidden(true); });
+    expect(isTabLocked('u1')).toBe(true);
+    act(() => { window.dispatchEvent(new Event('pagehide')); });
+    expect(isTabLocked('u1')).toBe(false);
+  });
+
+  it('a tab locked before the user leaves stays locked through the reload', () => {
+    const latest = mount();
+    act(() => { setHidden(true); });
+    act(() => { setHidden(false); });
+    expect(latest().isLocked).toBe(true);
+    act(() => { window.dispatchEvent(new Event('pagehide')); setHidden(true); });
+    expect(isTabLocked('u1')).toBe(true);
+  });
+
+  it('back from the back/forward cache, hiding the tab locks it again', () => {
+    const latest = mount();
+    act(() => { window.dispatchEvent(new Event('pagehide')); });
+    act(() => { window.dispatchEvent(new Event('pageshow')); });
+    act(() => { setHidden(true); });
+    expect(latest().isLocked).toBe(true);
   });
 
   it('explicit lock still locks every tab', () => {
