@@ -16,7 +16,8 @@
  * patient/current-user/permission/router context they need down to them.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { fadeIn, MOTION_MS, slideIn } from '@/lib/motion';
 import SliderResizeHandle from '@/components/overlay/SliderResizeHandle';
 import { closeDrawerLayer, raiseDrawerLayer } from '@/lib/overlay-order';
 import { DrawerBackContext } from './drawer-back';
@@ -355,6 +356,25 @@ export default function TamamChartShell({
   // A rail button opens its panel on top of the stack; pressing the button of
   // the panel already showing closes it (back to the one beneath).
   const drawerRef = useRef<HTMLDivElement>(null);
+  // Motion (lib/motion.ts), set before paint: a tab change fades the new tab
+  // in; the workspace slides in from its edge when it opens and fades
+  // between panels as they stack.
+  const contentRef = useRef<HTMLDivElement>(null);
+  const shownTab = useRef(activeTab);
+  useLayoutEffect(() => {
+    if (shownTab.current === activeTab) return;
+    shownTab.current = activeTab;
+    fadeIn(contentRef.current, MOTION_MS.base);
+  }, [activeTab]);
+  const shownPanel = useRef<string | null>(null);
+  const panelKey = activePanel ? activePanel.id : null;
+  useLayoutEffect(() => {
+    const before = shownPanel.current;
+    shownPanel.current = panelKey;
+    if (!panelKey || before === panelKey) return;
+    if (before === null) slideIn(drawerRef.current);
+    else fadeIn(drawerRef.current, MOTION_MS.base);
+  }, [panelKey]);
   // What is typed in a drawer panel survives a refresh, and a refresh or a
   // link away asks first while anything is unsaved (lib/unsaved). Leaving a
   // panel by X, Back, Escape or another rail button keeps its text for when it
@@ -675,7 +695,7 @@ export default function TamamChartShell({
           {header}
           {vitalsBand}
         </div>
-        <div className="tamam-content">
+        <div className="tamam-content" ref={contentRef}>
           {children}
         </div>
       </div>

@@ -409,7 +409,7 @@ export default function OrderBasketPanel({
           <ChevronDown aria-hidden className={open ? 'obk-chevron is-open' : 'obk-chevron'} />
         </button>
       </div>
-      {open && <div className="obk-items">{body}</div>}
+      {open && <div className="obk-items tm-motion tm-reveal">{body}</div>}
     </section>
   );
 

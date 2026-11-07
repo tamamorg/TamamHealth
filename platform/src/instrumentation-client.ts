@@ -22,4 +22,16 @@ Sentry.init({
   beforeSendTransaction: (event) => stripPHITransaction(event),
 });
 
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+/**
+ * Every App Router navigation (a Link, router.push/replace, Back) starts here.
+ * Sentry gets its transaction; the route progress bar (components/motion/
+ * RouteProgress) gets a DOM event. An event rather than React state: this
+ * runs inside the navigation's startTransition, so a setState here would wait
+ * for the very navigation it is meant to report.
+ */
+export function onRouterTransitionStart(url: string, navigationType: 'push' | 'replace' | 'traverse') {
+  Sentry.captureRouterTransitionStart(url, navigationType);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('tamam:navigation-start', { detail: { url, navigationType } }));
+  }
+}

@@ -27,6 +27,7 @@ import RouteContextBar from '@/components/navigation/RouteContextBar';
 import { ConsoleTrailProvider } from '@/components/navigation/ConsoleTrail';
 import { MessagingDock, MessagingDockProvider, PatientTextOutbox } from '@/modules/communication/client';
 import NavHistoryTracker from '@/components/navigation/NavHistoryTracker';
+import RouteMotion from '@/components/motion/RouteMotion';
 import TableSortEnhancer from '@/components/table/TableSortEnhancer';
 import PageDraftKeeper from '@/components/unsaved/PageDraftKeeper';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -171,6 +172,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Stamps each page's history entry, so every Back control can return
           to the screen the user came from (lib/navigation/nav-history.ts). */}
       <Suspense fallback={null}><NavHistoryTracker /></Suspense>
+      {/* Route progress under the rail + the new screen fading in. */}
+      <Suspense fallback={null}><RouteMotion /></Suspense>
       {/* Sortable column headers on every table and list (O3 header sort). */}
       <TableSortEnhancer />
       {useShell ? (
