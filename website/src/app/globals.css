@@ -1175,3 +1175,6 @@ main button[type="submit"]:active:not(:disabled) { transform: translateY(1px); }
   .tm-carousel .tm-newscard-body { padding: 16px 16px 14px !important; }
   .tm-newscard:not(.tm-carousel .tm-newscard) .tm-newscard-fig { aspect-ratio: 4 / 3 !important; min-height: 0 !important; align-self: flex-start; }
 }
+
+/* About › Who we are: heading and copy sit close once stacked. */
+@media (max-width: 1100px) { #who-we-are .tm-split { gap: 16px !important; } }

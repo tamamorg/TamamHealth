@@ -1306,8 +1306,9 @@ export const FOOTER_COLS: { accent: string; title: string; links: FooterLink[] }
   },
   {
     accent: "#015697",
-    title: "Team",
+    title: "About",
     links: [
+      { label: "Who we are", href: "/about#who-we-are" },
       { label: "The Goal", href: "/donate" },
       { label: "Our Leadership", href: "/about#leadership" },
       { label: "The Team", href: "/about#team" },
@@ -1355,7 +1356,7 @@ export const NAV_ITEMS: { label: string; href: string; menu: MenuKey | null }[] 
   { label: "Platform", href: "/platform", menu: "platform" },
   { label: "Products", href: "/products", menu: "products" },
   { label: "The health system", href: "/health-system", menu: "system" },
-  { label: "Team", href: "/about", menu: "about" },
+  { label: "About", href: "/about", menu: "about" },
   { label: "News & updates", href: "/news", menu: null },
   // "Goal" rather than "Donate": the page opens on what the money is for —
   // $100,000, ten clinics, twelve months — and the ask follows from it. The
@@ -1402,11 +1403,12 @@ export const MENU_DATA: Record<MenuKey, { title: string; blurb: string; allLabel
     ],
   },
   about: {
-    title: "Team",
-    blurb: "The advisors and team building TamamHealth, founded at Tufts University.",
-    allLabel: "Meet the team",
+    title: "About TamamHealth",
+    blurb: "A nonprofit organization building offline-first health records for South Sudan: who we are, our leadership and our team.",
+    allLabel: "About TamamHealth",
     allHref: "/about",
     links: [
+      { label: "Who we are", note: "A nonprofit, first", href: "/about#who-we-are" },
       { label: "The Goal", note: "$100K pilot across 10 clinics", href: "/donate" },
       { label: "Our Leadership", note: "The advisors to TamamHealth", href: "/about#leadership" },
       { label: "The Team", note: "The founders and developers", href: "/about#team" },
@@ -1466,7 +1468,7 @@ export const FOOTPRINT_MAP_VOCABULARY = [
    was: these render through `t(value)`, so the string never appears literally
    at the call site and the extractor cannot find it there. Here it can. */
 
-export const CONTACT_SUBJECTS = ["Subject of enquiry","Book a demo", "Deploy Tamam in a facility", "Fund the pilot", "Partner or integrate", "Other"];
+export const CONTACT_SUBJECTS = ["Subject of inquiry","Book a demo", "Deploy Tamam in a facility", "Fund the pilot", "Partner or integrate", "Other"];
 
 /** The Ministry's six tiers, plus the answer for everyone who isn't a facility. */
 export const CONTACT_LEVELS = [

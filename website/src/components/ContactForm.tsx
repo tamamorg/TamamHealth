@@ -90,11 +90,11 @@ export default function ContactForm() {
     }
   };
 
-  const stepTitle = step === 2 ? t("Your enquiry") : t("Your details");
+  const stepTitle = step === 2 ? t("Your inquiry") : t("Your details");
   const stepLead =
     step === 2
       ? t("Please describe your setting. We will respond with information specific to it.")
-      : t("Please provide your contact details so that we can respond to your enquiry.");
+      : t("Please provide your contact details so that we can respond to your inquiry.");
 
   return (
     <form
@@ -143,7 +143,7 @@ export default function ContactForm() {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 26 }}>
-          <select name="topic" aria-label={t("Subject of enquiry")} className="tm-cfield" style={field} defaultValue={SUBJECTS[0]}>
+          <select name="topic" aria-label={t("Subject of inquiry")} className="tm-cfield" style={field} defaultValue={SUBJECTS[0]}>
             {SUBJECTS.map((s) => <option key={s} value={s}>{t(s)}</option>)}
           </select>
           <select name="level" aria-label={t("Level of care")} className="tm-cfield" style={field} defaultValue={LEVELS[0]}>
@@ -159,7 +159,7 @@ export default function ContactForm() {
             style={{ ...field, resize: "vertical" }}
           />
           <p style={{ margin: "4px 0 0", fontSize: 13, lineHeight: 1.55, color: "var(--color-neutral-700)" }}>
-            {t("By submitting this form, you agree that TamamHealth may contact you regarding this enquiry, as described in our")}{" "}
+            {t("By submitting this form, you agree that TamamHealth may contact you regarding this inquiry, as described in our")}{" "}
             <Link href="/terms" style={{ color: "var(--color-accent-700)" }}>{t("Terms & Privacy")}</Link>.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "62px 1fr", gap: 12, marginTop: 6 }}>

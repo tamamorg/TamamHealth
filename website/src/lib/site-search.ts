@@ -70,11 +70,11 @@ const PAGES: SearchEntry[] = [
     keywords: "ministry of health national alignment ehsp levels country",
   },
   {
-    title: "Team",
+    title: "About TamamHealth",
     kind: "Page",
     href: "/about",
-    summary: "The advisors and team building TamamHealth, founded at Tufts University.",
-    keywords: "team who we are about founders advisors leadership tufts",
+    summary: "A nonprofit organization building offline-first health records for South Sudan: who we are, our leadership and our team.",
+    keywords: "about nonprofit non-profit charity mission who we are team founders advisors leadership tufts fiscal sponsor",
   },
   {
     title: "News & updates",
@@ -95,7 +95,7 @@ const PAGES: SearchEntry[] = [
     kind: "Page",
     href: "/contact",
     summary: "Facility, NGO, funder or partner: tell us what you are building.",
-    keywords: "contact email phone partner demo enquiry inquiry",
+    keywords: "contact email phone partner demo inquiry enquiry",
   },
   {
     title: "Terms & privacy",
