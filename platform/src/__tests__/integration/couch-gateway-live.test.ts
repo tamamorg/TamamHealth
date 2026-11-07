@@ -76,12 +76,22 @@ async function gateway(db: string, path: string[], init: { body?: unknown; query
   return { status: response.status, json: await response.json() as never };
 }
 
+/**
+ * What a device stores in a catalogued PHI field: an org-key envelope, never
+ * the text (encrypted-db.ts). The validator refuses new plaintext in those
+ * fields (security audit M3), so fixtures carry an envelope-shaped string. It
+ * is deterministic, so "the earlier wording is kept" and "the server copy is
+ * untouched" still compare like for like, and every refusal below is still
+ * the integrity or ancestry rule under test, not the sealing rule.
+ */
+const sealed = (text: string) => `oenc:v1:fixture:${Buffer.from(text).toString('base64')}`;
+
 const conversation = (id: string, participantIds: string[]): Doc =>
   ({ _id: id, type: 'conversation', kind: 'group', orgId: ORG, participantIds });
 const message = (id: string, conversationId: string | undefined, from: string, body: string): Doc => ({
   _id: id, type: 'message', orgId: ORG, ...(conversationId ? { conversationId } : { patientId: 'pat-1' }),
   fromDoctorId: from, fromDoctorName: from, sentAt: '2026-10-08T09:00:00.000Z', createdAt: '2026-10-08T09:00:00.000Z',
-  direction: conversationId ? 'staff_to_staff' : 'staff_to_patient', channel: 'app', subject: '', body, readBy: [from],
+  direction: conversationId ? 'staff_to_staff' : 'staff_to_patient', channel: 'app', subject: '', body: sealed(body), readBy: [from],
 });
 const serverDoc = async (db: string, id: string) => (await couch(`${db}/${id}?conflicts=true`)).json as Doc;
 /** A replication-style write: explicit revision, explicit ancestry. */
@@ -135,17 +145,17 @@ live('sync gateway against a real CouchDB', () => {
 
     test('refuses a colleague rewriting the text, and the author dropping the earlier wording', async () => {
       const doc = await serverDoc(MESSAGES, 'msg-mine');
-      const forged = await couch(`${MESSAGES}/msg-mine`, { method: 'PUT', as: BEN, body: { ...doc, body: 'Give 5 g' } });
+      const forged = await couch(`${MESSAGES}/msg-mine`, { method: 'PUT', as: BEN, body: { ...doc, body: sealed('Give 5 g') } });
       expect(forged.status).toBe(403);
-      const lossy = await couch(`${MESSAGES}/msg-mine`, { method: 'PUT', as: ANA, body: { ...doc, body: 'Give 1 g' } });
+      const lossy = await couch(`${MESSAGES}/msg-mine`, { method: 'PUT', as: ANA, body: { ...doc, body: sealed('Give 1 g') } });
       expect(lossy.status).toBe(403);
-      expect((await serverDoc(MESSAGES, 'msg-mine')).body).toBe('Give 500 mg');
+      expect((await serverDoc(MESSAGES, 'msg-mine')).body).toBe(sealed('Give 500 mg'));
     });
 
     test('accepts the author’s edit when the earlier wording is kept', async () => {
       const doc = await serverDoc(MESSAGES, 'msg-patient');
       const edit = await couch(`${MESSAGES}/msg-patient`, { method: 'PUT', as: BEN, body: {
-        ...doc, body: 'see you Wednesday', editHistory: [{ body: 'see you Tuesday', at: doc.sentAt }],
+        ...doc, body: sealed('see you Wednesday'), editHistory: [{ body: sealed('see you Tuesday'), at: doc.sentAt }],
       } });
       expect(edit.status).toBe(201);
     });
@@ -217,20 +227,20 @@ live('sync gateway against a real CouchDB', () => {
     test('a replicated rewrite of a colleague’s message is refused and the server copy is untouched', async () => {
       signInAs(BEN);
       const current = await serverDoc(MESSAGES, 'msg-mine');
-      const forged = replicated({ ...current, body: 'Give 5 g' }, `${Number(String(current._rev).split('-')[0]) + 1}-forged`, [String(current._rev)]);
+      const forged = replicated({ ...current, body: sealed('Give 5 g') }, `${Number(String(current._rev).split('-')[0]) + 1}-forged`, [String(current._rev)]);
       const result = await gateway(MESSAGES, ['_bulk_docs'], { body: { new_edits: false, docs: [forged] } });
       expect(result.json).toEqual([expect.objectContaining({ id: 'msg-mine', error: 'forbidden' })]);
-      expect((await serverDoc(MESSAGES, 'msg-mine')).body).toBe('Give 500 mg');
+      expect((await serverDoc(MESSAGES, 'msg-mine')).body).toBe(sealed('Give 500 mg'));
     });
 
     test('a forged branch with invented ancestry is refused at the gateway', async () => {
       signInAs(BEN);
       const current = await serverDoc(MESSAGES, 'msg-mine');
-      const forged = replicated({ ...current, body: 'Give 5 g' }, '99-invented', ['98-neverexisted']);
+      const forged = replicated({ ...current, body: sealed('Give 5 g') }, '99-invented', ['98-neverexisted']);
       const result = await gateway(MESSAGES, ['_bulk_docs'], { body: { new_edits: false, docs: [forged] } });
       expect(result.json).toEqual([expect.objectContaining({ id: 'msg-mine', error: 'forbidden' })]);
       const after = await serverDoc(MESSAGES, 'msg-mine');
-      expect(after.body).toBe('Give 500 mg');
+      expect(after.body).toBe(sealed('Give 500 mg'));
       expect(after._conflicts).toBeUndefined();
     });
 
@@ -255,7 +265,7 @@ live('sync gateway against a real CouchDB', () => {
       expect(carried.json).toEqual([]);
       const resolved = await serverDoc(MESSAGES, 'msg-mine');
       expect(resolved._conflicts).toBeUndefined();
-      expect(resolved.body).toBe('Give 500 mg');
+      expect(resolved.body).toBe(sealed('Give 500 mg'));
     });
 
     test('I cannot write myself into a conversation, or post into it', async () => {
@@ -277,7 +287,7 @@ live('sync gateway against a real CouchDB', () => {
       const mine = replicated(message('msg-new', 'conv-mine', ANA, 'on my way'), '1-new', []);
       const ok = await gateway(MESSAGES, ['_bulk_docs'], { body: { new_edits: false, docs: [mine] } });
       expect(ok.json).toEqual([]);
-      expect((await serverDoc(MESSAGES, 'msg-new')).body).toBe('on my way');
+      expect((await serverDoc(MESSAGES, 'msg-new')).body).toBe(sealed('on my way'));
 
       const early = replicated(message('msg-early', 'conv-not-there-yet', ANA, 'first!'), '1-early', []);
       expect((await gateway(MESSAGES, ['_bulk_docs'], { body: { new_edits: false, docs: [early] } })).status).toBe(503);
@@ -320,7 +330,7 @@ live('sync gateway against a real CouchDB', () => {
       const device = new PouchDB(`device-ben-${ORG}`, { adapter: 'memory' });
       await device.replicate.from(remote(MESSAGES), { selector: { orgId: ORG } });
       const target = await device.get('msg-mine');
-      await device.put({ ...target, body: 'Give 5 g' });
+      await device.put({ ...target, body: sealed('Give 5 g') });
       await device.put(message('msg-ben-own', 'conv-mine', BEN, 'noted'));
 
       const denied: string[] = [];
@@ -330,15 +340,15 @@ live('sync gateway against a real CouchDB', () => {
 
       expect(result.ok).toBe(true);
       expect(denied).toEqual(['msg-mine']);
-      expect((await serverDoc(MESSAGES, 'msg-mine')).body).toBe('Give 500 mg');
-      expect((await serverDoc(MESSAGES, 'msg-ben-own')).body).toBe('noted');
+      expect((await serverDoc(MESSAGES, 'msg-mine')).body).toBe(sealed('Give 500 mg'));
+      expect((await serverDoc(MESSAGES, 'msg-ben-own')).body).toBe(sealed('noted'));
       await device.destroy();
     });
   });
 
   describe('the audit trail', () => {
     const entry = (details: string): Doc =>
-      ({ _id: 'audit-1', type: 'audit_log', orgId: ORG, action: 'DELETE_MESSAGE', userId: BEN, details, timestamp: '2026-10-08T09:00:00.000Z' });
+      ({ _id: 'audit-1', type: 'audit_log', orgId: ORG, action: 'DELETE_MESSAGE', userId: BEN, details: sealed(details), timestamp: '2026-10-08T09:00:00.000Z' });
 
     test('an entry can be written once, and never rewritten — not even with invented ancestry', async () => {
       signInAs(BEN);
@@ -350,7 +360,7 @@ live('sync gateway against a real CouchDB', () => {
       expect(second.json).toEqual([expect.objectContaining({ id: 'audit-1', error: 'forbidden' })]);
 
       const kept = await serverDoc(AUDIT, 'audit-1');
-      expect(kept.details).toBe('removed msg-1');
+      expect(kept.details).toBe(sealed('removed msg-1'));
       expect(kept._conflicts).toBeUndefined();
     });
 
@@ -367,7 +377,7 @@ live('sync gateway against a real CouchDB', () => {
   // gateway check above is the control that does.
   test('finding: a forged branch written straight to CouchDB, bypassing the gateway', async () => {
     const current = await serverDoc(MESSAGES, 'msg-theirs');
-    const forged = replicated({ ...current, body: 'forged directly' }, '99-direct', ['98-neverexisted']);
+    const forged = replicated({ ...current, body: sealed('forged directly') }, '99-direct', ['98-neverexisted']);
     const result = await couch(`${MESSAGES}/_bulk_docs`, { as: CAT, body: { new_edits: false, docs: [forged] } });
     const after = await serverDoc(MESSAGES, 'msg-theirs');
     console.info('[finding] direct forged branch →', JSON.stringify(result.json), '| winner body:', after.body, '| conflicts:', after._conflicts);
