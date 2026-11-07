@@ -1000,3 +1000,104 @@ header > div { min-width: 0; }
   h1, h2, h3 { break-after: avoid; }
   a { text-decoration: none !important; }
 }
+
+/* ── 9. Motion ──
+   One timing for the whole site so it reads as one thing: 160ms for hover,
+   press and focus, 240-320ms for things that appear. Only colour, opacity and
+   transform move; nothing animates layout, so pages never shift. Everything
+   here is switched off for readers who ask for reduced motion (end of block). */
+
+:root {
+  --tm-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --tm-fast: 160ms;
+  --tm-enter: 320ms;
+}
+
+/* Hover, press and focus ease instead of snapping between states. The hover
+   rules above carry !important; a transition still runs into them. */
+.btn, .input, .input-dark, .tm-card, .tm-tab, .tm-utilink, .tm-fact, .tm-chalcard,
+.tm-chalstep, .tm-cost, .tm-prodcard, .tm-prodchip, .tm-solution-card, .tm-handled,
+.tm-guard, .tm-lvlbtn, .tm-rolerow, .tm-faq-row, .tm-newscard, a {
+  transition:
+    background-color var(--tm-fast) ease-out,
+    border-color var(--tm-fast) ease-out,
+    color var(--tm-fast) ease-out,
+    transform var(--tm-fast) var(--tm-ease);
+}
+.btn:active:not(:disabled) { transform: translateY(1px); }
+
+/* Nav links: the condensing header changes their padding, which snapped while
+   the bar around them eased; and a blue bar slides in under the hovered link
+   (the current page keeps its own border). */
+.tm-navlink {
+  transition: color var(--tm-fast) ease-out, padding 180ms ease;
+}
+.tm-navlink::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -3px;
+  height: 3px;
+  background: #2191d0;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 200ms var(--tm-ease);
+}
+[dir="rtl"] .tm-navlink::after { transform-origin: right center; }
+.tm-navlink:hover::after { transform: scaleX(1); }
+.tm-navlink[aria-current="page"]::after { display: none; }
+
+/* Cards that are links lift by 2px: depth without leaving the flat look. */
+.tm-prodcard:hover, .tm-solution-card:hover, .tm-newscard:hover { transform: translateY(-2px); }
+.tm-newscard-fig img { transition: transform 400ms var(--tm-ease); }
+.tm-newscard:hover .tm-newscard-fig img { transform: scale(1.03); }
+
+/* Focus ring eases in; taps answer at once on touch screens. */
+:focus-visible { transition: outline-offset var(--tm-fast) ease-out; }
+a, button, summary { -webkit-tap-highlight-color: rgba(33, 145, 208, 0.15); touch-action: manipulation; }
+
+/* Home hero. All slide photographs are stacked and cross-fade; the old card
+   fades out quickly and the new one fades in just after it, so two headlines
+   are never on screen at once. visibility keeps the hidden cards out of
+   reach without changing the stack's height. */
+.tm-hero-slide { opacity: 0; transition: opacity 480ms ease; }
+.tm-hero-slide[data-on="true"] { opacity: 1; }
+.tm-hero-card {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 140ms ease-out, visibility 0s linear 140ms;
+}
+.tm-hero-card[data-on="true"] {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 260ms ease-out 140ms, visibility 0s;
+}
+/* First paint: the card rises into place once. */
+@keyframes tm-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.tm-hero-cardstack { animation: tm-rise 420ms var(--tm-ease) both; }
+
+/* Photographs fade in as they arrive instead of painting top to bottom on a
+   slow connection. Only once JavaScript has marked the page (ImageFadeIn), so
+   without it every image shows as before; the preloaded hero image is left
+   alone, so the largest paint is never held back. */
+html.tm-js img[loading="lazy"]:not([data-loaded]) { opacity: 0; }
+html.tm-js img[loading="lazy"] { transition: opacity 300ms ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  .btn:active, .tm-prodcard:hover, .tm-solution-card:hover, .tm-newscard:hover,
+  .tm-newscard:hover .tm-newscard-fig img { transform: none; }
+}
+
+@media print {
+  html.tm-js img[loading="lazy"] { opacity: 1 !important; }
+  .tm-hero-cardstack { animation: none; }
+}
