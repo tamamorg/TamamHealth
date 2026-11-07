@@ -15,6 +15,7 @@
  */
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { isNurseFamilyRole } from '@/lib/clinical-roles';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Modal from '@/components/Modal';
@@ -130,7 +131,7 @@ function rowDefault(row: RoleSettingRow, wired: { language: string; density: str
 /** Sidebar group heading for a role's own (non-personal) sections. */
 function roleGroupTitle(role: string): string {
   if (role === 'doctor' || role === 'clinical_officer' || role === 'clinician') return 'Clinical';
-  if (role === 'nurse' || role === 'midwife' || role === 'triage_nurse' || role === 'rooming_nurse') return 'Nursing';
+  if (isNurseFamilyRole(role)) return 'Nursing';
   if (role === 'pharmacist') return 'Pharmacy';
   if (role === 'lab_tech' || role === 'radiologist') return 'Laboratory';
   return 'Workstation';

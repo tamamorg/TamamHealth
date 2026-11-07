@@ -22,6 +22,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { isNurseFamilyRole } from '@/lib/clinical-roles';
 import { useRouter } from 'next/navigation';
 import PortalModal from '@/components/Modal';
 import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
@@ -210,9 +211,8 @@ export default function BookAppointmentModal({
    * facility in the dataset.
    */
   const nurseOptions = useMemo(() => {
-    const SECOND_STAFF_ROLES = new Set(['nurse', 'midwife', 'triage_nurse', 'rooming_nurse']);
     return users
-      .filter(u => SECOND_STAFF_ROLES.has(u.role)
+      .filter(u => isNurseFamilyRole(u.role)
         && u.isActive !== false
         && canAssignStaffAtFacility(myHospitalId, u.hospitalId))
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''));

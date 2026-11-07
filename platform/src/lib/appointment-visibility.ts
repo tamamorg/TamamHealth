@@ -1,4 +1,5 @@
 import type { AppointmentDoc, UserRole } from './db-types';
+import { NURSE_FAMILY_ROLES } from './clinical-roles';
 
 export interface AppointmentViewer {
   _id: string;
@@ -17,7 +18,7 @@ export const FACILITY_APPOINTMENT_ROLES: readonly UserRole[] = [
 ];
 
 const PROVIDER_ROLES: readonly UserRole[] = ['doctor', 'clinical_officer', 'clinician'];
-const NURSING_ROLES: readonly UserRole[] = ['nurse', 'midwife', 'triage_nurse', 'rooming_nurse'];
+const NURSING_ROLES: readonly UserRole[] = NURSE_FAMILY_ROLES;
 // Service roles that work the shared clinical workspace (NutritionHomeView,
 // RadiologyHomeView) and book into it: their book is the visits they hold,
 // as the provider or as the visit's second person.

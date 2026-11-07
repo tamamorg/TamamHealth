@@ -14,6 +14,7 @@
  * says. Cover is edited where policies are managed, not while moving a booking.
  */
 import { useMemo, type ReactNode } from 'react';
+import { isNurseFamilyRole } from '@/lib/clinical-roles';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { usePatientPayments } from '@/lib/hooks/usePayments';
 import { useSettings } from '@/lib/settings/SettingsProvider';
@@ -82,7 +83,7 @@ export default function AppointmentDetailFields({
   // Staff who can be the second person on a visit — nursing roles at this
   // facility, not the provider carrying it.
   const staffOptions = useMemo(() => users
-    .filter(u => ['nurse', 'midwife', 'triage_nurse', 'rooming_nurse'].includes(u.role || ''))
+    .filter(u => isNurseFamilyRole(u.role))
     .filter(u => canAssignStaffAtFacility(currentHospitalId, u.hospitalId))
     .sort((a, b) => (a.name || '').localeCompare(b.name || '')), [users, currentHospitalId]);
 
