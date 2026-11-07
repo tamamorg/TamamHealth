@@ -1,0 +1,134 @@
+/* Clinic hours (AvailabilityModal). Field type and boxes are the platform's
+   form look; this file lays the sections out, and resets the global
+   `label { text-transform: uppercase }` for the wrapping labels. */
+
+.avp { display: flex; flex-direction: column; gap: 20px; }
+
+.avp-section { display: flex; flex-direction: column; gap: 12px; }
+.avp-section + .avp-section { padding-top: 16px; border-top: 1px solid var(--border-light); }
+.avp-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+.avp .avp-heading {
+  margin: 0;
+  font-family: var(--font-platform);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--accent-text, var(--text-primary));
+}
+
+.avp-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+
+.avp label.avp-field,
+.avp .avp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+.avp-field--half { width: calc(50% - 6px); }
+
+.avp .avp-label {
+  font-family: var(--font-platform);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-primary);
+}
+
+.avp :is(input, select) { width: 100%; min-height: 40px; }
+.avp textarea { width: 100%; }
+
+/* Weekday toggles: seven equal cells, the chosen ones filled blue. */
+.avp-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.avp-day {
+  min-height: 36px;
+  padding: 0 4px;
+  border: 1px solid var(--border-medium);
+  border-radius: 0;
+  background: var(--bg-card-solid);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.avp-day[aria-pressed="true"] {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary);
+  color: #fff;
+}
+.avp-day:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+
+/* Breaks: kind, from, to, remove, one row each. */
+.avp-breaks { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.avp-break {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr) 36px;
+  align-items: end;
+  gap: 8px;
+}
+.avp-break[data-invalid] input { border-color: var(--color-danger, #D92B20); }
+.avp-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--border-light);
+  border-radius: 0;
+  background: var(--bg-card-solid);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.avp-remove:hover { color: var(--color-danger, #D92B20); border-color: currentColor; }
+.avp-remove svg.lucide { color: inherit; stroke: currentColor; }
+
+.avp-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-link, var(--accent-text));
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.avp-add svg.lucide { color: inherit; stroke: currentColor; }
+.avp-add:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.avp-muted { margin: 0; font-size: 13px; color: var(--text-secondary); }
+
+.avp-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border-light);
+  border-inline-start: 3px solid var(--accent-primary);
+  border-radius: 0;
+  background: var(--bg-card-solid);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.avp-summary b { font-weight: 600; color: var(--text-primary); }
+.avp-summary svg.lucide { flex: 0 0 auto; margin-top: 2px; color: var(--accent-primary); stroke: currentColor; }
+
+@media (max-width: 520px) {
+  .avp-row { grid-template-columns: minmax(0, 1fr); }
+  .avp-field--half { width: 100%; }
+  .avp-break { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px; }
+  .avp-break > .avp-field:first-child { grid-column: 1 / -1; }
+}

@@ -72,10 +72,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const [toasts, setToasts] = useState<Toast[]>([]);
   const timers = useRef(new Map<number, number>());
+  // Mirror of the rendered toasts so showToast can find a duplicate without
+  // waiting on a state updater.
+  const live = useRef<Toast[]>([]);
+  useEffect(() => { live.current = toasts; }, [toasts]);
 
   const remove = useCallback((id: number) => {
     const held = timers.current.get(id);
     if (held !== undefined) { window.clearTimeout(held); timers.current.delete(id); }
+    // Marked leaving in the mirror at once, not only after the render. A
+    // form's FormError raises its toast in an effect and takes it down in the
+    // cleanup; React runs that pair twice in development, and the re-run
+    // found the toast it had just removed, "restarted" it, and the pending
+    // removal then took it away, so every form error flashed and vanished.
+    live.current = live.current.map(toast => (toast.id === id ? { ...toast, leaving: true } : toast));
     setToasts(prev => prev.map(toast => (toast.id === id ? { ...toast, leaving: true } : toast)));
     window.setTimeout(() => setToasts(prev => prev.filter(toast => toast.id !== id)), LEAVE_MS);
   }, []);
@@ -92,10 +102,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     if (held !== undefined) { window.clearTimeout(held); timers.current.delete(id); }
   }, []);
 
-  // Mirror of the rendered toasts so showToast can find a duplicate without
-  // waiting on a state updater.
-  const live = useRef<Toast[]>([]);
-  useEffect(() => { live.current = toasts; }, [toasts]);
 
   const showToast = useCallback((raw: string, type: ToastType = 'info', opts?: ToastOptions) => {
     const { title, message } = splitNotice(raw, opts?.title);

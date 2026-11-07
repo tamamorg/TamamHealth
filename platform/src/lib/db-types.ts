@@ -2606,6 +2606,26 @@ export interface AvailabilityDoc extends BaseDoc {
    * advertise a 24-hour clinic. Staff booking ignores this flag.
    */
   bookableOnline?: boolean;
+  /**
+   * One working day published as a plan (2026-11-04): the hours less the
+   * breaks are written as one window per bookable stretch, all sharing this
+   * id, so slots never fall inside a break and the plan can be shown and
+   * withdrawn as a whole. Unset on windows written one at a time.
+   */
+  dayPlanId?: string;
+  /** The plan's whole working day, HH:MM, carried on each of its windows. */
+  dayStart?: string;
+  dayEnd?: string;
+  /** The plan's breaks, carried on each of its windows so the desk can name the gaps. */
+  breaks?: AvailabilityBreak[];
+}
+
+export type AvailabilityBreakKind = 'lunch' | 'tea' | 'ward_round' | 'prayer' | 'meeting' | 'theatre' | 'other';
+
+export interface AvailabilityBreak {
+  kind: AvailabilityBreakKind;
+  start: string; // HH:MM
+  end: string;   // HH:MM
 }
 
 // ===== Announcements (broadcast notices to staff) =====

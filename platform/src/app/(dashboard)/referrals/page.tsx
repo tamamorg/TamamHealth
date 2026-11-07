@@ -38,6 +38,7 @@ import { formatAppointmentTimeUntil } from '@/lib/format-utils';
 import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation, dismissBackdrop } from '@/lib/a11y';
 import { useUrlView } from '@/lib/navigation/use-url-view';
+import { sameDepartment } from '@/modules/departments/client';
 
 const isImage = (mimeType: string) => mimeType.startsWith('image/');
 
@@ -516,7 +517,8 @@ export default function ReferralsPage() {
     }
     if (f.patient && !`${r.patientName} ${r.patientId}`.toLowerCase().includes(f.patient.toLowerCase())) return false;
     if (f.route && !`${r.fromHospital} ${r.toHospital}`.toLowerCase().includes(f.route.toLowerCase())) return false;
-    if (f.department && !(r.department || '').toLowerCase().includes(f.department.toLowerCase())) return false;
+    // A chosen department matches its other spellings too ("Pediatrics" for Paediatrics).
+    if (f.department && !sameDepartment(r.department, f.department) && !(r.department || '').toLowerCase().includes(f.department.toLowerCase())) return false;
     if (f.urgency && r.urgency !== f.urgency) return false;
     if (f.status && r.status !== f.status) return false;
     return true;

@@ -535,3 +535,24 @@ describe('the portal channel', () => {
     expect(times(slots)).toEqual(['09:30']);
   });
 });
+
+// ── Clinic hours with breaks (AvailabilityModal, 2026-11-04) ────────────────
+// A day plan is written as one window per bookable stretch; the engine must
+// offer the stretches and nothing inside a break.
+describe('a published day with breaks', () => {
+  it('offers no slot inside lunch or the tea break', async () => {
+    const { planSegments } = await import('@/lib/availability-plan');
+    const breaks = [{ kind: 'tea' as const, start: '10:30', end: '10:45' }, { kind: 'lunch' as const, start: '13:00', end: '14:00' }];
+    const windows = planSegments('08:00', '17:00', breaks).map((seg, i) => window_({
+      _id: `plan-${i}`, startTime: seg.start, endTime: seg.end, slotMinutes: 30, dayPlanId: 'p', breaks,
+    }));
+    const offered = times(computeSlots(windows, [], [], policy(), query(), NOW_ISO));
+    expect(offered).toContain('08:00');
+    expect(offered).toContain('14:00');
+    expect(offered).not.toContain('13:00');
+    expect(offered).not.toContain('13:30');
+    expect(offered).not.toContain('10:30');
+    // No slot straddles a break's start either.
+    expect(offered.filter(t => t > '12:30' && t < '14:00')).toEqual([]);
+  });
+});
