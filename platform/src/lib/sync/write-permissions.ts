@@ -1072,56 +1072,84 @@ export function buildValidateDocUpdateFn(
     var isEnvelope = function (v) {
       return v.indexOf('oenc:v1:') === 0 || v.indexOf('oencm:v1:') === 0 || v.indexOf('enc:v1:') === 0;
     };
-    var collectStrings = function (node, found) {
-      if (typeof node === 'string') { found['$' + node] = true; return; }
-      if (node && typeof node === 'object') {
-        for (var ck in node) {
-          if (node.hasOwnProperty(ck) && ck.charAt(0) !== '_') collectStrings(node[ck], found);
-        }
-      }
-    };
-    var heldPlaintext = {};
-    if (oldDoc && !oldDoc._deleted) collectStrings(oldDoc, heldPlaintext);
-    var unsealedPath = null;
+    // CouchDB runs this function in its own JS context, so a document's arrays
+    // are not instances of THIS context's Array and \`instanceof Array\` is false
+    // for every one of them (why CouchDB ships isArray()). Without this, every
+    // \`x[]\` path in the catalogue went unchecked. hasOwnProperty is called
+    // from the prototype so a document key named "hasOwnProperty" cannot break
+    // the walk.
+    var isArr = function (x) { return Object.prototype.toString.call(x) === '[object Array]'; };
+    var own = function (o, k) { return Object.prototype.hasOwnProperty.call(o, k); };
+    // First find candidates: non-empty strings at catalogued paths that are not
+    // envelopes. Most writes have none, and then nothing else is read (the old
+    // revision is never walked, which matters for multi-megabyte attachments).
+    var candidates = [];
     var checkLeaf = function (value, path) {
-      if (unsealedPath === null && typeof value === 'string' && value !== '' && !isEnvelope(value) && !heldPlaintext['$' + value]) {
-        unsealedPath = path;
-      }
+      if (typeof value === 'string' && value !== '' && !isEnvelope(value)) candidates.push({ v: value, p: path });
     };
     var deepSealed = function (node, path) {
       if (typeof node === 'string') { checkLeaf(node, path); return; }
-      if (node instanceof Array) {
+      if (isArr(node)) {
         for (var di = 0; di < node.length; di++) deepSealed(node[di], path + '[' + di + ']');
         return;
       }
       if (node && typeof node === 'object') {
         for (var dk in node) {
-          if (node.hasOwnProperty(dk) && dk.charAt(0) !== '_') deepSealed(node[dk], path + (path ? '.' : '') + dk);
+          if (own(node, dk) && dk.charAt(0) !== '_') deepSealed(node[dk], path + (path ? '.' : '') + dk);
         }
       }
     };
     var walkSealed = function (node, segs, si, path) {
-      if (unsealedPath !== null || node === undefined || node === null) return;
+      if (node === undefined || node === null) return;
       if (si === segs.length) {
         if (typeof node === 'string') checkLeaf(node, path);
-        else if (node instanceof Array) {
+        else if (isArr(node)) {
           for (var ai2 = 0; ai2 < node.length; ai2++) if (typeof node[ai2] === 'string') checkLeaf(node[ai2], path + '[' + ai2 + ']');
         }
         return;
       }
       var seg = segs[si];
       if (seg === '**') { deepSealed(node, path); return; }
-      if (typeof node !== 'object' || node instanceof Array) return;
+      if (typeof node !== 'object' || isArr(node)) return;
       var child = node[seg.k];
       if (seg.e) {
-        if (child instanceof Array) {
+        if (isArr(child)) {
           for (var ci = 0; ci < child.length; ci++) walkSealed(child[ci], segs, si + 1, path + (path ? '.' : '') + seg.k + '[' + ci + ']');
         }
         return;
       }
       walkSealed(child, segs, si + 1, path + (path ? '.' : '') + seg.k);
     };
-    for (var sp = 0; sp < sealedSpec.length && unsealedPath === null; sp++) walkSealed(newDoc, sealedSpec[sp], 0, '');
+    for (var sp = 0; sp < sealedSpec.length; sp++) walkSealed(newDoc, sealedSpec[sp], 0, '');
+
+    var unsealedPath = null;
+    if (candidates.length) {
+      // A revision past the first that arrives with no oldDoc is a branch whose
+      // parent the server does not hold as its current revision (two devices
+      // edited offline; CouchDB passes no previous version). Its untouched
+      // legacy plaintext cannot be told apart from new text, and refusing it
+      // would strand that edit on the device. It is stored as a conflict, as
+      // before; its new text is sealed by the client, and the conflict's
+      // resolution is an ordinary update judged here. A first revision (a
+      // create) is always judged.
+      var revGen = newDoc._rev ? parseInt(String(newDoc._rev).split('-')[0], 10) : 0;
+      var unknownParent = !oldDoc && revGen > 1;
+      if (!unknownParent) {
+        var heldPlaintext = {};
+        var collectStrings = function (node) {
+          if (typeof node === 'string') { heldPlaintext['$' + node] = true; return; }
+          if (node && typeof node === 'object') {
+            for (var ck in node) {
+              if (own(node, ck) && ck.charAt(0) !== '_') collectStrings(node[ck]);
+            }
+          }
+        };
+        if (oldDoc && !oldDoc._deleted) collectStrings(oldDoc);
+        for (var cx = 0; cx < candidates.length && unsealedPath === null; cx++) {
+          if (!heldPlaintext['$' + candidates[cx].v]) unsealedPath = candidates[cx].p;
+        }
+      }
+    }
     if (unsealedPath !== null) {
       // The path is named; the value never is (it is patient data).
       throw({ forbidden: docType + ' field ' + unsealedPath + ' must be encrypted before it is stored; refresh and sign in again to load the organisation key' });

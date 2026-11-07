@@ -159,6 +159,20 @@ live('sync gateway against a real CouchDB', () => {
       } });
       expect(edit.status).toBe(201);
     });
+
+    // Security audit M3 follow-up: CouchDB hands the validator arrays from its
+    // own JS context, so a check written with \`instanceof Array\` never looked
+    // inside a catalogued array path. This proves the check runs inside one.
+    test('refuses plaintext inside a catalogued array path, as CouchDB itself runs the check', async () => {
+      const doc = await serverDoc(MESSAGES, 'msg-patient');
+      const history = Array.isArray(doc.editHistory) ? doc.editHistory as Array<Record<string, unknown>> : [];
+      const leaked = await couch(`${MESSAGES}/msg-patient`, { method: 'PUT', as: BEN, body: {
+        ...doc, body: sealed('see you Thursday'),
+        editHistory: [...history, { body: doc.body, at: doc.sentAt }, { body: 'readable earlier wording', at: doc.sentAt }],
+      } });
+      expect(leaked.status).toBe(403);
+      expect(JSON.stringify(leaked.json)).toMatch(/editHistory\[\d+\]\.body must be encrypted/);
+    });
   });
 
   describe('reads through the gateway', () => {
