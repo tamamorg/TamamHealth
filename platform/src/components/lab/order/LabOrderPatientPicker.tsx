@@ -11,6 +11,7 @@ import { Search, X } from '@/components/icons/lucide';
 import { patientAgeLabel, patientFullName } from '@/lib/patient-utils';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { PatientDoc } from '@/lib/db-types';
+import './lab-order.css';
 
 export default function LabOrderPatientPicker({
   patients,
@@ -25,6 +26,9 @@ export default function LabOrderPatientPicker({
 }) {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
+  /* The matches float over the form under the field (a dropdown), so the
+     card does not grow as you type. Open while the search has focus. */
+  const [open, setOpen] = useState(false);
   const selected = selectedId ? patients.find(p => p._id === selectedId) : null;
 
   if (selected) {
@@ -52,31 +56,50 @@ export default function LabOrderPatientPicker({
       ).slice(0, 8)
     : [];
 
+  /* Close when focus leaves the field and its list; Escape closes it first
+     (and only then the slider around it). */
+  const closeOnLeave = (e: React.FocusEvent<HTMLElement>) => {
+    const host = e.currentTarget.closest('.labord-patient-search');
+    if (!host?.contains(e.relatedTarget as Node | null)) setOpen(false);
+  };
+  const closeOnEscape = (e: React.KeyboardEvent<HTMLElement>) => {
+    if (e.key === 'Escape' && open) { e.stopPropagation(); setOpen(false); }
+  };
+
   return (
-    <div>
+    <div className="labord-patient-search">
+      {/* `search-icon-input`: the input is the box and the icon sits over it.
+          Without it, globals.css treats an svg + search input pair as a
+          wrapper-drawn box and strips the input's border and fill, and this
+          wrapper draws none, so the field vanished on a grey form. */}
       <div style={{ position: 'relative' }}>
-        <Search
-          className="w-4 h-4"
-          style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }}
-          aria-hidden
-        />
+        <Search className="search-input-icon" style={{ color: 'var(--text-muted)' }} aria-hidden />
         <input
           type="search"
+          className="search-icon-input"
           value={query}
-          onChange={e => setQuery(e.target.value)}
+          onChange={e => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onClick={() => setOpen(true)}
+          onBlur={closeOnLeave}
+          onKeyDown={closeOnEscape}
           placeholder={t('labOrder.searchPatientPlaceholder')}
-          style={{ paddingInlineStart: 32 }}
           autoFocus={autoFocus}
           aria-label={t('labOrder.patient')}
         />
       </div>
-      {matches.length > 0 && (
-        <div className="labord-picklist" style={{ marginTop: 6, maxHeight: 220 }}>
+      {open && matches.length > 0 && (
+        <div className="labord-picklist labord-picklist--results tm-elevated">
           {matches.map(patient => (
             <button
               key={patient._id}
               type="button"
               className="labord-pick"
+              // Keeps focus in the field: Safari does not focus a clicked
+              // button, so the field's blur would close the list first.
+              onMouseDown={e => e.preventDefault()}
+              onBlur={closeOnLeave}
+              onKeyDown={closeOnEscape}
               onClick={() => { onSelect(patient._id); setQuery(''); }}
             >
               <span style={{ flex: 1, minWidth: 0 }}>
@@ -90,8 +113,8 @@ export default function LabOrderPatientPicker({
           ))}
         </div>
       )}
-      {q.length > 0 && matches.length === 0 && (
-        <p className="labord-help">{t('labOrder.noPatientsMatch')}</p>
+      {open && q.length > 0 && matches.length === 0 && (
+        <p className="labord-help labord-picklist--results labord-picklist--empty tm-elevated">{t('labOrder.noPatientsMatch')}</p>
       )}
     </div>
   );

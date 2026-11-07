@@ -590,9 +590,45 @@
 .labord-picklist {
   max-height: 300px;
   overflow-y: auto;
-  border: 1px solid var(--labord-line);
+  border: 1px solid var(--labord-line, var(--border-light));
   border-radius: 0;
 }
+
+/* The patient search's matches. The picker is also used outside the order
+   wizard (the lab's New lab request slider), where the --labord-* tokens are
+   not defined, so every value here carries its own fallback. A white panel
+   with a medium border and a lift, attached under the field, so it reads as
+   the field's dropdown on the grey form and not as more of the form. */
+.labord-patient-search input[type="search"].search-icon-input {
+  min-height: 40px;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-medium);
+}
+.labord-patient-search input[type="search"].search-icon-input:focus {
+  border-color: var(--accent-primary);
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--accent-primary);
+}
+.labord-patient-search { position: relative; }
+.labord-picklist.labord-picklist--results,
+.labord-picklist--results.labord-picklist--empty {
+  position: absolute;
+  top: calc(100% + 4px);
+  inset-inline: 0;
+  z-index: 30;
+  margin: 0;
+  max-height: 240px;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-medium);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+}
+.labord-picklist--results.labord-picklist--empty { padding: 10px 12px; border-radius: 0; font-size: 13px; color: var(--text-secondary); }
+.labord-picklist--results .labord-pick { background: var(--bg-card-solid); }
+.labord-picklist--results .labord-pick:last-child { border-bottom: 0; }
+.labord-picklist--results .labord-pick:hover,
+.labord-picklist--results .labord-pick:focus-visible { background: var(--bg-secondary); outline: none; }
+.labord-picklist--results .labord-pick-name { font-size: 14px; }
+.labord-picklist--results .labord-pick-meta { font-size: 12px; color: var(--text-secondary); }
 
 .labord-picklist-section {
   padding: 6px 12px;
@@ -623,7 +659,7 @@
   color: var(--text-primary);
 }
 
-.labord-pick:hover { background: var(--labord-surface-soft); }
+.labord-pick:hover { background: var(--labord-surface-soft, var(--bg-secondary)); }
 
 .labord-pick--on { background: rgba(33, 145, 208, 0.09); }
 
