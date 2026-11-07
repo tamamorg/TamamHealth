@@ -9,70 +9,32 @@
  *
  * The look is the website's; the behaviour is the platform's. This page holds
  * a real session — the site's copy is a mock that only flips a success line —
- * so the fields are the ones auth actually needs (username, optional role,
- * password) and every state the platform has (offline-database boot, error
- * and loading) keeps working.
+ * so the fields are the ones auth actually needs (username and password) and
+ * every state the platform has (offline-database boot, error and loading)
+ * keeps working.
+ *
+ * Credentials only (2026-11-06, user: "we dont need the role for login just
+ * the credentials"). A Role field used to sit between the two; everyone but
+ * the super-admin could only ever pick their own role, so for nearly every
+ * user it was a question with one right answer. The account decides the
+ * workspace. The super-admin reaches every other workspace from its own nav
+ * (WORKSPACES), so nothing was lost with it. Which door someone came through
+ * is chosen before this page, on the welcome page at `/`.
  */
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { resolveLandingPage } from '@/lib/user-prefs';
 import { canRedirectAfterSignIn, resolveNextPath } from '@/lib/navigation/login-redirect';
-import { ROLE_ROUTE_TABLE } from '@/lib/role-routes';
 import { ROLE_LABEL } from '@/lib/role-display';
-import { canonicalizeUserRole, isLegacyRole } from '@/lib/user-role';
+import { canonicalizeUserRole } from '@/lib/user-role';
 import type { UserRole } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { Corners } from '@/components/login/login-chrome';
 import { portalFromParam, shotForPortal, DEFAULT_PORTAL, type LoginPortal } from '@/components/login/portal-imagery';
 import { FormError } from '@/components/overlay/FormNotices';
-
-// Role picker options — every role in the platform, labeled like the rest of
-// the UI. Everyone signs in as their assigned role; only the platform
-// super-admin may pick a different one and enter that role's workspace.
-//
-// Two roles can share a display label. `doctor` and `clinician` are both
-// "Doctor", and their route tables are character-for-character the same, so
-// the picker used to offer "Doctor (doctor)" and "Doctor (clinician)" — two
-// rows, one destination, and a key nobody outside the codebase has ever seen.
-// This question ("which workspace do you want to enter?") has one answer for
-// both, so they collapse to one row.
-//
-// The collapse is conditional on purpose: same label but a DIFFERENT route set
-// would be two genuinely different workspaces wearing one name, and hiding one
-// of them would make a workspace unreachable. Those keep the disambiguating
-// suffix, which is the only case it was ever for.
-const ROLE_OPTIONS = (() => {
-  const roles = (Object.keys(ROLE_ROUTE_TABLE) as UserRole[])
-    .filter(role => !isLegacyRole(role));
-  const workspaceOf = (value: UserRole) =>
-    `${ROLE_ROUTE_TABLE[value].defaultDashboard}|${[...ROLE_ROUTE_TABLE[value].allowed].sort().join(',')}`;
-
-  const byLabel = new Map<string, UserRole[]>();
-  for (const value of roles) {
-    const label = ROLE_LABEL[value];
-    byLabel.set(label, [...(byLabel.get(label) ?? []), value]);
-  }
-
-  const options: { value: UserRole; label: string }[] = [];
-  for (const [label, sharing] of byLabel) {
-    // Group the roles under this label by the workspace they open. One group
-    // means one row; more than one means the label is genuinely ambiguous.
-    const byWorkspace = new Map<string, UserRole[]>();
-    for (const value of sharing) {
-      const key = workspaceOf(value);
-      byWorkspace.set(key, [...(byWorkspace.get(key) ?? []), value]);
-    }
-    const ambiguous = byWorkspace.size > 1;
-    for (const group of byWorkspace.values()) {
-      // First key in the table wins — it is the canonical one for that
-      // workspace, and the picker only ever needs one way in.
-      options.push({ value: group[0], label: ambiguous ? `${label} (${group[0]})` : label });
-    }
-  }
-  return options.sort((a, b) => a.label.localeCompare(b.label));
-})();
 
 /**
  * One seeded demo account, as `/api/demo-credentials` returns it. The roster
@@ -111,13 +73,6 @@ export default function LoginPage() {
    *  the redirect so the button never flashes back to "Log in". */
   const [signedIn, setSignedIn] = useState(false);
   const [keepSignedIn, setKeepSignedIn] = useState(true);
-  // '' = sign in as the account's own role; a value = requested role
-  // (honoured by the server only for the super-admin).
-  const [roleChoice, setRoleChoice] = useState<UserRole | ''>('');
-  // The role combobox: what's typed in the field (a filter while the menu is
-  // open, the chosen role's label once picked) and whether the menu shows.
-  const [roleQuery, setRoleQuery] = useState('');
-  const [roleMenuOpen, setRoleMenuOpen] = useState(false);
   // Demo-only account picker. The build-time flag decides whether to ASK;
   // the answer decides whether to show anything, so a deployment where the
   // route declines (it has a users database) keeps the product panel.
@@ -208,23 +163,6 @@ export default function LoginPage() {
     return order.map(name => ({ name, accounts: byGroup.get(name)! }));
   }, [demoAccounts]);
 
-  const roleLabelFor = (value: UserRole | '') =>
-    value ? (ROLE_OPTIONS.find(r => r.value === value)?.label || '') : '';
-
-  // Typing filters; a query that exactly equals the current choice's label
-  // means "just reopened" and shows the full list again.
-  const roleMatches = (() => {
-    const q = roleQuery.trim().toLowerCase();
-    if (!q || q === roleLabelFor(roleChoice).toLowerCase()) return ROLE_OPTIONS;
-    return ROLE_OPTIONS.filter(r => r.label.toLowerCase().includes(q));
-  })();
-
-  const selectRole = (option: { value: UserRole; label: string } | null) => {
-    setRoleChoice(option?.value ?? '');
-    setRoleQuery(option?.label ?? '');
-    setRoleMenuOpen(false);
-  };
-
   /* A session that is already live goes to its dashboard — but NOT while a
      sign-in is in flight, and not once the visitor has said they want a
      different account. Both exceptions are the same bug: this effect fired on
@@ -300,8 +238,6 @@ export default function LoginPage() {
   const signInAsDemo = async (account: DemoAccount) => {
     setUsername(account.username);
     setPassword(account.password);
-    setRoleChoice('');
-    setRoleQuery('');
     setError('');
     setLoading(true);
     try {
@@ -320,7 +256,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       if (isAuthenticated) logout();
-      const result = await login(username, password, undefined, roleChoice || undefined, keepSignedIn);
+      const result = await login(username, password, undefined, undefined, keepSignedIn);
       if (result) { setSignedIn(true); return; }
 
       setError(describeLoginFailure(t('login.errorInvalidCredentials')));
@@ -354,10 +290,12 @@ export default function LoginPage() {
     <div className="lg-root">
       {/* ── Logo bar ── */}
       <header className="lg-topbar">
-        <a href="https://tamamhealth.org" className="lg-topbar-link">
+        {/* Home is the welcome page, where the door (staff, ministry,
+            patient) is chosen; tamamhealth.org stays in the footer. */}
+        <Link href="/" className="lg-topbar-link">
           {/* eslint-disable-next-line @next/next/no-img-element -- fixed-height SVG logo */}
           <img src="/assets/tamamhealth-logo-full.svg" alt={t('ui.tamamHealthcareSystem')} className="lg-topbar-logo" />
-        </a>
+        </Link>
       </header>
 
       <div className="lg-grid">
@@ -391,84 +329,6 @@ export default function LoginPage() {
                 placeholder={t('ui.eGDeskAmira')}
                 autoComplete="username"
               />
-            </div>
-
-            {/* Role — everyone signs in as their own role; the platform
-                super-admin may pick any role and enter its workspace.
-                Searchable: typing filters the list, picking fills it. */}
-            <div className="lg-field lg-field--rel">
-              <label htmlFor="tl-role">{t('login.roleLabel')}</label>
-              <div className="lg-inputwrap">
-                <svg className="lg-inputicon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <circle cx="11" cy="11" r="7" /><path d="m20 20-4.2-4.2" />
-                </svg>
-                <input
-                  id="tl-role"
-                  type="text"
-                  className="lg-input lg-input--bare"
-                  role="combobox"
-                  aria-expanded={roleMenuOpen}
-                  aria-controls="tl-role-menu"
-                  aria-autocomplete="list"
-                  autoComplete="off"
-                  placeholder={t('login.rolePlaceholder')}
-                  value={roleQuery}
-                  onChange={(e) => {
-                    setRoleQuery(e.target.value);
-                    setRoleMenuOpen(true);
-                    if (!e.target.value.trim()) setRoleChoice('');
-                  }}
-                  onFocus={() => setRoleMenuOpen(true)}
-                  onBlur={() => { setRoleMenuOpen(false); setRoleQuery(roleLabelFor(roleChoice)); }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') setRoleMenuOpen(false);
-                    if (e.key === 'Enter' && roleMenuOpen && roleQuery.trim()
-                      && roleQuery.trim().toLowerCase() !== roleLabelFor(roleChoice).toLowerCase()) {
-                      e.preventDefault();
-                      if (roleMatches[0]) selectRole(roleMatches[0]);
-                    }
-                  }}
-                />
-                {roleQuery && (
-                  <button
-                    type="button"
-                    className="lg-clear"
-                    aria-label={t('ui.clearRole')}
-                    onMouseDown={(e) => { e.preventDefault(); selectRole(null); }}
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-              {roleMenuOpen && (
-                <div id="tl-role-menu" className="lg-rolelist" role="listbox" aria-label={t('government.roles')}>
-                  {/* onMouseDown (not click) so picking wins the race against
-                      the input's blur closing the menu. */}
-                  <button
-                    type="button" role="option" aria-selected={roleChoice === ''}
-                    className={`lg-rolerow${roleChoice === '' ? ' is-selected' : ''}`}
-                    onMouseDown={(e) => { e.preventDefault(); selectRole(null); }}
-                  >
-                    <span className="lg-rolerow-name">{t('login.roleAssigned')}</span>
-                    <span className="lg-rolerow-scope">{t('login.roleAnyHint')}</span>
-                  </button>
-                  {roleMatches.map((r) => (
-                    <button
-                      key={r.value}
-                      type="button" role="option" aria-selected={roleChoice === r.value}
-                      className={`lg-rolerow${roleChoice === r.value ? ' is-selected' : ''}`}
-                      onMouseDown={(e) => { e.preventDefault(); selectRole(r); }}
-                    >
-                      <span className="lg-rolerow-name">{r.label}</span>
-                    </button>
-                  ))}
-                  {roleMatches.length === 0 && (
-                    <span className="lg-rolelist-empty">
-                      {t('ui.noRoleMatchesThatAsk')}
-                    </span>
-                  )}
-                </div>
-              )}
             </div>
 
             <div className="lg-field">
