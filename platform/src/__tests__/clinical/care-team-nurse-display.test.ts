@@ -30,7 +30,7 @@ const source = (relative: string) =>
  * plain `includes` finds that first and asserts nothing.
  */
 function careTeamExpression(field: 'careTeamPrimary' | 'careTeamSecondary'): string {
-  const dashboard = source('components/ehr/EhrClinicalDashboard.tsx');
+  const dashboard = source('components/ehr/clinical-dashboard/worklist-rules.ts');
   const line = dashboard
     .split('\n')
     .find(l => l.includes(`${field}:`) && l.includes('||'));
@@ -47,7 +47,7 @@ describe('the nurse on a worklist row', () => {
     const expression = careTeamExpression('careTeamSecondary');
     expect(expression).toContain('row.appointment?.staffName');
 
-    const dashboard = source('components/ehr/EhrClinicalDashboard.tsx');
+    const dashboard = source('components/ehr/clinical-dashboard/worklist-rules.ts');
     expect(dashboard).toContain('patient: null');
   });
 

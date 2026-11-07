@@ -13,7 +13,7 @@ import path from 'node:path';
 const source = (relative: string) =>
   fs.readFileSync(path.join(process.cwd(), 'src', relative), 'utf8');
 
-const dashboard = source('components/ehr/EhrClinicalDashboard.tsx');
+const dashboard = source('components/ehr/clinical-dashboard/EhrClinicalDashboard.tsx');
 
 describe('the greeting row shows the dashboard\'s own actions, no More', () => {
   test('there is no More menu and no menu shortcuts in the row', () => {

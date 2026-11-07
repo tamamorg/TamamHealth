@@ -111,7 +111,7 @@ describe('the daybar search field cannot be moved by the day it is showing', () 
 
     // Both daybars must actually use it, or their row resizes on every count.
     for (const file of [
-      'src/components/ehr/EhrClinicalDashboard.tsx',
+      'src/components/ehr/clinical-dashboard/EhrClinicalDashboard.tsx',
       'src/components/ehr/EhrCareDashboard.tsx',
     ]) {
       const src = fs.readFileSync(path.join(process.cwd(), file), 'utf8');
