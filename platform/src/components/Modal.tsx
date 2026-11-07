@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { EASE, MOTION_MS, playExitGhost } from '@/lib/motion';
 import SliderResizeHandle from '@/components/overlay/SliderResizeHandle';
 import { closeSliderLayer, isSliderBuried, openSliderLayer, reserveOverlayOrder, subscribeOverlayOrder } from '@/lib/overlay-order';
 import { createPortal } from 'react-dom';
@@ -165,6 +166,28 @@ export default function Modal({
   // Portals require the DOM — only render after mount (also keeps SSR happy).
   useEffect(() => { setMounted(true); }, []);
 
+  // Leaving is motion too: the parent unmounts this the moment it closes, so
+  // the exit plays on a stand-in clone (lib/motion.ts). Shorter than the
+  // entrance, and the way it came: a slider back to its edge, a dialog down.
+  const backdropRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (!mounted) return;
+    const backdrop = backdropRef.current;
+    return () => playExitGhost(backdrop, ghost => {
+      const panel = ghost.querySelector<HTMLElement>('.modal-portal-dialog');
+      const timing = { duration: MOTION_MS.base, easing: EASE.exit, fill: 'forwards' as const };
+      const out: Animation[] = [];
+      if (!isSlider) out.push(ghost.animate([{ opacity: 1 }, { opacity: 0 }], timing));
+      if (panel) {
+        const rtl = document.documentElement.dir === 'rtl';
+        out.push(panel.animate(isDrawer
+          ? [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: `translateX(${rtl ? -24 : 24}px)` }]
+          : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(6px) scale(0.985)' }], timing));
+      }
+      return out;
+    }, 1999);
+  }, [mounted, isDrawer, isSlider]);
+
   // What is typed in the popup survives a refresh, and a refresh or a link
   // away asks first while anything is unsaved (lib/unsaved).
   const { markDismissed } = useDraftKeeper(dialogRef, {
@@ -285,6 +308,7 @@ export default function Modal({
     // listener above). There is nothing here for a key handler to add.
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events
     <div
+      ref={backdropRef}
       className={isSlider ? `modal-portal-backdrop modal-portal-backdrop--slider${buried ? ' is-buried' : ''}` : 'modal-portal-backdrop tm-motion tm-motion--backdrop'}
       onMouseDown={disableBackdropClose ? undefined : e => {
         // Arm only when the press STARTS on the backdrop. A drag that begins

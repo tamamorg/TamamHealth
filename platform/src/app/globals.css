@@ -361,6 +361,11 @@
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
   --ease-standard: cubic-bezier(0.2, 0, 0.2, 1);
+  /* Carbon productive entrance/exit (the system O3 is built on), twinned in
+     lib/motion.ts for the motion played from script. An exit is always the
+     shorter of the pair: what leaves should not compete with what arrives. */
+  --ease-enter: cubic-bezier(0, 0, 0.38, 0.9);
+  --ease-exit: cubic-bezier(0.2, 0, 1, 0.9);
 
   /* ── Dialog sizes ── five widths, so two dialogs that hold the same kind
      of content are the same width. `sm` asks a question; `md` edits one
@@ -2078,7 +2083,14 @@ small,
   font-weight: 600;
   font-family: var(--font-platform);
   cursor: pointer;
-  transition: all 0.2s ease;
+  /* Named properties, not `all`: `all` also eased padding, width and the
+     spinner swap, so a button visibly resized itself on hover. */
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
   border: none;
   white-space: nowrap;
   letter-spacing: -0.01em;
@@ -2086,6 +2098,7 @@ small,
 
 .btn:active:not(:disabled) {
   transform: scale(0.97);
+  transition-duration: 60ms;
 }
 
 .btn-primary {
@@ -36770,3 +36783,123 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
 .appointment-card-row.ehr-appointment-row {
   border-radius: 0;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOTION & LOADING (2026-11-06)
+
+   Productive motion only (IBM Carbon, which OpenMRS O3 follows): it tells
+   the user that something happened, where it came from and that the app is
+   working. It never decorates. Durations stay at or under 240 ms on the
+   `--motion-*` tokens, so `prefers-reduced-motion` stills all of it at once.
+
+   - Route progress: the line under the rail (components/motion/RouteMotion).
+   - Route skeleton: the outline a screen loads into (RouteLoading).
+   - Screen, chart-tab and workspace entrances, and every dialog's and
+     slider's exit: played from script (lib/motion.ts).
+   - Below: the state feedback (hover, press, open/close) that makes a click
+     feel answered.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Route progress ── a 3px line on the content edge under the rail. It
+   crawls toward 90 % (it cannot know the real progress, so it never claims
+   to), completes in one short move when the screen lands, then fades. */
+.tm-route-progress {
+  position: fixed;
+  top: var(--app-overlay-top-inset, 0px);
+  inset-inline: 0;
+  height: 3px;
+  z-index: var(--z-popover);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--motion-base) var(--ease-exit) 120ms;
+}
+.tm-route-progress__bar {
+  display: block;
+  height: 100%;
+  background: var(--accent-primary);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+[dir='rtl'] .tm-route-progress__bar { transform-origin: right center; }
+.tm-route-progress[data-state='loading'],
+.tm-route-progress[data-state='done'] { opacity: 1; transition: opacity var(--motion-fast) linear; }
+.tm-route-progress[data-state='loading'] .tm-route-progress__bar {
+  transform: scaleX(0.9);
+  /* Fast for the first stretch, then a crawl: reads as "working". */
+  transition: transform 8s cubic-bezier(0.05, 0.7, 0.1, 1);
+}
+.tm-route-progress[data-state='done'] { opacity: 0; transition: opacity var(--motion-base) var(--ease-exit) var(--motion-base); }
+.tm-route-progress[data-state='done'] .tm-route-progress__bar {
+  transform: scaleX(1);
+  transition: transform var(--motion-base) var(--ease-enter);
+}
+@media (prefers-reduced-motion: reduce) {
+  /* No crawl: the line simply stands while the screen loads. */
+  .tm-route-progress[data-state='loading'] .tm-route-progress__bar { transform: scaleX(1); opacity: 0.6; }
+}
+
+/* ── Route skeleton ── invisible for its first 160 ms, so a prefetched
+   screen never flashes it. */
+@keyframes tmRouteLoadingIn { from { opacity: 0; } to { opacity: 1; } }
+.tm-route-loading {
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-6, 24px);
+  background: var(--bg-card-solid);
+  animation: tmRouteLoadingIn var(--motion-slow) var(--ease-enter) 160ms both;
+}
+.tm-route-loading__head,
+.tm-route-loading__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4, 16px);
+}
+.tm-route-loading__toolbar { margin-top: var(--space-6, 24px); justify-content: flex-start; }
+.tm-route-loading__list { margin-top: var(--space-4, 16px); border-top: 1px solid var(--border-light); }
+.tm-route-loading .tm-skeleton { flex: none; }
+
+/* ── State feedback ── colour changes ease instead of snapping, so a hover
+   or a selection reads as a response. `:where()` keeps this at zero
+   specificity: any component that declares its own transition wins. Only
+   paint properties, never layout ones, so nothing moves. */
+:where(button, a, summary, [role='tab'], [role='menuitem'], [role='option'], [role='row'], tr, input, select, textarea) {
+  transition-property: background-color, border-color, color, box-shadow, outline-color, opacity;
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--ease-standard);
+}
+
+/* Disclosure chevrons turn instead of flipping. */
+:where([aria-expanded]) > svg,
+:where([aria-expanded]) svg:only-child,
+.obk-chevron,
+.tamam-plist-chevron,
+.sadb-subrow-caret,
+.tm-dialog__section-chevron,
+.vt-toggle svg,
+.cn-rx-blocktoggle svg,
+.ehr-visit-more-trigger svg,
+.ehr-set-nav button b.is-caret {
+  transition: transform var(--motion-base) var(--ease-standard);
+}
+
+/* What a disclosure opens drops in from under its header (a short fade
+   and a 4px settle). Put `tm-motion tm-reveal` on the revealed block. */
+@keyframes tmReveal { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.tm-motion.tm-reveal { animation: tmReveal var(--motion-base) var(--ease-enter) both; }
+
+/* Native disclosure (<details>): the content opens to its height, where the
+   browser can animate to `auto` (Chromium 131+). Elsewhere it opens at once,
+   as before. */
+@supports (interpolate-size: allow-keywords) {
+  details { interpolate-size: allow-keywords; }
+  details::details-content {
+    block-size: 0;
+    overflow-y: clip;
+    transition:
+      block-size var(--motion-base) var(--ease-standard),
+      content-visibility var(--motion-base) allow-discrete;
+  }
+  details[open]::details-content { block-size: auto; }
+}
+
