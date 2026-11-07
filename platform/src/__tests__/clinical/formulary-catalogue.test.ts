@@ -156,7 +156,7 @@ describe('safety rules reach the new medicines', () => {
 describe('US prescribing labels are the source of the safety rules', () => {
   const { readFileSync } = jest.requireActual('node:fs') as typeof import('node:fs');
   const { join } = jest.requireActual('node:path') as typeof import('node:path');
-  const source = readFileSync(join(process.cwd(), 'src/lib/services/drug-interaction-service.ts'), 'utf8');
+  const source = readFileSync(join(process.cwd(), 'src/lib/data/drug-interactions.ts'), 'utf8');
   const rules = [...source.matchAll(/drug1: '([^']+)',\s*drug2: '([^']+)',\s*severity: '[a-z]+',\s*(?:source: '([a-z-]+)',)?/g)]
     .map(m => ({ pair: `${m[1]} + ${m[2]}`, source: m[3] }));
 
