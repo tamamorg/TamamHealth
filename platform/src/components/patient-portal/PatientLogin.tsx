@@ -13,6 +13,7 @@
  */
 
 import { useState } from 'react';
+import Link from 'next/link';
 import type { PatientDoc } from '@/lib/db-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { IS_DEMO, writePatientPortalSession } from '@/lib/patient-portal-session';
@@ -111,10 +112,10 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
     <div className="lg-root">
       {/* ── Logo bar ── */}
       <header className="lg-topbar">
-        <a href="https://tamamhealth.org" className="lg-topbar-link">
+        <Link href="/" className="lg-topbar-link">
           {/* eslint-disable-next-line @next/next/no-img-element -- fixed-height SVG logo */}
           <img src="/assets/tamamhealth-logo-full.svg" alt={t('ui.tamamHealthcareSystem')} className="lg-topbar-logo" />
-        </a>
+        </Link>
       </header>
 
       <div className="lg-grid">
@@ -223,7 +224,7 @@ export function PatientLogin({ onLogin }: { onLogin: (patient: PatientDoc) => vo
                 {error && <FormError message={error} />}
 
                 <button type="submit" disabled={loading} className="lg-btn blueprint">
-                  {loading ? t('patientPortal.searching') : 'Log in'}
+                  {loading ? t('login.signingIn') : t('login.logIn')}
                   <Corners />
                 </button>
               </form>

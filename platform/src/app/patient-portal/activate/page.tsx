@@ -173,10 +173,10 @@ export default function PatientPortalActivatePage() {
   return (
     <div className="lg-root">
       <header className="lg-topbar">
-        <a href="https://tamamhealth.org" className="lg-topbar-link">
+        <Link href="/" className="lg-topbar-link">
           {/* eslint-disable-next-line @next/next/no-img-element -- brand mark, fixed size */}
           <img src="/assets/tamamhealth-logo-full.svg" alt={t('ui.tamamHealthcareSystem')} className="lg-topbar-logo" />
-        </a>
+        </Link>
       </header>
 
       <div className="lg-grid">
