@@ -15,13 +15,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Save, Check, Copy, Send, ClipboardList, DollarSign, Plus, Minus, ArrowLeft, ChevronDown, ChevronLeft, ChevronRight } from '@/components/icons/lucide';
+import { Save, Check, Copy, Send, ClipboardList, DollarSign, Plus, ArrowLeft, ChevronDown } from '@/components/icons/lucide';
 
-const NOTE_NAV_KEY = 'tm.noteNavCollapsed';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
-import FormSlider from '@/components/overlay/FormSlider';
-import { DialogBody, DialogFooter, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import NoteSectionCard from './NoteSectionCard';
 import AssignPicker from './AssignPicker';
 import { patientFullName } from '@/lib/patient-utils';
@@ -40,9 +37,7 @@ import IncludeProblemsModal from './assessment/IncludeProblemsModal';
 import AllergiesModal from './AllergiesModal';
 import HistoryModal from './HistoryModal';
 import NurseVitalsModal from '@/components/nurse/NurseVitalsModal';
-import CareCoordinationModal, {
-  type CareCoordinationResult, type SummaryProblem,
-} from './CareCoordinationModal';
+import CareCoordinationModal, { type CareCoordinationResult } from './CareCoordinationModal';
 import FollowUpModal, { type FollowUpModalResult } from './FollowUpModal';
 import PatientEducationModal, { type PatientEducationModalResult } from './PatientEducationModal';
 import { socialHistoryRows } from '@/lib/clinical-notes/social-history-summary';
@@ -55,15 +50,14 @@ import {
   getClinicalNoteById, updateClinicalNote, saveNoteSection, addNoteSection,
   removeNoteSection, changeNoteType, clearNote, signClinicalNote,
   addNoteAddendum, recordPlanAction, isNoteLocked,
-  listClinicalNotes, foldRetiredNoteSections, includeChartHistory, sectionBody,
+  foldRetiredNoteSections, includeChartHistory, sectionBody,
   cosignClinicalNote, copyForwardIntoDraft, findLastSignedNote, missingRequiredSections, hasContent,
 } from '@/lib/clinical-notes/note-service';
 import { canEditDraft } from '@/lib/clinical-notes/draft-access';
 import { isProviderRole } from '@/lib/clinical-roles';
 import { noteTypeLabel, sectionLabel } from '@/lib/clinical-notes/note-labels';
-import { formatPhoneDisplay } from '@/lib/field-formats';
 import { getRoleFlag } from '@/lib/settings/role-settings-store';
-import type { PatientDoc, PatientDocumentDoc, UserRole } from '@/lib/db-types';
+import type { UserRole } from '@/lib/db-types';
 import {
   loadChartSnapshot, snapshotForSection, snapshotLoadFailed, type ChartSnapshotInput,
 } from '@/lib/clinical-notes/chart-snapshot';
@@ -71,52 +65,25 @@ import { stripTemplateMarkers } from '@/lib/clinical-notes/section-templates';
 import type {
   ClinicalNoteDoc, NoteSectionContent, NoteDiagnosis,
 } from '@/lib/clinical-notes/types';
+import { AUTOSAVE_MS, CHART_LOAD_TIMEOUT_MS, withTimeout, type ChartStatus } from './note-editor/helpers';
+import { useNotePanel } from './note-editor/note-panel';
+import { useNoteChartContext } from './note-editor/useNoteChartContext';
+import { useNoteWorkspaceNav } from './note-editor/useNoteWorkspaceNav';
+import { useNoteShortcuts } from './note-editor/useNoteShortcuts';
+import { NotePatientBanner, NoteLockBanners } from './note-editor/parts/NoteBanner';
+import { NoteWorkspaceNav } from './note-editor/parts/NoteWorkspaceNav';
+import { NoteSidePanels } from './note-editor/parts/NoteSidePanels';
+import { SignConfirm } from './note-editor/parts/SignConfirm';
+import { AddendumSlider } from './note-editor/parts/Addendum';
 import './clinical-notes.css';
 import './note-workspace.css';
 import Select from '@/components/Select';
-import InlineBanner from '@/components/overlay/InlineBanner';
 import { useUnsavedChangesWarning } from '@/lib/hooks/useUnsavedChangesWarning';
 import { registerFlusher } from '@/lib/unsaved/unsaved-registry';
 import { describeError } from '@/lib/user-facing-error';
 
 const assessmentsStore = () => getDB('tamamhealth_assessments');
 
-const AUTOSAVE_MS = 900;
-/** A chart read that has not answered by now is reported as failed, not left "loading". */
-const CHART_LOAD_TIMEOUT_MS = 20000;
-
-type ChartStatus = 'loading' | 'error' | 'ready';
-
-function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('timeout')), ms);
-    work.then(
-      v => { clearTimeout(timer); resolve(v); },
-      e => { clearTimeout(timer); reject(e); },
-    );
-  });
-}
-
-/** "01 Jan 1973 (52 yo)" from an ISO date of birth. */
-function dobWithAge(dob?: string): string | null {
-  if (!dob) return null;
-  const d = new Date(`${dob}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return dob;
-  const text = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  const now = new Date();
-  let age = now.getFullYear() - d.getFullYear();
-  if (now.getMonth() < d.getMonth() || (now.getMonth() === d.getMonth() && now.getDate() < d.getDate())) age -= 1;
-  return age >= 0 ? `${text} (${age} yo)` : text;
-}
-
-function nameInitials(name: string): string {
-  return name.split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
-}
-
-/** "id_document" → "Id Document" — display label for a document category. */
-function docCategoryLabel(category: string): string {
-  return String(category).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-}
 
 interface ClinicalNoteEditorProps {
   noteId: string;
@@ -180,39 +147,15 @@ export default function ClinicalNoteEditor({
 
   const [note, setNote] = useState<ClinicalNoteDoc | null>(null);
   const [draftLocked, setDraftLocked] = useState(false);
-  // Workspace layout: which group the section list marks as current, and
-  // which groups the clinician has folded away.
-  const [workspaceGroup, setWorkspaceGroup] = useState<string>('visit-details');
-  // The workspace's section list can be folded away for more room to write;
-  // the choice is kept for the next note. Read lazily: the editor only renders
-  // in the browser, once the note has loaded.
-  const [navCollapsed, setNavCollapsed] = useState(() => typeof window !== 'undefined' && window.localStorage.getItem(NOTE_NAV_KEY) === '1');
-  const toggleNav = () => setNavCollapsed(prev => {
-    const next = !prev;
-    try { window.localStorage.setItem(NOTE_NAV_KEY, next ? '1' : '0'); } catch { /* private mode: the toggle still works */ }
-    return next;
-  });
-  const [foldedGroups, setFoldedGroups] = useState<Set<string>>(() => new Set());
-  const workspaceScrollRef = useRef<HTMLDivElement>(null);
+  const {
+    workspaceGroup, navCollapsed, toggleNav, foldedGroups, workspaceScrollRef,
+    activeSection, setActiveSection, toggleGroup, goToGroup, onWorkspaceScroll: scrollWorkspace,
+  } = useNoteWorkspaceNav();
   const [loading, setLoading] = useState(true);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [activeSection, setActiveSection] = useState<NoteSectionId | null>(null);
-  const [showAddOptional, setShowAddOptional] = useState(false);
-  const [showSignConfirm, setShowSignConfirm] = useState(false);
-  const [showAddendum, setShowAddendum] = useState(false);
+  const { open: openPanel, close: closePanel, is: isPanel, otherThanSignOpen } = useNotePanel();
   const [addendumText, setAddendumText] = useState('');
-  const [showCoordination, setShowCoordination] = useState(false);
-  const [showMedications, setShowMedications] = useState(false);
-  const [showProblems, setShowProblems] = useState(false);
-  const [showAllergies, setShowAllergies] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
-  const [showVitals, setShowVitals] = useState(false);
-  const [showPrescribe, setShowPrescribe] = useState(false);
-  const [showLabOrder, setShowLabOrder] = useState(false);
-  const [showFollowUp, setShowFollowUp] = useState(false);
-  const [showPatientEducation, setShowPatientEducation] = useState(false);
-  const [problems, setProblems] = useState<SummaryProblem[]>([]);
   // Per derived section: is the chart read still running, failed, or confirmed?
   const [chartStatus, setChartStatus] = useState<Record<string, ChartStatus>>({});
   // Supervisor chosen in the sign dialog ('' = no co-sign requested).
@@ -221,12 +164,6 @@ export default function ClinicalNoteEditor({
   // Most recent signed note of this type, offered by "Copy forward".
   const [copySource, setCopySource] = useState<{ id: string; serviceDate: string } | null>(null);
 
-  // Left-rail chart context: the patient record (photo/sex/phone), the
-  // patient's other notes, and their most recent resulted labs.
-  const [patient, setPatient] = useState<PatientDoc | null>(null);
-  const [siblingNotes, setSiblingNotes] = useState<ClinicalNoteDoc[]>([]);
-  const [recentLabs, setRecentLabs] = useState<Array<{ id: string; testName: string; date: string }> | null>(null);
-  const [documents, setDocuments] = useState<PatientDocumentDoc[] | null>(null);
   const [docLabel, setDocLabel] = useState<string>('all');
 
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -275,63 +212,7 @@ export default function ClinicalNoteEditor({
    */
   const socialHistory = useMemo(() => socialHistoryRows(note), [note]);
 
-  useEffect(() => {
-    if (!note?.patientId) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const { getProblemsByPatient } = await import('@/lib/services/problem-service');
-        const rows = await getProblemsByPatient(note.patientId, scope);
-        if (cancelled) return;
-        setProblems(rows.filter(p => p.status === 'active').map(p => ({
-          effectiveDate: p.onsetDate || p.createdAt?.slice(0, 10) || '',
-          problem: p.name,
-          status: p.status.toUpperCase(),
-        })));
-      } catch { /* the summary simply offers nothing to attach */ }
-    })();
-    return () => { cancelled = true; };
-  }, [note?.patientId, scope]);
-
-  // Chart context for the left rail. Each block fails independently: a rail
-  // card with nothing to show is not a reason to block the note.
-  useEffect(() => {
-    const patientId = note?.patientId;
-    if (!patientId) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        if (!scope) return;
-        const { getPatientById } = await import('@/lib/services/patient-service');
-        const doc = await getPatientById(patientId, scope);
-        if (!cancelled) setPatient(doc);
-      } catch { /* identity card renders from the note's own fields */ }
-      try {
-        const rows = await listClinicalNotes({ patientId }, scope);
-        if (!cancelled) setSiblingNotes(rows.filter(n => n._id !== noteId).slice(0, 8));
-      } catch { /* Patient Notes card shows its empty state */ }
-      try {
-        const { getLabResultsByPatient } = await import('@/lib/services/lab-service');
-        const labs = await getLabResultsByPatient(patientId, scope);
-        if (!cancelled) {
-          setRecentLabs(labs
-            .filter(l => l.status === 'completed')
-            .sort((a, b) => (b.completedAt || b.orderedAt || '').localeCompare(a.completedAt || a.orderedAt || ''))
-            .slice(0, 5)
-            .map(l => ({ id: l._id, testName: l.testName, date: (l.completedAt || l.orderedAt || '').slice(0, 10) })));
-        }
-      } catch { if (!cancelled) setRecentLabs([]); }
-      try {
-        const { getPatientDocuments } = await import('@/lib/services/patient-document-service');
-        const docs = await getPatientDocuments(patientId, scope);
-        if (!cancelled) {
-          docs.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-          setDocuments(docs);
-        }
-      } catch { if (!cancelled) setDocuments([]); }
-    })();
-    return () => { cancelled = true; };
-  }, [note?.patientId, noteId, scope]);
+  const { problems, patient, siblingNotes, recentLabs, documents } = useNoteChartContext(note, noteId, scope);
 
   // Flush any pending edit when the editor unmounts (or switches to a
   // different note), so navigating away mid-keystroke does not drop the last
@@ -669,13 +550,13 @@ export default function ClinicalNoteEditor({
   const handleSectionAction = useCallback((actionId: NoteSectionActionId) => {
     if (!note) return;
     switch (actionId) {
-      case 'update_history': setShowHistory(true); return;
-      case 'include_problems': setShowProblems(true); return;
-      case 'review_medications': setShowMedications(true); return;
-      case 'manage_allergies': setShowAllergies(true); return;
+      case 'update_history': openPanel('history'); return;
+      case 'include_problems': openPanel('problems'); return;
+      case 'review_medications': openPanel('medications'); return;
+      case 'manage_allergies': openPanel('allergies'); return;
       case 'prescribe':
         if (onOpenOrderBasket) onOpenOrderBasket('drug', { encounterId: note.encounterId });
-        else setShowPrescribe(true);
+        else openPanel('prescribe');
         return;
       // Opens the chart's own vitals form over the note. It used to navigate
       // to the chart's Vitals tab: the clinician left a half-written note,
@@ -684,24 +565,24 @@ export default function ClinicalNoteEditor({
       // is still written to the CHART (recordNursingVitals) — the note only
       // ever holds a snapshot of it, refreshed on save below.
       case 'record_vitals':
-        setShowVitals(true);
+        openPanel('vitals');
         return;
       // Opens FollowUpModal, which only collects the form; the write
       // (createFollowUp, then recordPlanAction) happens in
       // handleScheduleFollowUp once a real FollowUpDoc exists — the old
       // router.push to /appointments only filtered a list and created nothing.
       case 'schedule_followup':
-        setShowFollowUp(true);
+        openPanel('followUp');
         return;
       case 'order_lab':
         if (onOpenOrderBasket) onOpenOrderBasket('lab', { encounterId: note.encounterId });
-        else setShowLabOrder(true);
+        else openPanel('labOrder');
         return;
       // Care Coordination already creates the referral and records the plan
       // action itself, only on success (see handleCoordination) — reuse it
       // instead of navigating to a list page that does not read patientId.
       case 'refer':
-        setShowCoordination(true);
+        openPanel('coordination');
         return;
       // `/immunizations?patientId=` does read and act on this param (it opens
       // the add-immunization form prefilled), but the order is not placed
@@ -716,11 +597,11 @@ export default function ClinicalNoteEditor({
       // through the same createMessage flag shape the chart's own
       // "Patient education" action uses, and only then stamps the plan.
       case 'patient_education':
-        setShowPatientEducation(true);
+        openPanel('patientEducation');
         return;
       default: return;
     }
-  }, [note, noteId, navigateAway, onOpenOrderBasket]);
+  }, [note, noteId, navigateAway, onOpenOrderBasket, openPanel]);
 
   // ── Assessment: problems checked in the Include Problems popup become
   //    diagnosis lines on the note, deduped against what is already there ──
@@ -742,13 +623,13 @@ export default function ClinicalNoteEditor({
 
   const openSignConfirm = useCallback(() => {
     setCosignFromId('');
-    setShowSignConfirm(true);
-  }, []);
+    openPanel('signConfirm');
+  }, [openPanel]);
 
   const handleSign = async () => {
     if (missingSections.length > 0) return;
     const requested = cosignCandidates.find(u => u._id === cosignFromId);
-    setShowSignConfirm(false);
+    closePanel('signConfirm');
     const updated = await persist(async () => {
       await flushPendingEdits();
       await syncMeasures();
@@ -850,41 +731,13 @@ export default function ClinicalNoteEditor({
     else showToast(t('noteEditor.copyForwardNone'), 'error');
   };
 
-  // ── Keyboard: Ctrl/Cmd+S saves the draft, Ctrl/Cmd+Enter opens the sign
-  //    confirm. Ignored while any other dialog is up — the shortcut belongs to
-  //    the note, not to whatever popup is in front of it. ──
-  const anyOtherDialogOpen = showAddOptional || showAddendum || showCoordination || showMedications
-    || showProblems || showAllergies || showHistory || showVitals || showPrescribe || showLabOrder
-    || showFollowUp || showPatientEducation;
-  const keyActions = useRef({ save: handleSaveDraft, sign: openSignConfirm, blocked: false, signBlocked: false });
-  useEffect(() => {
-    keyActions.current = {
-      save: handleSaveDraft,
-      sign: openSignConfirm,
-      blocked: anyOtherDialogOpen || locked,
-      signBlocked: showSignConfirm || saving,
-    };
+  const keyboardBlocked = otherThanSignOpen || locked;
+  useNoteShortcuts({
+    save: handleSaveDraft,
+    sign: openSignConfirm,
+    blocked: keyboardBlocked,
+    signBlocked: isPanel('signConfirm') || saving,
   });
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
-      const k = keyActions.current;
-      if (k.blocked) return;
-      // A dialog that is not the one hosting this editor (a chart popup over a
-      // drawer, say) owns the keyboard while focus is inside it.
-      const dialog = (document.activeElement as HTMLElement | null)?.closest('[role="dialog"],[aria-modal="true"]');
-      if (dialog && !dialog.querySelector('.cn-editor')) return;
-      if (e.key === 's' || e.key === 'S') {
-        e.preventDefault();
-        void k.save();
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        if (!k.signBlocked) k.sign();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
 
   const handleAddendum = async () => {
     const body = addendumText.trim();
@@ -892,7 +745,7 @@ export default function ClinicalNoteEditor({
     const updated = await persist(() => addNoteAddendum(noteId, body, currentUser?._id || '', userName));
     if (updated) {
       setAddendumText('');
-      setShowAddendum(false);
+      closePanel('addendum');
       showToast(t('noteEditor.addendumAdded'), 'success');
     }
   };
@@ -1143,35 +996,7 @@ export default function ClinicalNoteEditor({
         </div>
         </div>
   );
-  const lockBanners = (
-    <>
-          {awaitingCosign && (
-            <div className="cn-locked-banner">
-              <Check size={15} />
-              <span>
-                {t('noteEditor.awaitingCosignBanner', {
-                  signer: note.signedByName || '',
-                  date: new Date(note.signedAt || '').toLocaleString(),
-                  requested: note.cosignRequestedName || t('noteEditor.aSupervisor'),
-                })}
-              </span>
-            </div>
-          )}
-          {signedFinal && (
-            <div className="cn-locked-banner">
-              <Check size={15} />
-              <span>
-                {t('noteEditor.signedBanner', {
-                  signer: note.signedByName || '',
-                  date: new Date(note.signedAt || '').toLocaleString(),
-                })}
-                {note.cosignedByName ? ` ${t('noteEditor.cosignedBy', { name: note.cosignedByName })}` : ''}
-              </span>
-            </div>
-          )}
-
-    </>
-  );
+  const lockBanners = <NoteLockBanners note={note} awaitingCosign={Boolean(awaitingCosign)} signedFinal={signedFinal} />;
   const renderSectionCard = (section: ClinicalNoteDoc['sections'][number]) => {
     const isOptional = !typeDef.sections.includes(section.sectionId);
     return (
@@ -1190,13 +1015,13 @@ export default function ClinicalNoteEditor({
                 onChange={patch => handleSectionChange(section.sectionId, patch)}
                 onRefreshDerived={refreshDerived}
                 onOpenDerived={
-                  section.sectionId === 'medications' ? () => setShowMedications(true)
-                  : section.sectionId === 'allergies' ? () => setShowAllergies(true)
+                  section.sectionId === 'medications' ? () => openPanel('medications')
+                  : section.sectionId === 'allergies' ? () => openPanel('allergies')
                   // Read-only once signed: the snapshot is the record then.
-                  : section.sectionId === 'vitals' && !locked ? () => setShowVitals(true)
+                  : section.sectionId === 'vitals' && !locked ? () => openPanel('vitals')
                   // Same rule for history: the popup edits the chart, and a
                   // signed note's history is no longer a way in to doing that.
-                  : isHistorySection(section.sectionId) && isDraft ? () => setShowHistory(true)
+                  : isHistorySection(section.sectionId) && isDraft ? () => openPanel('history')
                   : undefined
                 }
                 onAction={locked ? undefined : handleSectionAction}
@@ -1228,7 +1053,7 @@ export default function ClinicalNoteEditor({
               type="button"
               className="cn-btn"
               style={{ marginTop: 12 }}
-              onClick={() => setShowAddendum(true)}
+              onClick={() => openPanel('addendum')}
             >
               <Plus size={14} /> {t('noteEditor.addAddendum')}
             </button>
@@ -1243,8 +1068,8 @@ export default function ClinicalNoteEditor({
   const noteModals = (
     <>
       {/* Add optional section */}
-      {showAddOptional && (
-        <Modal variant="slider" onClose={() => setShowAddOptional(false)} width={420}>
+      {isPanel('addOptional') && (
+        <Modal variant="slider" onClose={() => closePanel('addOptional')} width={420}>
           <div style={{ padding: 18 }}>
             <div className="modal-headband">
               <h2 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>{t('noteEditor.addSectionTitle')}</h2>
@@ -1259,7 +1084,7 @@ export default function ClinicalNoteEditor({
                 className="cn-popover-item"
                 onClick={async () => {
                   const updated = await persist(() => addNoteSection(noteId, def.id));
-                  setShowAddOptional(false);
+                  closePanel('addOptional');
                   await fillEmptyDerived(updated);
                 }}
               >
@@ -1271,106 +1096,40 @@ export default function ClinicalNoteEditor({
       )}
 
       {/* Sign confirmation */}
-      {showSignConfirm && (
-        <Modal variant="slider" labelledBy="clinicalnoteeditor-tsx-dlg-1185" onClose={() => setShowSignConfirm(false)} width={560}>
-          <DialogFrame>
-            <DialogHeader titleId="clinicalnoteeditor-tsx-dlg-1185" title={t('noteEditor.signTitle')} description={t('noteEditor.signBody')} onClose={() => setShowSignConfirm(false)} />
-            <DialogBody className="space-y-4">
-            {missingSections.length > 0 && (
-              <InlineBanner tone="danger" title={t('noteEditor.missingTitle')}>
-                {/* Each missing section is the way to it: pressing one closes
-                    this dialog and scrolls the note to that section. */}
-                <ul className="cn-sign-missing">
-                  {missingSections.map(id => (
-                    <li key={id}>
-                      <button
-                        type="button"
-                        className="cn-sign-missing__link"
-                        onClick={() => {
-                          setShowSignConfirm(false);
-                          setActiveSection(id);
-                          document.getElementById(`cn-section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }}
-                      >
-                        {sectionLabel(t, id)}
-                        <ChevronRight size={16} aria-hidden="true" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </InlineBanner>
-            )}
-            {missingSections.length === 0 && cosignCandidates.length > 0 && (
-              <label className="cn-field" style={{ margin: '0 0 14px', display: 'block' }}>
-                <span className="cn-label">{t('noteEditor.requestCosign')}</span>
-                <Select
-                  className="cn-select"
-                  value={cosignFromId}
-                  onChange={e => setCosignFromId(e.target.value)}
-                  aria-label={t('noteEditor.requestCosign')}
-                >
-                  <option value="">{t('noteEditor.noCosign')}</option>
-                  {cosignCandidates.map(u => (
-                    <option key={u._id} value={u._id}>{u.name}</option>
-                  ))}
-                </Select>
-              </label>
-            )}
-            </DialogBody>
-            <DialogFooter>
-              <button type="button" className="cn-btn" onClick={() => setShowSignConfirm(false)}>{t('noteEditor.cancel')}</button>
-              <button
-                type="button"
-                className="cn-btn cn-btn-primary"
-                onClick={handleSign}
-                disabled={missingSections.length > 0}
-              >
-                <Check size={14} /> {cosignFromId ? t('noteEditor.signRequestCosign') : t('noteEditor.signNote')}
-              </button>
-            </DialogFooter>
-          </DialogFrame>
-        </Modal>
+      {isPanel('signConfirm') && (
+        <SignConfirm
+          missingSections={missingSections}
+          cosignCandidates={cosignCandidates}
+          cosignFromId={cosignFromId}
+          onCosignFromChange={setCosignFromId}
+          onClose={() => closePanel('signConfirm')}
+          onSign={handleSign}
+          onJumpToSection={id => {
+            closePanel('signConfirm');
+            setActiveSection(id);
+            document.getElementById(`cn-section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+        />
       )}
 
       {/* Addendum */}
-      {showAddendum && (
-        <FormSlider
-          title={t('noteEditor.addendumTitle')}
-          subtitle={t('noteEditor.addendumHelp')}
-          width={520}
-          onClose={() => setShowAddendum(false)}
-          footer={<>
-              <button type="button" className="cn-btn" onClick={() => setShowAddendum(false)}>{t('noteEditor.cancel')}</button>
-              <button
-                type="button"
-                className="cn-btn cn-btn-primary"
-                onClick={handleAddendum}
-                disabled={!addendumText.trim()}
-              >
-                {t('noteEditor.addAddendum')}
-              </button>
-          </>}
-        >
-          <div className="space-y-4">
-            <textarea
-              className="cn-textarea"
-              value={addendumText}
-              onChange={e => setAddendumText(e.target.value)}
-              placeholder={t('noteEditor.addendumPlaceholder')}
-              aria-label={t('noteEditor.addendumText')}
-            />
-          </div>
-        </FormSlider>
+      {isPanel('addendum') && (
+        <AddendumSlider
+          text={addendumText}
+          onTextChange={setAddendumText}
+          onClose={() => closePanel('addendum')}
+          onSubmit={handleAddendum}
+        />
       )}
 
-      {showMedications && (
+      {isPanel('medications') && (
         <MedicationsModal
           patientId={note.patientId}
           patientName={note.patientName}
           currentUser={currentUser}
           encounterId={note.encounterId}
           onClose={() => {
-            setShowMedications(false);
+            closePanel('medications');
             // The popup may have renewed or stopped something — bring the
             // note's snapshot back in line with the chart it just changed.
             if (!locked) void refreshDerived('medications');
@@ -1378,34 +1137,34 @@ export default function ClinicalNoteEditor({
         />
       )}
 
-      {showProblems && (
+      {isPanel('problems') && (
         <IncludeProblemsModal
           patientId={note.patientId}
           patientName={note.patientName}
           currentUser={currentUser}
           onInclude={handleIncludeProblems}
-          onClose={() => setShowProblems(false)}
+          onClose={() => closePanel('problems')}
         />
       )}
 
-      {showAllergies && (
+      {isPanel('allergies') && (
         <AllergiesModal
           patientId={note.patientId}
           currentUser={currentUser}
           onClose={() => {
-            setShowAllergies(false);
+            closePanel('allergies');
             if (!locked) void refreshDerived('allergies');
           }}
         />
       )}
 
-      {showHistory && (
+      {isPanel('history') && (
         <HistoryModal
           patientId={note.patientId}
           patientName={note.patientName}
           noteId={noteId}
           onClose={() => {
-            setShowHistory(false);
+            closePanel('history');
             // Whatever was added or corrected is on the chart now; bring the
             // note's history sections back in line with it.
             void refreshHistorySections();
@@ -1413,7 +1172,7 @@ export default function ClinicalNoteEditor({
         />
       )}
 
-      {showVitals && currentUser && (
+      {isPanel('vitals') && currentUser && (
         <NurseVitalsModal
           patientId={note.patientId}
           patientName={note.patientName}
@@ -1425,21 +1184,21 @@ export default function ClinicalNoteEditor({
           // chart files it under the same encounter.
           encounterId={note.encounterId}
           currentUser={{ _id: currentUser._id, name: userName }}
-          onClose={() => setShowVitals(false)}
+          onClose={() => closePanel('vitals')}
           // Pull the reading just taken into the note — the whole point of
           // recording it from here.
           onSaved={() => { if (!locked) void refreshDerived('vitals'); }}
         />
       )}
 
-      {showPrescribe && (
+      {isPanel('prescribe') && (
         <PrescribeModal
           patientId={note.patientId}
           patientName={note.patientName}
           currentUser={currentUser}
           encounterId={note.encounterId}
           onClose={() => {
-            setShowPrescribe(false);
+            closePanel('prescribe');
             // A prescription written from the note belongs in its medication
             // snapshot, not just in the pharmacy queue.
             if (!locked) void refreshDerived('medications');
@@ -1447,41 +1206,41 @@ export default function ClinicalNoteEditor({
         />
       )}
 
-      {showCoordination && (
+      {isPanel('coordination') && (
         <CareCoordinationModal
           note={note}
           problems={problems}
           socialHistory={socialHistory}
           onSend={handleCoordination}
-          onClose={() => setShowCoordination(false)}
+          onClose={() => closePanel('coordination')}
         />
       )}
 
-      {showFollowUp && (
+      {isPanel('followUp') && (
         <FollowUpModal
           patientName={note.patientName}
           defaultAssignedWorkerName={userName}
           onSchedule={handleScheduleFollowUp}
-          onClose={() => setShowFollowUp(false)}
+          onClose={() => closePanel('followUp')}
         />
       )}
 
-      {showPatientEducation && (
+      {isPanel('patientEducation') && (
         <PatientEducationModal
           patientName={note.patientName}
           onSend={handleSendEducation}
-          onClose={() => setShowPatientEducation(false)}
+          onClose={() => closePanel('patientEducation')}
         />
       )}
 
-      {showLabOrder && (
+      {isPanel('labOrder') && (
         <LabOrderModal
           presetPatientId={note.patientId}
           // The reason for the test is already written here: the Assessment's
           // coded diagnoses start on the order and the complaint feeds its
           // symptom suggestions, so the clinician confirms rather than re-types.
           reasonContext={reasonContextFromNote(note)}
-          onClose={() => setShowLabOrder(false)}
+          onClose={() => closePanel('labOrder')}
           onPlaced={() => {
             // Fires only once submit() has actually written the order(s) —
             // this is the point the note may honestly say a lab was ordered.
@@ -1503,28 +1262,7 @@ export default function ClinicalNoteEditor({
       { id: 'visit-details', label: t('noteEditor.visitDetails') },
       ...note.sections.map(sec => ({ id: `section-${sec.sectionId}`, label: sectionLabel(t, sec.sectionId) })),
     ];
-    const toggleGroup = (id: string) => setFoldedGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-    const goToGroup = (id: string) => {
-      setWorkspaceGroup(id);
-      setFoldedGroups(prev => { const next = new Set(prev); next.delete(id); return next; });
-      workspaceScrollRef.current?.querySelector(`[data-omf-group="${id}"]`)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-    };
-    // The section list follows the reader: the last group whose top has
-    // passed the top of the scroll pane is the current one.
-    const onWorkspaceScroll = () => {
-      const pane = workspaceScrollRef.current;
-      if (!pane) return;
-      const top = pane.getBoundingClientRect().top + 8;
-      let current = groups[0].id;
-      pane.querySelectorAll<HTMLElement>('[data-omf-group]').forEach(el => {
-        if (el.getBoundingClientRect().top <= top) current = el.dataset.omfGroup || current;
-      });
-      if (current !== workspaceGroup) setWorkspaceGroup(current);
-    };
+    const onWorkspaceScroll = () => scrollWorkspace(groups[0].id);
     const group = (id: string, label: string, body: React.ReactNode, major = false, subLabel?: string) => {
       const folded = foldedGroups.has(id);
       return (
@@ -1550,61 +1288,28 @@ export default function ClinicalNoteEditor({
           </button>
         )}
         <div className={navCollapsed ? 'omf-body is-nav-collapsed' : 'omf-body'}>
-          <nav className="omf-nav" aria-label={t('noteEditor.sections')}>
-            <button
-              type="button"
-              className="omf-nav-toggle"
-              aria-expanded={!navCollapsed}
-              title={navCollapsed ? t('noteEditor.showSections') : t('noteEditor.hideSections')}
-              aria-label={navCollapsed ? t('noteEditor.showSections') : t('noteEditor.hideSections')}
-              onClick={toggleNav}
-            >
-              {navCollapsed ? <ChevronRight size={16} aria-hidden /> : <><ChevronLeft size={16} aria-hidden /> {t('noteEditor.hideSections')}</>}
-            </button>
-            {!navCollapsed && groups.map(g => (
-              <button
-                key={g.id}
-                type="button"
-                className={workspaceGroup === g.id ? 'omf-nav-item is-active' : 'omf-nav-item'}
-                aria-current={workspaceGroup === g.id ? 'true' : undefined}
-                onClick={() => goToGroup(g.id)}
-              >
-                <span className="tamam-reg-navarrow" aria-hidden>↳</span>
-                <span>{g.label}</span>
-              </button>
-            ))}
-            {!navCollapsed && !locked && optionalAvailable.length > 0 && (
-              <button type="button" className="omf-nav-add" onClick={() => setShowAddOptional(true)}>
-                <Plus size={14} aria-hidden /> {t('noteEditor.addSection')}
-              </button>
-            )}
-            <div className="omf-nav-more" hidden={navCollapsed}>
-              {!locked && copySource && (
-                <button type="button" onClick={handleCopyForward} disabled={saving}><Copy size={13} aria-hidden /> {t('noteEditor.copyForward')}</button>
-              )}
-              <button type="button" onClick={() => setShowCoordination(true)}><Send size={13} aria-hidden /> {t('noteEditor.careCoordination')}</button>
-              <button type="button" onClick={() => { if (confirmNavigation()) openChartTab('careChecklist'); }}><ClipboardList size={13} aria-hidden /> {t('noteEditor.carePlan')}</button>
-              <button type="button" onClick={() => navigateAway(`/billing?patientId=${note.patientId}`)}><DollarSign size={13} aria-hidden /> {t('noteEditor.captureCharge')}</button>
-              {!locked && <button type="button" onClick={handleClear}>{t('noteEditor.clearNote')}</button>}
-            </div>
-          </nav>
+          <NoteWorkspaceNav
+            groups={groups}
+            workspaceGroup={workspaceGroup}
+            navCollapsed={navCollapsed}
+            locked={locked}
+            saving={saving}
+            showAddSection={optionalAvailable.length > 0}
+            showCopyForward={Boolean(copySource)}
+            onToggleNav={toggleNav}
+            onGoToGroup={goToGroup}
+            onAddSection={() => openPanel('addOptional')}
+            onCopyForward={handleCopyForward}
+            onCoordination={() => openPanel('coordination')}
+            onCarePlan={() => { if (confirmNavigation()) openChartTab('careChecklist'); }}
+            onCaptureCharge={() => navigateAway(`/billing?patientId=${note.patientId}`)}
+            onClear={handleClear}
+          />
           <div className="omf-scroll" ref={workspaceScrollRef} onScroll={onWorkspaceScroll}>
             {/* Whose note: the O3 patient banner at the head of the form. The
                 docked workspace sits beside the chart's own header, so the
                 banner shows only full screen, where that header is covered. */}
-            <div className="omf-banner">
-              <span className="omf-banner-avatar" aria-hidden>{nameInitials(bannerName)}</span>
-              <div className="omf-banner-text">
-                <div className="omf-banner-name">
-                  <strong>{bannerName}</strong>
-                  {patient?.gender && <span className="omf-banner-sex">{patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1)}</span>}
-                </div>
-                <div className="omf-banner-line">
-                  {dobWithAge(patient?.dateOfBirth || note.patientDob) && <span>{dobWithAge(patient?.dateOfBirth || note.patientDob)}</span>}
-                  {(patient?.hospitalNumber || note.mrn) && <span className="omf-banner-id">{t('noteEditor.patientId')}: <strong>{patient?.hospitalNumber || note.mrn}</strong></span>}
-                </div>
-              </div>
-            </div>
+            <NotePatientBanner bannerName={bannerName} patient={patient} note={note} />
             {lockBanners}
             {group('visit-details', t('noteEditor.visitDetails'), (
               <>
@@ -1663,186 +1368,34 @@ export default function ClinicalNoteEditor({
       {/* The left rail runs the full height of the screen; the header and
           toolbar belong to the note column, not the page. */}
       <div className={`cn-body${showContextSidebar ? '' : ' cn-body--without-sidebar'}`}>
-        {showContextSidebar && <aside className="cn-sidebar">
-          {/* Patient identity — a bare block above the cards, per the design:
-              photo plate, name, one id line, then the risk/status pills. */}
-          <div className="cn-ident">
-            {patient?.photoUrl
-              // eslint-disable-next-line @next/next/no-img-element
-              ? <img className="cn-patient-photo" src={patient.photoUrl} alt="" />
-              : <span className="cn-patient-photo" aria-hidden>{nameInitials(note.patientName)}</span>}
-            <div style={{ minWidth: 0 }}>
-              {/* The name is the way into the chart. It goes through
-                  navigateAway, not a plain link, so an unsaved section still
-                  gets its "you have unsaved changes" confirm first. */}
-              <h2 className="cn-ident-name">
-                <button
-                  type="button"
-                  className="cn-ident-name-link"
-                  onClick={() => navigateAway(`/patients/${note.patientId}`)}
-                  title={t('noteEditor.openChart', { name: note.patientName })}
-                >
-                  {note.patientName}
-                </button>
-              </h2>
-              <p className="cn-ident-line">
-                {[note.mrn, patient?.gender?.[0]?.toUpperCase(), dobWithAge(note.patientDob), patient?.phone ? formatPhoneDisplay(patient.phone) : null]
-                  .filter(Boolean).join(' · ')}
-              </p>
-            </div>
-          </div>
-
-          {/* The patient's other notes, newest first */}
-          <div className="cn-sidebar-card">
-            <p className="cn-card-head">{t('noteEditor.patientNotes')}</p>
-            <div className="cn-card-body cn-card-body-roomy cn-card-body--flush">
-              {siblingNotes.length === 0 && (
-                <p className="cn-card-empty">{t('noteEditor.noOtherNotes')}</p>
-              )}
-              {siblingNotes.map(n => (
-                <button
-                  key={n._id}
-                  type="button"
-                  className="cn-note-row"
-                  title={`${noteTypeLabel(t, n.noteType)} — ${n.serviceDate}`}
-                  onClick={() => navigateAway(`/notes/${n._id}`)}
-                >
-                  <span className="cn-note-row-top">
-                    <b>{noteTypeLabel(t, n.noteType)}</b>
-                    <small>{new Date(`${n.serviceDate}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</small>
-                  </span>
-                  <span className="cn-note-row-meta">
-                    {(n.assignedToName || n.authorName || t('noteEditor.unassigned'))}{isNoteLocked(n) ? ` · ${t('noteEditor.statusSigned')}` : n.status === 'awaiting_cosign' ? ` · ${t('noteEditor.statusAwaitingCosign')}` : ` · ${t('noteEditor.statusDraft')}`}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Note sections (jump + remove) */}
-          <div className="cn-sidebar-card">
-            <p className="cn-card-head">
-              {t('noteEditor.noteSections')}
-              {!locked && optionalAvailable.length > 0 && (
-                <button type="button" className="cn-card-head-action" onClick={() => setShowAddOptional(true)}>
-                  {t('noteEditor.addOptional')}
-                </button>
-              )}
-            </p>
-            <div className="cn-card-body cn-card-body--flush">
-              <nav className="cn-section-nav">
-                {sectionIds.map((id) => {
-                  const content = note.sections.find(s => s.sectionId === id);
-                  const filled = !!(stripTemplateMarkers(content?.text || '').trim() || content?.snapshot);
-                  const removable = !locked && !typeDef.sections.includes(id);
-                  return (
-                    <div key={id} className="cn-section-nav-row">
-                      <button
-                        type="button"
-                        className="cn-section-nav-item"
-                        aria-current={activeSection === id}
-                        onClick={() => {
-                          setActiveSection(id);
-                          document.getElementById(`cn-section-${id}`)?.scrollIntoView({
-                            behavior: 'smooth', block: 'start',
-                          });
-                        }}
-                      >
-                        <span className="tamam-reg-navarrow" aria-hidden>↳</span>
-                        <span className="cn-section-nav-label">{sectionLabel(t, id)}</span>
-                        {filled && <span className="cn-section-nav-badge">•</span>}
-                      </button>
-                      {removable && (
-                        <button
-                          type="button"
-                          className="cn-section-nav-remove"
-                          aria-label={t('noteEditor.removeSection', { section: sectionLabel(t, id) })}
-                          title={t('noteEditor.removeSection', { section: sectionLabel(t, id) })}
-                          onClick={async () => {
-                            // The section's narrative goes with it, and the
-                            // control is a 20px box beside the section name.
-                            const ok = await confirm({
-                              title: t('noteEditor.removeSectionTitle', { section: sectionLabel(t, id) }),
-                              message: t('noteEditor.removeSectionMessage'),
-                              confirmLabel: t('noteEditor.remove'),
-                              tone: 'danger',
-                            });
-                            if (ok) await persist(() => removeNoteSection(noteId, id));
-                          }}
-                        >
-                          <Minus size={12} />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </nav>
-            </div>
-          </div>
-
-          {/* Most recent resulted labs */}
-          <div className="cn-sidebar-card">
-            <p className="cn-card-head">{t('noteEditor.labsStudies')}</p>
-            <div className="cn-card-body cn-card-body-roomy cn-card-body--flush">
-              {recentLabs !== null && recentLabs.length === 0 && (
-                <p className="cn-card-empty">{t('noteEditor.noPreviousLabs')}</p>
-              )}
-              {(recentLabs || []).map(lab => (
-                <button
-                  key={lab.id}
-                  type="button"
-                  className="cn-rail-row"
-                  onClick={() => navigateAway(`/patients/${note.patientId}?tab=labs&focus=${encodeURIComponent(lab.id)}`)}
-                >
-                  <span className="cn-rail-row-main">{lab.testName}</span>
-                  <span className="cn-rail-row-meta">{lab.date}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Uploaded documents, filterable by label */}
-          <div className="cn-sidebar-card">
-            <p className="cn-card-head">
-              {t('noteEditor.documents')}
-              <label className="cn-card-head-filter">
-                {t('noteEditor.filterByLabel')}
-                <Select
-                  value={docLabel}
-                  onChange={e => setDocLabel(e.target.value)}
-                  aria-label={t('noteEditor.filterDocuments')}
-                >
-                  <option value="all">{t('noteEditor.all')}</option>
-                  {[...new Set((documents || []).map(d => d.category))].map(cat => (
-                    <option key={cat} value={cat}>{docCategoryLabel(cat)}</option>
-                  ))}
-                </Select>
-              </label>
-            </p>
-            <div className="cn-card-body cn-card-body-roomy cn-card-body--flush">
-              {documents !== null && documents.length === 0 && (
-                <p className="cn-card-empty">{t('noteEditor.noDocuments')}</p>
-              )}
-              {(documents || [])
-                .filter(doc => docLabel === 'all' || doc.category === docLabel)
-                .slice(0, 8)
-                .map(doc => (
-                  <button
-                    key={doc._id}
-                    type="button"
-                    className="cn-rail-row cn-rail-row-stacked"
-                    title={doc.title}
-                    onClick={() => navigateAway(`/patients/${note.patientId}?tab=documents&focus=${encodeURIComponent(doc._id)}`)}
-                  >
-                    <span className="cn-rail-row-main">
-                      {doc.createdAt ? `${new Date(doc.createdAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })} - ` : ''}{doc.title || doc.fileName}
-                    </span>
-                    <span className="cn-rail-row-sub">{docCategoryLabel(doc.category)}</span>
-                  </button>
-                ))}
-            </div>
-          </div>
-        </aside>}
+        {showContextSidebar && <NoteSidePanels
+          note={note}
+          typeDef={typeDef}
+          patient={patient}
+          siblingNotes={siblingNotes}
+          recentLabs={recentLabs}
+          documents={documents}
+          docLabel={docLabel}
+          onDocLabelChange={setDocLabel}
+          sectionIds={sectionIds}
+          activeSection={activeSection}
+          setActiveSection={setActiveSection}
+          locked={locked}
+          hasOptionalSections={optionalAvailable.length > 0}
+          navigateAway={navigateAway}
+          onAddOptional={() => openPanel('addOptional')}
+          onRemoveSection={async (id) => {
+            // The section's narrative goes with it, and the
+            // control is a 20px box beside the section name.
+            const ok = await confirm({
+              title: t('noteEditor.removeSectionTitle', { section: sectionLabel(t, id) }),
+              message: t('noteEditor.removeSectionMessage'),
+              confirmLabel: t('noteEditor.remove'),
+              tone: 'danger',
+            });
+            if (ok) await persist(() => removeNoteSection(noteId, id));
+          }}
+        />}
 
         <div className="cn-main">
       {/* Header */}
@@ -1939,7 +1492,7 @@ export default function ClinicalNoteEditor({
         >
           <Copy size={14} /> {t('noteEditor.copy')}
         </button>
-        <button type="button" className="cn-btn" onClick={() => setShowCoordination(true)}>
+        <button type="button" className="cn-btn" onClick={() => openPanel('coordination')}>
           <Send size={14} /> {t('noteEditor.careCoordination')}
         </button>
         <button
