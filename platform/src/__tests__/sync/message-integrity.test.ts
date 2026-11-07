@@ -10,8 +10,12 @@
  * device that has not seen an edit yet is a replication race, not an attack).
  */
 import { messageIntegrityViolation } from '@/lib/sync/message-integrity';
-import { ORG_SCOPED_VALIDATE_FN } from '@/lib/sync/validate-doc-update';
+import { buildValidateDocUpdateFn } from '@/lib/sync/write-permissions';
 import { buildPushFilter } from '@/lib/sync/sync-service';
+
+// These fixtures test ROLE rules with readable plaintext values. Catalogued-field
+// sealing (audit M3) is covered by sync/validator-sealed-phi.test.ts.
+const ROLE_RULES_ONLY = buildValidateDocUpdateFn(undefined, undefined, undefined, undefined, undefined, {});
 
 const AUTHOR = 'user-ana';
 const OTHER = 'user-ben';
@@ -25,7 +29,7 @@ const sent = {
 const edited = { ...sent, body: 'Give 1 g', editedAt: '2026-10-08T09:05:00.000Z', editHistory: [{ body: 'Give 500 mg', at: sent.sentAt }] };
 
 type ValidateFn = (next: object, prev: object | null, ctx: { roles: string[] }) => void;
-const validate = new Function(`return (${ORG_SCOPED_VALIDATE_FN});`)() as ValidateFn;
+const validate = new Function(`return (${ROLE_RULES_ONLY});`)() as ValidateFn;
 const ctx = (userId: string) => ({ roles: ['org:org-a', 'role:doctor', `user:${userId}`] });
 function validatorRefuses(next: object, prev: object, userId: string): boolean {
   try { validate(next, prev, ctx(userId)); return false; } catch (error) { return !!(error as { forbidden?: string }).forbidden; }

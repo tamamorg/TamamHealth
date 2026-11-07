@@ -4,13 +4,17 @@
  * write replicated up — still cannot reopen a cancelled visit or check a
  * patient in from the lab bench.
  */
-import { ORG_SCOPED_VALIDATE_FN } from '@/lib/sync/validate-doc-update';
+import { buildValidateDocUpdateFn } from '@/lib/sync/write-permissions';
 import { APPOINTMENT_STATUS_TRANSITIONS } from '@/lib/sync/write-permissions';
 import { canRoleMoveAppointment } from '@/lib/appointment-status';
 import type { AppointmentStatus, UserRole } from '@/lib/db-types';
 
+// These fixtures test ROLE rules with readable plaintext values. Catalogued-field
+// sealing (audit M3) is covered by sync/validator-sealed-phi.test.ts.
+const ROLE_RULES_ONLY = buildValidateDocUpdateFn(undefined, undefined, undefined, undefined, undefined, {});
+
 type Validate = (n: Record<string, unknown>, o: Record<string, unknown> | null, u: { roles: string[] }, s?: unknown) => void;
-const validate = new Function(`return (${ORG_SCOPED_VALIDATE_FN});`)() as Validate;
+const validate = new Function(`return (${ROLE_RULES_ONLY});`)() as Validate;
 
 const user = (role: string) => ({ roles: ['org:org-a', `role:${role}`, `user:user-${role}`, 'facility:hosp-a'] });
 const appt = (status: string, extra: Record<string, unknown> = {}) => ({

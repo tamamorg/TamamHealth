@@ -3,10 +3,14 @@
  * refuses would save on the technician's device and reach nobody else.
  * Each grant is as narrow as the workflow: create, never rewrite.
  */
-import { ORG_SCOPED_VALIDATE_FN } from '@/lib/sync/validate-doc-update';
+import { buildValidateDocUpdateFn } from '@/lib/sync/write-permissions';
+
+// These fixtures test ROLE rules with readable plaintext values. Catalogued-field
+// sealing (audit M3) is covered by sync/validator-sealed-phi.test.ts.
+const ROLE_RULES_ONLY = buildValidateDocUpdateFn(undefined, undefined, undefined, undefined, undefined, {});
 
 type UserCtx = { name?: string; roles: string[] };
-const validate = new Function(`return (${ORG_SCOPED_VALIDATE_FN});`)() as (
+const validate = new Function(`return (${ROLE_RULES_ONLY});`)() as (
   newDoc: Record<string, unknown>, oldDoc: Record<string, unknown> | null, userCtx: UserCtx, secObj?: unknown,
 ) => void;
 const refusal = (doc: Record<string, unknown>, old: Record<string, unknown> | null) => {

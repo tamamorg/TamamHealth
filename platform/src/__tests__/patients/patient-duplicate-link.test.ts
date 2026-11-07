@@ -24,8 +24,12 @@ import type { DataScope } from '@/lib/services/data-scope';
 import {
   DOC_WRITE_ROLES, DOC_UPDATE_ONLY_ROLES, DOC_UPDATE_ONLY_FIELDS, PATIENT_DUPLICATE_ROLES,
 } from '@/lib/sync/write-permissions';
-import { ORG_SCOPED_VALIDATE_FN } from '@/lib/sync/validate-doc-update';
+import { buildValidateDocUpdateFn } from '@/lib/sync/write-permissions';
 import phiCatalog from '@/lib/phi-field-catalog.json';
+
+// These fixtures test ROLE rules with readable plaintext values. Catalogued-field
+// sealing (audit M3) is covered by sync/validator-sealed-phi.test.ts.
+const ROLE_RULES_ONLY = buildValidateDocUpdateFn(undefined, undefined, undefined, undefined, undefined, {});
 
 const ORG = 'org-a';
 const SCOPE: DataScope = { orgId: ORG, role: 'org_admin' };
@@ -145,7 +149,7 @@ describe('a marked duplicate leaves lists, search and matching, but opens by id'
 
 describe('sync permission for the roles that may mark duplicates', () => {
   type Validate = (n: Record<string, unknown>, o: Record<string, unknown> | null, u: { name: string; roles: string[] }, s?: unknown) => void;
-  const validate = new Function(`return (${ORG_SCOPED_VALIDATE_FN});`)() as Validate;
+  const validate = new Function(`return (${ROLE_RULES_ONLY});`)() as Validate;
   const reason = (n: Record<string, unknown>, o: Record<string, unknown> | null, role: string): string | null => {
     try { validate(n, o, { name: 'u', roles: [`org:${ORG}`, `role:${role}`] }, {}); return null; }
     catch (e) { return (e as { forbidden?: string }).forbidden ?? 'thrown'; }

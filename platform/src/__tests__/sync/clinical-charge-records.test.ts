@@ -17,10 +17,14 @@ jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 import { teardownTestDBs } from '../helpers/test-db';
 import { billingDB, ledgerDB } from '@/lib/db';
 import { cancelBill, createBill, recordPayment, reversePaidBillCharge } from '@/lib/services/billing-service';
-import { ORG_SCOPED_VALIDATE_FN } from '@/lib/sync/validate-doc-update';
+import { buildValidateDocUpdateFn } from '@/lib/sync/write-permissions';
+
+// These fixtures test ROLE rules with readable plaintext values. Catalogued-field
+// sealing (audit M3) is covered by sync/validator-sealed-phi.test.ts.
+const ROLE_RULES_ONLY = buildValidateDocUpdateFn(undefined, undefined, undefined, undefined, undefined, {});
 
 type Doc = Record<string, unknown>;
-const validate = new Function(`return (${ORG_SCOPED_VALIDATE_FN});`)() as (
+const validate = new Function(`return (${ROLE_RULES_ONLY});`)() as (
   newDoc: Doc, oldDoc: Doc | null, userCtx: { name?: string; roles: string[] }, secObj?: unknown,
 ) => void;
 

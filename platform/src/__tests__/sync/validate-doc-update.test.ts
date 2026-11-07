@@ -23,7 +23,8 @@ function compile(source: string): ValidateFn {
   return new Function(`return (${source});`)() as ValidateFn;
 }
 
-const validate = compile(ORG_SCOPED_VALIDATE_FN);
+// Role rules only; plaintext fixtures. Sealing is tested in validator-sealed-phi.test.ts.
+const validate = compile(buildValidateDocUpdateFn(undefined, undefined, undefined, undefined, undefined, {}));
 
 const clinicUser: UserCtx = { name: 'doc-1', roles: ['org:org-a', 'role:doctor'] };
 const nurseUser: UserCtx = { name: 'nurse-1', roles: ['org:org-a', 'role:nurse'] };

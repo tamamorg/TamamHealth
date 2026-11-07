@@ -19,12 +19,16 @@ import { teardownTestDBs, putDoc } from '../helpers/test-db';
 import { clinicianTasksDB, prescriptionsDB } from '@/lib/db';
 import { createLabResult, updateLabResult } from '@/lib/services/lab-service';
 import { recordUnfilled } from '@/lib/services/dispensing-service';
-import { ORG_SCOPED_VALIDATE_FN } from '@/lib/sync/validate-doc-update';
+import { buildValidateDocUpdateFn } from '@/lib/sync/write-permissions';
 import { DOC_CREATE_ONLY_ROLES, DOC_WRITE_ROLES } from '@/lib/sync/write-permissions';
 import { RESULT_REVIEW_SLA, getResultReviewSLA } from '@/lib/clinical-flow/order-lifecycles';
 
+// These fixtures test ROLE rules with readable plaintext values. Catalogued-field
+// sealing (audit M3) is covered by sync/validator-sealed-phi.test.ts.
+const ROLE_RULES_ONLY = buildValidateDocUpdateFn(undefined, undefined, undefined, undefined, undefined, {});
+
 type Doc = Record<string, unknown>;
-const validate = new Function(`return (${ORG_SCOPED_VALIDATE_FN});`)() as (
+const validate = new Function(`return (${ROLE_RULES_ONLY});`)() as (
   newDoc: Doc, oldDoc: Doc | null, userCtx: { name?: string; roles: string[] }, secObj?: unknown,
 ) => void;
 

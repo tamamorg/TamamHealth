@@ -42,6 +42,7 @@ import { DATABASE_DOCUMENT_TYPES } from './sync-config';
 import { CARE_TEAM_ASSIGNMENT_ROLES } from '../care-team-permissions';
 import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_SCHEDULING_ROLES, canRoleMoveAppointment } from '../appointment-status';
 import type { AppointmentStatus } from '../db-types';
+import phiCatalog from '../phi-field-catalog.json';
 
 /**
  * The canonical role groups.
@@ -755,6 +756,33 @@ export function isAppendOnlyDatabase(localName: string): boolean {
 }
 
 /**
+ * The catalogued PHI fields (`phi-field-catalog.json`), compiled into the path
+ * form the generated validator walks: per document type, a list of paths whose
+ * segments are `{ k: key, e: 1 }` (`key[]`, each array element), `{ k: key, e: 0 }`
+ * or the string `'**'` (every string beneath). The compile mirrors
+ * `encrypted-db.ts` exactly, so the validator and the client agree on which
+ * strings are "sealed" fields.
+ */
+export type SealedFieldSpec = Readonly<Record<string, ReadonlyArray<ReadonlyArray<{ k: string; e: 0 | 1 } | '**'>>>>;
+
+export function compileSealedFieldSpec(
+  types: Readonly<Record<string, { fields: readonly string[] }>>,
+): SealedFieldSpec {
+  const out: Record<string, Array<Array<{ k: string; e: 0 | 1 } | '**'>>> = {};
+  for (const [type, spec] of Object.entries(types)) {
+    out[type] = spec.fields.map(pattern => pattern.split('.').map(part =>
+      part === '**' ? '**' as const
+        : part.endsWith('[]') ? { k: part.slice(0, -2), e: 1 as const }
+        : { k: part, e: 0 as const }));
+  }
+  return out;
+}
+
+export const SEALED_PHI_FIELDS: SealedFieldSpec = compileSealedFieldSpec(
+  (phiCatalog as { types: Record<string, { fields: string[] }> }).types,
+);
+
+/**
  * Build the `validate_doc_update` source that CouchDB stores in a design doc
  * and evaluates on every write.
  *
@@ -794,6 +822,7 @@ export function buildValidateDocUpdateFn(
   updateOnlyFields: Readonly<Record<string, readonly string[]>> = DOC_UPDATE_ONLY_FIELDS,
   createOnly: Readonly<Record<string, readonly string[]>> = DOC_CREATE_ONLY_ROLES,
   createOnlyRequiredValues: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = DOC_CREATE_ONLY_REQUIRED_VALUES,
+  sealedFields: SealedFieldSpec = SEALED_PHI_FIELDS,
 ): string {
   const matrixJson = JSON.stringify(matrix);
   const immutableJson = JSON.stringify(IMMUTABLE_FIELDS);
@@ -808,6 +837,7 @@ export function buildValidateDocUpdateFn(
   const patientCareTeamFieldsJson = JSON.stringify(PATIENT_CARE_TEAM_FIELDS);
   const careTeamRolesJson = JSON.stringify(CARE_TEAM_ASSIGNMENT_ROLES);
   const transferWriteRolesJson = JSON.stringify(TRANSFER_WRITE_ROLES);
+  const sealedFieldsJson = JSON.stringify(sealedFields);
 
   return `function (newDoc, oldDoc, userCtx, secObj) {
   // Design docs are admin-only; the CouchDB security object handles that.
@@ -1011,6 +1041,90 @@ export function buildValidateDocUpdateFn(
       if (oldDoc[f] !== undefined && newDoc[f] !== oldDoc[f]) {
         throw({ forbidden: f + ' is immutable (was ' + oldDoc[f] + ', got ' + newDoc[f] + ')' });
       }
+    }
+  }
+
+  // ── Catalogued PHI must arrive sealed (audit M3) ───────────────────────
+  // The client seals every field named in phi-field-catalog.json before it is
+  // stored or replicated (encrypted-db.ts). Nothing on the server enforced it,
+  // so plaintext from a client bug, a modified client or a bypassed wrapper
+  // replicated to every device and backup. A string at a catalogued path must
+  // now be an envelope: oenc:v1: / oencm:v1: (org data key), or enc:v1: (the
+  // retired server-only envelope, which the client also treats as sealed).
+  //
+  // ROLLOUT SAFETY. Production already holds plaintext in these fields (written
+  // before sealing, or by the demo seed). Refusing every write that CONTAINS
+  // plaintext would stop clinicians saving any legacy record until the
+  // encrypt-phi-at-rest migration had run. So plaintext is refused only when
+  // it is NEW to the record: a create, or a string that the revision being
+  // replaced did not already hold as plaintext. An unchanged legacy value
+  // passes (the client keeps it as stored, by design: encrypted-db rule 3);
+  // anything the writer types or edits has to be sealed. "Already held" is
+  // judged on the value anywhere in oldDoc, not at the same path, so an array
+  // element shifting position does not turn an old value into a new one. A
+  // value repeated from elsewhere in the same record reveals nothing new.
+  // Empty strings, null and non-strings are not sealed by the client either
+  // and pass. Deletes are not judged. _admin writes (server routes, the seed
+  // script, migrations) returned at the top and are not subject to this.
+  var SEALED_FIELDS = ${sealedFieldsJson};
+  var sealedSpec = SEALED_FIELDS[docType];
+  if (!isDelete && sealedSpec) {
+    var isEnvelope = function (v) {
+      return v.indexOf('oenc:v1:') === 0 || v.indexOf('oencm:v1:') === 0 || v.indexOf('enc:v1:') === 0;
+    };
+    var collectStrings = function (node, found) {
+      if (typeof node === 'string') { found['$' + node] = true; return; }
+      if (node && typeof node === 'object') {
+        for (var ck in node) {
+          if (node.hasOwnProperty(ck) && ck.charAt(0) !== '_') collectStrings(node[ck], found);
+        }
+      }
+    };
+    var heldPlaintext = {};
+    if (oldDoc && !oldDoc._deleted) collectStrings(oldDoc, heldPlaintext);
+    var unsealedPath = null;
+    var checkLeaf = function (value, path) {
+      if (unsealedPath === null && typeof value === 'string' && value !== '' && !isEnvelope(value) && !heldPlaintext['$' + value]) {
+        unsealedPath = path;
+      }
+    };
+    var deepSealed = function (node, path) {
+      if (typeof node === 'string') { checkLeaf(node, path); return; }
+      if (node instanceof Array) {
+        for (var di = 0; di < node.length; di++) deepSealed(node[di], path + '[' + di + ']');
+        return;
+      }
+      if (node && typeof node === 'object') {
+        for (var dk in node) {
+          if (node.hasOwnProperty(dk) && dk.charAt(0) !== '_') deepSealed(node[dk], path + (path ? '.' : '') + dk);
+        }
+      }
+    };
+    var walkSealed = function (node, segs, si, path) {
+      if (unsealedPath !== null || node === undefined || node === null) return;
+      if (si === segs.length) {
+        if (typeof node === 'string') checkLeaf(node, path);
+        else if (node instanceof Array) {
+          for (var ai2 = 0; ai2 < node.length; ai2++) if (typeof node[ai2] === 'string') checkLeaf(node[ai2], path + '[' + ai2 + ']');
+        }
+        return;
+      }
+      var seg = segs[si];
+      if (seg === '**') { deepSealed(node, path); return; }
+      if (typeof node !== 'object' || node instanceof Array) return;
+      var child = node[seg.k];
+      if (seg.e) {
+        if (child instanceof Array) {
+          for (var ci = 0; ci < child.length; ci++) walkSealed(child[ci], segs, si + 1, path + (path ? '.' : '') + seg.k + '[' + ci + ']');
+        }
+        return;
+      }
+      walkSealed(child, segs, si + 1, path + (path ? '.' : '') + seg.k);
+    };
+    for (var sp = 0; sp < sealedSpec.length && unsealedPath === null; sp++) walkSealed(newDoc, sealedSpec[sp], 0, '');
+    if (unsealedPath !== null) {
+      // The path is named; the value never is (it is patient data).
+      throw({ forbidden: docType + ' field ' + unsealedPath + ' must be encrypted before it is stored; refresh and sign in again to load the organisation key' });
     }
   }
 
