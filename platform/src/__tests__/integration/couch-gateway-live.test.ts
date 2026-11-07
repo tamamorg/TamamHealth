@@ -177,8 +177,8 @@ live('sync gateway against a real CouchDB', () => {
       signInAs(ANA);
       const got = await gateway(MESSAGES, ['_bulk_get'], { body: { docs: [{ id: 'msg-mine' }, { id: 'msg-theirs' }] }, query: '?revs=true' });
       const text = JSON.stringify(got.json);
-      expect(text).toContain('Give 500 mg');
-      expect(text).not.toContain('private to ben and cat');
+      expect(text).toContain(sealed('Give 500 mg'));
+      expect(text).not.toContain(sealed('private to ben and cat'));
       expect((await gateway(MESSAGES, ['msg-theirs'])).status).toBe(403);
     });
   });
