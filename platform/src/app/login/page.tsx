@@ -105,6 +105,8 @@ export default function LoginPage() {
      this page and the dashboard. Shows a message and a plain link instead of
      a spinner that never ends. */
   const [redirectStalled, setRedirectStalled] = useState(false);
+  const bounceCountedRef = useRef(false);
+  const loopDetectedRef = useRef(false);
   const demoEnabled = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
   const [demoAccounts, setDemoAccounts] = useState<DemoAccount[]>([]);
   // Second-factor step. The password has been accepted and the server is
@@ -209,10 +211,22 @@ export default function LoginPage() {
       ? new URLSearchParams(window.location.search).get('next')
       : null;
     const landing = resolveNextPath(nextParam, currentUser!.role) ?? resolveLandingPage(currentUser!.role);
-    let store: Storage | null = null;
-    try { store = window.sessionStorage; } catch { /* blocked storage */ }
+    // Loop guard. Only a bounce counts: `apiFetch` sends an expired session
+    // back here WITH `?next=`, and a server that keeps refusing it would send
+    // it back forever. An ordinary sign-in has no `next` and is never counted,
+    // so quick successive sign-ins on a shared ward device cannot trip it.
+    // One count per page visit (the ref survives effect re-runs and dev
+    // StrictMode's double invoke).
+    if (nextParam && !bounceCountedRef.current) {
+      bounceCountedRef.current = true;
+      let store: Storage | null = null;
+      try { store = window.sessionStorage; } catch { /* blocked storage */ }
+      if (recordRedirectAttempt(store).looping) {
+        loopDetectedRef.current = true;
+      }
+    }
     // Bouncing between here and the dashboard: stop pushing; the stall timer below shows the message.
-    if (recordRedirectAttempt(store).looping) return;
+    if (loopDetectedRef.current) return;
     if (sessionMode === 'offline') {
       // A document navigation lets the service worker serve the verified HTML
       // route. A Next soft navigation needs an RSC network response and can
@@ -227,7 +241,12 @@ export default function LoginPage() {
   useEffect(() => {
     if (!redirecting) return;
     const timer = window.setTimeout(() => setRedirectStalled(true), REDIRECT_STALL_MS);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      // The redirect ended (signed out, switching account): the next one
+      // starts with a spinner again, not with the previous one's alarm.
+      setRedirectStalled(false);
+    };
   }, [redirecting]);
 
   const describeLoginFailure = (fallback: string) => describeLoginFailureMessage(t, lastLoginFailure(), fallback);
