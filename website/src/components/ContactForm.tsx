@@ -143,14 +143,17 @@ export default function ContactForm() {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 26 }}>
-          <select name="topic" aria-label={t("Subject of inquiry")} className="tm-cfield" style={field} defaultValue={SUBJECTS[0]}>
-            {SUBJECTS.map((s) => <option key={s} value={s}>{t(s)}</option>)}
+          <select name="topic" aria-label={t("Subject of inquiry")} className="tm-cfield" style={field} defaultValue="" required>
+            <option value="" disabled>{t(SUBJECTS[0])}</option>
+            {SUBJECTS.slice(1).map((s) => <option key={s} value={s}>{t(s)}</option>)}
           </select>
-          <select name="level" aria-label={t("Level of care")} className="tm-cfield" style={field} defaultValue={LEVELS[0]}>
-            {LEVELS.map((l) => <option key={l} value={l}>{t(l)}</option>)}
+          <select name="level" aria-label={t("Level of care")} className="tm-cfield" style={field} defaultValue="" required>
+            <option value="" disabled>{t(LEVELS[0])}</option>
+            {LEVELS.slice(1).map((l) => <option key={l} value={l}>{t(l)}</option>)}
           </select>
-          <select name="place" aria-label={t("Location")} className="tm-cfield" style={field} defaultValue={PLACES[0]}>
-            {PLACES.map((p) => <option key={p} value={p}>{t(p)}</option>)}
+          <select name="place" aria-label={t("Location")} className="tm-cfield" style={field} defaultValue="" required>
+            <option value="" disabled>{t(PLACES[0])}</option>
+            {PLACES.slice(1).map((p) => <option key={p} value={p}>{t(p)}</option>)}
           </select>
           <textarea
             name="message" aria-label={t("Message")} rows={4} className="tm-cfield"
@@ -171,7 +174,7 @@ export default function ContactForm() {
               <Corners />
             </button>
             <button type="submit" disabled={state === "sending" || state === "sent"} className="blueprint" style={primaryBtn}>
-              {state === "sent" ? "Message sent ✓" : state === "sending" ? "Sending…" : "Submit"}
+              {state === "sent" ? t("Message sent ✓") : state === "sending" ? t("Sending…") : t("Submit")}
               <Corners />
             </button>
           </div>

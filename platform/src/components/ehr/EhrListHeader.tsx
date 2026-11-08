@@ -320,26 +320,36 @@ function useFilterPanel(anchorWidth: 'trigger' | number, align: 'left' | 'right'
 
   useEffect(() => {
     if (!open) return;
+    // The filter fields are `Select`s, whose option list is portalled to
+    // <body> (`.tsel-menu`), outside this panel. Treating a press on an option
+    // as an outside click closed the panel on mousedown, so the option's click
+    // never landed and no filter could be chosen (2026-11-07, lab worklist).
+    const insideOwnUi = (target: EventTarget | null) => {
+      if (!(target instanceof Node)) return false;
+      if (triggerRef.current?.contains(target) || panelRef.current?.contains(target)) return true;
+      return target instanceof Element && !!target.closest('.tsel-menu');
+    };
     const onDown = (e: MouseEvent | TouchEvent) => {
-      const target = e.target as Node;
-      if (triggerRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+      if (insideOwnUi(e.target)) return;
       setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
     // Scroll/resize close rather than reposition: the trigger can leave the
-    // viewport entirely, and a panel chasing it reads as a glitch.
-    const onViewportChange = () => setOpen(false);
+    // viewport entirely, and a panel chasing it reads as a glitch. Scrolling
+    // the panel's own body or an open option list is not that.
+    const onResize = () => setOpen(false);
+    const onScroll = (e: Event) => { if (!insideOwnUi(e.target)) setOpen(false); };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('touchstart', onDown);
     document.addEventListener('keydown', onKey);
-    window.addEventListener('resize', onViewportChange);
-    window.addEventListener('scroll', onViewportChange, true);
+    window.addEventListener('resize', onResize);
+    window.addEventListener('scroll', onScroll, true);
     return () => {
       document.removeEventListener('mousedown', onDown);
       document.removeEventListener('touchstart', onDown);
       document.removeEventListener('keydown', onKey);
-      window.removeEventListener('resize', onViewportChange);
-      window.removeEventListener('scroll', onViewportChange, true);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scroll', onScroll, true);
     };
   }, [open]);
 

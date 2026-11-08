@@ -147,7 +147,7 @@ const serverAuthHeader = computeServerAuthHeader();
  */
 const encryptedDatabases: Record<string, { raw: PouchDatabase; wrapped: PouchDatabase }> = {};
 
-export function getDB(name: string): PouchDatabase {
+function currentWrappedDB(name: string): PouchDatabase {
   const raw = getRawDB(name);
   const cached = encryptedDatabases[name];
   // A wiped database is recreated as a new raw instance; wrap that one.
@@ -155,6 +155,79 @@ export function getDB(name: string): PouchDatabase {
   const wrapped = wrapEncrypted(raw, name);
   encryptedDatabases[name] = { raw, wrapped };
   return wrapped;
+}
+
+/**
+ * Operations that are retried once on a fresh instance when the IndexedDB
+ * connection under them is closing. Each either completes or fails before its
+ * transaction starts, so the retry cannot apply a write twice. Feeds and event
+ * methods (`changes`, `on`, replication) are not here: they are long-lived and
+ * restart through their own owners.
+ */
+const RETRY_ON_CLOSING = new Set([
+  'get', 'put', 'post', 'remove', 'bulkDocs', 'bulkGet', 'allDocs', 'find',
+  'query', 'createIndex', 'getIndexes', 'deleteIndex', 'info', 'getAttachment',
+  'putAttachment', 'removeAttachment',
+]);
+
+/** Forget a cached instance whose connection has closed, if it is still the cached one. */
+function evictClosedDatabase(name: string, closed: PouchDatabase): void {
+  const cached = encryptedDatabases[name];
+  if (databases[name] === closed || cached?.wrapped === closed || cached?.raw === closed) {
+    delete databases[name];
+    delete encryptedDatabases[name];
+  }
+}
+
+const healingHandles: Record<string, PouchDatabase> = {};
+
+/**
+ * A handle that survives its IndexedDB connection being closed under it
+ * (2026-11-07 report: "Failed to execute 'transaction' on 'IDBDatabase': The
+ * database connection is closing").
+ *
+ * A wipe deletes local databases: sign-out, session expiry, or another user
+ * signing in on this device. Deleting a database closes every open
+ * connection to it, in every tab. A wipe in this tab drops its cache entry
+ * first, but a wipe in another tab cannot, so this tab kept handing out the
+ * closed instance and every later read and write failed until a reload. The
+ * old retry covered only `find` and the audit log, and only the same-tab case.
+ *
+ * Each call resolves the current instance; a call that fails on a closing
+ * connection evicts that instance and runs once more on a freshly opened one.
+ */
+function healingHandle(name: string): PouchDatabase {
+  const existing = healingHandles[name];
+  if (existing) return existing;
+  const handle = new Proxy(currentWrappedDB(name) as object, {
+    get(_initial, prop) {
+      const target = currentWrappedDB(name) as unknown as Record<PropertyKey, unknown>;
+      const value = target[prop];
+      if (typeof value !== 'function') return value;
+      if (typeof prop !== 'string' || !RETRY_ON_CLOSING.has(prop)) return (value as (...a: unknown[]) => unknown).bind(target);
+      return async (...args: unknown[]) => {
+        try {
+          return await (value as (...a: unknown[]) => Promise<unknown>).apply(target, args);
+        } catch (err) {
+          if (!isClosingConnectionError(err)) throw err;
+          evictClosedDatabase(name, target as unknown as PouchDatabase);
+          const fresh = currentWrappedDB(name) as unknown as Record<string, (...a: unknown[]) => Promise<unknown>>;
+          return fresh[prop](...args);
+        }
+      };
+    },
+    set(_initial, prop, value) {
+      (currentWrappedDB(name) as unknown as Record<PropertyKey, unknown>)[prop] = value;
+      return true;
+    },
+  }) as PouchDatabase;
+  healingHandles[name] = handle;
+  return handle;
+}
+
+export function getDB(name: string): PouchDatabase {
+  // Server code talks to CouchDB over HTTP; there is no connection to close.
+  return IS_BROWSER ? healingHandle(name) : currentWrappedDB(name);
 }
 
 /**

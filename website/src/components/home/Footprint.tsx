@@ -64,18 +64,6 @@ export default function Footprint() {
             <p style={{ margin: 0, fontSize: 15.5, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
               {emphasise(t("TamamHealth is raising **$100,000** to launch in 10 clinics across Juba and greater South Sudan, to demonstrate that offline-first digital records can operate in the most demanding conditions and to establish a foundation for expansion across sub-Saharan Africa."))}
             </p>
-            <dl className="tm-fp-figures" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", margin: "6px 0 4px", borderTop: "1px solid var(--color-divider)", borderBottom: "1px solid var(--color-divider)" }}>
-              {[
-                { v: t("10"), k: t("pilot clinics") },
-                { v: t("$100K"), k: t("pilot goal") },
-                { v: t("6"), k: t("levels of care") },
-              ].map((f, i) => (
-                <div key={f.k} style={{ padding: "14px 0 14px", paddingInlineStart: i ? 18 : 0, borderInlineStart: i ? "1px solid var(--color-divider)" : 0 }}>
-                  <dt style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 34, lineHeight: 1, color: "var(--tm-deep)" }}>{f.v}</dt>
-                  <dd style={{ margin: "6px 0 0", fontSize: 13, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-neutral-700)" }}>{f.k}</dd>
-                </div>
-              ))}
-            </dl>
             {/* Desktop site detail. Hidden under 760px: HeroNav below names
                 the selected site there. */}
             <div className="blueprint tm-site-card" style={{ background: "var(--color-surface)", padding: "24px 26px 22px" }}>

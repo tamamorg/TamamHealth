@@ -16,7 +16,10 @@ import type { NotificationItem, NotificationType } from '@/modules/communication
 
 export const MODULE_BADGE_SOURCES: Readonly<Record<string, readonly NotificationType[]>> = {
   '/referrals': ['referral', 'transfer'],
-  '/lab': ['lab'],
+  // New requests only (2026-11-07). Counting result notifications kept a
+  // badge on the lab icon while its queue was empty: every result filed in
+  // the last three days stood in for work, and nothing new had come in.
+  '/lab': ['lab_request'],
   '/pharmacy': ['prescription'],
   '/appointments': ['appointment'],
   '/messages': ['message'],

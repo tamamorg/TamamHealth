@@ -88,6 +88,10 @@ export function usePrescriptions(patientId?: string) {
             allowPartial: input.allowPartial === true,
             note: input.note,
             counsellingConfirmed: input.counsellingConfirmed === true,
+            // Read by the server's allergy gate; the request used to leave it
+            // out, so an online dispense never carried the pharmacist's review.
+            allergyReview: input.allergyReview,
+            clearForDispensing: input.clearForDispensing === true,
           }),
         });
       } catch {

@@ -11,7 +11,7 @@
 import { isKindRelevantToRole, type NotificationKind } from '@/modules/communication/notifications/notification-scope';
 
 const ALL_KINDS: NotificationKind[] = [
-  'alert', 'triage', 'referral', 'lab', 'appointment', 'prescription', 'progress', 'transfer', 'visit', 'message',
+  'alert', 'triage', 'referral', 'lab', 'lab_request', 'appointment', 'prescription', 'progress', 'transfer', 'visit', 'message',
 ];
 
 describe('kinds that must never be narrowed by role', () => {
@@ -80,7 +80,7 @@ describe('platform and org administrators keep only what they can act on', () =>
     expect(isKindRelevantToRole('alert', role)).toBe(true);
     expect(isKindRelevantToRole('transfer', role)).toBe(true);
     expect(isKindRelevantToRole('message', role)).toBe(true);
-    for (const kind of ['triage', 'referral', 'lab', 'appointment', 'prescription', 'progress', 'visit'] as const) {
+    for (const kind of ['triage', 'referral', 'lab', 'lab_request', 'appointment', 'prescription', 'progress', 'visit'] as const) {
       expect(isKindRelevantToRole(kind, role)).toBe(false);
     }
   });
@@ -128,5 +128,15 @@ describe('every kind still has someone listening', () => {
       'rooming_nurse', 'front_desk', 'pharmacist', 'lab_tech', 'medical_superintendent',
     ];
     expect(facilityRoles.some(role => isKindRelevantToRole(kind, role))).toBe(true);
+  });
+});
+
+describe('new lab requests are the bench\'s queue', () => {
+  it('reaches the lab and the superintendent, not the ordering clinicians', () => {
+    expect(isKindRelevantToRole('lab_request', 'lab_tech')).toBe(true);
+    expect(isKindRelevantToRole('lab_request', 'medical_superintendent')).toBe(true);
+    for (const role of ['doctor', 'clinical_officer', 'nurse', 'pharmacist', 'front_desk']) {
+      expect(isKindRelevantToRole('lab_request', role)).toBe(false);
+    }
   });
 });

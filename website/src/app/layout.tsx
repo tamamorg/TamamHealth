@@ -5,6 +5,7 @@ import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
 import { getLocale } from "@/lib/i18n/server";
 import { localeConfig } from "@/lib/i18n";
 import StructuredData from "./structured-data";
+import ImageFadeIn from "@/components/ImageFadeIn";
 
 const bodyFont = Barlow({
   subsets: ["latin"],
@@ -106,6 +107,7 @@ export default async function RootLayout({
       </head>
       <body>
         <LanguageProvider locale={locale}>{children}</LanguageProvider>
+        <ImageFadeIn />
       </body>
     </html>
   );

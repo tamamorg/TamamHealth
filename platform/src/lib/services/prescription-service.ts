@@ -148,6 +148,34 @@ export async function advancePrescription(
   return updatePrescription(id, { ...extra, orderStatus: to, status: coarseFromRxStatus(to) });
 }
 
+/**
+ * The pharmacist's own clearance, made on the copy that is about to be
+ * dispensed. The fill button clears the order on the device and then asks the
+ * server to dispense; online, the server read its own copy before the
+ * device's "cleared" write had replicated, and refused with "must be reviewed
+ * and cleared" a dispense the pharmacist had just cleared (2026-11-07). The
+ * server now makes the same hops itself, under the same pharmacist check
+ * (`advancePrescription` resolves the actor from the directory), and only
+ * along moves the lifecycle allows, as the fill button does on the device. A
+ * discontinued order or one sent to an outside pharmacy is left as it is, and
+ * the dispense gate refuses it with its own reason.
+ */
+export async function clearForDispensing(id: string, actorId: string): Promise<PrescriptionDoc | null> {
+  let doc = await prescriptionsDB().get(id) as PrescriptionDoc;
+  // A stopped order must stay stopped: advancing it would rewrite its coarse
+  // status and revive it. The dispense gate refuses it with its own reason.
+  if (doc.status === 'discontinued' || doc.fulfilment === 'external') return doc;
+  let stage = effectivePrescriptionStatus(doc);
+  if (stage === 'prescribed' || stage === 'dispensing_error_recalled') {
+    doc = (await advancePrescription(id, 'received_in_pharmacy_queue', undefined, actorId)) ?? doc;
+    stage = effectivePrescriptionStatus(doc);
+  }
+  if (stage !== 'cleared_for_dispensing' && rxLifecycle.can(stage, 'cleared_for_dispensing')) {
+    doc = (await advancePrescription(id, 'cleared_for_dispensing', undefined, actorId)) ?? doc;
+  }
+  return doc;
+}
+
 export async function getAllPrescriptions(scope?: DataScope): Promise<PrescriptionDoc[]> {
   const db = prescriptionsDB();
   const all = await findByType<PrescriptionDoc>(db, 'prescription');
