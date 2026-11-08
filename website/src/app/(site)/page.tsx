@@ -6,7 +6,6 @@ import HeroShowcase from "@/components/home/HeroShowcase";
 import ProductsBand from "@/components/home/ProductsBand";
 import Footprint from "@/components/home/Footprint";
 import NewsBand from "@/components/home/NewsBand";
-import PartnersBand from "@/components/home/PartnersBand";
 
 export default async function HomePage() {
   const { t, content } = await getTranslator();
@@ -16,7 +15,6 @@ export default async function HomePage() {
       <ProductsBand />
       <Footprint />
       <NewsBand />
-      <PartnersBand />
 
       {/* About split */}
       <section style={{ padding: "24px 32px 100px", background: "#FFFFFF" }}>

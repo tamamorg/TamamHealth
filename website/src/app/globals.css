@@ -1309,20 +1309,11 @@ footer a:not(.btn):hover, footer a:not(.btn):focus-visible { background-size: 10
   .tm-navlink::after, footer a:not(.btn), .tm-totop { transition: none; }
 }
 
-/* ── Home: partners strip ── */
-.tm-partner { transition: border-color .18s ease; }
-.tm-partner:hover, .tm-partner:focus-visible { border-color: var(--tm-deep); }
-.tm-partner-mark { position: relative; flex: none; width: 72px; height: 72px; display: grid; place-items: center; border: 1px solid var(--color-divider); background: #ffffff; overflow: hidden; }
-.tm-partner-mark img { transition: transform .4s cubic-bezier(.2, .65, .25, 1); }
-.tm-partner:hover .tm-partner-mark img { transform: scale(1.06); }
 /* ── Home: deployment map section ── */
 @media (max-width: 1100px) {
   .tm-fp-figures { max-width: 520px; }
 }
 @media (max-width: 639px) {
-  .tm-partners { gap: 12px !important; }
-  .tm-partner { padding: 12px 14px !important; gap: 14px !important; }
-  .tm-partner-mark { width: 56px; height: 56px; }
   .tm-fp-figures dt { font-size: 28px !important; }
 }
 
