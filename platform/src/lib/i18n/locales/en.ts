@@ -10394,6 +10394,7 @@ const en: TranslationMap = {
   'unsaved.leave': 'Changes not saved. Leave this page anyway?',
   'reload.reason.update': 'Update ready.',
   'reload.reason.chartArrived': 'Transferred chart arrived.',
+  'reload.reason.sessionChanged': 'Signed out or switched user in another tab.',
   'reload.keepTyping': 'Reload the page when ready. What you typed is kept on this device.',
   'reload.now': 'Reload now',
   'routeContext.transfers': 'Transfers',

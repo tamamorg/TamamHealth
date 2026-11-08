@@ -1000,3 +1000,279 @@ header > div { min-width: 0; }
   h1, h2, h3 { break-after: avoid; }
   a { text-decoration: none !important; }
 }
+
+/* ── 9. Motion ──
+   One timing for the whole site so it reads as one thing: 160ms for hover,
+   press and focus, 240-320ms for things that appear. Only colour, opacity and
+   transform move; nothing animates layout, so pages never shift. Everything
+   here is switched off for readers who ask for reduced motion (end of block). */
+
+:root {
+  --tm-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --tm-fast: 160ms;
+  --tm-enter: 320ms;
+}
+
+/* Hover, press and focus ease instead of snapping between states. The hover
+   rules above carry !important; a transition still runs into them. */
+.btn, .input, .input-dark, .tm-card, .tm-tab, .tm-utilink, .tm-fact, .tm-chalcard,
+.tm-chalstep, .tm-cost, .tm-prodcard, .tm-prodchip, .tm-solution-card, .tm-handled,
+.tm-guard, .tm-lvlbtn, .tm-rolerow, .tm-faq-row, .tm-newscard, a {
+  transition:
+    background-color var(--tm-fast) ease-out,
+    border-color var(--tm-fast) ease-out,
+    color var(--tm-fast) ease-out,
+    transform var(--tm-fast) var(--tm-ease);
+}
+.btn:active:not(:disabled) { transform: translateY(1px); }
+
+/* Nav links: the condensing header changes their padding, which snapped while
+   the bar around them eased; and a blue bar slides in under the hovered link
+   (the current page keeps its own border). */
+.tm-navlink {
+  transition: color var(--tm-fast) ease-out, padding 180ms ease;
+}
+.tm-navlink::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -3px;
+  height: 3px;
+  background: #2191d0;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 200ms var(--tm-ease);
+}
+[dir="rtl"] .tm-navlink::after { transform-origin: right center; }
+.tm-navlink:hover::after { transform: scaleX(1); }
+.tm-navlink[aria-current="page"]::after { display: none; }
+
+/* Cards that are links lift by 2px: depth without leaving the flat look. */
+.tm-prodcard:hover, .tm-solution-card:hover, .tm-newscard:hover { transform: translateY(-2px); }
+.tm-newscard-fig img { transition: transform 400ms var(--tm-ease); }
+.tm-newscard:hover .tm-newscard-fig img { transform: scale(1.03); }
+
+/* Focus ring eases in; taps answer at once on touch screens. */
+:focus-visible { transition: outline-offset var(--tm-fast) ease-out; }
+a, button, summary { -webkit-tap-highlight-color: rgba(33, 145, 208, 0.15); touch-action: manipulation; }
+
+/* Home hero. All slide photographs are stacked and cross-fade; the old card
+   fades out quickly and the new one fades in just after it, so two headlines
+   are never on screen at once. visibility keeps the hidden cards out of
+   reach without changing the stack's height. */
+.tm-hero-slide { opacity: 0; transition: opacity 480ms ease; }
+.tm-hero-slide[data-on="true"] { opacity: 1; }
+.tm-hero-card {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 140ms ease-out, visibility 0s linear 140ms;
+}
+.tm-hero-card[data-on="true"] {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 260ms ease-out 140ms, visibility 0s;
+}
+/* First paint: the card rises into place once. */
+@keyframes tm-hero-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.tm-hero-cardstack { animation: tm-hero-rise 420ms var(--tm-ease) both; }
+
+/* Photographs fade in as they arrive instead of painting top to bottom on a
+   slow connection. Only once JavaScript has marked the page (ImageFadeIn), so
+   without it every image shows as before; the preloaded hero image is left
+   alone, so the largest paint is never held back. */
+html.tm-js img[loading="lazy"]:not([data-loaded]) { opacity: 0; }
+html.tm-js img[loading="lazy"] { transition: opacity 300ms ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  .btn:active, .tm-prodcard:hover, .tm-solution-card:hover, .tm-newscard:hover,
+  .tm-newscard:hover .tm-newscard-fig img { transform: none; }
+}
+
+@media print {
+  html.tm-js img[loading="lazy"] { opacity: 1 !important; }
+  .tm-hero-cardstack { animation: none; }
+}
+
+/* News sign-up (SubscribeBand): the field and the button share a row until a
+   phone, where the button drops under the field at full width. The band's own
+   frame padding tightens with it. */
+@media (max-width: 639px) {
+  .tm-subscribe-row { flex-direction: column; }
+  .tm-subscribe-row > button { width: 100%; }
+  #subscribe > .blueprint { padding: 30px 22px !important; }
+}
+
+/* ── News card (NewsCard.tsx) ──
+   Flat blueprint card: no shadow and no radius. On hover the frame and a 3px
+   top rule turn blue, the cover eases in, and the arrow steps forward. The
+   card is a link, so keyboard focus gets the same treatment as hover. */
+.tm-newscard { transition: border-color .18s ease; }
+.tm-newscard::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 3px;
+  background: var(--tm-deep);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .22s ease;
+  z-index: 1;
+}
+[dir="rtl"] .tm-newscard::before { transform-origin: right; }
+.tm-newscard-fig { border-bottom: 1px solid var(--color-divider); background: var(--color-accent-100); }
+.tm-newscard-fig img { transition: transform .4s ease; }
+.tm-newscard-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-600); }
+.tm-newscard-tag { font-family: var(--font-heading); font-weight: 700; letter-spacing: 0.14em; color: var(--color-accent-700); }
+.tm-newscard-tag::after { content: ""; display: inline-block; width: 4px; height: 4px; margin-inline-start: 10px; vertical-align: middle; background: var(--color-neutral-300); }
+.tm-newscard-sum {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--color-neutral-700);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tm-newscard-more {
+  margin-top: auto;
+  margin-inline: -22px;
+  padding: 14px 22px 16px;
+  border-top: 1px solid var(--color-divider);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--color-accent-700);
+  transition: background-color .18s ease;
+}
+.tm-newscard-arrow { display: inline-block; font-size: 18px; transition: transform .2s ease; }
+[dir="rtl"] .tm-newscard-arrow { transform: scaleX(-1); }
+.tm-newscard-sum + .tm-newscard-more { margin-top: auto; }
+.tm-newscard-body { row-gap: 10px; }
+.tm-newscard-body > .tm-newscard-sum { margin-bottom: 18px; }
+.tm-newscard:hover, .tm-newscard:focus-visible { border-color: var(--tm-deep); }
+.tm-newscard:hover::before, .tm-newscard:focus-visible::before { transform: scaleX(1); }
+.tm-newscard:hover .tm-newscard-fig img, .tm-newscard:focus-visible .tm-newscard-fig img { transform: scale(1.04); }
+.tm-newscard:hover .tm-newscard-more, .tm-newscard:focus-visible .tm-newscard-more { background: var(--color-accent-100); }
+.tm-newscard:hover .tm-newscard-arrow, .tm-newscard:focus-visible .tm-newscard-arrow { transform: translateX(4px); }
+[dir="rtl"] .tm-newscard:hover .tm-newscard-arrow, [dir="rtl"] .tm-newscard:focus-visible .tm-newscard-arrow { transform: scaleX(-1) translateX(4px); }
+@media (prefers-reduced-motion: reduce) {
+  .tm-newscard::before, .tm-newscard-fig img, .tm-newscard-arrow { transition: none; }
+  .tm-newscard:hover .tm-newscard-fig img { transform: none; }
+}
+/* Phone: the card is a thumbnail row (see the ≤639px block above), so the
+   summary drops out and the foot loses its full-width rule. */
+@media (max-width: 639px) {
+  .tm-newscard-sum { display: none; }
+  .tm-newscard-more { margin-inline: 0; padding: 6px 0 0; border-top: 0; justify-content: flex-start; gap: 8px; }
+  .tm-newscard-meta { font-size: 11px; }
+  .tm-newscard-fig { border-bottom: 0; border-inline-end: 1px solid var(--color-divider); }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Motion and phone density (2026-11 pass). Kept last so it wins over the
+   page rules above. Every animation sits behind prefers-reduced-motion.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── Scroll reveal (SiteMotion.tsx adds .tm-rv after hydration, only below
+   the fold, and removes it again once the element has settled) ── */
+.tm-rv {
+  opacity: 0;
+  transform: translate3d(0, 22px, 0);
+  transition: opacity .7s cubic-bezier(.2, .65, .25, 1), transform .7s cubic-bezier(.2, .65, .25, 1);
+  transition-delay: var(--rv-d, 0ms);
+}
+.tm-rv.is-in { opacity: 1; transform: none; }
+@media print { .tm-rv { opacity: 1 !important; transform: none !important; } }
+
+/* ── Page entrance: the first band of every page settles in on load ── */
+@keyframes tm-rise { from { opacity: 0; transform: translate3d(0, 16px, 0); } to { opacity: 1; transform: none; } }
+@keyframes tm-settle { from { transform: scale(1.06); } to { transform: scale(1); } }
+@media (prefers-reduced-motion: no-preference) {
+  /* fill-mode `backwards`: once finished, the element's own styles rule
+     again, so nothing here can pin a crossfading slide to visible. The home
+     hero's card stack is left out for the same reason. */
+  main > section:first-of-type h1 { animation: tm-rise .7s cubic-bezier(.2, .65, .25, 1) backwards; }
+  main > section:first-of-type h1 ~ p,
+  main > section:first-of-type h1 ~ div { animation: tm-rise .7s .12s cubic-bezier(.2, .65, .25, 1) backwards; }
+  main > section:first-of-type .tm-figure:not(.tm-hero-img) { animation: tm-rise .8s .2s cubic-bezier(.2, .65, .25, 1) backwards; }
+  .tm-hero-img img { animation: tm-settle 2.4s cubic-bezier(.2, .65, .25, 1) backwards; }
+}
+
+/* ── Hover feedback on linked cards, figures and buttons ── */
+main a.blueprint { transition: border-color .18s ease, background-color .18s ease; }
+main a.blueprint:hover, main a.blueprint:focus-visible { border-color: var(--tm-deep); }
+main a.tm-chalcard:hover, main a.tm-chalcard:focus-visible { border-color: #7cc7ff !important; }
+main a.blueprint .tm-figure img,
+main a .tm-newscard-fig img { transition: transform .5s cubic-bezier(.2, .65, .25, 1); }
+main a.blueprint:hover .tm-figure img,
+main a.blueprint:focus-visible .tm-figure img { transform: scale(1.04); }
+.btn { transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .15s ease; }
+.btn:active { transform: translateY(1px); }
+main button[type="submit"] { transition: filter .15s ease, transform .15s ease; }
+main button[type="submit"]:hover:not(:disabled) { filter: brightness(.94); }
+main button[type="submit"]:active:not(:disabled) { transform: translateY(1px); }
+@media (prefers-reduced-motion: reduce) {
+  main a.blueprint .tm-figure img, main a .tm-newscard-fig img, .btn, main button[type="submit"] { transition: none; }
+  main a.blueprint:hover .tm-figure img { transform: none; }
+}
+
+/* ── Phones: a tighter type and spacing scale ──
+   Most copy carries its size inline (desktop-tuned 16–18px), so the phone
+   scale keys on the serialised inline value rather than on each component. */
+@media (max-width: 639px) {
+  main p[style*="font-size:15.5px"],
+  main p[style*="font-size:16px"],
+  main p[style*="font-size:16.5px"],
+  main p[style*="font-size:17px"],
+  main p[style*="font-size:17.5px"],
+  main p[style*="font-size:18px"],
+  main li[style*="font-size:15.5px"],
+  main li[style*="font-size:16px"],
+  main li[style*="font-size:16.5px"],
+  main li[style*="font-size:17px"] { font-size: 15px !important; line-height: 1.6 !important; }
+  main h1[style*="clamp("] { font-size: 29px !important; line-height: 1.12 !important; }
+  main h2[style*="clamp("] { font-size: 23px !important; line-height: 1.18 !important; }
+  main h3[style*="font-size:2"],
+  main h3[style*="clamp("] { font-size: 19px !important; line-height: 1.25 !important; }
+  main .blueprint[style*="padding:3"],
+  main .blueprint[style*="padding:4"],
+  main .blueprint[style*="padding:5"] { padding: 22px 18px !important; }
+  main section:not(.tm-hero):not(.tm-hero-nav) { padding-top: 36px !important; padding-bottom: 40px !important; }
+
+  /* Home products band: no second gap above its heading. */
+  .tm-products-band .tm-prod-grid > div:first-child { padding-top: 0 !important; }
+
+  /* Platform "A patient day, end to end": a vertical timeline instead of a
+     sideways rail whose second column was cut off at the screen edge. */
+  .tm-flow-rail { flex-direction: column !important; flex-wrap: nowrap !important; overflow: visible !important; margin-top: 24px !important; }
+  .tm-flow-step { flex: none !important; position: relative; gap: 5px !important; padding: 0 0 20px !important; padding-inline-start: 28px !important; }
+  .tm-flow-step > div:first-child { position: absolute; inset-inline-start: 0; top: 5px; bottom: 0; flex-direction: column; width: 11px; gap: 6px !important; }
+  .tm-flow-step > div:first-child > span:last-child { flex: 1 !important; width: 1px !important; height: auto !important; }
+  .tm-flow-step h3 { font-size: 16.5px !important; }
+}
+
+/* ── News cards on a phone ──
+   In a swipe carousel (home band, "More news") a card is 86% of the screen
+   wide, so it stacks: the whole cover on top, text below. In the /news list
+   it stays a row, but the thumbnail keeps the cover's 4:3 frame instead of
+   stretching to the row height, which cropped the logo covers to fragments. */
+@media (max-width: 639px) {
+  .tm-carousel .tm-newscard { flex-direction: column !important; }
+  .tm-carousel .tm-newscard-fig { width: 100% !important; aspect-ratio: 4 / 3 !important; min-height: 0 !important; border-inline-end: 0 !important; border-bottom: 1px solid var(--color-divider) !important; }
+  .tm-carousel .tm-newscard-body { padding: 16px 16px 14px !important; }
+  .tm-newscard:not(.tm-carousel .tm-newscard) .tm-newscard-fig { aspect-ratio: 4 / 3 !important; min-height: 0 !important; align-self: flex-start; }
+}

@@ -43,6 +43,7 @@ import {
   getDirtyDatabases,
   getPendingWipe,
   recordSyncedSequences,
+  watchDeviceUser,
   wipeLocalData,
 } from '@/lib/security/local-wipe';
 
@@ -184,6 +185,44 @@ describe('device handover', () => {
     } finally {
       if (original) Object.defineProperty(globalThis, 'crypto', original);
     }
+  });
+});
+
+// 2026-11-07: a tab left open while another tab signed in as someone else
+// kept the old workspace and failed every save on the wiped databases.
+describe('another tab signs in as someone else', () => {
+  const KEY = 'tamamhealth.security.device-user.v1';
+  // The watcher hashes the user id asynchronously (Web Crypto); give it time
+  // to settle even when the suite runs under load.
+  const flush = () => new Promise(resolve => setTimeout(resolve, 200));
+
+  it('tells this tab when the device is bound to a different user', async () => {
+    await enforceDeviceUser('user-peter');
+    const peterBinding = window.localStorage.getItem(KEY);
+    await enforceDeviceUser('user-amira');
+    const amiraBinding = window.localStorage.getItem(KEY);
+
+    const changed = jest.fn();
+    const stop = watchDeviceUser('user-amira', changed);
+    await flush();
+    // The other tab signs in as Peter.
+    window.dispatchEvent(new StorageEvent('storage', { key: KEY, newValue: peterBinding }));
+    expect(changed).toHaveBeenCalledTimes(1);
+
+    // The same person signing in elsewhere is not a change.
+    changed.mockClear();
+    window.dispatchEvent(new StorageEvent('storage', { key: KEY, newValue: amiraBinding }));
+    expect(changed).not.toHaveBeenCalled();
+    stop();
+  });
+
+  it('stops listening when unsubscribed', async () => {
+    const changed = jest.fn();
+    const stop = watchDeviceUser('user-amira', changed);
+    await flush();
+    stop();
+    window.dispatchEvent(new StorageEvent('storage', { key: KEY, newValue: JSON.stringify({ user: 'someone-else' }) }));
+    expect(changed).not.toHaveBeenCalled();
   });
 });
 
