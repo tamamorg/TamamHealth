@@ -1,5 +1,6 @@
 'use client';
 
+import { resultWithUnit } from '@/components/lab/workflow/lab-workflow-types';
 import { Loader2 } from '@/components/icons/lucide';
 import Badge, { toneForStatus } from '@/components/Badge';
 import EmptyState from '@/components/EmptyState';
@@ -29,7 +30,7 @@ export default function MobileLabsTab({ patientId }: { patientId: string }) {
         <div key={r._id} className="mobile-chart-card mobile-chart-row-card">
           <div>
             <strong>{r.testName}</strong>
-            <small>{r.result ? `${r.result} ${r.unit || ''}`.trim() : r.specimen}</small>
+            <small>{r.result ? resultWithUnit(r.result, r.unit) : r.specimen}</small>
           </div>
           <Badge tone={r.critical ? 'danger' : toneForStatus(r.status)} size="sm">
             {r.status === 'completed' && r.abnormal ? 'Abnormal' : r.status}

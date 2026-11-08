@@ -23314,6 +23314,13 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
   font-weight: 700;
 }
 
+/* STAT / urgent open orders: said in text, not only by position. */
+.lab-list-surface .lab-priority-flag {
+  color: var(--color-danger-text);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
 @media (max-width: 720px) {
   .patients-list-surface {
     width: 100%;

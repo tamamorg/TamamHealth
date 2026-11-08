@@ -15,6 +15,7 @@
  * are on the list even before a test is ordered.
  */
 
+import { resultWithUnit } from '@/components/lab/workflow/lab-workflow-types';
 import { useMemo, useState, type ReactNode } from 'react';
 import { useAuth } from '@/lib/context';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -332,7 +333,7 @@ export default function LabHomeView({ onBatchEntry }: { onBatchEntry?: () => voi
             title: r.testName,
             detail: [r.specimen, r.accessionNumber].filter(Boolean).join(' · '),
             note: labBenchStage(r) === 'resulted'
-              ? `${r.result}${r.unit ? ` ${r.unit}` : ''}${r.referenceRange ? ` (${r.referenceRange})` : ''}`
+              ? `${resultWithUnit(r.result, r.unit)}${r.referenceRange ? ` (${r.referenceRange})` : ''}`
               : r.clinicalNotes,
             // The button names the next step, so no pill says it a second time.
             actions: (

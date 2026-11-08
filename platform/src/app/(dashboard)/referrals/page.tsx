@@ -1,5 +1,6 @@
 'use client';
 
+import { resultWithUnit } from '@/components/lab/workflow/lab-workflow-types';
 import { Fragment, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Modal from '@/components/Modal';
@@ -298,7 +299,7 @@ function TransferPackageViewer({ pkg, refAttachments, reason, notes, onPreview }
                   <tr key={i} style={{ borderBottom: '1px solid var(--border-light)' }}>
                     <td className="py-1.5 pe-3 font-semibold">{lab.testName}</td>
                     <td className="py-1.5 pe-3" style={{ color: lab.abnormal ? (lab.critical ? 'var(--color-danger-text)' : 'var(--color-warning-text)') : 'inherit', fontWeight: lab.abnormal ? 600 : 400 }}>
-                      {lab.result} {lab.unit}
+                      {resultWithUnit(lab.result, lab.unit)}
                     </td>
                     <td className="py-1.5 pe-3" style={{ color: 'var(--text-muted)' }}>{lab.referenceRange}</td>
                     <td className="py-1.5 pe-3 font-mono" style={{ color: 'var(--text-muted)' }}>{lab.date}</td>

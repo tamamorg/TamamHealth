@@ -244,3 +244,38 @@ describe('correctionReviewState', () => {
     expect(correctionReviewState(pending, { role: 'lab_tech' })).toBe('view');
   });
 });
+
+describe('amending a filed critical result', () => {
+  const criticalHemoglobin = () => filed({
+    testName: 'Hemoglobin', result: '4.2', unit: 'g/dL', referenceRange: '12.0-16.0',
+    abnormal: true, critical: true,
+  });
+
+  it('re-derives the critical flag when the corrected value is no longer critical', async () => {
+    const order = await criticalHemoglobin();
+    await mountAs(TECH_A, order._id);
+    expect(harness.controller!.resultDraft.critical).toBe(true);
+    act(() => { harness.controller!.setResultValue('12.4'); });
+    // Frozen on "critical" before the fix: a false critical alert then went out
+    // when the correction was approved.
+    expect(harness.controller!.resultDraft.critical).toBe(false);
+    expect(harness.controller!.resultDraft.criticalManual).toBe(false);
+  });
+
+  it('keeps a hand-set critical flag on a value the table does not call critical', async () => {
+    const order = await filed({ testName: 'Malaria RDT', result: 'Positive (P. falciparum)', abnormal: true, critical: true });
+    await mountAs(TECH_A, order._id);
+    expect(harness.controller!.resultDraft.criticalManual).toBe(true);
+    act(() => { harness.controller!.setResultValue('Positive (mixed)'); });
+    expect(harness.controller!.resultDraft.critical).toBe(true);
+  });
+});
+
+it('never sends a pending correction to the patient portal', async () => {
+  const order = await filed({ orderStatus: 'reviewed_by_clinician' });
+  await propose(order._id, 'Negative', 'Transcription error');
+  const saved = (await getLabResultById(order._id))!;
+  const portal = toPortalLabResult(saved);
+  expect(portal.result).toBe('Positive (P. falciparum)');
+  expect(JSON.stringify(portal)).not.toMatch(/pendingCorrection|Transcription error/);
+});

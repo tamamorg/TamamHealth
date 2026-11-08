@@ -34,6 +34,7 @@ import {
   summarizeLabObservations,
   valuesFromObservations,
 } from './lab-result-catalog';
+import { sendCriticalLabAlert } from './send-critical-alert';
 import { describeError } from '@/lib/user-facing-error';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
@@ -71,6 +72,18 @@ export interface ResultDraft {
 export interface WorkflowCriticalVerdict {
   isCriticalValue: boolean;
   hits: CriticalObservationHit[];
+}
+
+/** Whether the value already on the order evaluates critical by itself. */
+function filedValueIsCritical(order: LabResultDoc): boolean {
+  const profile = resolveLabResultProfile(order.testName, order.specimen);
+  if (!profile) return evaluateCritical(order.testName, order.result || '').isCriticalValue;
+  const values = valuesFromObservations(order.observations);
+  const inputs = profile.sections.flatMap(section => section.fields.flatMap(field => {
+    const value = values[field.id]?.trim();
+    return value ? [{ id: field.id, label: field.label, unit: field.unit, value }] : [];
+  }));
+  return evaluateCriticalObservations(inputs).isCriticalValue;
 }
 
 export function useLabWorkflow(
@@ -130,7 +143,11 @@ export function useLabWorkflow(
       observations: valuesFromObservations(order.observations),
       abnormal: !!order.abnormal || seededCritical,
       critical: seededCritical,
-      criticalManual: !seedResult?.value && !!order.critical,
+      // A filed critical flag is a hand override only when the filed value does
+      // not itself evaluate critical. Treating every filed critical as manual
+      // froze the flag on a correction: changing 5.0 to 8.4 stayed "critical"
+      // and a false critical alert went out when the correction was approved.
+      criticalManual: !seedResult?.value && !!order.critical && !filedValueIsCritical(order),
     };
   });
 
@@ -301,27 +318,11 @@ export function useLabWorkflow(
    * saved result the lab can phone through beats a blocked save. Filing and
    * an approved correction send the same message.
    */
-  const sendCriticalAlert = useCallback(async (result: string, unit: string, referenceRange: string) => {
-    try {
-      const { createMessage } = await import('@/modules/communication/services/message-service');
-      await createMessage({
-        recipientType: 'staff',
-        patientId: order.patientId,
-        patientName: order.patientName,
-        patientPhone: '',
-        fromDoctorId: currentUser?._id || 'lab',
-        fromDoctorName: currentUser?.name || 'Laboratory',
-        fromHospitalName: currentUser?.hospitalName || order.hospitalName || '',
-        subject: `CRITICAL: ${order.testName} for ${order.patientName}`,
-        body: `Critical lab result for ${order.patientName} — ${order.testName}: ${result}${unit ? ` ${unit}` : ''}${referenceRange ? ` (reference range: ${referenceRange})` : ''}. Please review immediately.`,
-        channel: 'app',
-        sentAt: new Date().toISOString(),
-        orgId: currentUser?.orgId || order.orgId,
-      });
-    } catch (err) {
-      console.error('[lab-workflow] critical-result alert failed; phone the clinician', err);
-    }
-  }, [currentUser, order.hospitalName, order.orgId, order.patientId, order.patientName, order.testName]);
+  const sendCriticalAlert = useCallback(
+    (result: string, unit: string, referenceRange: string) =>
+      sendCriticalLabAlert(order, { result, unit, referenceRange }, currentUser),
+    [currentUser, order],
+  );
 
   const fileResult = useCallback(() => run(async () => {
     const profile = resultProfile;

@@ -27,6 +27,7 @@ import { buildClinicalVisitSummaryHtml, visitDiagnoses } from '@/lib/clinical-vi
 import { formatDate } from '@/lib/format-utils';
 import type { AppointmentDoc, LabResultDoc, MedicalRecordDoc, PatientDoc, PrescriptionDoc, ProblemDoc, TriageDoc } from '@/lib/db-types';
 import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
+import { resultWithUnit } from '@/components/lab/workflow/lab-workflow-types';
 import type { VitalsTimelineEntry } from '@/lib/clinical/vitals';
 import './visits-table.css';
 
@@ -218,7 +219,7 @@ export default function VisitsTable(props: VisitsTableProps) {
                         ].filter(Boolean).join(' · ') || '—' : '—'}</dd></div>
                         <div><dt>{t('visits.notes')}</dt><dd>{dayNotes.length ? dayNotes.map(n => `${n.authorName || ''}${n.signedAt ? '' : ` (${t('visits.unsigned')})`}`).join(' · ') : '—'}</dd></div>
                         <div><dt>{t('visits.medications')}</dt><dd>{meds.length ? meds.map(m => m.medication).join(' · ') : '—'}</dd></div>
-                        <div><dt>{t('visits.labs')}</dt><dd>{labs.length ? labs.map(l => `${l.testName}${l.result ? `: ${l.result}${l.unit ? ` ${l.unit}` : ''}` : ''}`).join(' · ') : '—'}</dd></div>
+                        <div><dt>{t('visits.labs')}</dt><dd>{labs.length ? labs.map(l => `${l.testName}${l.result ? `: ${resultWithUnit(l.result, l.unit)}` : ''}`).join(' · ') : '—'}</dd></div>
                       </dl>
                     </td>
                   </tr>

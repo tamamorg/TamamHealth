@@ -13,6 +13,7 @@
  * onto it; a patient with exactly one open order opens onto that one.
  */
 
+import { resultWithUnit } from '@/components/lab/workflow/lab-workflow-types';
 import { useMemo, useState } from 'react';
 import { useDrawerBack } from '../drawer-back';
 import { Plus } from '@/components/icons/lucide';
@@ -89,7 +90,7 @@ export function LabOrdersPanel({ patient, focusId }: StationOrdersPanelProps) {
               id: r._id,
               title: r.testName,
               detail: [r.specimen, r.accessionNumber].filter(Boolean).join(' · '),
-              note: r.status === 'completed' ? `${r.result}${r.unit ? ` ${r.unit}` : ''}` : r.clinicalNotes,
+              note: r.status === 'completed' ? resultWithUnit(r.result, r.unit) : r.clinicalNotes,
               // Named for the next step, as on the dashboard.
               actions: (
                 <button type="button" className="btn btn-primary btn-sm" onClick={() => setPicked(r._id)}>

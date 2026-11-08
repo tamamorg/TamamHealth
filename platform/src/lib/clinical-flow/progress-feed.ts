@@ -30,6 +30,7 @@
 
 import type { LabOrderStatus, PrescriptionStatus } from './order-lifecycles';
 import type { UserRole } from '../db-types';
+import { isImagingStudy } from './lab-catalog';
 
 export type ProgressEventKind =
   | 'checked_in'
@@ -259,6 +260,16 @@ export const PROGRESS_FEED_BY_ROLE: Readonly<Partial<Record<UserRole, ProgressFe
   nutritionist: { title: 'Patient progress', kinds: ['checked_in', 'triaged', 'lab_resulted'] },
   data_entry_clerk: { title: 'Recent activity', kinds: ['checked_in', 'triaged', 'lab_resulted', 'dispensed'] },
 };
+
+/**
+ * The orders a role's feed is built from. Radiology reads imaging studies only:
+ * its "Imaging moving" card was listing every blood and urine result in the
+ * hospital as "lab result ready".
+ */
+export function labsForFeed<T extends { testName?: string; specimen?: string }>(role: string | undefined, labs: T[]): T[] {
+  if (role !== 'radiologist') return labs;
+  return labs.filter(l => isImagingStudy({ testName: l.testName || '', specimen: l.specimen }));
+}
 
 export function progressFeedFor(role: string | undefined): ProgressFeedConfig | null {
   if (!role) return null;
