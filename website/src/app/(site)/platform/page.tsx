@@ -10,7 +10,7 @@ import { getTranslator } from "@/lib/i18n/server";
 export const metadata: Metadata = {
   title: "The Platform",
   description:
-    "How TamamHealth solves it: each failure paper records create in South Sudan's facilities, and what the offline-first platform does about it. From the front desk to the Ministry.",
+    "How the offline-first TamamHealth platform addresses each failure of paper records in South Sudan's facilities, from the front desk to the Ministry.",
 };
 
 export default async function PlatformPage() {
@@ -27,7 +27,7 @@ export default async function PlatformPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 18, alignItems: "flex-start" }}>
               <h1 style={{ fontSize: "clamp(31px, 5vw, 54px)", margin: 0, color: "#FFFFFF" }}>{t("One record, from the front desk to the Ministry")}</h1>
               <p style={{ margin: 0, fontSize: 17, lineHeight: 1.7, color: "rgba(255,255,255,0.82)", maxWidth: 660 }}>
-                {t("Simple enough for the front desk. Strong enough for the nation. Everything the paper system loses (history, time, trust), Tamam keeps. One offline-first record that follows the patient through every visit.")}
+                {t("TamamHealth is designed for use at the front desk and for national reporting. It retains the patient history that paper systems lose, in one offline-first record that follows the patient through every visit.")}
               </p>
               <div style={{ display: "flex", alignItems: "center", gap: 22, flexWrap: "wrap", marginTop: 6 }}>
                 <Link href="/contact" className="btn blueprint" style={{ padding: "14px 28px", fontSize: 15.5, background: "#FFFFFF", borderColor: "#FFFFFF", color: "#015697" }}>
@@ -89,9 +89,9 @@ export default async function PlatformPage() {
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingBottom: 22, borderBottom: "1px solid var(--color-divider)" }}>
             <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-700)", fontWeight: 700 }}>{t("Our solution")}</span>
-            <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0 }}>{t("Eight ways paper fails, and what the platform does instead")}</h2>
+            <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0 }}>{t("Eight limitations of paper records and how the platform addresses them")}</h2>
             <p style={{ margin: 0, maxWidth: 760, fontSize: 16, lineHeight: 1.7, color: "var(--color-neutral-800)" }}>
-              {t("Every one of these was documented inside South Sudanese facilities before a line of the platform was written. None of them is solved by digitising a form: each needed a specific mechanism, and each mechanism works with the power off and the network down.")}
+              {t("Each of these problems was documented in South Sudanese facilities before development of the platform began. None is solved by digitising a form alone. Each required a specific mechanism, and each mechanism works without power or network access.")}
             </p>
           </div>
 
@@ -150,9 +150,9 @@ export default async function PlatformPage() {
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap", paddingBottom: 18, borderBottom: "1px solid rgba(255,255,255,0.24)" }}>
             <div>
               <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "#7CC7FF" }}>{t("How it works")}</span>
-              <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: "10px 0 0", color: "#FFFFFF" }}>{t("A patient day, end to end")}</h2>
+              <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: "10px 0 0", color: "#FFFFFF" }}>{t("A complete patient day")}</h2>
             </div>
-            <span style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", maxWidth: 420 }}>{t("Seven steps, one record: from the front desk to the national report.")}</span>
+            <span style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", maxWidth: 420 }}>{t("Seven steps on one record, from the front desk to the national report.")}</span>
           </div>
           {/* The seven steps divide the container rather than sitting on a fixed
               190px basis: seven of those came to 1330px inside a 1320px row, so
@@ -192,7 +192,7 @@ export default async function PlatformPage() {
             </article>
             <article className="blueprint" style={{ padding: "24px 26px" }}>
               <Corners />
-              <h3 style={{ margin: "0 0 12px", fontSize: 20 }}>{t("In delivery — not yet a complete specialist module")}</h3>
+              <h3 style={{ margin: "0 0 12px", fontSize: 20 }}>{t("In delivery: not yet a complete specialist module")}</h3>
               <p style={{ margin: 0, lineHeight: 1.7, color: "var(--color-neutral-800)" }}>
                 {t("Admission-deposit collection and refunds, haemodialysis sessions, dental charting, theatre and anaesthesia workflows, optical dispensing, cardiac diagnostics, restricted mental-health notes, and dermatology photography and procedures.")}
               </p>

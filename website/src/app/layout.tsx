@@ -28,9 +28,9 @@ const headingFont = Barlow_Condensed({
 const TAB_TITLE = "TamamHealth";
 /** Short, category-first copy for search results and link previews. The title
  *  says what the product is; the description says why that matters. */
-const TITLE = "TamamHealth | Care That Never Starts From Zero";
+const TITLE = "TamamHealth: offline-first health records for South Sudan";
 const DESCRIPTION =
-  "TamamHealth keeps each patient's history available from clinic to referral hospital, even when the power or network is not.";
+  "TamamHealth keeps each patient's history available from clinic to referral hospital, including when power or network access is unavailable.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://tamamhealth.org"),

@@ -70,11 +70,11 @@ const PAGES: SearchEntry[] = [
     keywords: "ministry of health national alignment ehsp levels country",
   },
   {
-    title: "About Tamam",
+    title: "About TamamHealth",
     kind: "Page",
     href: "/about",
-    summary: "Founded at Tufts University, starting in South Sudan: the crisis, the goal and the team.",
-    keywords: "who we are mission story founders tufts",
+    summary: "A nonprofit organization building offline-first health records for South Sudan: who we are, our leadership and our team.",
+    keywords: "about nonprofit non-profit charity mission who we are team founders advisors leadership tufts fiscal sponsor",
   },
   {
     title: "News & updates",
@@ -95,7 +95,7 @@ const PAGES: SearchEntry[] = [
     kind: "Page",
     href: "/contact",
     summary: "Facility, NGO, funder or partner: tell us what you are building.",
-    keywords: "contact email phone partner demo enquiry inquiry",
+    keywords: "contact email phone partner demo inquiry enquiry",
   },
   {
     title: "Terms & privacy",
@@ -125,7 +125,7 @@ const SECTIONS: SearchEntry[] = [
     keywords: "offline first power cut electricity internet connectivity sync outage",
   },
   {
-    title: "The reality we build for",
+    title: "Operating conditions",
     kind: "Section",
     href: "/health-system#reality",
     summary: "4% of facilities have an internet-connected computer; 13% have power on site.",
@@ -172,13 +172,6 @@ const SECTIONS: SearchEntry[] = [
     href: "/about#leadership",
     summary: "The advisors to TamamHealth.",
     keywords: `advisors board leadership ${ADVISORS.map((a) => `${a.name} ${a.role} ${a.institutions.join(" ")}`).join(" ")}`,
-  },
-  {
-    title: "The crisis",
-    kind: "Section",
-    href: "/about#crisis",
-    summary: "Why this venture exists.",
-    keywords: "origin story kakuma problem background",
   },
 ];
 

@@ -90,11 +90,11 @@ export default function ContactForm() {
     }
   };
 
-  const stepTitle = step === 2 ? t("Almost there") : t("Tell us who you are");
+  const stepTitle = step === 2 ? t("Your inquiry") : t("Your details");
   const stepLead =
     step === 2
-      ? t("A little context on your setting, and we'll come back with something specific rather than generic.")
-      : t("Four details so we know who we're answering, and how to reach you.");
+      ? t("Please describe your setting. We will respond with information specific to it.")
+      : t("Please provide your contact details so that we can respond to your inquiry.");
 
   return (
     <form
@@ -143,23 +143,26 @@ export default function ContactForm() {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 26 }}>
-          <select name="topic" aria-label={t("What is this about?")} className="tm-cfield" style={field} defaultValue={SUBJECTS[0]}>
-            {SUBJECTS.map((s) => <option key={s} value={s}>{t(s)}</option>)}
+          <select name="topic" aria-label={t("Subject of inquiry")} className="tm-cfield" style={field} defaultValue="" required>
+            <option value="" disabled>{t(SUBJECTS[0])}</option>
+            {SUBJECTS.slice(1).map((s) => <option key={s} value={s}>{t(s)}</option>)}
           </select>
-          <select name="level" aria-label={t("Level of care")} className="tm-cfield" style={field} defaultValue={LEVELS[0]}>
-            {LEVELS.map((l) => <option key={l} value={l}>{t(l)}</option>)}
+          <select name="level" aria-label={t("Level of care")} className="tm-cfield" style={field} defaultValue="" required>
+            <option value="" disabled>{t(LEVELS[0])}</option>
+            {LEVELS.slice(1).map((l) => <option key={l} value={l}>{t(l)}</option>)}
           </select>
-          <select name="place" aria-label={t("Where you are")} className="tm-cfield" style={field} defaultValue={PLACES[0]}>
-            {PLACES.map((p) => <option key={p} value={p}>{t(p)}</option>)}
+          <select name="place" aria-label={t("Location")} className="tm-cfield" style={field} defaultValue="" required>
+            <option value="" disabled>{t(PLACES[0])}</option>
+            {PLACES.slice(1).map((p) => <option key={p} value={p}>{t(p)}</option>)}
           </select>
           <textarea
             name="message" aria-label={t("Message")} rows={4} className="tm-cfield"
             required maxLength={10000} value={message} onChange={event => setMessage(event.target.value)}
-            placeholder={t("What you're building, or how you'd like to help.")}
+            placeholder={t("Please describe your project or how you would like to be involved.")}
             style={{ ...field, resize: "vertical" }}
           />
           <p style={{ margin: "4px 0 0", fontSize: 13, lineHeight: 1.55, color: "var(--color-neutral-700)" }}>
-            {t("By submitting, you agree that TamamHealth may contact you about this enquiry, as described in our")}{" "}
+            {t("By submitting this form, you agree that TamamHealth may contact you regarding this inquiry, as described in our")}{" "}
             <Link href="/terms" style={{ color: "var(--color-accent-700)" }}>{t("Terms & Privacy")}</Link>.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "62px 1fr", gap: 12, marginTop: 6 }}>
@@ -171,13 +174,13 @@ export default function ContactForm() {
               <Corners />
             </button>
             <button type="submit" disabled={state === "sending" || state === "sent"} className="blueprint" style={primaryBtn}>
-              {state === "sent" ? "Message sent ✓" : state === "sending" ? "Sending…" : "Submit"}
+              {state === "sent" ? t("Message sent ✓") : state === "sending" ? t("Sending…") : t("Submit")}
               <Corners />
             </button>
           </div>
           {state === "error" && (
             <span style={{ fontSize: 14, lineHeight: 1.5, color: "#b4180f" }}>
-              {t("Something went wrong sending that. Please email support.tamam@gmail.com directly.")}
+              {t("Your submission could not be sent. Please email support.tamam@gmail.com directly.")}
             </span>
           )}
         </div>

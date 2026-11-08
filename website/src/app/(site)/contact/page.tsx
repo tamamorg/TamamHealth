@@ -5,7 +5,7 @@ import { CONTACT_POINTS } from "@/lib/site-data";
 
 export const metadata: Metadata = {
   title: "Get in touch",
-  description: "Facility, NGO, funder, or just curious: tell us what you're building or how you want to help. We answer every message.",
+  description: "Health facilities, NGOs, funders and other interested parties may contact TamamHealth about their work or about supporting ours. Every message receives a response.",
 };
 
 function Check() {
@@ -30,7 +30,7 @@ export default async function ContactPage() {
               {t("Get in touch")}
             </h1>
             <p style={{ margin: 0, maxWidth: 560, fontSize: 17.5, lineHeight: 1.6, color: "rgba(255,255,255,0.82)" }}>
-              {t("Facility, NGO, funder, or just curious: tell us what you’re building or how you want to help. We answer every message.")}
+              {t("Health facilities, NGOs, funders and other interested parties may contact TamamHealth about their work or about supporting ours. Every message receives a response.")}
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 18, paddingTop: 6 }}>
@@ -43,9 +43,9 @@ export default async function ContactPage() {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, paddingTop: 22, borderTop: "1px solid rgba(255,255,255,0.22)" }}>
-              <span style={{ fontSize: 11.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "#7CC7FF" }}>{t("Who answers")}</span>
+              <span style={{ fontSize: 11.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "#7CC7FF" }}>{t("Response")}</span>
               <p style={{ margin: 0, maxWidth: 540, fontSize: 15.5, lineHeight: 1.6, color: "rgba(255,255,255,0.78)" }}>
-                {t("The founding team, within two working days. If you would rather see it before you write, ask for a demo and we will walk a full patient day end to end.")}
+                {t("The founding team responds within two working days. A demonstration covering a full patient day is available on request.")}
               </p>
             </div>
           </div>

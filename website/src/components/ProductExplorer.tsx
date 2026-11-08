@@ -29,7 +29,7 @@ export default function ProductExplorer() {
         <div>
           <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: "0 0 12px" }}>{t("All six products")}</h2>
           <p style={{ margin: 0, maxWidth: 560, fontSize: 15.5, lineHeight: 1.6, color: "var(--color-neutral-700)" }}>
-            {t("A pharmacy does not need ward management and a PHCU does not need a modality worklist. Pick a product to see what it runs and where.")}
+            {t("A pharmacy does not require ward management, and a PHCU does not require a modality worklist. Select a product to view its functions and the settings it serves.")}
           </p>
         </div>
         <div className="tm-pex-steppers" style={{ display: "flex", gap: 8, flexShrink: 0 }}>

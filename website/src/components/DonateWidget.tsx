@@ -19,7 +19,7 @@ export default function DonateWidget() {
   // One template per case rather than a suffix glued on: Arabic does not put
   // "a month" after the amount, and a concatenated fragment cannot move.
   const summary = freq === "monthly"
-    ? t("{{amount}} a month", { amount: activeTier.amount })
+    ? t("{{amount}} per month",{ amount: activeTier.amount })
     : t("{{amount}} once", { amount: activeTier.amount });
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -58,9 +58,9 @@ export default function DonateWidget() {
   return (
     <div className="tm-split" style={{ maxWidth: 1320, margin: "0 auto", display: "grid", gridTemplateColumns: "1.25fr 1fr", gap: 56, alignItems: "start" }}>
       <div>
-        <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: "0 0 8px" }}>{t("Choose what your gift buys")}</h2>
+        <h2 style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: "0 0 8px" }}>{t("Select a donation tier")}</h2>
         <p style={{ margin: "0 0 28px", fontSize: 15.5, lineHeight: 1.65, color: "var(--color-neutral-800)", maxWidth: 620 }}>
-          {t("Each tier is a real line item in the pilot budget, not a suggested band. Pick one and we will tell you which facility it landed in.")}
+          {t("Each tier is an actual line item in the pilot budget, not a suggested amount. We will confirm the facility to which your donation is assigned.")}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {DONATION_TIERS.map((x, i) => (
@@ -90,7 +90,7 @@ export default function DonateWidget() {
 
       <form onSubmit={onSubmit} className="blueprint" style={{ background: "var(--color-surface)", padding: "30px 32px 32px", display: "flex", flexDirection: "column", gap: 18 }}>
         <Corners />
-        <h3 style={{ fontSize: 26, margin: 0 }}>{t("Your gift")}</h3>
+        <h3 style={{ fontSize: 26, margin: 0 }}>{t("Your donation")}</h3>
         <div style={{ display: "flex", border: "1px solid var(--color-divider)" }}>
           {(["one-time", "monthly"] as const).map((f) => (
             <button
@@ -122,7 +122,7 @@ export default function DonateWidget() {
           <input id="dn-email" name="email" type="email" required className="input" placeholder={t("you@example.com")} style={{ background: "#FFFFFF" }} />
         </div>
         <div className="field">
-          <label htmlFor="dn-clinic">{t("Fund a specific clinic (optional)")}</label>
+          <label htmlFor="dn-clinic">{t("Designated clinic (optional)")}</label>
           <input id="dn-clinic" name="clinic" className="input" placeholder={t("Facility or state")} style={{ background: "#FFFFFF" }} />
         </div>
         <button type="submit" disabled={state === "sending" || state === "sent"} className="btn btn-primary blueprint" style={{ padding: "14px 0", fontSize: 15.5, color: "#113055", width: "100%" }}>
@@ -131,11 +131,11 @@ export default function DonateWidget() {
         </button>
         {state === "error" && (
           <span style={{ fontSize: 13.5, lineHeight: 1.5, color: "#B4180F" }}>
-            {t("Something went wrong sending that. Please email support.tamam@gmail.com directly.")}
+            {t("Your submission could not be sent. Please email support.tamam@gmail.com directly.")}
           </span>
         )}
         <span className="fs125" style={{ lineHeight: 1.5, color: "var(--color-neutral-600)" }}>
-          {t("Gifts are handled by the founding team at Tufts University. We reply within two working days with payment details and the facility your gift is assigned to.")}
+          {t("Donations are managed by the founding team at Tufts University. We will reply within two working days with payment details and the facility to which your donation is assigned.")}
         </span>
       </form>
     </div>
