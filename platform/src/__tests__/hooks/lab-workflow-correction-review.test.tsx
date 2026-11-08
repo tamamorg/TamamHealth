@@ -189,6 +189,32 @@ it('a second lab tech rejects with a reason: the filed value stands and the reje
   });
 });
 
+// Audit 2026-11-08: one lab tech on shift could leave a correction pending
+// for good, blocking every later one.
+it('the proposer can withdraw their own correction; a second tech cannot withdraw it', async () => {
+  const order = await filed();
+  await propose(order._id, 'Negative', 'Transcription error');
+
+  await mountAs(TECH_B, order._id);
+  act(() => { harness.controller!.setCorrectionRejectReason('Not mine to withdraw'); });
+  await act(async () => { expect(await harness.controller!.withdrawCorrection()).toBe(false); });
+  expect((await getLabResultById(order._id))!.pendingCorrection).toBeDefined();
+
+  await mountAs(TECH_A, order._id);
+  await act(async () => { expect(await harness.controller!.withdrawCorrection()).toBe(false); });
+  expect(harness.controller!.error).toBe('labFlow.errCorrectionWithdrawReason');
+  act(() => { harness.controller!.setCorrectionRejectReason('Entered against the wrong patient'); });
+  await act(async () => { expect(await harness.controller!.withdrawCorrection()).toBe(true); });
+
+  const saved = (await getLabResultById(order._id))!;
+  expect(saved.result).toBe('Positive (P. falciparum)');
+  expect(saved.pendingCorrection).toBeUndefined();
+  expect(saved.rejectedCorrections![0]).toMatchObject({
+    result: 'Negative', proposedById: 'user-lab-a', rejectedById: 'user-lab-a', withdrawn: true,
+    rejectionReason: 'Entered against the wrong patient',
+  });
+});
+
 it('a clinician sees the correction but cannot approve it', async () => {
   const order = await filed();
   await propose(order._id, 'Negative', 'Transcription error');

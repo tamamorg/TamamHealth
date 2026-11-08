@@ -982,7 +982,8 @@ export function buildValidateDocUpdateFn(
       var rejection = rejectedNow ? nextRejected[nextRejected.length - 1] : null;
       if (!rejectedNow || !sameLabValue(nextRejected.slice(0, -1), oldRejected)
         || !rejection || rejection.rejectedById !== labActor
-        || rejection.proposedById === labActor
+        // A second tech rejects; only the proposer withdraws (marked withdrawn).
+        || (rejection.withdrawn === true) !== (rejection.proposedById === labActor)
         || !rejection.rejectedAt || !rejection.rejectionReason
         || !sameLabValue(rejection.result, priorCorrection.result)
         || !sameLabValue(rejection.unit, priorCorrection.unit)

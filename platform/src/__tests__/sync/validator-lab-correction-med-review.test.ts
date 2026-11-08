@@ -127,6 +127,18 @@ describe('validate_doc_update', () => {
       .toMatch(/immutable until it is approved or rejected/);
   });
 
+  // Audit 2026-11-08: with one lab tech on shift a correction could never be
+  // approved or rejected, and it blocked every later correction.
+  it('lets the proposer withdraw their own correction, and only them', () => {
+    const proposed = lab({ _rev: '3-a', pendingCorrection: correction() });
+    const withdrawal = (by: string) => lab({
+      _rev: '4-a',
+      rejectedCorrections: [{ ...correction(), rejectedBy: 'Achol Lab', rejectedById: by, rejectedAt: '2026-11-08T09:00:00.000Z', rejectionReason: SEALED, withdrawn: true }],
+    });
+    expect(reason(withdrawal('u-lab-a'), proposed, proposer)).toBeNull();
+    expect(reason(withdrawal('u-lab-b'), proposed, labTech)).toMatch(/Rejecting a correction requires/);
+  });
+
   it('refuses a plaintext proposed value, reason or rejection reason', () => {
     expect(reason(lab({ pendingCorrection: correction({ result: '6.9 mmol/L' }) }), lab(), proposer))
       .toMatch(/lab_result field pendingCorrection\.result must be encrypted/);
@@ -181,6 +193,66 @@ describe('sealed on the device', () => {
 
     const read = await db.get('lab-1') as unknown as { pendingCorrection: { result: string; reason: string } };
     expect(read.pendingCorrection).toMatchObject({ result: '6.9', reason: 'Re-run on fresh sample' });
+  });
+
+  // The approval and rejection rules compare sealed values byte for byte
+  // (result against pendingCorrection.result). That holds only because the
+  // encrypting layer reuses the stored envelope for text already in the
+  // record; prove it end to end with real envelopes (audit 2026-11-08).
+  describe('approve, reject and withdraw with real envelopes pass the server', () => {
+    const filed = {
+      _id: 'lab-9', type: 'lab_result', orgId: 'org-a', hospitalId: 'h-1', patientId: 'p-1',
+      patientName: 'Mary Lado', testName: 'Potassium', specimen: 'Blood', result: '4.1', unit: 'mmol/L',
+      referenceRange: '3.5-5.1', status: 'completed', orderStatus: 'resulted', abnormal: false, critical: false,
+      orderedBy: 'Dr. Wani', orderedAt: '2026-11-07T08:00:00.000Z', completedAt: '2026-11-07T09:00:00.000Z',
+    };
+    const pending = {
+      result: '6.9', unit: 'mmol/L', referenceRange: '3.5-5.1', abnormal: true, critical: true,
+      reason: 'Re-run on a fresh sample', proposedBy: 'Achol Lab', proposedById: 'u-lab-a', proposedAt: '2026-11-08T08:00:00.000Z',
+    };
+    const rawDoc = async (id: string) => await raw.get(id) as unknown as Record<string, unknown>;
+    async function propose() {
+      await db.put(filed);
+      const before = await rawDoc('lab-9');
+      const latest = await db.get('lab-9');
+      await db.put({ ...latest, pendingCorrection: pending });
+      const after = await rawDoc('lab-9');
+      expect(reason(after, before, proposer)).toBeNull();
+      return after;
+    }
+
+    it('approval by a second tech', async () => {
+      const proposed = await propose();
+      const latest = await db.get('lab-9') as unknown as Record<string, unknown>;
+      await db.put({
+        ...latest, pendingCorrection: undefined,
+        result: pending.result, unit: pending.unit, referenceRange: pending.referenceRange,
+        abnormal: pending.abnormal, critical: pending.critical,
+        amended: true, amendedAt: '2026-11-08T09:00:00.000Z', amendedBy: pending.proposedBy,
+        amendedFrom: '4.1 mmol/L', amendmentReason: pending.reason,
+        correctionVerifiedBy: 'Ladu Lab', correctionVerifiedById: 'u-lab-b', correctionVerifiedAt: '2026-11-08T09:00:00.000Z',
+      });
+      const approved = await rawDoc('lab-9');
+      // Real envelopes, not plaintext that would compare equal trivially.
+      expect(isOrgEncrypted(approved.result)).toBe(true);
+      expect(isOrgEncrypted((proposed.pendingCorrection as Record<string, unknown>).result)).toBe(true);
+      expect(reason(approved, proposed, labTech)).toBeNull();
+    });
+
+    it('rejection by a second tech, and withdrawal by the proposer', async () => {
+      for (const [actor, ctx, withdrawn] of [['u-lab-b', labTech, false], ['u-lab-a', proposer, true]] as const) {
+        await raw.destroy();
+        raw = new PouchDB(`corr-test-${n++}`, { adapter: 'memory' });
+        db = wrapEncrypted(raw, 'tamamhealth_test');
+        const proposed = await propose();
+        const latest = await db.get('lab-9') as unknown as Record<string, unknown>;
+        await db.put({
+          ...latest, pendingCorrection: undefined,
+          rejectedCorrections: [{ ...pending, rejectedBy: 'Someone', rejectedById: actor, rejectedAt: '2026-11-08T09:00:00.000Z', rejectionReason: 'Checked against the analyser', ...(withdrawn ? { withdrawn: true } : {}) }],
+        });
+        expect(reason(await rawDoc('lab-9'), proposed, ctx)).toBeNull();
+      }
+    });
   });
 
   it('seals the medicine names in a triage medication review', async () => {

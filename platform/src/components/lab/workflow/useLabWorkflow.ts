@@ -458,6 +458,37 @@ export function useLabWorkflow(
   }), [correctionRejectReason, currentUser, order._id, pendingForReview, run, update]);
 
   /**
+   * The proposer takes their own correction back (audit 2026-11-08). Without
+   * it a correction nobody else reviewed — one lab tech on shift — sat
+   * "awaiting review" for good and blocked every later correction. The entry
+   * joins the same audit trail, marked withdrawn; the server accepts it only
+   * from the proposer.
+   */
+  const withdrawCorrection = useCallback(() => run(async () => {
+    const reason = correctionRejectReason.trim();
+    if (!reason) throw new Error('labFlow.errCorrectionWithdrawReason');
+    const latest = await getLabResultById(order._id);
+    const pending = latest?.pendingCorrection;
+    if (!latest || !pending) throw new Error('labFlow.errNoCorrection');
+    if (!currentUser?._id || pending.proposedById !== currentUser._id) throw new Error('labFlow.readOnly');
+    await update(order._id, {
+      pendingCorrection: undefined,
+      rejectedCorrections: [
+        ...(latest.rejectedCorrections || []),
+        {
+          ...pending,
+          rejectedBy: currentUser.name || 'Lab',
+          rejectedById: currentUser._id,
+          rejectedAt: new Date().toISOString(),
+          rejectionReason: reason,
+          withdrawn: true,
+        },
+      ],
+    });
+    setCorrectionRejectReason('');
+  }), [correctionRejectReason, currentUser, order._id, run, update]);
+
+  /**
    * Close out the tail of the lifecycle.
    *
    * `resulted → reviewed_by_clinician → acted_upon → communicated_to_patient`
@@ -501,7 +532,7 @@ export function useLabWorkflow(
     receiveDraft, setReceiveDraft,
     resultDraft, setResultDraft, setResultValue, setObservationValue, criticalVerdict,
     amendReason, setAmendReason,
-    correctionReview, correctionRejectReason, setCorrectionRejectReason, approveCorrection, rejectCorrection,
+    correctionReview, correctionRejectReason, setCorrectionRejectReason, approveCorrection, rejectCorrection, withdrawCorrection,
     collect, reject, fileResult, hasResultEntry, amendResult, releaseReport,
     markReviewed, markActedUpon, markCommunicated,
     canCloseOut,
