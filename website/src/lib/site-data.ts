@@ -707,6 +707,7 @@ export const DONATION_FAQ = [
   { q: "Where exactly does the money go?", a: "Devices and solar power, deployment and staff training, connectivity and sync, and measurement. The $100,000 pilot goal covers all ten clinics over twelve months, from equipment to measurement and scale." },
   { q: "Can I fund a specific clinic?", a: "Yes. Tell us in the message and we will assign your gift to one of the ten pilot facilities and report on that facility directly." },
   { q: "Can my organisation partner instead of donating?", a: "Facility, NGO, funder, or ministry: write to support.tamam@gmail.com and we will scope a deployment with you." },
+  { q: "Can I donate through a registered charity?", a: "Yes. Elimisha Kakuma, a U.S. 501(c)(3) nonprofit organization, serves as TamamHealth's fiscal sponsor. Please contact support.tamam@gmail.com for instructions on giving through Elimisha Kakuma." },
   { q: "How do I know it worked?", a: "Every level writes to the same patient record and rolls up into DHIS2-ready national reports: the pilot is designed to be measured, not asserted." },
 ];
 
@@ -1113,6 +1114,11 @@ export interface NewsExplainer {
   title: string;
   intro: string;
   rows: { k: string; v: string }[];
+  /** A partner's own logo, shown at the head of the panel. Used as the
+      organisation supplies it, never redrawn. */
+  logo?: { src: string; alt: string; w: number; h: number };
+  /** The partner's own site or page, linked under the rows. */
+  link?: { label: string; href: string };
 }
 
 export interface NewsItem {
@@ -1152,10 +1158,85 @@ const derby = (file: string): Photo => {
   return p;
 };
 
-/** Newest first — the home band leads on the first item (and returns to its
-    four-up strip once there are several), /news lists them all. One story for
-    now; the next update is one more entry at the top of this array. */
+/** Newest first — the home band shows the first four as its card strip (a
+    single story runs as a full-width feature instead), /news lists them all.
+    The next update is one more entry at the top of this array. */
 export const NEWS: NewsItem[] = [
+  {
+    slug: "iteru-medical-center-testing",
+    tag: "Field testing",
+    date: "November 2026",
+    dateISO: "2026-11",
+    title: "TamamHealth begins platform testing at Iteru Medical Center in Juba",
+    image: "/assets/news/iteru-medical-center-testing.jpg",
+    imageAlt: "The TamamHealth logo beside the Iteru Medical Center logo, under the words pre-launch testing, Juba",
+    summary:
+      "Iteru Medical Center in Juba, South Sudan, is testing the TamamHealth platform ahead of its planned launch at the facility.",
+    body: [
+      "TamamHealth has begun testing its platform at Iteru Medical Center, a private medical facility in Juba, South Sudan. Iteru Medical Center is the first hospital to test the platform with its own staff.",
+      "Testing covers patient registration, triage, consultation, laboratory orders and results, pharmacy dispensing, and end-of-day reporting. Issues identified during testing will be resolved before the platform is launched at the facility.",
+      "Following the completion of testing, TamamHealth plans to launch the platform at Iteru Medical Center and to extend it to additional facilities. Further updates will be published here.",
+    ],
+    explainer: {
+      title: "About Iteru Medical Center",
+      intro: "Iteru Medical Center is a private medical facility in Juba, South Sudan.",
+      rows: [
+        { k: "Location", v: "Juba, South Sudan" },
+        { k: "Relationship", v: "Testing partner" },
+        { k: "Scope of testing", v: "Registration, triage, consultation, laboratory, pharmacy and reporting" },
+        { k: "Next step", v: "Launch at Iteru Medical Center following the completion of testing" },
+      ],
+      logo: { src: "/assets/partners/iteru-medical-center-logo.jpg", alt: "Iteru Medical Center logo", w: 720, h: 720 },
+      link: { label: "Iteru Medical Center on Facebook", href: "https://www.facebook.com/p/Iteru-Medical-Center-100078338706817/" },
+    },
+    link: { label: "Learn about the platform", href: "/platform" },
+  },
+  {
+    slug: "elimisha-kakuma-fiscal-sponsor",
+    tag: "Partnership",
+    date: "November 2026",
+    dateISO: "2026-11",
+    title: "TamamHealth announces fiscal sponsorship by Elimisha Kakuma",
+    image: "/assets/news/elimisha-kakuma-fiscal-sponsor.jpg",
+    imageAlt: "The TamamHealth logo beside the Elimisha Kakuma tree logo, under the words fiscal sponsor",
+    summary:
+      "Elimisha Kakuma, a U.S. 501(c)(3) nonprofit organization, is now the fiscal sponsor of TamamHealth.",
+    body: [
+      "TamamHealth is pleased to announce that Elimisha Kakuma, a U.S. 501(c)(3) nonprofit organization, has become its fiscal sponsor.",
+      "Under this arrangement, Elimisha Kakuma may receive grants and donations in support of TamamHealth's charitable activities.",
+      "Elimisha Kakuma was founded in 2021. It provides access to higher education for high school graduates in Kakuma Refugee Camp, Kenya, through academic preparation, mentorship, and college counseling.",
+      "Donors who wish to give through Elimisha Kakuma may contact TamamHealth at support.tamam@gmail.com for details.",
+    ],
+    explainer: {
+      title: "About Elimisha Kakuma",
+      intro: "Elimisha Kakuma provides access to higher education opportunities for high school graduates in Kakuma Refugee Camp through academic preparation, mentorship, and college counseling.",
+      rows: [
+        { k: "Founded", v: "2021" },
+        { k: "Location", v: "Kakuma Refugee Camp, Kenya" },
+        { k: "Status", v: "U.S. 501(c)(3) nonprofit organization" },
+        { k: "Relationship", v: "Fiscal sponsor of TamamHealth" },
+      ],
+      logo: { src: "/assets/partners/elimisha-kakuma-logo.png", alt: "Elimisha Kakuma logo, a tree", w: 500, h: 500 },
+      link: { label: "Visit elimishakakuma.org", href: "https://elimishakakuma.org" },
+    },
+    link: { label: "Support the 10-clinic pilot", href: "/donate" },
+  },
+  {
+    slug: "incorporated-in-massachusetts",
+    tag: "Milestone",
+    date: "November 2026",
+    dateISO: "2026-11",
+    title: "TamamHealth incorporates in Massachusetts",
+    image: "/assets/news/massachusetts-incorporation.jpg",
+    imageAlt: "TamamHealth mark above the words: officially registered, incorporated in Massachusetts",
+    summary:
+      "TamamHealth is now registered as a corporation in the Commonwealth of Massachusetts.",
+    body: [
+      "TamamHealth is now officially registered as a corporation in the Commonwealth of Massachusetts.",
+      "TamamHealth was founded at Tufts University and develops offline-first digital health infrastructure for South Sudan and sub-Saharan Africa.",
+    ],
+    link: { label: "Meet the team", href: "/about#team" },
+  },
   {
     slug: "tufts-new-ventures-competition",
     tag: "Competition",

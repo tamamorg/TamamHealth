@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import Corners from "@/components/Corners";
 import NewsCard from "@/components/NewsCard";
 import CardCarousel from "@/components/CardCarousel";
+import SubscribeBand from "@/components/SubscribeBand";
 import { NEWS as NEWS_EN, newsBySlug, type Photo } from "@/lib/site-data";
 import { getTranslator } from "@/lib/i18n/server";
 
@@ -118,7 +119,16 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ sl
         <section style={{ padding: "46px 32px 8px" }}>
           <div className="blueprint" style={{ position: "relative", maxWidth: 1320, margin: "0 auto", background: "var(--color-surface)", padding: "44px 46px 40px" }}>
             <Corners />
-            <h2 style={{ fontSize: "clamp(22px, 3vw, 32px)", margin: 0 }}>{n.explainer.title}</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 22, flexWrap: "wrap" }}>
+              {/* The partner's own logo, framed like every other figure on
+                  the site and never cropped: it is their mark, not a photo. */}
+              {n.explainer.logo && (
+                <div style={{ position: "relative", width: 92, height: 92, flexShrink: 0, background: "#FFFFFF", border: "1px solid var(--color-divider)", overflow: "hidden" }}>
+                  <Image src={n.explainer.logo.src} alt={n.explainer.logo.alt} fill sizes="92px" style={{ objectFit: "contain" }} />
+                </div>
+              )}
+              <h2 style={{ fontSize: "clamp(22px, 3vw, 32px)", margin: 0 }}>{n.explainer.title}</h2>
+            </div>
             <p style={{ margin: "14px 0 0", maxWidth: 720, fontSize: 16, lineHeight: 1.7, color: "var(--color-neutral-800)" }}>{n.explainer.intro}</p>
             <dl className="tm-explain" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 46px", margin: "30px 0 0" }}>
               {n.explainer.rows.map((r) => (
@@ -128,6 +138,11 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ sl
                 </div>
               ))}
             </dl>
+            {n.explainer.link && (
+              <a href={n.explainer.link.href} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 14, fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 17, color: "var(--color-accent-700)", textDecoration: "none" }}>
+                {n.explainer.link.label} &nbsp;↗
+              </a>
+            )}
           </div>
         </section>
       )}
@@ -174,6 +189,11 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ sl
           </div>
         </section>
       )}
+
+      {/* Clear of the "More news" cards above, which end on a short pad. */}
+      <div style={{ marginTop: 56 }}>
+        <SubscribeBand />
+      </div>
 
       {/* Prev / next */}
       <section style={{ padding: "50px 32px 92px" }}>
