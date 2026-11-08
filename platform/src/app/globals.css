@@ -23345,9 +23345,10 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
 }
 
 /* STAT / urgent open orders: said in text, not only by position. */
-.lab-list-surface .lab-priority-flag {
-  color: var(--color-danger-text);
-  font-weight: 700;
+.lab-list-surface .lab-priority-flag,
+.lab-list-surface .appointment-card-row .appointment-card-provider > span.lab-priority-flag {
+  color: var(--color-danger-text) !important;
+  font-weight: 700 !important;
   letter-spacing: 0.04em;
 }
 
