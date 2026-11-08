@@ -804,7 +804,9 @@ export async function applyDiscount(
     // what has already been paid would mark the bill settled while the patient is
     // owed money back, and the ledger would carry a credit no screen shows; that is
     // a refund, which has its own controlled flow.
-    if (totalAmount < bill.amountPaid) return null;
+    // In cents: amountPaid is a running sum of payments and can carry float dust
+    // (0.1 + 0.2), which refused a discount that settles the bill exactly.
+    if (Math.round(totalAmount * 100) < Math.round(bill.amountPaid * 100)) return null;
 
     bill.discount = discount;
     bill.discountReason = reason;

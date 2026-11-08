@@ -65,4 +65,19 @@ describe('applyDiscount', () => {
     // Up to the unpaid remainder is still allowed, and settles the bill.
     expect((await discount('bill-old', 40))?.status).toBe('paid');
   });
+
+  // Review 2026-11-08: the remaining paths around the new floor.
+  test('a discount can be taken back to zero', async () => {
+    await discount('bill-old', 20);
+    const reset = await discount('bill-old', 0);
+    expect(reset?.discount).toBe(0);
+    expect(reset?.balanceDue).toBe(100);
+  });
+
+  test('payments carrying float dust do not refuse a discount that settles the bill exactly', async () => {
+    await pay('pay-1', 33.1, { billId: 'bill-old' });
+    await pay('pay-2', 33.2, { billId: 'bill-old' });
+    await pay('pay-3', 33.4, { billId: 'bill-old' });
+    expect((await discount('bill-old', 0.3))?.status).toBe('paid');
+  });
 });

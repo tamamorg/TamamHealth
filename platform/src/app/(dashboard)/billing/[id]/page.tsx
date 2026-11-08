@@ -657,7 +657,7 @@ export default function BillDetailPage() {
           onClose={() => setDiscountOpen(false)}
           footer={<>
               <button type="button" className="btn btn-secondary" onClick={() => setDiscountOpen(false)}>{t('action.cancel')}</button>
-              <button type="button" className="btn btn-primary" onClick={handleApplyDiscount} disabled={busy || !(parseFloat(discountAmount) > 0) || !discountReason.trim()}>
+              <button type="button" className="btn btn-primary" onClick={handleApplyDiscount} disabled={busy || !(parseFloat(discountAmount) >= 0) || !discountReason.trim()}>
                 {t('ui.applyDiscount')}
               </button>
           </>}
