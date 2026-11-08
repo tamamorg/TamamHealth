@@ -19,7 +19,7 @@ export default async function NewsPage() {
           <h1 style={{ fontSize: "clamp(30px, 4.6vw, 50px)", margin: 0, color: "#FFFFFF" }}>{t("News & updates")}</h1>
           <span style={{ width: 100, height: 3, background: "#7CC7FF" }} />
           <p style={{ margin: 0, maxWidth: 680, fontSize: 16.5, lineHeight: 1.7, color: "rgba(255,255,255,0.84)" }}>
-            {t("What we have built, where it has been recognised, and where the work is going: on the way to the 10-clinic pilot in Juba and greater South Sudan.")}
+            {t("Announcements on the development of TamamHealth, its recognition and its progress towards the 10-clinic pilot in Juba and greater South Sudan.")}
           </p>
         </div>
       </section>

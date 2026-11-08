@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>South Sudan — deployment footprint</title>
+<title>South Sudan: deployment footprint</title>
 <script src="https://unpkg.com/d3@7.9.0/dist/d3.min.js" integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js" integrity="sha384-Ukv1p/xTma6P4/2bY5KzWBw+ydSpXmhCMtyciIQVDJ1RmOxtCYNMF1uXT9T63H67" crossorigin="anonymous"></script>
 <style>
@@ -24,17 +24,17 @@
 <div id="wrap"><svg id="map" role="img" aria-label="Map of South Sudan showing pilot and planned facility sites"></svg></div>
 <script>
 const SITES = [
-  { name:"Juba",      state:"Central Equatoria",        tier:"Referral / teaching tier", note:"Pilot launch site — 10-clinic pilot begins in Juba and greater South Sudan.", lat:4.85,  lon:31.58, pilot:true },
-  { name:"Kajo-keji", state:"Central Equatoria",        tier:"PHCU / community tier",    note:"Geocode household pilot — patient IDs in the form BOMA-KJ-HH1001.",           lat:3.88,  lon:31.65, pilot:true },
-  { name:"Torit",     state:"Eastern Equatoria",        tier:"State hospital tier",      note:"Secondary and specialised care — HMIS.", lat:4.41,  lon:32.57 },
-  { name:"Yambio",    state:"Western Equatoria",        tier:"State hospital tier",      note:"Secondary and specialised care — HMIS.", lat:4.57,  lon:28.40 },
-  { name:"Bor",       state:"Jonglei",                  tier:"State hospital tier",      note:"Secondary and specialised care — HMIS.", lat:6.21,  lon:31.56 },
-  { name:"Rumbek",    state:"Lakes",                    tier:"State hospital tier",      note:"Secondary and specialised care — HMIS.", lat:6.80,  lon:29.68 },
-  { name:"Wau",       state:"Western Bahr el Ghazal",   tier:"State hospital tier",      note:"Secondary and specialised care — HMIS.", lat:7.70,  lon:27.99 },
-  { name:"Kuajok",    state:"Warrap",                   tier:"State hospital tier",      note:"Secondary and specialised care — HMIS.", lat:8.32,  lon:27.98 },
-  { name:"Aweil",     state:"Northern Bahr el Ghazal",  tier:"State hospital tier",      note:"Secondary and specialised care — HMIS.", lat:8.77,  lon:27.40 },
-  { name:"Bentiu",    state:"Unity",                    tier:"State hospital tier",      note:"Secondary and specialised care — HMIS.", lat:9.26,  lon:29.80 },
-  { name:"Malakal",   state:"Upper Nile",               tier:"State hospital tier",      note:"Secondary and specialised care — HMIS.", lat:9.53,  lon:31.66 }
+  { name:"Juba",      state:"Central Equatoria",        tier:"Referral / teaching tier", note:"Pilot launch site: the 10-clinic pilot begins in Juba and greater South Sudan.", lat:4.85,  lon:31.58, pilot:true },
+  { name:"Kajo-keji", state:"Central Equatoria",        tier:"PHCU / community tier",    note:"Geocode household pilot: patient IDs in the form BOMA-KJ-HH1001.",           lat:3.88,  lon:31.65, pilot:true },
+  { name:"Torit",     state:"Eastern Equatoria",        tier:"State hospital tier",      note:"Secondary and specialised care: HMIS.", lat:4.41,  lon:32.57 },
+  { name:"Yambio",    state:"Western Equatoria",        tier:"State hospital tier",      note:"Secondary and specialised care: HMIS.", lat:4.57,  lon:28.40 },
+  { name:"Bor",       state:"Jonglei",                  tier:"State hospital tier",      note:"Secondary and specialised care: HMIS.", lat:6.21,  lon:31.56 },
+  { name:"Rumbek",    state:"Lakes",                    tier:"State hospital tier",      note:"Secondary and specialised care: HMIS.", lat:6.80,  lon:29.68 },
+  { name:"Wau",       state:"Western Bahr el Ghazal",   tier:"State hospital tier",      note:"Secondary and specialised care: HMIS.", lat:7.70,  lon:27.99 },
+  { name:"Kuajok",    state:"Warrap",                   tier:"State hospital tier",      note:"Secondary and specialised care: HMIS.", lat:8.32,  lon:27.98 },
+  { name:"Aweil",     state:"Northern Bahr el Ghazal",  tier:"State hospital tier",      note:"Secondary and specialised care: HMIS.", lat:8.77,  lon:27.40 },
+  { name:"Bentiu",    state:"Unity",                    tier:"State hospital tier",      note:"Secondary and specialised care: HMIS.", lat:9.26,  lon:29.80 },
+  { name:"Malakal",   state:"Upper Nile",               tier:"State hospital tier",      note:"Secondary and specialised care: HMIS.", lat:9.53,  lon:31.66 }
 ];
 const svg = d3.select("#map");
 let W = 0, H = 0, active = 0;

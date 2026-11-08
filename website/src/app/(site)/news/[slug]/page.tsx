@@ -153,7 +153,7 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ sl
           <div style={{ maxWidth: 1320, margin: "0 auto" }}>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: "12px 24px", marginBottom: 24, borderTop: "1px solid var(--color-divider)", paddingTop: 26 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-700)", fontWeight: 700 }}>{t("More from the night")}</span>
+                <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-700)", fontWeight: 700 }}>{t("Photo gallery")}</span>
                 {n.galleryTitle && (
                   <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(20px, 2.6vw, 28px)", lineHeight: 1.15, color: "var(--color-text)" }}>
                     {n.galleryTitle}
@@ -161,7 +161,7 @@ export default async function NewsArticlePage({ params }: { params: Promise<{ sl
                 )}
               </div>
               <span className="fs115" style={{ letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-neutral-600)", whiteSpace: "nowrap" }}>
-                {t("{{count}} more photos, scroll", { count: strip.length })}
+                {t("{{count}} additional photos, scroll to view", { count: strip.length })}
               </span>
             </div>
             <div className="tm-gallery tm-gallery-light" tabIndex={0} role="group" aria-label={`More photos: ${n.title}`}>

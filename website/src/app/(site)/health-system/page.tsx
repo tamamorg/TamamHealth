@@ -9,7 +9,7 @@ import { getTranslator } from "@/lib/i18n/server";
 export const metadata: Metadata = {
   title: "The Health System",
   description:
-    "South Sudan's healthcare system: the 2025 Essential Health Services Package's six levels of care, on one offline-first record.",
+    "South Sudan's healthcare system as organised by the 2025 Essential Health Services Package, and how one offline-first record supports its six levels of care.",
 };
 
 export default async function HealthSystemPage() {
@@ -27,7 +27,7 @@ export default async function HealthSystemPage() {
           <div>
             <h1 style={{ fontSize: "clamp(31px, 5.2vw, 56px)", margin: "0 0 16px" }}>{t("South Sudan’s healthcare system")}</h1>
             <p style={{ margin: 0, fontSize: 16.5, lineHeight: 1.7, color: "var(--color-neutral-800)" }}>
-              {emphasise(t("The Ministry of Health’s **2025 Essential Health Services Package** organises the country’s care into six levels, and names fragmented, paper-bound data as one of its biggest gaps. Tamam is shaped to fit that system, not replace it, and the same six-tier structure runs through most sub-Saharan health systems, so what fits here travels."))}
+              {emphasise(t("The Ministry of Health’s **2025 Essential Health Services Package** organises the country’s care into six levels and identifies fragmented, paper-based data as one of its largest gaps. TamamHealth is designed to fit within that system rather than replace it. Most sub-Saharan health systems share the same six-tier structure, so the design applies across the region."))}
             </p>
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>
@@ -50,7 +50,7 @@ export default async function HealthSystemPage() {
       <section id="reality" style={{ padding: "78px 32px 84px", background: "var(--color-surface)", borderTop: "1px solid var(--color-divider)" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 28, flexWrap: "wrap", paddingBottom: 20, borderBottom: "1px solid var(--color-divider)" }}>
-            <h2 style={{ fontSize: "clamp(25px, 3.6vw, 40px)", margin: 0 }}>{t("The reality Tamam is built for")}</h2>
+            <h2 style={{ fontSize: "clamp(25px, 3.6vw, 40px)", margin: 0 }}>{t("The conditions TamamHealth is built for")}</h2>
             <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-neutral-600)" }}>{t("Essential Health Services Package, 2025")}</span>
           </div>
 
@@ -129,12 +129,12 @@ export default async function HealthSystemPage() {
       <section id="diagnosis" style={{ padding: "60px 32px 96px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
           <div className="tm-pad-lg" style={{ background: "#113055", color: "#FFFFFF", padding: "46px 52px", display: "flex", flexDirection: "column", gap: 16 }}>
-            <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-300)" }}>{t("The Ministry’s own diagnosis")}</span>
+            <span className="fs115" style={{ letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent-300)" }}>{t("The Ministry’s assessment")}</span>
             <p style={{ margin: 0, maxWidth: 980, fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: "clamp(23px, 2.6vw, 31px)", lineHeight: 1.3 }}>
-              {t("The sector still runs on parallel, disconnected systems, and the lack of accurate, timely data means care and planning can’t rely on what’s recorded.")}
+              {t("The sector still operates parallel, disconnected systems, and the lack of accurate, timely data means that care and planning cannot rely on what is recorded.")}
             </p>
             <span style={{ fontSize: 13, color: "rgba(255,255,255,0.66)" }}>
-              {t("Paraphrased from the South Sudan Essential Health Services Package, 2025: the exact gap a single offline-first record closes.")}
+              {t("Paraphrased from the South Sudan Essential Health Services Package, 2025. A single offline-first record is designed to address this gap.")}
             </span>
           </div>
         </div>

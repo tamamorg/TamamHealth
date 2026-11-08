@@ -9,7 +9,7 @@ import { getTranslator } from "@/lib/i18n/server";
 export const metadata: Metadata = {
   title: "Products",
   description:
-    "Six products, one connected encounter: hospital, clinic, laboratory, radiology, pharmacy and the patient portal, all on the same offline-first record.",
+    "TamamHealth offers six products (hospital, clinic, laboratory, radiology, pharmacy and the patient portal), all on the same offline-first record.",
 };
 
 export default async function ProductsPage() {
@@ -25,9 +25,9 @@ export default async function ProductsPage() {
         <div className="tm-split" style={{ maxWidth: 1320, margin: "0 auto", display: "grid", gridTemplateColumns: "1.06fr 1fr", gap: 56, alignItems: "center" }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
             <span className="fs115" style={{ fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#7CC7FF" }}>{t("Products")}</span>
-            <h1 style={{ fontSize: "clamp(32px, 5.4vw, 58px)", margin: "14px 0 14px", color: "#FFFFFF", maxWidth: 900 }}>{t("Six products, one connected encounter")}</h1>
+            <h1 style={{ fontSize: "clamp(32px, 5.4vw, 58px)", margin: "14px 0 14px", color: "#FFFFFF", maxWidth: 900 }}>{t("Six products on one shared record")}</h1>
             <p style={{ margin: 0, maxWidth: 640, fontSize: 16.5, lineHeight: 1.65, color: "rgba(255,255,255,0.76)" }}>
-              {t("From referral hospitals to single-room clinics: every product ties back to the same record, built for intermittent connectivity. Deployed first in South Sudan, designed for health systems across sub-Saharan Africa.")}
+              {t("The products serve facilities from referral hospitals to single-room clinics. Each uses the same patient record and is built for intermittent connectivity. TamamHealth is being tested first in South Sudan and is designed for health systems across sub-Saharan Africa.")}
             </p>
             <div style={{ width: "100%", marginTop: 30, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.2)" }}>
               <span className="fs115" style={{ display: "block", marginBottom: 14, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.55)" }}>{t("Jump to a product")}</span>
@@ -77,10 +77,10 @@ export default async function ProductsPage() {
       {/* Why six, not one — the three things every product shares underneath. */}
       <section style={{ background: "#113055", color: "#FFFFFF", padding: "74px 32px 80px" }}>
         <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-          <span className="fs115" style={{ fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#7CC7FF" }}>{t("Why six, not one")}</span>
-          <h2 style={{ fontSize: "clamp(26px, 3.8vw, 44px)", margin: "16px 0 18px", color: "#FFFFFF", maxWidth: 900 }}>{t("Different rooms, the same file underneath")}</h2>
+          <span className="fs115" style={{ fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#7CC7FF" }}>{t("Product structure")}</span>
+          <h2 style={{ fontSize: "clamp(26px, 3.8vw, 44px)", margin: "16px 0 18px", color: "#FFFFFF", maxWidth: 900 }}>{t("Separate products, one shared record")}</h2>
           <p style={{ margin: 0, maxWidth: 760, fontSize: 16.5, lineHeight: 1.7, color: "rgba(255,255,255,0.76)" }}>
-            {t("A pharmacy does not need ward management and a PHCU does not need a modality worklist. What every one of them needs is to read what the last room wrote, so the products differ and the record does not.")}
+            {t("A pharmacy does not need ward management, and a PHCU does not need a modality worklist. Each does need to read what the previous department recorded. The products therefore differ, while the record remains the same.")}
           </p>
           <div className="tm-g3" style={{ gap: 22, marginTop: 44 }}>
             {PRODUCT_UNITY.map((u) => (
@@ -100,9 +100,9 @@ export default async function ProductsPage() {
           <div className="blueprint tm-pex-cta" style={{ position: "relative", background: "var(--color-surface)", padding: "40px 46px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 32, flexWrap: "wrap" }}>
             <Corners />
             <div style={{ maxWidth: 620 }}>
-              <h2 style={{ fontSize: "clamp(23px, 2.8vw, 34px)", margin: "0 0 10px" }}>{t("Not sure which one your facility needs?")}</h2>
+              <h2 style={{ fontSize: "clamp(23px, 2.8vw, 34px)", margin: "0 0 10px" }}>{t("Choosing a product for your facility")}</h2>
               <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, color: "var(--color-neutral-800)" }}>
-                {t("Tell us the level of care and what you run today. We will map it onto the products and show you the gaps.")}
+                {t("Share your facility’s level of care and current systems. We will match them to the relevant products and identify any gaps.")}
               </p>
             </div>
             <div className="tm-btn-pair" style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>

@@ -18,10 +18,10 @@ export default function ChallengesBand() {
 
   return (
     <div style={{ background: "#113055", padding: "56px 52px 52px" }} className="tm-pad-lg">
-      <h2 style={{ fontSize: "clamp(22px, 3vw, 32px)", margin: "0 0 8px", color: "#FFFFFF" }}>{t("What paper costs a facility, every single day")}</h2>
+      <h2 style={{ fontSize: "clamp(22px, 3vw, 32px)", margin: "0 0 8px", color: "#FFFFFF" }}>{t("The daily cost of paper records to a facility")}</h2>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "18px 24px", marginBottom: 28, flexWrap: "wrap" }}>
         <p style={{ margin: 0, maxWidth: 640, fontSize: 15.5, lineHeight: 1.65, color: "rgba(255,255,255,0.78)" }}>
-          {t("Open any failure for what it costs today and the steps that replace it.")}
+          {t("Select a challenge to see its present cost and the steps that replace it.")}
         </p>
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
           <button type="button" onClick={() => scroll(-1)} aria-label={t("Previous")} className="tm-chalstep" style={{ width: 42, height: 42, border: "1px solid rgba(255,255,255,0.4)", background: "transparent", color: "#FFFFFF", cursor: "pointer", fontSize: 16, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>‹</button>
