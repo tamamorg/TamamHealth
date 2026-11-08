@@ -49,7 +49,7 @@ export default function WardAdmitForm({
   const { showToast } = useToast();
   const facilitySettings = useSettings();
   const { patients } = usePatients();
-  const { wards, beds, admit } = useWards();
+  const { wards, beds, admit, loading: wardsLoading } = useWards();
   const [saving, setSaving] = useState(false);
 
   const [patientQuery, setPatientQuery] = useState('');
@@ -185,6 +185,7 @@ export default function WardAdmitForm({
       form={form}
       setForm={setForm}
       wards={admittableWards}
+      wardsLoading={wardsLoading}
       wardLabel={w => t('ward.wardFree', { name: w.name, count: wardFreeBeds(w) })}
       beds={availableBedsForWard}
       saving={saving}
@@ -219,10 +220,12 @@ const SEVERITY_KEY: Record<AdmissionDoc['severity'], string> = {
 
 /** The chart's Ward Request: the admit form's state drawn as one O3 page.
  *  O3 choices are their labels, so wards, beds and severities map back to ids. */
-function WardRequestForm({ form, setForm, wards, wardLabel, beds, saving, onSave, onCancel, lead }: {
+function WardRequestForm({ form, setForm, wards, wardsLoading, wardLabel, beds, saving, onSave, onCancel, lead }: {
   form: AdmitFormState;
   setForm: (next: AdmitFormState) => void;
   wards: WardDoc[];
+  /** Still reading wards and beds: an empty list then means "not yet", not "none". */
+  wardsLoading: boolean;
   wardLabel: (ward: WardDoc) => string;
   beds: { _id: string; bedNumber: string; roomClass?: string }[];
   saving: boolean;
@@ -300,7 +303,7 @@ function WardRequestForm({ form, setForm, wards, wardLabel, beds, saving, onSave
       invalid={invalid}
       notice={<>
         {lead}
-        {(notice || wards.length === 0) && (
+        {(notice || (!wardsLoading && wards.length === 0)) && (
           <NoticeToast tone={notice ? 'danger' : 'warning'}>{notice || t('ward.noWardsAvailable')}</NoticeToast>
         )}
       </>}

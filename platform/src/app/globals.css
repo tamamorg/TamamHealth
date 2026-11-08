@@ -16478,6 +16478,23 @@ span:has(> svg:only-child) {
   gap: 12px;
 }
 
+/* Desktop: the rail is a fixed-height column beside the queue and its base rule
+   is overflow: hidden, so the cards below the first screenful (the progress
+   feed, the coach card) were cut off with no way to reach them on a 900px-tall
+   screen. It scrolls instead; while the appointment detail slider is open the
+   slider fills the rail, so the rail itself holds still. (Below 1280px the
+   tablet band already scrolls the rail.) */
+@media (min-width: 1280px) {
+  .ehr-right-rail {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+  .ehr-right-rail.has-detail {
+    overflow: hidden;
+  }
+}
+
 .ehr-side-card {
   border-color: var(--ehr-border);
   /* One card corner across the app, per the Clinical/Reception design. */

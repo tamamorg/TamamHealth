@@ -796,3 +796,26 @@
   .tamam-section-body { overflow-x: auto; }
   .tamam-root .tamam-table:has(thead th:nth-child(6)) { min-width: 640px; }
 }
+
+/* Phone: the day / week grid on /appointments.
+   The workspace grid is sized to the screen and the centre panel clips
+   (`overflow: hidden`), so with the mini calendar above it the hour grid got
+   ~80px of height and the hours below 7 AM could not be reached at all. On a
+   phone the page scrolls instead (the main area already does), and the grid
+   gets a screen-sized window of its own that scrolls the hours. */
+@media (max-width: 639px) {
+  .ehr-workspace-grid.is-calendar {
+    height: auto !important;
+    grid-auto-rows: auto;
+  }
+  .ehr-workspace-grid.is-calendar > .ehr-center-panel {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .ehr-center-panel > .rbc-tamam .rbc-time-view {
+    height: 70dvh;
+    min-height: 420px;
+    background: var(--bg-card-solid);
+  }
+}

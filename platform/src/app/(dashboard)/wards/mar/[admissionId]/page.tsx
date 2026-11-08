@@ -33,6 +33,7 @@ import type { PrescriptionDoc, MedicationAdministration } from '@/lib/db-types';
 import { returnToFromSearch } from '@/lib/navigation/return-to';
 import { todayIso } from '@/lib/date-utils';
 import { isPathAllowed } from '@/lib/role-routes';
+import { activeCountry } from '@/lib/country/country-pack';
 import Select from '@/components/Select';
 import { isScheduledDoseAllowed, scheduleForFrequency, scheduledForIso } from '@/lib/clinical-flow/medication-schedule';
 import FormSlider from '@/components/overlay/FormSlider';
@@ -384,7 +385,7 @@ export default function MARPage() {
                     <th
                       className="text-start px-4 py-3 font-bold sticky start-0 z-10"
                       style={{
-                        minWidth: 280,
+                        minWidth: 'min(280px, 52vw)',
                         borderBottom: '1px solid var(--border-light)',
                         color: 'var(--text-secondary)',
                         background: 'var(--overlay-subtle)',
@@ -514,7 +515,7 @@ export default function MARPage() {
             subtitle={<>
               {modalRx.dose} · {modalRx.route} · {t('mar.scheduled')}{' '}
               <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                {new Date(modalScheduledFor).toLocaleString()}
+                {new Date(modalScheduledFor).toLocaleString(undefined, { timeZone: activeCountry().timeZone })}
               </span>
             </>}
             onClose={closeModal}

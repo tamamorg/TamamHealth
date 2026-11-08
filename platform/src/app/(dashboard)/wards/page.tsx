@@ -584,7 +584,7 @@ export default function WardsPage() {
                 </div>
 
                 <div className="wdis-field">
-                  <label htmlFor="ward-discharge-summary">{t('ward.dischargeSummary')}</label>
+                  <label className="field-required" htmlFor="ward-discharge-summary">{t('ward.dischargeSummary')}</label>
                   <textarea
                     id="ward-discharge-summary"
                     rows={3}
