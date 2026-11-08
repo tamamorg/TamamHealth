@@ -89,6 +89,14 @@ async function patchHandler(
             if (err instanceof PrescriptionClearanceError) {
               return NextResponse.json({ error: err.message, code: err.code }, { status: err.code === 'NOT_A_PHARMACIST' ? 403 : 409 });
             }
+            // A lifecycle refusal (the order moved on meanwhile) is state the
+            // pharmacist resolves by refreshing, not a server fault.
+            if (err instanceof Error && /^Illegal prescription transition/.test(err.message)) {
+              return NextResponse.json(
+                { error: 'This order changed while you were working on it. Refresh the order and try again.', code: 'NOT_CLEARED' },
+                { status: 409 },
+              );
+            }
             throw err;
           }
         }

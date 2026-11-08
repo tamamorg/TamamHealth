@@ -161,6 +161,23 @@ export async function advancePrescription(
  * the dispense gate refuses it with its own reason.
  */
 export async function clearForDispensing(id: string, actorId: string): Promise<PrescriptionDoc | null> {
+  // The pharmacist check comes before any write. advancePrescription checks
+  // the actor only on the clearance hop itself, so a non-pharmacist used to
+  // move a recalled order back into the queue before being refused (audit
+  // 2026-11-08).
+  const actor = await getUserById(actorId);
+  if (!actor) {
+    throw new PrescriptionClearanceError(
+      'Could not verify the signed-in pharmacist. Check your connection and try again.',
+      'ACTOR_NOT_FOUND',
+    );
+  }
+  if (actor.isActive === false || !CLEARANCE_ROLES.includes(actor.role)) {
+    throw new PrescriptionClearanceError(
+      'Only a pharmacist may clear a medication order for dispensing.',
+      'NOT_A_PHARMACIST',
+    );
+  }
   let doc = await prescriptionsDB().get(id) as PrescriptionDoc;
   // A stopped order must stay stopped: advancing it would rewrite its coarse
   // status and revive it. The dispense gate refuses it with its own reason.

@@ -258,6 +258,17 @@ describe('tab switching', () => {
     expect(isTabLocked('u1')).toBe(true);
   });
 
+  // Audit 2026-11-08: a pagehide that never became an unload (a frozen tab
+  // brought back without pageshow) must not switch hide-to-lock off for good.
+  it('a page shown again after a pagehide without unloading locks on the next hide', () => {
+    const latest = mount();
+    act(() => { window.dispatchEvent(new Event('pagehide')); setHidden(true); });
+    act(() => { setHidden(false); });
+    expect(latest().isLocked).toBe(false);
+    act(() => { setHidden(true); });
+    expect(latest().isLocked).toBe(true);
+  });
+
   it('back from the back/forward cache, hiding the tab locks it again', () => {
     const latest = mount();
     act(() => { window.dispatchEvent(new Event('pagehide')); });

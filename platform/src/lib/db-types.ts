@@ -664,6 +664,8 @@ export interface LabResultRejectedCorrection extends LabResultCorrection {
   rejectedById: string;
   rejectedAt: string;
   rejectionReason: string;
+  /** The proposer took it back themselves rather than a second tech rejecting it. */
+  withdrawn?: boolean;
 }
 
 export interface LabResultObservation {

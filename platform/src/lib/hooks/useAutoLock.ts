@@ -584,7 +584,10 @@ export function useAutoLock(
     let unloading = false;
     let lockedByThisHide = false;
     const handleVisibility = () => {
-      if (!document.hidden) { lockedByThisHide = false; return; }
+      // Visible again means this page lives on: a pagehide that did not end
+      // in an unload (a frozen or discarded tab brought back) must not leave
+      // hide-to-lock switched off for the rest of the session.
+      if (!document.hidden) { lockedByThisHide = false; unloading = false; return; }
       if (unloading || !isAuthRef.current) return;
       const wasLocked = isLockedRef.current;
       lock({ thisTabOnly: true });

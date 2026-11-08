@@ -1027,24 +1027,12 @@ header > div { min-width: 0; }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 
 /* Nav links: the condensing header changes their padding, which snapped while
-   the bar around them eased; and a blue bar slides in under the hovered link
-   (the current page keeps its own border). */
+   the bar around them eased. The hover underline itself is drawn by the
+   later motion layer (".tm-navlink::after" further down); the current page
+   keeps its own border, so it takes no hover underline as well. */
 .tm-navlink {
   transition: color var(--tm-fast) ease-out, padding 180ms ease;
 }
-.tm-navlink::after {
-  content: "";
-  position: absolute;
-  inset-inline: 0;
-  bottom: -3px;
-  height: 3px;
-  background: #2191d0;
-  transform: scaleX(0);
-  transform-origin: left center;
-  transition: transform 200ms var(--tm-ease);
-}
-[dir="rtl"] .tm-navlink::after { transform-origin: right center; }
-.tm-navlink:hover::after { transform: scaleX(1); }
 .tm-navlink[aria-current="page"]::after { display: none; }
 
 /* Cards that are links lift by 2px: depth without leaving the flat look. */

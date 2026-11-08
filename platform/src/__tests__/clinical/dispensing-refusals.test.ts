@@ -388,10 +388,13 @@ describe('server-side clearance before an online dispense', () => {
     expect(effectivePrescriptionStatus(cleared!)).toBe('cleared_for_dispensing');
   });
 
-  it('refuses anyone who is not a pharmacist', async () => {
+  it('refuses anyone who is not a pharmacist, before moving the order at all', async () => {
     await seedWorld();
     const rx = await prescribe();
     await expect(serverClearForDispensing(rx._id, WITNESS._id)).rejects.toBeInstanceOf(PrescriptionClearanceError);
+    // Audit 2026-11-08: the queue hop used to land before the refusal.
+    const after = (await getPrescriptionsByPatient(PATIENT._id)).find(r => r._id === rx._id)!;
+    expect(effectivePrescriptionStatus(after)).toBe(effectivePrescriptionStatus(rx));
   });
 
   it('never revives a discontinued order', async () => {

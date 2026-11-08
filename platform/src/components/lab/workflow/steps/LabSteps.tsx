@@ -620,16 +620,50 @@ function CorrectionReview({ ctrl }: { ctrl: LabWorkflowController }) {
   const { showToast } = useToast();
   const [rejecting, setRejecting] = useState(false);
 
-  if (ctrl.correctionReview === 'own') {
-    return <p className="lab-pcorr-help">{t('labFlow.correctionOwnWaits')}</p>;
-  }
-  if (ctrl.correctionReview !== 'can_review') return null;
-
   const press = async (fn: () => Promise<boolean>, okKey: string) => {
     const ok = await fn();
     showToast(ok ? t(okKey) : t(ctrl.lastError.current || 'labFlow.errGeneric'), ok ? 'success' : 'error', { placement: 'corner' });
     if (ok) setRejecting(false);
   };
+
+  if (ctrl.correctionReview === 'own') {
+    return (
+      <>
+        <p className="lab-pcorr-help">{t('labFlow.correctionOwnWaits')}</p>
+        {!rejecting ? (
+          <div className="lab-pcorr-actions">
+            <button type="button" className="labord-btn" disabled={ctrl.busy} onClick={() => setRejecting(true)}>
+              {t('labFlow.correctionWithdraw')}
+            </button>
+          </div>
+        ) : (
+          <div className="lab-pcorr-reject">
+            <ObfTextField
+              id="labflow-correction-withdraw-reason"
+              label={t('labFlow.correctionWithdrawReason')}
+              multiline
+              value={ctrl.correctionRejectReason}
+              onChange={ctrl.setCorrectionRejectReason}
+            />
+            <div className="lab-pcorr-actions">
+              <button
+                type="button"
+                className="labord-btn labord-btn--primary"
+                disabled={ctrl.busy || !ctrl.correctionRejectReason.trim()}
+                onClick={() => void press(ctrl.withdrawCorrection, 'labFlow.okCorrectionWithdrawn')}
+              >
+                {t('labFlow.correctionWithdrawConfirm')}
+              </button>
+              <button type="button" className="labord-btn" disabled={ctrl.busy} onClick={() => { setRejecting(false); ctrl.setCorrectionRejectReason(''); }}>
+                {t('action.cancel')}
+              </button>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+  if (ctrl.correctionReview !== 'can_review') return null;
 
   return (
     <>
@@ -693,8 +727,8 @@ export function FiledRecord({ order }: { order: LabResultDoc }) {
           {(order.rejectedCorrections || []).map(rejected => (
             <Field
               key={`${rejected.proposedAt}-${rejected.rejectedAt}`}
-              label={t('labFlow.correctionRejectedLabel')}
-              value={t('labFlow.correctionRejectedLine', {
+              label={t(rejected.withdrawn ? 'labFlow.correctionWithdrawnLabel' : 'labFlow.correctionRejectedLabel')}
+              value={t(rejected.withdrawn ? 'labFlow.correctionWithdrawnLine' : 'labFlow.correctionRejectedLine', {
                 value: resultWithUnit(rejected.result, rejected.unit) || '—',
                 proposedBy: rejected.proposedBy,
                 rejectedBy: rejected.rejectedBy,
