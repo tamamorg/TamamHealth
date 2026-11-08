@@ -73,7 +73,11 @@ export function visitDiagnoses(records: MedicalRecordDoc[], day: string, notes: 
   const seen = new Set(fromRecords.map(d => d.name.trim().toLowerCase()));
   const hasPrimary = fromRecords.some(d => d.rank === 1);
   const fromNotes: typeof fromRecords = [];
-  for (const n of notes) {
+  // The first note signed that day leads, so "primary" does not depend on the
+  // order the notes happened to arrive in.
+  const signedFirst = [...notes].sort((a, b) =>
+    (a.signedAt || a.createdAt || '').localeCompare(b.signedAt || b.createdAt || ''));
+  for (const n of signedFirst) {
     if ((n.status !== 'signed' && n.status !== 'amended') || !onDay(n.serviceDate || n.createdAt, day)) continue;
     for (const d of n.sections.flatMap(sec => sec.diagnoses ?? [])) {
       const key = (d.name || '').trim().toLowerCase();

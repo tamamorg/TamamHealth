@@ -22,7 +22,7 @@ import {
 } from '@/lib/services/drug-interaction-service';
 import type { PrescriptionDoc } from '@/lib/db-types';
 import type { FefoPlan } from '@/lib/services/dispensing-service';
-import { courseQuantity, isFilled } from './pharmacy-workflow-types';
+import { courseQuantity, isFilled, remainingOnCourse } from './pharmacy-workflow-types';
 import { describeError } from '@/lib/user-facing-error';
 import { paymentHoldFor } from '@/lib/pharmacy-workflow';
 import { formatMoney } from '@/lib/format-utils';
@@ -90,9 +90,10 @@ export function usePharmacyWorkflow(
   });
 
   /** What is still owed on the course: a second visit after a partial fill hands over the balance. */
-  const remaining = Math.max(0, courseQuantity(rx) - (rx.quantityDispensed || 0));
+  // What is still owed on the course (no ceiling for a script that states none).
+  const remaining = remainingOnCourse(rx);
   const [dispenseDraft, setDispenseDraft] = useState<DispenseDraft>({
-    quantity: isFilled(stage) ? (rx.quantityDispensed || courseQuantity(rx)) : (remaining || courseQuantity(rx)),
+    quantity: isFilled(stage) ? (rx.quantityDispensed || courseQuantity(rx)) : (Number.isFinite(remaining) && remaining > 0 ? remaining : courseQuantity(rx)),
     witnessId: '',
     witnessName: '',
     allowPartial: false,

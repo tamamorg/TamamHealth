@@ -101,7 +101,12 @@ export function PatientFacesheetView({
   // tab) are part of what they are on: a card that read "(None documented)" beside
   // a listed Metformin hid it from the prescriber's first screen.
   const { entries: historyEntries } = useHistoryEntries(patient._id);
-  const reportedMeds = historyForDomain(historyEntries, MEDICATION_HISTORY_DOMAIN).slice(0, Math.max(0, 4 - currentMeds.length));
+  // A medicine both reported and prescribed is listed once, as the order.
+  const drugKey = (name?: string) => (name || '').trim().toLowerCase().split(/[\s,(]+/)[0];
+  const prescribedDrugs = new Set(prescriptions.filter(rx => rx.status !== 'discontinued').map(rx => drugKey(rx.medication)));
+  const reportedMeds = historyForDomain(historyEntries, MEDICATION_HISTORY_DOMAIN)
+    .filter(entry => !prescribedDrugs.has(drugKey(entry.title)))
+    .slice(0, Math.max(0, 4 - currentMeds.length));
   const recentLabs = [...labResults]
     .sort((a, b) => (b.completedAt || b.createdAt || '').localeCompare(a.completedAt || a.createdAt || ''))
     .slice(0, 4);

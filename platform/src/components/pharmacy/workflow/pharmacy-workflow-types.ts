@@ -79,6 +79,17 @@ export const COUNSELLING_POINTS = [
 export const courseQuantity = (rx: { quantityToDispense?: number }): number =>
   typeof rx.quantityToDispense === 'number' && rx.quantityToDispense > 0 ? rx.quantityToDispense : 1;
 
+/**
+ * What is still owed on the course, for the over-course guard. Only a script
+ * that states its course (quantityToDispense) can be over-filled: an older one
+ * without it reads as 1 through courseQuantity's display fallback while the
+ * server accepts any amount for it, so it gets no ceiling here.
+ */
+export function remainingOnCourse(rx: { quantityToDispense?: number; quantityDispensed?: number }): number {
+  if (!(typeof rx.quantityToDispense === 'number' && rx.quantityToDispense > 0)) return Number.POSITIVE_INFINITY;
+  return Math.max(0, rx.quantityToDispense - (rx.quantityDispensed || 0));
+}
+
 /** The sig line a patient is counselled against, assembled from the script. */
 export const sigLine = (rx: { dose?: string; route?: string; frequency?: string; duration?: string }): string =>
   [rx.dose, rx.route, rx.frequency, rx.duration].filter(Boolean).join(' · ') || '—';

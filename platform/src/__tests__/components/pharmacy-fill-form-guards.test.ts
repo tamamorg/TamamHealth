@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import en from '@/lib/i18n/locales/en';
 import apd from '@/lib/i18n/locales/apd';
+import { remainingOnCourse } from '@/components/pharmacy/workflow/pharmacy-workflow-types';
 
 const read = (path: string) => readFileSync(join(process.cwd(), 'src', path), 'utf8');
 const panel = read('components/pharmacy/workflow/PharmacyWorkflowPanel.tsx');
@@ -27,9 +28,8 @@ describe('pharmacy fill form guards', () => {
   });
 
   it('caps the quantity at what is left of the course and defaults to the balance', () => {
-    expect(hook).toContain('const remaining = Math.max(0, courseQuantity(rx) - (rx.quantityDispensed || 0))');
+    expect(hook).toContain('const remaining = remainingOnCourse(rx)');
     expect(hook).toContain("if (dispenseDraft.quantity > remaining) throw dispenseStop(t('rxFlow.errOverCourse', { remaining }))");
-    expect(hook).toContain('isFilled(stage) ? (rx.quantityDispensed || courseQuantity(rx)) : (remaining || courseQuantity(rx))');
     expect(panel).toContain('draft.quantity > ctrl.remaining');
   });
 
@@ -41,5 +41,15 @@ describe('pharmacy fill form guards', () => {
   it('keeps no unsaved draft on the dispense slider', () => {
     expect(read('components/pharmacy/workflow/DispenseSlider.tsx')).toContain('keepDraft={false}');
     expect(read('components/overlay/FormSlider.tsx')).toContain('keepDraft={keepDraft}');
+  });
+
+  // Review 2026-11-08: an older script with no stated course read as a course
+  // of 1, so the guard blocked any real fill the server would have accepted.
+  it('owes the balance of a stated course, and sets no ceiling on a script without one', () => {
+    expect(remainingOnCourse({ quantityToDispense: 21, quantityDispensed: 10 })).toBe(11);
+    expect(remainingOnCourse({ quantityToDispense: 21, quantityDispensed: 21 })).toBe(0);
+    expect(remainingOnCourse({ quantityToDispense: 21 })).toBe(21);
+    expect(remainingOnCourse({})).toBe(Number.POSITIVE_INFINITY);
+    expect(remainingOnCourse({ quantityToDispense: 0 })).toBe(Number.POSITIVE_INFINITY);
   });
 });
