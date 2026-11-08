@@ -233,7 +233,6 @@ const en: TranslationMap = {
   'billing.activityColumn.reference': "Reference",
   'billing.activityColumn.date': "Date",
   'billing.activityColumn.description': "Description",
-  'billing.activityColumn.type': "Type",
   'billing.activityColumn.status': "Status",
   'billing.activityColumn.billed': "Billed",
   'billing.activityColumn.paid': "Paid",

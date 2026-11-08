@@ -243,7 +243,6 @@ const apd: TranslationMap = {
   'billing.activityColumn.reference': "المرجع",
   'billing.activityColumn.date': "التاريخ",
   'billing.activityColumn.description': "الوصف",
-  'billing.activityColumn.type': "النوع",
   'billing.activityColumn.status': "الحالة",
   'billing.activityColumn.billed': "المطلوب",
   'billing.activityColumn.paid': "المدفوع",
