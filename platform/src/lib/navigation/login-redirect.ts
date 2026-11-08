@@ -115,5 +115,41 @@ export function resolveNextPath(next: string | null | undefined, role: string): 
     return null;
   }
   const path = next.split(/[?#]/)[0];
+  // The sign-in screen is never a destination: it would hand a live session
+  // straight back to itself and sit on "Redirecting" for good. `isPathAllowed`
+  // cannot catch this, because super_admin is allowed every path.
+  if (path === '/login' || path.startsWith('/login/')) return null;
   return isPathAllowed(role, path) ? next : null;
+}
+
+/** How long the redirect screen waits for the dashboard before it gives up. */
+export const REDIRECT_STALL_MS = 8000;
+
+/** Bounces back to the sign-in screen that count as a loop, inside the window. */
+export const REDIRECT_LOOP_LIMIT = 3;
+export const REDIRECT_LOOP_WINDOW_MS = 60_000;
+
+const ATTEMPTS_KEY = 'tamamhealth.login-redirect-attempts';
+
+/**
+ * Records one redirect attempt from the sign-in screen and says whether it is
+ * now looping. A session the server has stopped honouring (expired cookie
+ * behind a live browser session) sends every dashboard call to
+ * `/login?next=<path>`, and the sign-in screen pushes straight back, forever.
+ * Each pass is a fresh page load, so a timer alone never fires; the count
+ * lives in sessionStorage and survives the reloads.
+ */
+export function recordRedirectAttempt(
+  storage: Pick<Storage, 'getItem' | 'setItem'> | null,
+  now: number = Date.now(),
+): { attempts: number; looping: boolean } {
+  let recent: number[] = [];
+  try {
+    const parsed = JSON.parse(storage?.getItem(ATTEMPTS_KEY) ?? '[]');
+    if (Array.isArray(parsed)) recent = parsed.filter((n): n is number => typeof n === 'number');
+  } catch { /* unreadable history counts as none */ }
+  recent = recent.filter(at => now - at < REDIRECT_LOOP_WINDOW_MS);
+  recent.push(now);
+  try { storage?.setItem(ATTEMPTS_KEY, JSON.stringify(recent)); } catch { /* private mode */ }
+  return { attempts: recent.length, looping: recent.length > REDIRECT_LOOP_LIMIT };
 }

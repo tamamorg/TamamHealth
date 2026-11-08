@@ -28,7 +28,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
 import { resolveLandingPage } from '@/lib/user-prefs';
-import { canRedirectAfterSignIn, resolveNextPath } from '@/lib/navigation/login-redirect';
+import {
+  canRedirectAfterSignIn, resolveNextPath, recordRedirectAttempt, REDIRECT_STALL_MS,
+} from '@/lib/navigation/login-redirect';
 import { ROLE_LABEL } from '@/lib/role-display';
 import { canonicalizeUserRole } from '@/lib/user-role';
 import type { UserRole } from '@/lib/db-types';
@@ -99,6 +101,10 @@ export default function LoginPage() {
      "sign in as someone else" was impossible — you were returned to whoever
      was signed in last, whichever account you had clicked. */
   const [switching, setSwitching] = useState(false);
+  /* The redirect did not complete: it timed out, or it is bouncing between
+     this page and the dashboard. Shows a message and a plain link instead of
+     a spinner that never ends. */
+  const [redirectStalled, setRedirectStalled] = useState(false);
   const demoEnabled = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
   const [demoAccounts, setDemoAccounts] = useState<DemoAccount[]>([]);
   // Second-factor step. The password has been accepted and the server is
@@ -203,6 +209,10 @@ export default function LoginPage() {
       ? new URLSearchParams(window.location.search).get('next')
       : null;
     const landing = resolveNextPath(nextParam, currentUser!.role) ?? resolveLandingPage(currentUser!.role);
+    let store: Storage | null = null;
+    try { store = window.sessionStorage; } catch { /* blocked storage */ }
+    // Bouncing between here and the dashboard: stop pushing; the stall timer below shows the message.
+    if (recordRedirectAttempt(store).looping) return;
     if (sessionMode === 'offline') {
       // A document navigation lets the service worker serve the verified HTML
       // route. A Next soft navigation needs an RSC network response and can
@@ -212,6 +222,13 @@ export default function LoginPage() {
       router.push(landing);
     }
   }, [isAuthenticated, currentUser, sessionMode, router, loading, signedIn, switching]);
+
+  const redirecting = isAuthenticated && !switching && !loading;
+  useEffect(() => {
+    if (!redirecting) return;
+    const timer = window.setTimeout(() => setRedirectStalled(true), REDIRECT_STALL_MS);
+    return () => window.clearTimeout(timer);
+  }, [redirecting]);
 
   const describeLoginFailure = (fallback: string) => describeLoginFailureMessage(t, lastLoginFailure(), fallback);
 
@@ -248,11 +265,18 @@ export default function LoginPage() {
   /* Signed in already and not switching: this is the redirect on its way
      out, so it says whose session it is. `switching` skips it entirely and
      drops through to the form below. */
-  if (isAuthenticated && !switching && !loading) {
+  if (redirecting) {
+    const dashboardHref = currentUser ? resolveLandingPage(currentUser.role) : '/';
     return (
       <div className="lg-redirect">
-        <span className="lg-redirect-mark" />
-        <p>{t('login.redirectingDashboard')}</p>
+        {!redirectStalled && <span className="lg-redirect-mark" />}
+        <p role={redirectStalled ? 'alert' : undefined}>
+          {redirectStalled ? t('login.redirectStalled') : t('login.redirectingDashboard')}
+        </p>
+        {redirectStalled && (
+          // A plain anchor: a full navigation, so it works when the client router is what stalled.
+          <a className="lg-redirect-switch" href={dashboardHref}>{t('login.openDashboard')}</a>
+        )}
         {currentUser && (
           <p className="lg-redirect-who">{t('login.signedInAs', { name: currentUser.name || currentUser.username })}</p>
         )}
