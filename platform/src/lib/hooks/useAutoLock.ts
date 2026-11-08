@@ -571,13 +571,34 @@ export function useAutoLock(
       window.addEventListener(event, handleActivity, { passive: true });
     }
 
-    // Lock IMMEDIATELY when screen goes off or tab is hidden
+    // Lock IMMEDIATELY when screen goes off or tab is hidden.
+    //
+    // Not when the page itself is going away. Leaving a page (a reload, a
+    // typed address, any full navigation) also hides the document, and the
+    // tab lock written then is per tab and survives into the next page, so
+    // every refresh opened on "Session Locked" (2026-11-07, live on
+    // a1eb701). `pagehide` comes before that hidden event when a document
+    // unloads, so it marks the unload; and if a browser orders them the
+    // other way, the lock this unload just wrote is taken back. A tab that
+    // was locked before the user left it stays locked.
+    let unloading = false;
+    let lockedByThisHide = false;
     const handleVisibility = () => {
-      if (document.hidden && isAuthRef.current) {
-        lock({ thisTabOnly: true });
-      }
+      if (!document.hidden) { lockedByThisHide = false; return; }
+      if (unloading || !isAuthRef.current) return;
+      const wasLocked = isLockedRef.current;
+      lock({ thisTabOnly: true });
+      lockedByThisHide = !wasLocked;
     };
+    const handlePageHide = () => {
+      unloading = true;
+      if (lockedByThisHide) { clearTabLocked(userId); lockedByThisHide = false; }
+    };
+    // Back from the back/forward cache: this page is live again.
+    const handlePageShow = () => { unloading = false; };
     document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('pageshow', handlePageShow);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -585,6 +606,8 @@ export function useAutoLock(
         window.removeEventListener(event, handleActivity);
       }
       document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('pageshow', handlePageShow);
     };
   }, [isAuthenticated, lock, resetTimer, lockEnabled, userId]);
 
