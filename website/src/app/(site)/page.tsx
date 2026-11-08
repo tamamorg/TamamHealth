@@ -21,7 +21,7 @@ export default async function HomePage() {
         <div className="blueprint tm-about-card" style={{ maxWidth: 1320, margin: "0 auto", position: "relative", background: "#113055", borderColor: "rgba(255,255,255,0.22)", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0, alignItems: "stretch" }}>
           <Corners light />
           <div style={{ display: "flex", flexDirection: "column", gap: 20, padding: "60px 56px 62px" }}>
-            <h2 style={{ fontSize: "clamp(26px, 3.8vw, 42px)", margin: 0, color: "#FFFFFF" }}>{t("The problem is enormous. The fix is buildable.")}</h2>
+            <h2 style={{ fontSize: "clamp(26px, 3.8vw, 42px)", margin: 0, color: "#FFFFFF" }}>{t("The problem is enormous. The fix is here.")}</h2>
             <span style={{ width: 100, height: 3, background: "#7CC7FF" }} />
             <p style={{ margin: 0, fontSize: 16, lineHeight: 1.7, color: "rgba(255,255,255,0.82)" }}>
               {t("We are on a mission to digitize healthcare in South Sudan, with offline-first health records that work wherever care is delivered and with sub-Saharan Africa in view. TamamHealth is a nonprofit organization founded at Tufts University. We welcome inquiries from health facilities, NGOs and funders.")}
