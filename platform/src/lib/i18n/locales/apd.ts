@@ -1526,7 +1526,7 @@ const apd: TranslationMap = {
   'appointments.statusRequested': 'مطلوب',
   'appointments.statusRescheduled': 'اتجدول من تاني',
   'appointments.statusScheduled': 'مجدول',
-  'appointments.statusTriaged': 'شغال',
+  'appointments.statusTriaged': 'اكتمل الفرز',
   'appointments.startConsultation': 'ابدأ الاستشارة',
   'appointments.startTriage': 'ابدأ الفرز',
   'appointments.toastBooked': 'الموعد اتحجز',

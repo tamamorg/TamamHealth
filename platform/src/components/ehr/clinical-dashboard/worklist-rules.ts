@@ -2,9 +2,10 @@ import type { AppointmentDoc, AppointmentStatus, EncounterDoc, TriageDoc } from 
 import {
   appointmentStatusLabel,
   APPOINTMENT_STATUS_GROUPS,
-  appointmentStatusGroup, type AppointmentStatusGroup,
+  type AppointmentStatusGroup,
 } from '@/lib/appointment-status';
 import { resolveOperationalVisitState, type VisitLane } from '@/lib/clinical-flow/visit-state';
+import { resolveVisitDisplay } from '@/lib/visit-display-status';
 import { PRIORITY_META, appointmentTriage } from '@/lib/clinical/triage-display';
 import { formatAppointmentTimeUntil, formatClockTime } from '@/lib/format-utils';
 import { parseIsoDate, toIsoDate } from '@/lib/date-utils';
@@ -346,6 +347,16 @@ export function computeRowQueueColumns(
     ? resolveOperationalVisitState(row.appointment ?? { status: row.status }, encounter, { nursingReviewOpen })
     : null;
   const inService = triage?.handoffStatus === 'in_consultation' || Boolean(triage?.handoffTo) || row.status === 'in_progress';
+  // The shared tab + colour rule (visit-display-status.ts): the encounter wins
+  // once there is one; a provider taking the patient lifts a queued row to In service.
+  const visitDisplay = resolveVisitDisplay({
+    // A walk-in in the queue with no booking has arrived and is waiting: the
+    // row's synthesized 'scheduled' would read as idle.
+    appointmentStatus: !row.appointment && entry ? 'checked_in' : row.status,
+    encounterStatus: encounter?.status,
+    nursingReviewOpen,
+    inService,
+  });
   const appointmentAt = row.appointment?.appointmentTime
     ? new Date(`${row.appointment.appointmentDate}T${row.appointment.appointmentTime}:00`)
     : null;
@@ -436,30 +447,23 @@ export function computeRowQueueColumns(
     ),
     inService,
     operationalLane: operationalState?.lane ?? null,
+    visitTab: visitDisplay.tab,
+    visitTone: visitDisplay.rowTone,
   };
 }
 
-/** Which of the three worklist lanes (Scheduled / In Office / Finished) a row
- *  belongs in. The encounter-derived lane wins outright when there is one —
- *  the encounter is authoritative once a patient arrives (visit-state.ts), and
- *  it is the same source the row's status chip reads, so chip and lane cannot
- *  disagree. Without an encounter, a live queue entry (or being actively in
- *  service) still promotes an otherwise-"scheduled" appointment status to In
- *  Office — a walk-in or triaged patient is physically here even when no desk
- *  ever checked them in. */
+/** Which of the three worklist lanes (Waiting / In service / Finished) a row
+ *  belongs in — the shared rule in visit-display-status.ts. The encounter
+ *  stage wins when there is one (it is what the status chip reads); a patient
+ *  is Waiting until a provider/clinical team member takes them (`inService`),
+ *  so a checked-in or queued patient stays in Waiting. */
 export function computeRowStatusGroup(
   status: AppointmentStatus,
-  hasLiveQueueEntry: boolean,
-  operationalLane?: VisitLane | null,
+  inService: boolean,
+  encounterStatus?: EncounterDoc['status'] | null,
+  nursingReviewOpen = false,
 ): AppointmentStatusGroup {
-  if (operationalLane) {
-    return operationalLane === 'in_facility' ? 'in_office'
-      : operationalLane === 'finished' ? 'finished'
-      : 'scheduled';
-  }
-  const group = appointmentStatusGroup(status);
-  if (group !== 'scheduled') return group;
-  return hasLiveQueueEntry ? 'in_office' : 'scheduled';
+  return resolveVisitDisplay({ appointmentStatus: status, encounterStatus, nursingReviewOpen, inService }).tab;
 }
 
 /** Tally rows per lane — used for both the lane-tab counts and (filtered) the

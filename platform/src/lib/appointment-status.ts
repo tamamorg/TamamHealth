@@ -15,6 +15,7 @@
  * moved, not the data.
  */
 import type { AppointmentStatus, UserRole } from './db-types';
+import { APPOINTMENT_DISPLAY, VISIT_TONE_TO_ROW_TONE, resolveVisitDisplay, type VisitRowTone } from './visit-display-status';
 
 /**
  * The forward ladder OFFERED to users, in the order reception moves a visit
@@ -185,7 +186,9 @@ export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
   confirmed: 'Scheduled',
   arrived: 'Arrived',
   checked_in: 'Checked In',
-  triaged: 'In Progress',
+  // Triage done, waiting for a room or provider: blue "queue action", not the
+  // purple of an encounter in progress, so it says what it is (like `arrived`).
+  triaged: 'Triage Complete',
   in_progress: 'In Progress',
   completed: 'Completed',
   no_show: 'No Show',
@@ -259,22 +262,16 @@ export const APPOINTMENT_STATUS_COLORS: Record<AppointmentStatus, { color: strin
   cancelled:     { color: 'var(--color-danger)', bg: 'var(--color-danger-bg)' },
 };
 
-/** Row tone for the shared `status-*` pill classes on the role dashboards. */
-export const APPOINTMENT_STATUS_TONES: Record<AppointmentStatus, 'scheduled' | 'ready' | 'active' | 'done' | 'warning' | 'danger'> = {
-  requested: 'scheduled',
-  scheduled: 'scheduled',
-  // Tones follow the label for the same reason the colours do.
-  reminder_sent: 'scheduled',
-  confirmed: 'scheduled',
-  arrived: 'warning',
-  checked_in: 'warning',
-  triaged: 'active',
-  in_progress: 'active',
-  completed: 'done',
-  no_show: 'danger',
-  rescheduled: 'scheduled',
-  cancelled: 'danger',
-};
+/**
+ * Row tone for the shared `status-*` pill classes on the role dashboards,
+ * derived from the one display mapping (visit-display-status.ts) so pill
+ * colour and tab are never decided in two places.
+ */
+export const APPOINTMENT_STATUS_TONES = Object.fromEntries(
+  (Object.keys(APPOINTMENT_DISPLAY) as AppointmentStatus[]).map(
+    status => [status, VISIT_TONE_TO_ROW_TONE[APPOINTMENT_DISPLAY[status][1]]],
+  ),
+) as Record<AppointmentStatus, VisitRowTone>;
 
 /**
  * The patient is physically at the facility. `arrived` counts — that is what it
@@ -326,12 +323,9 @@ export const APPOINTMENT_STATUS_GROUP_LABELS: Record<AppointmentStatusGroup, str
 };
 
 export function appointmentStatusGroup(status: AppointmentStatus): AppointmentStatusGroup {
-  if (status === 'checked_in' || status === 'triaged' || status === 'in_progress') return 'in_office';
-  if (APPOINTMENT_CLOSED_STATUSES.includes(status)) return 'finished';
-  // requested/scheduled/reminder_sent/confirmed — and `arrived`: the patient is
-  // in the waiting room but the desk has not opened the visit yet, so they
-  // still belong to the expected lane, matching APPOINTMENT_PENDING_STATUSES.
-  return 'scheduled';
+  // Waiting until care actually begins: a checked-in or arrived patient is
+  // still in the queue. Full rules in visit-display-status.ts.
+  return resolveVisitDisplay({ appointmentStatus: status }).tab;
 }
 
 /**

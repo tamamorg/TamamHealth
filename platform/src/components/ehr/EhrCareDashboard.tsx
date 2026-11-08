@@ -1038,6 +1038,7 @@ export default function EhrCareDashboard({
                         <div
                           className="ehr-appointment-row appointment-card-row"
                           data-triage={priorityCode || undefined}
+                          data-visit-tone={effectiveStatusTone || undefined}
                           role="button"
                           tabIndex={0}
                           aria-expanded={row.onOpen ? undefined : isExpanded}

@@ -128,4 +128,7 @@ export interface RowQueueColumns {
    *  the lane must read the same source — otherwise a patient whose chip says
    *  "Awaiting triage" files under Upcoming while In Facility shows zero. */
   operationalLane: VisitLane | null;
+  /** Tab and colour tone from the shared rule (visit-display-status.ts). */
+  visitTab: AppointmentStatusGroup;
+  visitTone: 'scheduled' | 'ready' | 'active' | 'done' | 'warning' | 'danger';
 }

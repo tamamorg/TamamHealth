@@ -99,7 +99,7 @@ it('a walk-in handed to THIS doctor at triage is on their board — with "only m
   const active = buildActiveTriageByPatient(triages, Date.now());
   const queue = buildQueueEntryByPatient(active);
   const cols = computeRowQueueColumns(rows[0], queue.get('pat-teny') ?? null, active.get('pat-teny') ?? null, Date.now(), undefined, encounter);
-  const lane = computeRowStatusGroup(rows[0].status, Boolean(cols.entry) || cols.inService, cols.operationalLane);
+  const lane = computeRowStatusGroup(rows[0].status, cols.inService, encounter.status);
   expect(lane).toBe('in_office');
 });
 

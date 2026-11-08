@@ -91,7 +91,6 @@ import {
   clinicalDashboardDay,
   clinicalDashboardLane,
   computeRowQueueColumns,
-  computeRowStatusGroup,
   filterRoleOwnedAppointments,
   tallyByStatusGroup,
   typeLabel,
@@ -673,11 +672,7 @@ export default function EhrClinicalDashboard({
     // encounter's lane outranks both — it is what the status chip displays.
     if (row.patient?.station && !row.appointment) return row.patient.station.lane;
     const columns = rowQueueColumns(row);
-    return computeRowStatusGroup(
-      row.status,
-      Boolean(columns.entry) || columns.inService,
-      columns.operationalLane,
-    );
+    return columns.visitTab;
   };
   const groupCounts = tallyByStatusGroup(visiblePatientRows, rowStatusGroup);
   // Move, escalate, left-without-being-seen and return-to-desk all write the
@@ -1563,6 +1558,7 @@ export default function EhrClinicalDashboard({
                       >
                       <div
                         data-triage={row.triagePriority}
+                        data-visit-tone={row.patient?.station && !row.appointment ? (row.patient.station.statusTone ?? 'ready') : columns.visitTone}
                         className="ehr-appointment-row appointment-card-row"
                         role="button"
                         tabIndex={0}
@@ -1638,7 +1634,7 @@ export default function EhrClinicalDashboard({
                         <div className="appointment-card-status">
                           {row.appointment ? (() => {
                             const visitStatus = row.appointment!.status;
-                            const tone = APPOINTMENT_STATUS_TONES[visitStatus];
+                            const tone = columns.visitTone;
                             const pillClass = tone === 'done' ? 'status-completed'
                               : tone === 'active' ? 'status-checked-in'
                               : tone === 'ready' ? 'status-confirmed'
@@ -1672,7 +1668,7 @@ export default function EhrClinicalDashboard({
                                 <AppointmentStatusPillSelect
                                   status={walkInVisit.status}
                                   displayLabel={columns.statusText}
-                                  className={stationPillClass(row.patient?.station?.statusTone)}
+                                  className={stationPillClass(row.patient?.station?.statusTone ?? columns.visitTone)}
                                   ariaLabel={`Status for ${row.name}`}
                                   role={currentUser?.role}
                                   onChange={next => setStatusPick({ appointment: walkInVisit, next })}

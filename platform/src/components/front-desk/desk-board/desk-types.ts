@@ -40,6 +40,10 @@ export interface QueueItem {
    * inside the In Office lane.
    */
   visitStatus: AppointmentStatus;
+  /** Lane and colour tone from the shared rule (visit-display-status.ts) —
+   *  the encounter stage counts once there is one. */
+  visitTab: 'scheduled' | 'in_office' | 'finished';
+  visitTone: 'scheduled' | 'ready' | 'active' | 'done' | 'warning' | 'danger';
   waitMinutes?: number;
   overTarget?: boolean;
   /** Ordering weight — the service's acuity+wait score for triage-sourced

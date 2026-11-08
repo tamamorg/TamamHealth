@@ -155,19 +155,6 @@ export function buildFrontDeskRows({
     // A slot closed without the patient being seen is finished, but there is
     // no visit to check out — it gets its own pill, never the Checkout action.
     const checkoutReady = entry.status === 'DONE' && !entry.closedStatus && entry.visitStatus !== 'completed';
-    const statusTone: EhrCareDashboardRow['statusTone'] = entry.closedStatus
-      ? APPOINTMENT_STATUS_TONES[entry.closedStatus]
-      : entry.status === 'DONE'
-      ? 'done'
-      : entry.status === 'IN CONSULT'
-        ? 'active'
-        : entry.overTarget
-          ? 'warning'
-          : entry.priority === 'RED'
-            ? 'danger'
-            : entry.priority === 'YELLOW'
-              ? 'warning'
-              : 'ready';
     // Triage-sourced rows carry the real acuity code, so they get the same
     // RED/YELLOW/GREEN pill the doctor and nurse see for this patient.
     // Appointment/registration rows have no acuity — the pill falls back
@@ -284,7 +271,8 @@ export function buildFrontDeskRows({
         ? t(entry.operationalI18nKey)
         : entry.operationalLabel || (ladderStatus ? appointmentStatusLabel(ladderStatus) : statusLabel),
       statusSecondary: statusContext,
-      statusTone: ladderStatus ? APPOINTMENT_STATUS_TONES[ladderStatus] : statusTone,
+      // Colour by meaning (slate/blue/purple/green/red), from the shared rule.
+      statusTone: entry.visitTone,
       // A queue row is movable too — advancing a checked-in patient to
       // Roomed, or closing them out, is the desk's most common action. The
       // walk-in's triage row is mirrored in the same write so the two
