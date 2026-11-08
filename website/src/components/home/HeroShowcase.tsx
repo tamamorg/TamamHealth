@@ -17,7 +17,6 @@ export default function HeroShowcase() {
   const { t, content } = useLanguage();
   const HEROES = content(HEROES_EN);
   const [hero, setHero] = useState(0);
-  const h = HEROES[hero];
 
   const scrollRail = (i: number) => {
     const r = document.getElementById("tm-strip-rail");
@@ -37,15 +36,25 @@ export default function HeroShowcase() {
           is set by the longest slide: at 455px the problem card's body ran past
           the bottom of the band on a short laptop screen and was clipped. */}
       <section className="tm-hero" style={{ position: "relative", height: "clamp(500px, calc(100vh - 340px), 740px)", overflow: "hidden", background: "var(--color-accent-900)" }}>
+        {/* Every slide's photograph is in the band at once, stacked, and the
+            active one cross-fades in (globals.css, Motion). Swapping one
+            image's src cut the picture over in a frame while the card text
+            was still fading, and each new slide waited for its download on
+            the click; stacked, the others load in the background. Only the
+            first is preloaded, so the first paint costs what it did. */}
         <div className="tm-hero-img tm-figure" style={{ position: "absolute", inset: 0 }}>
-          <Image
-            src={h.image}
-            alt={h.alt}
-            fill
-            sizes="100vw"
-            preload={hero === 0}
-            style={{ objectFit: "cover", objectPosition: h.focus ?? "center 35%" }}
-          />
+          {HEROES.map((hh, i) => (
+            <div key={hh.stripKicker} className="tm-hero-slide" data-on={i === hero} aria-hidden={i !== hero} style={{ position: "absolute", inset: 0 }}>
+              <Image
+                src={hh.image}
+                alt={i === hero ? hh.alt : ""}
+                fill
+                sizes="100vw"
+                preload={i === 0}
+                style={{ objectFit: "cover", objectPosition: hh.focus ?? "center 35%" }}
+              />
+            </div>
+          ))}
         </div>
         <div className="tm-hero-scrim" style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(1,86,151,0.42) 0%, rgba(1,86,151,0.06) 62%, rgba(1,86,151,0.22) 100%)" }} />
         <div className="tm-hero-wrap" style={{ position: "relative", maxWidth: 1320, margin: "0 auto", padding: "0 32px", height: "100%", display: "flex", alignItems: "center" }}>
@@ -65,7 +74,8 @@ export default function HeroShowcase() {
                   key={hh.stripKicker}
                   className="blueprint tm-hero-card"
                   aria-hidden={!on}
-                  style={{ gridArea: "1 / 1", background: "rgba(255,255,255,0.92)", padding: "36px 44px 38px", display: "flex", flexDirection: "column", gap: 16, opacity: on ? 1 : 0, pointerEvents: on ? "auto" : "none", transition: "opacity 0.32s ease" }}
+                  data-on={on}
+                  style={{ gridArea: "1 / 1", background: "rgba(255,255,255,0.92)", padding: "36px 44px 38px", display: "flex", flexDirection: "column", gap: 16, pointerEvents: on ? "auto" : "none" }}
                 >
                   <Corners />
                   <h1 style={{ fontSize: "clamp(29px, 4.6vw, 46px)", lineHeight: 1.08, margin: 0, letterSpacing: "-0.02em" }}>{hh.title}</h1>

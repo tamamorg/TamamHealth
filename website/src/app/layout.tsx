@@ -5,6 +5,7 @@ import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
 import { getLocale } from "@/lib/i18n/server";
 import { localeConfig } from "@/lib/i18n";
 import StructuredData from "./structured-data";
+import ImageFadeIn from "@/components/ImageFadeIn";
 
 const bodyFont = Barlow({
   subsets: ["latin"],
@@ -27,9 +28,9 @@ const headingFont = Barlow_Condensed({
 const TAB_TITLE = "TamamHealth";
 /** Short, category-first copy for search results and link previews. The title
  *  says what the product is; the description says why that matters. */
-const TITLE = "TamamHealth — Care That Never Starts From Zero";
+const TITLE = "TamamHealth | Care That Never Starts From Zero";
 const DESCRIPTION =
-  "TamamHealth keeps each patient's history available from clinic to referral hospital—even when the power or network is not.";
+  "TamamHealth keeps each patient's history available from clinic to referral hospital, even when the power or network is not.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://tamamhealth.org"),
@@ -106,6 +107,7 @@ export default async function RootLayout({
       </head>
       <body>
         <LanguageProvider locale={locale}>{children}</LanguageProvider>
+        <ImageFadeIn />
       </body>
     </html>
   );
