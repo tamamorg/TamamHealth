@@ -29,6 +29,7 @@ const labTech: Ctx = { name: 'lab', roles: ['org:org-a', 'role:lab_tech', 'user:
 /** The lab tech who proposes the corrections below (proposedById u-lab-a). */
 const proposer: Ctx = { name: 'lab-a', roles: ['org:org-a', 'role:lab_tech', 'user:u-lab-a', 'facility:h-1'] };
 const triageNurse: Ctx = { name: 'nurse', roles: ['org:org-a', 'role:triage_nurse', 'user:u-nurse', 'facility:h-1'] };
+const doctor: Ctx = { name: 'doctor', roles: ['org:org-a', 'role:doctor', 'user:u-doctor', 'facility:h-1'] };
 
 const lab = (over: Record<string, unknown> = {}) => ({
   _id: 'lab-1', _rev: '2-a', type: 'lab_result', orgId: 'org-a', hospitalId: 'h-1', patientId: 'p-1',
@@ -62,9 +63,11 @@ describe('validate_doc_update', () => {
     const proposed = lab({ _rev: '3-a', pendingCorrection: correction() });
     expect(reason(proposed, before, proposer)).toBeNull();
     expect(reason(lab({
-      _rev: '4-a', amended: true, amendedBy: 'Achol Lab', amendedFrom: SEALED, amendmentReason: SEALED,
+      _rev: '4-a', result: 'oenc:v1:b3JnLWE:aXY:Y29ycmVjdGVk', abnormal: false,
+      amended: true, amendedAt: '2026-11-07T11:00:00.000Z',
+      amendedBy: 'Achol Lab', amendedFrom: SEALED, amendmentReason: SEALED,
       correctionVerifiedBy: 'Ladu Lab', correctionVerifiedById: 'u-lab-b', correctionVerifiedAt: '2026-11-07T11:00:00.000Z',
-    }), proposed, labTech)).toBeNull();
+    }), lab({ _rev: '3-a', pendingCorrection: correction({ result: 'oenc:v1:b3JnLWE:aXY:Y29ycmVjdGVk' }) }), labTech)).toBeNull();
     expect(reason(lab({
       _rev: '4-a',
       rejectedCorrections: [{ ...correction(), rejectedBy: 'Ladu Lab', rejectedById: 'u-lab-b', rejectedAt: '2026-11-07T11:00:00.000Z', rejectionReason: SEALED }],
@@ -76,10 +79,11 @@ describe('validate_doc_update', () => {
   it('refuses the proposer approving their own correction', () => {
     const proposed = lab({ _rev: '3-a', pendingCorrection: correction() });
     const approval = lab({
-      _rev: '4-a', amended: true, amendedBy: 'Achol Lab', amendedFrom: SEALED, amendmentReason: SEALED,
+      _rev: '4-a', result: 'oenc:v1:b3JnLWE:aXY:Y29ycmVjdGVk', amended: true, amendedAt: '2026-11-07T11:00:00.000Z',
+      amendedBy: 'Achol Lab', amendedFrom: SEALED, amendmentReason: SEALED,
       correctionVerifiedBy: 'Achol Lab', correctionVerifiedById: 'u-lab-a', correctionVerifiedAt: '2026-11-07T11:00:00.000Z',
     });
-    expect(reason(approval, proposed, proposer)).toMatch(/second lab tech/);
+    expect(reason(approval, lab({ _rev: '3-a', pendingCorrection: correction({ result: 'oenc:v1:b3JnLWE:aXY:Y29ycmVjdGVk' }) }), proposer)).toMatch(/second lab tech/);
   });
 
   it('refuses an approval that names someone other than the approver', () => {
@@ -95,6 +99,34 @@ describe('validate_doc_update', () => {
       .toMatch(/must name the user proposing it/);
   });
 
+  it('refuses non-lab roles proposing, approving or rejecting corrections', () => {
+    const before = lab();
+    const proposed = lab({ _rev: '3-a', pendingCorrection: correction() });
+    expect(reason(proposed, before, doctor)).toMatch(/Only a lab tech/);
+    expect(reason(lab({
+      _rev: '4-a', result: 'oenc:v1:b3JnLWE:aXY:Y29ycmVjdGVk', amended: true, amendedAt: '2026-11-07T11:00:00.000Z',
+      amendedBy: 'Achol Lab', amendmentReason: SEALED, correctionVerifiedById: 'u-doctor', correctionVerifiedAt: '2026-11-07T11:00:00.000Z',
+    }), proposed, doctor)).toMatch(/Only a lab tech/);
+    expect(reason(lab({
+      _rev: '4-a', rejectedCorrections: [{ ...correction(), rejectedById: 'u-doctor', rejectedAt: 'x', rejectionReason: SEALED }],
+    }), proposed, doctor)).toMatch(/Only a lab tech/);
+  });
+
+  it('refuses direct changes to a filed value without an approved pending correction', () => {
+    expect(reason(lab({ result: 'oenc:v1:b3JnLWE:aXY:Y29ycmVjdGVk' }), lab(), labTech))
+      .toMatch(/only through an approved pending correction/);
+  });
+
+  it('refuses silently clearing, self-rejecting or rewriting a pending correction', () => {
+    const proposed = lab({ _rev: '3-a', pendingCorrection: correction() });
+    expect(reason(lab({ _rev: '4-a' }), proposed, labTech)).toMatch(/Rejecting a correction requires/);
+    expect(reason(lab({
+      _rev: '4-a', rejectedCorrections: [{ ...correction(), rejectedById: 'u-lab-a', rejectedAt: 'x', rejectionReason: SEALED }],
+    }), proposed, proposer)).toMatch(/second lab tech/);
+    expect(reason(lab({ _rev: '4-a', pendingCorrection: correction({ proposedAt: 'changed' }) }), proposed, proposer))
+      .toMatch(/immutable until it is approved or rejected/);
+  });
+
   it('refuses a plaintext proposed value, reason or rejection reason', () => {
     expect(reason(lab({ pendingCorrection: correction({ result: '6.9 mmol/L' }) }), lab(), proposer))
       .toMatch(/lab_result field pendingCorrection\.result must be encrypted/);
@@ -102,7 +134,7 @@ describe('validate_doc_update', () => {
       .toMatch(/pendingCorrection\.reason must be encrypted/);
     expect(reason(lab({
       rejectedCorrections: [{ ...correction(), rejectedBy: 'Ladu Lab', rejectedById: 'u-lab-b', rejectedAt: 'x', rejectionReason: 'Checked again' }],
-    }), lab(), labTech)).toMatch(/rejectedCorrections\[0\]\.rejectionReason must be encrypted/);
+    }), lab({ pendingCorrection: correction() }), labTech)).toMatch(/rejectedCorrections\[0\]\.rejectionReason must be encrypted/);
   });
 
   it('accepts a triage nurse saving a sealed medication review, refuses plaintext medicine names', () => {
