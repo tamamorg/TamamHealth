@@ -25,7 +25,7 @@ jest.setTimeout(30000);
 
 import { teardownTestDBs, putDoc } from '../helpers/test-db';
 import { usersDB, hospitalsDB, patientsDB, pharmacyInventoryDB, controlledSubstanceLogDB } from '@/lib/db';
-import { createPrescription as createPrescriptionScoped, advancePrescription, getPrescriptionsByPatient, updatePrescription } from '@/lib/services/prescription-service';
+import { createPrescription as createPrescriptionScoped, advancePrescription, getPrescriptionsByPatient, updatePrescription, clearForDispensing as serverClearForDispensing, PrescriptionClearanceError, effectivePrescriptionStatus } from '@/lib/services/prescription-service';
 
 // Fixtures here are single-tenant; a system-wide scope reads every doc, so the
 // tenant barrier is exercised by the dedicated cross-org suite instead.
@@ -105,7 +105,37 @@ describe('insufficient / absent stock', () => {
     }));
     expect(err.code).toBe('STOCK_OUT');
     expect(err.available).toBe(0);
-    expect(err.message).toMatch(/out of stock/i);
+    expect(err.message).toMatch(/not currently in stock/i);
+  });
+
+  // 2026-11-07: an uncleared order with nothing on the shelf was refused as
+  // "must be reviewed and cleared", which clearing could never fix.
+  it('reports the stock-out, not the clearance, for an uncleared order with no stock', async () => {
+    await seedWorld();
+    const rx = await prescribe();
+
+    const err = await catchDispenseError(dispenseMedication({
+      prescription: rx, quantity: 15,
+      dispenserId: PHARMACIST._id, dispenserName: PHARMACIST.name, facilityId: HOSP, orgId: ORG,
+    }));
+    expect(err.code).toBe('STOCK_OUT');
+    expect(err.message).toBe('Amoxicillin 500mg is not currently in stock. Record a stock-out or refer the patient to an outside pharmacy.');
+  });
+
+  it('still refuses an uncleared order as uncleared when there is stock', async () => {
+    await seedWorld();
+    await putDoc(pharmacyInventoryDB(), {
+      _id: 'inv-amox', type: 'pharmacy_inventory', hospitalId: HOSP, hospitalName: 'JTH',
+      medicationName: 'Amoxicillin 500mg', category: 'Antibiotic', stockLevel: 40, unit: 'tablets',
+      reorderLevel: 20, batchNumber: 'B-2026-01', expiryDate: '2027-01-01', dispensedToday: 0, orgId: ORG,
+    } as never);
+    const rx = await prescribe();
+
+    const err = await catchDispenseError(dispenseMedication({
+      prescription: rx, quantity: 15,
+      dispenserId: PHARMACIST._id, dispenserName: PHARMACIST.name, facilityId: HOSP, orgId: ORG,
+    }));
+    expect(err.code).toBe('NOT_CLEARED');
   });
 
   it('refuses with INSUFFICIENT_STOCK and reports what is actually on the shelf', async () => {
@@ -344,5 +374,36 @@ describe('controlled-substance witness gate', () => {
 
     const batch = await pharmacyInventoryDB().get('inv-morphine') as { stockLevel: number };
     expect(batch.stockLevel).toBe(48);
+  });
+});
+
+// The server's own clearance before an online dispense (2026-11-07). The fill
+// button clears on the device and dispenses through the API in one press; the
+// server read its copy before that clearance replicated and refused.
+describe('server-side clearance before an online dispense', () => {
+  it('clears a freshly prescribed order for the pharmacist making the dispense', async () => {
+    await seedWorld();
+    const rx = await prescribe();
+    const cleared = await serverClearForDispensing(rx._id, PHARMACIST._id);
+    expect(effectivePrescriptionStatus(cleared!)).toBe('cleared_for_dispensing');
+  });
+
+  it('refuses anyone who is not a pharmacist', async () => {
+    await seedWorld();
+    const rx = await prescribe();
+    await expect(serverClearForDispensing(rx._id, WITNESS._id)).rejects.toBeInstanceOf(PrescriptionClearanceError);
+  });
+
+  it('never revives a discontinued order', async () => {
+    await seedWorld();
+    const rx = await prescribe();
+    await updatePrescription(rx._id, { status: 'discontinued' });
+    const after = await serverClearForDispensing(rx._id, PHARMACIST._id);
+    expect(after!.status).toBe('discontinued');
+    const err = await catchDispenseError(dispenseMedication({
+      prescription: after!, quantity: 15,
+      dispenserId: PHARMACIST._id, dispenserName: PHARMACIST.name, facilityId: HOSP, orgId: ORG,
+    }));
+    expect(err.message).toMatch(/discontinued/);
   });
 });

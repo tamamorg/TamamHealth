@@ -75,9 +75,26 @@ async function patchHandler(
     if (body.status === 'dispensed' || body.action === 'dispense') {
       const { dispenseMedication, DispenseError } = await import('@/lib/services/dispensing-service');
       try {
+        // The fill button clears the order and dispenses in one press. Its
+        // clearance was written on the device and may not have replicated
+        // yet, so the server clears its own copy first (pharmacist-only, see
+        // clearForDispensing) rather than refusing an order the pharmacist
+        // has just cleared.
+        let rxToDispense = existingRx;
+        if (body.clearForDispensing === true) {
+          const { clearForDispensing, PrescriptionClearanceError } = await import('@/lib/services/prescription-service');
+          try {
+            rxToDispense = (await clearForDispensing(id, auth.sub)) ?? existingRx;
+          } catch (err) {
+            if (err instanceof PrescriptionClearanceError) {
+              return NextResponse.json({ error: err.message, code: err.code }, { status: err.code === 'NOT_A_PHARMACIST' ? 403 : 409 });
+            }
+            throw err;
+          }
+        }
         const result = await dispenseMedication({
-          prescription: existingRx,
-          quantity: Number(body.quantity) || existingRx.quantityToDispense || 1,
+          prescription: rxToDispense,
+          quantity: Number(body.quantity) || rxToDispense.quantityToDispense || 1,
           dispenserId: auth.sub,
           dispenserName: auth.name,
           // From the verified JWT, not the directory — dispenseMedication()

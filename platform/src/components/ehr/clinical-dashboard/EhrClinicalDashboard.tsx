@@ -1656,7 +1656,30 @@ export default function EhrClinicalDashboard({
                                 onChange={next => setStatusPick({ appointment: row.appointment!, next })}
                               />
                             );
-                          })() : (<>
+                          })() : (() => {
+                            // A walk-in has no booking on the row, but it has
+                            // today's visit. Where the pill has no station work
+                            // to open, it is that visit's status picker, so
+                            // staff change a walk-in's status from the list as
+                            // they do a booked patient's (2026-11-07). The
+                            // pill keeps the stage text ("Awaiting lab
+                            // results"); the choices are the visit's statuses,
+                            // through the same role rules and confirm slider.
+                            const walkInVisit = row.patientId ? todaysVisitByPatient.get(row.patientId) : undefined;
+                            const stationWork = (row.patient?.station?.actions?.length ?? 0) > 0 || !!row.patient?.station?.openId;
+                            if (walkInVisit && !stationWork) {
+                              return (
+                                <AppointmentStatusPillSelect
+                                  status={walkInVisit.status}
+                                  displayLabel={columns.statusText}
+                                  className={stationPillClass(row.patient?.station?.statusTone)}
+                                  ariaLabel={`Status for ${row.name}`}
+                                  role={currentUser?.role}
+                                  onChange={next => setStatusPick({ appointment: walkInVisit, next })}
+                                />
+                              );
+                            }
+                            return (<>
                             {/* One pill: the station's. It opens the order in the
                                 slider; the visit's own status sits in the row's
                                 panel, not stacked under this one. */}
@@ -1672,7 +1695,8 @@ export default function EhrClinicalDashboard({
                                 ? () => onStationOpen(row.patient!.station!.openId!)
                                 : undefined}
                             />
-                          </>)}
+                          </>);
+                          })()}
                           <small>{columns.statusSubtext}</small>
                         </div>
                       </div>

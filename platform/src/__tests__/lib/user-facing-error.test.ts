@@ -77,7 +77,7 @@ describe('describeError in Juba Arabic', () => {
   it('fills values into a sentence that has them, translating status words', async () => {
     const { loadTranslations, setActiveTranslations } = await import('@/lib/i18n');
     setActiveTranslations(await loadTranslations('apd'));
-    expect(describeError(new Error('Amoxicillin is out of stock at this facility.'), FALLBACK)).toBe('Amoxicillin خلص من المخزون في المرفق ده.');
+    expect(describeError(new Error('Amoxicillin is not currently in stock. Record a stock-out or refer the patient to an outside pharmacy.'), FALLBACK)).toBe('Amoxicillin ما موجود في المخزون هسع. سجّل إنو المخزون خلص أو حوّل العيان لصيدلية برّا.');
     expect(describeError(new Error('This claim is denied. Only a denied claim can be appealed.'), FALLBACK)).toBe('المطالبة دي مرفوض. بس المطالبة المرفوضة بيتستأنف عليها.');
     expect(describeError(new Error('Mary Akol already has an active admission in Ward A, bed 4.'), FALLBACK)).toBe('Mary Akol عندو تنويم نشط في Ward A، سرير 4.');
   });
