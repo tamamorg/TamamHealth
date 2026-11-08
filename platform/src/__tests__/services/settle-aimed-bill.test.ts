@@ -6,7 +6,7 @@ jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 
 import { teardownTestDBs, putDoc } from '../helpers/test-db';
 import { getDB } from '@/lib/db';
-import { getBillById, settleOpenBillsWithPayment } from '@/lib/services/billing-service';
+import { applyDiscount, getBillById, settleOpenBillsWithPayment } from '@/lib/services/billing-service';
 import type { DataScope } from '@/lib/services/data-scope';
 
 const scope = { orgId: 'org-a', hospitalId: 'h-a', role: 'org_admin' } as DataScope;
@@ -41,5 +41,28 @@ describe('settleOpenBillsWithPayment', () => {
     await pay('pay-1', 150, { billId: 'bill-new' });
     expect((await getBillById('bill-new', scope))?.status).toBe('paid');
     expect((await getBillById('bill-old', scope))?.balanceDue).toBe(50);
+  });
+});
+
+describe('applyDiscount', () => {
+  const discount = (id: string, amount: number) => applyDiscount(id, amount, 'Indigent patient', 'u', 'U');
+  // A bill with a real line, so the totals are recomputed from items as in the app.
+  beforeEach(async () => {
+    const db = getDB('tamamhealth_billing');
+    const doc = await db.get('bill-old') as Record<string, unknown>;
+    await db.put({ ...doc, taxRate: 0, items: [{ id: 'i1', description: 'Consultation', category: 'consultation', quantity: 1, unitPrice: 100, totalPrice: 100 }] });
+  });
+
+  test('takes a discount off what is still owed', async () => {
+    const result = await discount('bill-old', 40);
+    expect(result?.balanceDue).toBe(60);
+  });
+
+  test('refuses a discount that would go below what was already paid', async () => {
+    await pay('pay-1', 60, { billId: 'bill-old' });
+    expect(await discount('bill-old', 60)).toBeNull();
+    expect((await getBillById('bill-old', scope))?.discount).toBe(0);
+    // Up to the unpaid remainder is still allowed, and settles the bill.
+    expect((await discount('bill-old', 40))?.status).toBe('paid');
   });
 });

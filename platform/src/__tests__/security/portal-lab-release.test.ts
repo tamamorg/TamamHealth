@@ -108,7 +108,7 @@ describe('GET /api/patient-portal/labs', () => {
     jest.doMock('@/lib/patient-portal-demo', () => ({
       demoFallbackEnabled: () => true,
       logDemoFallback: jest.fn(),
-      getDemoLabResultsByPatient: jest.fn(async () => [lab({ _id: 'lab-demo' })]),
+      getDemoLabResultsByPatient: jest.fn(async () => [lab({ _id: 'lab-demo' }), lab({ _id: 'lab-demo-cancelled', status: 'cancelled' })]),
     }));
   });
 
@@ -127,6 +127,7 @@ describe('GET /api/patient-portal/labs', () => {
     const { GET } = await import('@/app/api/patient-portal/labs/route');
     getLabResultsByPatient.mockRejectedValue(new Error('no database'));
     const body = await (await GET({} as never)).json();
+    // A withdrawn order is dropped on this path as on the live one.
     expect(body.results).toHaveLength(1);
     expect(body.results[0]).toMatchObject({ _id: 'lab-demo', status: 'pending', awaitingReview: true });
     expect(JSON.stringify(body)).not.toContain('Reactive');

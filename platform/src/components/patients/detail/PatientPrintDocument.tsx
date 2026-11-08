@@ -88,7 +88,7 @@ export default function PatientPrintDocument({ patient, patientProblems, allPres
                           <div className="rx-field"><b>{t('referrals.providerLabel')}</b> {latestRecord.providerName}</div>
                           <div className="rx-field"><b>{t('ui.department')}</b> {latestRecord.department}</div>
                         </div>
-                        {latestRecord.chiefComplaint && <div className="rx-field"><b>{t('sbar.chiefComplaintLabel')}</b> {latestRecord.chiefComplaint}</div>}
+                        {latestRecord.chiefComplaint && <div className="rx-field"><b>{t('recordSign.chiefComplaint')}</b> {latestRecord.chiefComplaint}</div>}
                         {latestRecord.historyOfPresentIllness && <div className="rx-field" style={{ marginTop: 4 }}><b>{t('ui.historyOfPresentIllness')}</b> {latestRecord.historyOfPresentIllness}</div>}
                         {latestRecord.physicalExamination && Object.entries(latestRecord.physicalExamination).filter(([, v]) => v).length > 0 && (
                           <div className="rx-field" style={{ marginTop: 4 }}>

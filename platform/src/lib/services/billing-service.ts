@@ -800,6 +800,11 @@ export async function applyDiscount(
 
     const oldTotal = bill.totalAmount;
     const { subtotal, taxAmount, totalAmount } = calculateTotals(bill.items, discount, bill.taxRate);
+    // A discount only reduces what is still owed. One that takes the total below
+    // what has already been paid would mark the bill settled while the patient is
+    // owed money back, and the ledger would carry a credit no screen shows; that is
+    // a refund, which has its own controlled flow.
+    if (totalAmount < bill.amountPaid) return null;
 
     bill.discount = discount;
     bill.discountReason = reason;

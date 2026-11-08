@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     if (demoFallbackEnabled()) {
       logDemoFallback('labs', err);
-      return NextResponse.json({ results: (await getDemoLabResultsByPatient(auth.sub)).map(toPortalLabResult) });
+      return NextResponse.json({ results: (await getDemoLabResultsByPatient(auth.sub)).filter(isPortalVisibleLab).map(toPortalLabResult) });
     }
     logApiError('[patient-portal/labs]', err);
     return NextResponse.json({ error: 'Your lab results could not be loaded. Try again.' }, { status: 500 });

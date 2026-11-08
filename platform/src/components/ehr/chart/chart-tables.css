@@ -89,14 +89,18 @@ body .tamam-root .tamam-table--orders th:nth-child(5) { width: 9%; }
 body .tamam-root .tamam-table--orders th:nth-child(6) { width: 15%; }
 body .tamam-root .tamam-table--orders th:nth-child(7) { width: 12%; }
 
-body .tamam-root .tamam-table--activity th:nth-child(1) { width: 12%; }
-body .tamam-root .tamam-table--activity th:nth-child(2) { width: 30%; }
+body .tamam-root .tamam-table--activity th:nth-child(1) { width: 15%; }
+body .tamam-root .tamam-table--activity th:nth-child(2) { width: 27%; }
 body .tamam-root .tamam-table--activity th:nth-child(3) { width: 12%; }
 body .tamam-root .tamam-table--activity th:nth-child(4) { width: 13%; }
 body .tamam-root .tamam-table--activity th:nth-child(5) { width: 13%; }
 body .tamam-root .tamam-table--activity th:nth-child(6) { width: 13%; }
 /* Money is never cut short: beside a slider, a figure wraps at its space. */
-body .tamam-root .tamam-table--activity td { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: normal; }
+/* `td.tamam-num` (above) forces nowrap + ellipsis and out-ranks a bare `td`, so
+   the date and the three money columns still read "SS…" beside the Collect
+   payment slider; name it here so this rule wins. */
+body .tamam-root .tamam-table--activity td,
+body .tamam-root .tamam-table--activity td.tamam-num { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: normal; }
 body .tamam-root .tamam-table--activity td:nth-child(2) { overflow-wrap: anywhere; }
 
 body .tamam-root .tamam-table--documents th:nth-child(1) { width: 22%; }

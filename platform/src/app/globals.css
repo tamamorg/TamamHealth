@@ -28881,6 +28881,8 @@ table.patient-data-table.patient-data-table {
   color: var(--ehr-text);
   user-select: none;
   overflow-wrap: anywhere;
+  /* Shift+Enter in the composer writes a line break; keep it when the message is read. */
+  white-space: pre-line;
 }
 .msgs-bubble--mine { background: var(--accent-primary); color: #FFFFFF; }
 .msgs-bubble--deleted {
@@ -29086,6 +29088,9 @@ table.patient-data-table.patient-data-table {
   line-height: 1.6;
   color: var(--ehr-text);
 }
+/* The wrapper carries the one focus line; the global field ring would draw a second, pale box inside it. */
+.msgs-input textarea:focus,
+.msgs-input textarea:focus-visible { box-shadow: none !important; }
 .msgs-input textarea::placeholder { color: var(--ehr-muted); }
 .msgs-send {
   flex: none;
@@ -30275,6 +30280,8 @@ table.patient-data-table.patient-data-table {
   color: var(--text-primary);
   font-size: 13px;
   line-height: 1.5;
+  /* One unbroken run (a pasted link, a held key) wraps inside the bubble instead of running out of it. */
+  overflow-wrap: anywhere;
 }
 .pp-bubble-line.me .pp-bubble { background: var(--accent-primary); color: #ffffff; }
 .pp-bubble small { display: block; margin-top: 3px; font-size: 10px; opacity: 0.65; }
