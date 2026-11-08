@@ -360,6 +360,30 @@ export async function enforceDeviceUser(userId: string): Promise<WipeResult | nu
   return wipeLocalData('user-changed');
 }
 
+/**
+ * Call `onOtherUser` when another tab binds this device to a different user.
+ *
+ * Signing in as someone else in another tab replaces the shared session
+ * cookie and wipes the local databases under this tab, which went on showing
+ * the previous person's workspace and failed every save with "The database
+ * connection is closing" (2026-11-07). The storage event fires only in the
+ * other tabs, never in the one that signed in. Returns the unsubscribe.
+ */
+export function watchDeviceUser(userId: string, onOtherUser: () => void): () => void {
+  if (!IS_BROWSER || !userId) return () => {};
+  let own: string | null = null;
+  let stopped = false;
+  void digestUserId(userId).then((digest) => { own = digest; });
+  const onStorage = (event: StorageEvent) => {
+    if (stopped || event.key !== DEVICE_USER_KEY || !event.newValue || !own) return;
+    let next: string | undefined;
+    try { next = (JSON.parse(event.newValue) as { user?: string }).user; } catch { return; }
+    if (next && next !== own) onOtherUser();
+  };
+  window.addEventListener('storage', onStorage);
+  return () => { stopped = true; window.removeEventListener('storage', onStorage); };
+}
+
 /** Forget the device's user binding (used when the device is handed back). */
 export function clearDeviceUser(): void {
   if (!IS_BROWSER) return;

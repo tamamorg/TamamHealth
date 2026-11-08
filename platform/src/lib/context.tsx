@@ -338,6 +338,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Another tab signed out, or signed in as someone else. Either way this tab
+  // is no longer the session it shows: the cookie is shared and the other
+  // tab's wipe deletes the local databases under it, so every save here
+  // failed with "The database connection is closing" (2026-11-07). Reload so
+  // the tab picks up the real session (the new user's workspace, or sign-in).
+  const signedInUserId = currentUser?._id;
+  useEffect(() => {
+    if (!signedInUserId) return;
+    let stopWatching: (() => void) | undefined;
+    let disposed = false;
+    // Through the unsaved-work guard: typed notes are kept as drafts first.
+    const reload = () => {
+      if (disposed) return;
+      void import('./unsaved/unsaved-registry').then(({ requestReload }) => requestReload('reload.reason.sessionChanged'));
+    };
+    void import('./security/local-wipe').then(({ watchDeviceUser }) => {
+      if (!disposed) stopWatching = watchDeviceUser(signedInUserId, reload);
+    });
+    // Sign-out raises the flag before it asks the server to end the session
+    // and clears it once the server has. Reloading on the raise came back
+    // still signed in, so wait for the clear; the timer covers a sign-out
+    // that cannot reach the server (the flag then stays up by design).
+    let signOutTimer: ReturnType<typeof setTimeout> | undefined;
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== LOGOUT_PENDING_KEY) return;
+      if (event.newValue === 'true') {
+        clearTimeout(signOutTimer);
+        signOutTimer = setTimeout(reload, 4000);
+      } else if (event.oldValue === 'true' && event.newValue === null) {
+        clearTimeout(signOutTimer);
+        reload();
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      disposed = true;
+      clearTimeout(signOutTimer);
+      stopWatching?.();
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [signedInUserId]);
+
   // `navigator.onLine` misses real transitions: on flaky links and captive
   // portals the 'online' event never fires, so a clinic device that regained
   // its connection an hour ago can still sit "offline" with a day's work
