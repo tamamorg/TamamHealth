@@ -4708,6 +4708,8 @@ const apd: TranslationMap = {
   'login.redirecting': 'بحوّل للوحة التحكم...',
   'login.rememberFor30Days': 'افتكرني لـ 30 يوم',
   'login.redirectingDashboard': 'بيحولك للوحتك…',
+  'login.redirectStalled': 'لوحة التحكم ما اتفتحت. افتحها من تحت، أو سجّل الدخول تاني.',
+  'login.openDashboard': 'افتح لوحة التحكم',
   'login.seeProducts': 'شوف المنتجات',
   'login.shotAdminAlt': 'مرفق صحي من الشبكة الكونسول دي بتديرها',
   'login.shotMinistryAlt': 'لوحة معلومات صحية بتوري الأرقام المبلغة',

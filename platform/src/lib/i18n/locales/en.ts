@@ -4722,6 +4722,8 @@ const en: TranslationMap = {
   'login.redirecting': 'Redirecting to dashboard...',
   'login.rememberFor30Days': 'Remember for 30 days',
   'login.redirectingDashboard': 'Redirecting to your dashboard…',
+  'login.redirectStalled': 'Dashboard not opened. Open it below, or sign in again.',
+  'login.openDashboard': 'Open dashboard',
   'login.seeProducts': 'See the products',
   'login.shotAdminAlt': 'A health facility serving the network this console provisions',
   'login.shotMinistryAlt': 'A health information dashboard showing reported figures',
