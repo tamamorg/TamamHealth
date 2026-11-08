@@ -229,8 +229,9 @@ it('never puts the pending value in front of the patient', async () => {
   const order = await filed({ orderStatus: 'communicated_to_patient' });
   await propose(order._id, 'Negative', 'Transcription error');
   const portal = toPortalLabResult((await getLabResultById(order._id))!);
-  expect(portal.result).toBe('Positive (P. falciparum)');
-  expect(JSON.stringify(portal)).not.toMatch(/Transcription|pendingCorrection|Achol/);
+  // Held back while the correction is undecided: neither value reaches the patient.
+  expect(portal.result).toBeUndefined();
+  expect(JSON.stringify(portal)).not.toMatch(/Transcription|pendingCorrection|Achol|Negative|falciparum/);
 });
 
 describe('correctionReviewState', () => {
@@ -276,6 +277,8 @@ it('never sends a pending correction to the patient portal', async () => {
   await propose(order._id, 'Negative', 'Transcription error');
   const saved = (await getLabResultById(order._id))!;
   const portal = toPortalLabResult(saved);
-  expect(portal.result).toBe('Positive (P. falciparum)');
-  expect(JSON.stringify(portal)).not.toMatch(/pendingCorrection|Transcription error/);
+  // Reviewed, but a correction is pending: the patient waits for the decision.
+  expect(portal.result).toBeUndefined();
+  expect(portal.awaitingReview).toBe(true);
+  expect(JSON.stringify(portal)).not.toMatch(/pendingCorrection|Transcription error|Negative/);
 });

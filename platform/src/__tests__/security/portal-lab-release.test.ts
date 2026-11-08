@@ -65,6 +65,23 @@ describe('release on review', () => {
   });
 });
 
+describe('a correction awaiting review', () => {
+  // 2026-11-08 sweep: a clinician could mark a result reviewed while the lab
+  // had a correction pending on it, and review is what releases it.
+  it('holds a reviewed result back from the patient until the correction is decided', () => {
+    const pendingCorrection = {
+      result: 'Non-reactive', reason: 'Wrong sample', proposedBy: 'Lab A', proposedById: 'u-a', proposedAt: '2026-10-03T11:00:00.000Z',
+    } as unknown as LabResultDoc['pendingCorrection'];
+    const reviewed = lab({ orderStatus: 'reviewed_by_clinician', pendingCorrection });
+    expect(isReleasedToPatient(reviewed)).toBe(false);
+    const shown = toPortalLabResult(reviewed);
+    expect(shown).toMatchObject({ status: 'pending', awaitingReview: true });
+    expect(shown).not.toHaveProperty('result');
+    expect(JSON.stringify(shown)).not.toMatch(/Reactive|Non-reactive|Wrong sample/);
+    expect(isReleasedToPatient(lab({ orderStatus: 'reviewed_by_clinician' }))).toBe(true);
+  });
+});
+
 describe('the allow-list', () => {
   it('sends only what a patient should see, released or not', () => {
     const allowed = [
