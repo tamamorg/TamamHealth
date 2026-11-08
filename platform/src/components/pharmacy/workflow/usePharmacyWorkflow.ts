@@ -217,6 +217,9 @@ export function usePharmacyWorkflow(
   const fill = useCallback(() => run(async () => {
     if (hasSafetySignal && !reviewDraft.checksAcknowledged) throw new Error('rxFlow.errChecksUnread');
     if (dispenseDraft.quantity <= 0) throw new Error('rxFlow.errQuantity');
+    // Nothing on the shelf: say so plainly. Filling short cannot help, and
+    // the server's own stock gate would only refuse it after the hops below.
+    if (stock.plan && stock.plan.available <= 0) throw dispenseStop(t('rxFlow.errNotInStock', { medication: rx.medication }));
     if (short && !dispenseDraft.allowPartial) throw new Error('rxFlow.errShortStock');
     if (needsWitness && !dispenseDraft.witnessId) throw new Error('rxFlow.errWitness');
     // Payment before dispensing, as the pharmacy dashboard enforced it before
@@ -256,8 +259,9 @@ export function usePharmacyWorkflow(
       allowPartial: dispenseDraft.allowPartial,
       note: dispenseDraft.note.trim() || undefined,
       allergyReview: dispenseDraft.allergyReview.trim() || undefined,
+      clearForDispensing: true,
     });
-  }), [advance, currentUser, dispense, dispenseDraft, hasSafetySignal, needsWitness, reviewDraft.checksAcknowledged, rx, run, scope, short, stage, t]);
+  }), [advance, currentUser, dispense, dispenseDraft, hasSafetySignal, needsWitness, reviewDraft.checksAcknowledged, rx, run, scope, short, stage, stock.plan, t]);
 
   /** Record that the shelf could not cover it — the script stays active. */
   const recordStockOut = useCallback(() => run(async () => {

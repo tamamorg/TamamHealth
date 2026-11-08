@@ -51,6 +51,11 @@ const ORDER_STAGE_LABEL: Record<LabOrderStatus, string> = {
   communicated_to_patient: 'Communicated',
 };
 
+/** The Status filter's choices: every stage a row can show. Cancelled orders
+ *  leave the worklist, so that stage is not offered. */
+const STATUS_FILTER_STAGES = (Object.keys(ORDER_STAGE_LABEL) as LabOrderStatus[])
+  .filter(stage => stage !== 'cancelled');
+
 /* The registry/appointments pill vocabulary mapped onto the bench ladder:
    waiting stages read calm blue, active stages read active, a result awaiting
    review takes the attention amber, closed stages go green, rejection red. */
@@ -244,7 +249,11 @@ export default function LabPage() {
     if (f.patient && !`${o.patientName || ''} ${o.hospitalNumber || ''}`.toLowerCase().includes(f.patient.toLowerCase())) return false;
     if (f.test && !(o.testName || '').toLowerCase().includes(f.test.toLowerCase())) return false;
     if (f.specimen && !(o.specimen || '').toLowerCase().includes(f.specimen.toLowerCase())) return false;
-    if (f.status && o.status !== f.status) return false;
+    // The rows show the bench stage, so the filter offers the same stages.
+    // It used to offer the coarse pending/in progress/completed, which no row
+    // displays: picking "Completed" kept rows labelled Resulted, Reviewed and
+    // Communicated, and nothing on screen said why.
+    if (f.status && effOrderStatus(o) !== f.status) return false;
     if (f.orderedBy && !(o.orderedBy || '').toLowerCase().includes(f.orderedBy.toLowerCase())) return false;
     if (f.worklist === 'send_out' && !isOpenSendOut(o)) return false;
     if (f.worklist === 'scheduled' && !isScheduledCollection(o)) return false;
@@ -339,9 +348,9 @@ export default function LabPage() {
                         <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('lab.status')}</span>
                         <Select value={colFilters.status} onChange={e => setColFilter('status', e.target.value)} className="w-full text-sm py-2 px-3" style={popoverFieldStyle}>
                           <option value="">{t('patients.all')}</option>
-                          <option value="pending">{t('lab.filterPending')}</option>
-                          <option value="in_progress">{t('lab.inProgress')}</option>
-                          <option value="completed">{t('referral.completed')}</option>
+                          {STATUS_FILTER_STAGES.map(stage => (
+                            <option key={stage} value={stage}>{ORDER_STAGE_LABEL[stage]}</option>
+                          ))}
                         </Select>
                       </label>
                       {/* The queue's own worklists — the same table, narrowed

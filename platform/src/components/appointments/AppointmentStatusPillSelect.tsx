@@ -27,11 +27,17 @@ interface AppointmentStatusPillSelectProps {
   role?: UserRole;
   /** Label override so i18n'd surfaces stay translated. */
   labelFor?: (status: AppointmentStatus) => string;
+  /**
+   * The pill's own text when the row shows something more specific than the
+   * visit status, e.g. a walk-in's queue stage ("Awaiting lab results"). The
+   * choices are still the visit's statuses.
+   */
+  displayLabel?: string;
   onChange: (next: AppointmentStatus) => void | Promise<void>;
 }
 
 export default function AppointmentStatusPillSelect({
-  status, className = '', ariaLabel, role, labelFor = appointmentStatusLabel, onChange,
+  status, className = '', ariaLabel, role, labelFor = appointmentStatusLabel, displayLabel, onChange,
 }: AppointmentStatusPillSelectProps) {
   const current = canonicalAppointmentStatus(status);
   // The role's rungs, narrowed to the moves it may make from THIS status
@@ -41,7 +47,7 @@ export default function AppointmentStatusPillSelect({
     .filter(option => option === current || canRoleMoveAppointment(role, status, option));
 
   if (!choices.some(option => option !== current)) {
-    return <span className={`appointment-status-pill ${className}`.trim()}>{labelFor(status)}</span>;
+    return <span className={`appointment-status-pill ${className}`.trim()}>{displayLabel || labelFor(status)}</span>;
   }
 
   return (
@@ -53,7 +59,7 @@ export default function AppointmentStatusPillSelect({
       {...stopsClickPropagation}
       onKeyDown={event => event.stopPropagation()}
     >
-      {labelFor(status)}
+      {displayLabel || labelFor(status)}
       <select
         value={current}
         aria-label={ariaLabel}

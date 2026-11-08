@@ -37,6 +37,15 @@ describe('describeError', () => {
     expect(describeError(null, FALLBACK)).toBe(FALLBACK);
   });
 
+  // 2026-11-07: the raw IndexedDB text read as a sentence and reached the screen.
+  it('hides browser storage errors behind the action\'s own sentence', () => {
+    const closing = Object.assign(
+      new Error("Failed to execute 'transaction' on 'IDBDatabase': The database connection is closing."),
+      { name: 'InvalidStateError' },
+    );
+    expect(describeError(closing, FALLBACK)).toBe(FALLBACK);
+  });
+
   it('names the real cause for offline, conflict and session failures', () => {
     expect(describeError(new TypeError('Failed to fetch'), FALLBACK)).toBe(OFFLINE_MESSAGE);
     expect(describeError({ status: 409, name: 'conflict', message: 'Document update conflict' }, FALLBACK)).toBe(CONFLICT_MESSAGE);
@@ -77,7 +86,7 @@ describe('describeError in Juba Arabic', () => {
   it('fills values into a sentence that has them, translating status words', async () => {
     const { loadTranslations, setActiveTranslations } = await import('@/lib/i18n');
     setActiveTranslations(await loadTranslations('apd'));
-    expect(describeError(new Error('Amoxicillin is out of stock at this facility.'), FALLBACK)).toBe('Amoxicillin خلص من المخزون في المرفق ده.');
+    expect(describeError(new Error('Amoxicillin is not currently in stock. Record a stock-out or refer the patient to an outside pharmacy.'), FALLBACK)).toBe('Amoxicillin ما موجود في المخزون هسع. سجّل إنو المخزون خلص أو حوّل العيان لصيدلية برّا.');
     expect(describeError(new Error('This claim is denied. Only a denied claim can be appealed.'), FALLBACK)).toBe('المطالبة دي مرفوض. بس المطالبة المرفوضة بيتستأنف عليها.');
     expect(describeError(new Error('Mary Akol already has an active admission in Ward A, bed 4.'), FALLBACK)).toBe('Mary Akol عندو تنويم نشط في Ward A، سرير 4.');
   });

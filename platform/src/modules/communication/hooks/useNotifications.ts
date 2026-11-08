@@ -382,65 +382,92 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     const RECENT_MS = 3 * 24 * 60 * 60 * 1000;
     const nowMsLocal = Date.now();
 
-    if (relevant('lab')) try {
+    if (relevant('lab') || relevant('lab_request')) try {
       const { getAllLabResults, effectiveOrderStatus } = await import('@/lib/services/lab-service');
       const { getResultReviewSLA } = await import('@/lib/clinical-flow/order-lifecycles');
       const labs = await getAllLabResults(scope);
 
-      // Results this clinician ordered that are back but still unreviewed past
-      // their SLA (24h critical / 7d routine). This is the same feed the
-      // clinical dashboard's "Awaiting review" card renders, so
-      // its "View all" lands on a list that actually contains those rows.
-      // Scoped by ordering clinician — LabResultDoc.orderedBy is a free-text
-      // name, matched the same way the dashboard matches it.
-      const sla = getResultReviewSLA();
-      const overdueIds = new Set<string>();
-      if (currentUser?.name) {
-        const overdue = labs
-          .filter(x => x.orderedBy === currentUser.name && effectiveOrderStatus(x) === 'resulted')
-          .map(x => {
-            const resultedAt = Date.parse(x.updatedAt || x.createdAt || '');
-            return { doc: x, hoursOverdue: (nowMsLocal - resultedAt) / 3_600_000, resultedAt };
-          })
-          .filter(x => Number.isFinite(x.resultedAt) && x.hoursOverdue > (x.doc.critical ? sla.criticalHours : sla.routineHours))
-          .sort((a, b) => b.hoursOverdue - a.hoursOverdue)
+      // New requests waiting at the bench: ordered, nothing collected yet. A
+      // draw booked for later is not waiting until its time comes.
+      if (relevant('lab_request')) {
+        const newRequests = labs
+          .filter(x => effectiveOrderStatus(x) === 'ordered')
+          .filter(x => !(x.collectionTiming === 'future' && x.scheduledCollectionAt
+            && Date.parse(x.scheduledCollectionAt) > nowMsLocal))
+          .sort((a, b) => (b.orderedAt || b.createdAt || '').localeCompare(a.orderedAt || a.createdAt || ''))
           .slice(0, perSourceLimit);
-        for (const { doc, hoursOverdue } of overdue) {
-          overdueIds.add(doc._id);
-          const age = hoursOverdue >= 48
-            ? `${Math.floor(hoursOverdue / 24)}d overdue`
-            : `${Math.round(hoursOverdue)}h overdue`;
+        for (const l of newRequests) {
           out.push({
-            id: `lab-overdue-${doc._id}`,
-            type: 'lab',
-            severity: doc.critical ? 'critical' : 'warning',
-            title: nameFirst(doc.patientName, doc.critical ? 'Critical result unreviewed' : 'Result awaiting review'),
-            subtitle: `${doc.testName} · ${age}`,
-            time: doc.updatedAt || doc.completedAt || doc.createdAt,
-            href: `/patients/${doc.patientId}?tab=labs&focus=${encodeURIComponent(doc._id)}`,
+            id: `lab-request-${l._id}`,
+            type: 'lab_request',
+            severity: l.priority === 'stat' ? 'critical' : l.priority === 'urgent' ? 'warning' : 'info',
+            title: nameFirst(l.patientName, 'New lab request'),
+            subtitle: l.orderedBy ? `${l.testName} · ${l.orderedBy}` : l.testName,
+            time: l.orderedAt || l.createdAt,
+            href: labResultHref(l),
           });
         }
       }
 
-      // Critical results, then non-critical results that just came back (ready
-      // for the clinician to review) within a recent window. Anything already
-      // raised above as overdue is skipped — the overdue row says strictly
-      // more about the same result.
-      for (const l of labs.filter(x => x.critical && x.status === 'completed' && !overdueIds.has(x._id))) {
-        out.push({ id: `lab-${l._id}`, type: 'lab', severity: 'critical', title: nameFirst(l.patientName, 'Critical result'), subtitle: l.testName, time: l.completedAt || l.orderedAt || l.createdAt, href: labResultHref(l) });
-      }
-      const readyLabs = labs
-        .filter(x => !x.critical && x.status === 'completed' && !overdueIds.has(x._id))
-        // Routine results go to the clinician who ordered them. (The critical
-        // loop above is deliberately left unfiltered — see notification-scope.)
-        .filter(x => isForViewer({ ownerName: x.orderedBy }, currentUser))
-        .filter(x => {
-          const ms = Date.parse(x.completedAt || x.updatedAt || x.createdAt || '');
-          return Number.isNaN(ms) || nowMsLocal - ms <= RECENT_MS;
-        })
-        .slice(0, perSourceLimit);
-      for (const l of readyLabs) {
-        out.push({ id: `lab-ready-${l._id}`, type: 'lab', severity: 'info', title: nameFirst(l.patientName, 'Result ready'), subtitle: `${l.testName} · ready to review`, time: l.completedAt || l.updatedAt || l.createdAt, href: labResultHref(l) });
+      if (relevant('lab')) {
+        // Results this clinician ordered that are back but still unreviewed past
+        // their SLA (24h critical / 7d routine). This is the same feed the
+        // clinical dashboard's "Awaiting review" card renders, so
+        // its "View all" lands on a list that actually contains those rows.
+        // Scoped by ordering clinician — LabResultDoc.orderedBy is a free-text
+        // name, matched the same way the dashboard matches it.
+        const sla = getResultReviewSLA();
+        const overdueIds = new Set<string>();
+        if (currentUser?.name) {
+          const overdue = labs
+            .filter(x => x.orderedBy === currentUser.name && effectiveOrderStatus(x) === 'resulted')
+            .map(x => {
+              const resultedAt = Date.parse(x.updatedAt || x.createdAt || '');
+              return { doc: x, hoursOverdue: (nowMsLocal - resultedAt) / 3_600_000, resultedAt };
+            })
+            .filter(x => Number.isFinite(x.resultedAt) && x.hoursOverdue > (x.doc.critical ? sla.criticalHours : sla.routineHours))
+            .sort((a, b) => b.hoursOverdue - a.hoursOverdue)
+            .slice(0, perSourceLimit);
+          for (const { doc, hoursOverdue } of overdue) {
+            overdueIds.add(doc._id);
+            const age = hoursOverdue >= 48
+              ? `${Math.floor(hoursOverdue / 24)}d overdue`
+              : `${Math.round(hoursOverdue)}h overdue`;
+            out.push({
+              id: `lab-overdue-${doc._id}`,
+              type: 'lab',
+              severity: doc.critical ? 'critical' : 'warning',
+              title: nameFirst(doc.patientName, doc.critical ? 'Critical result unreviewed' : 'Result awaiting review'),
+              subtitle: `${doc.testName} · ${age}`,
+              time: doc.updatedAt || doc.completedAt || doc.createdAt,
+              href: `/patients/${doc.patientId}?tab=labs&focus=${encodeURIComponent(doc._id)}`,
+            });
+          }
+        }
+
+        // Critical results, then non-critical results that just came back (ready
+        // for the clinician to review) within a recent window. Anything already
+        // raised above as overdue is skipped — the overdue row says strictly
+        // more about the same result.
+        for (const l of labs.filter(x => x.critical && x.status === 'completed' && !overdueIds.has(x._id))) {
+          out.push({ id: `lab-${l._id}`, type: 'lab', severity: 'critical', title: nameFirst(l.patientName, 'Critical result'), subtitle: l.testName, time: l.completedAt || l.orderedAt || l.createdAt, href: labResultHref(l) });
+        }
+        const readyLabs = labs
+          .filter(x => !x.critical && x.status === 'completed' && !overdueIds.has(x._id))
+          // Routine results go to the clinician who ordered them. (The critical
+          // loop above is deliberately left unfiltered — see notification-scope.)
+          .filter(x => isForViewer({ ownerName: x.orderedBy }, currentUser))
+          // "Ready to review" is the reviewer's job. The bench filed the result,
+          // so a lab tech was being told about their own work.
+          .filter(() => currentUser?.role !== 'lab_tech')
+          .filter(x => {
+            const ms = Date.parse(x.completedAt || x.updatedAt || x.createdAt || '');
+            return Number.isNaN(ms) || nowMsLocal - ms <= RECENT_MS;
+          })
+          .slice(0, perSourceLimit);
+        for (const l of readyLabs) {
+          out.push({ id: `lab-ready-${l._id}`, type: 'lab', severity: 'info', title: nameFirst(l.patientName, 'Result ready'), subtitle: `${l.testName} · ready to review`, time: l.completedAt || l.updatedAt || l.createdAt, href: labResultHref(l) });
+        }
       }
     } catch { /* offline */ }
 
@@ -612,7 +639,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     isKindRelevantToRole('referral', role) ? referralsDB() : null,
     // A visit status change re-mints a visit item too (visitStatusChangeItems).
     isKindRelevantToRole('appointment', role) || isKindRelevantToRole('visit', role) ? appointmentsDB() : null,
-    isKindRelevantToRole('lab', role) ? labResultsDB() : null,
+    isKindRelevantToRole('lab', role) || isKindRelevantToRole('lab_request', role) ? labResultsDB() : null,
     // The visit kind's dispensed loop-closer also reads prescriptions, so a
     // doctor's bell must wake on a dispense even though they skip the
     // pharmacy-queue source itself.

@@ -27,6 +27,7 @@ export const NOTIFICATION_META: Record<NotificationType, NotificationMeta> = {
   triage: { icon: Activity, color: 'var(--category-maternal)', bg: 'var(--category-maternal-bg)', label: 'Triage' },
   referral: { icon: ArrowRightLeft, color: 'var(--tb-blue-700)', bg: 'rgba(33, 145, 208, 0.12)', label: 'Referrals' },
   lab: { icon: FlaskConical, color: 'var(--category-lab)', bg: 'var(--category-lab-bg)', label: 'Lab' },
+  lab_request: { icon: FlaskConical, color: 'var(--category-lab)', bg: 'var(--category-lab-bg)', label: 'Lab requests' },
   appointment: { icon: Calendar, color: 'var(--tb-blue-800)', bg: 'rgba(1, 86, 151, 0.10)', label: 'Schedule' },
   prescription: { icon: Pill, color: 'var(--color-warning)', bg: 'rgba(230, 114, 0, 0.12)', label: 'Pharmacy' },
   progress: { icon: ClipboardList, color: 'var(--accent-primary)', bg: 'var(--accent-light)', label: 'Care progress' },
@@ -43,7 +44,7 @@ export const NOTIFICATION_META: Record<NotificationType, NotificationMeta> = {
 
 /** Order the source filters are presented in — urgency first, admin last. */
 export const NOTIFICATION_TYPE_ORDER: NotificationType[] = [
-  'alert', 'triage', 'visit', 'lab', 'transfer', 'referral', 'appointment', 'message', 'progress', 'prescription',
+  'alert', 'triage', 'visit', 'lab_request', 'lab', 'transfer', 'referral', 'appointment', 'message', 'progress', 'prescription',
 ];
 
 export const SEVERITY_META: Record<NotificationSeverity, { label: string; color: string; bg: string }> = {
