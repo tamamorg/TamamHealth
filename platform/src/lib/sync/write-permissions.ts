@@ -911,6 +911,31 @@ export function buildValidateDocUpdateFn(
     }
   }
 
+  // ── Lab result corrections: four eyes ──────────────────────────────────
+  // A correction to a filed result is proposed by one lab tech and approved
+  // by another. The app checks this; the server must too, or a device could
+  // approve its own user's correction. Identity comes from the user: role.
+  if (!isDelete && oldDoc && docType === 'lab_result') {
+    var labActor = null;
+    for (var la = 0; la < roles.length; la++) if (roles[la].indexOf('user:') === 0) labActor = roles[la].substring(5);
+    var priorCorrection = oldDoc.pendingCorrection;
+    var nextCorrection = newDoc.pendingCorrection;
+    if (nextCorrection && !priorCorrection && labActor && nextCorrection.proposedById !== labActor) {
+      throw({ forbidden: 'A lab result correction must name the user proposing it' });
+    }
+    var approvedNow = priorCorrection && !nextCorrection && newDoc.correctionVerifiedAt
+      && newDoc.correctionVerifiedAt !== oldDoc.correctionVerifiedAt;
+    if (approvedNow) {
+      if (!labActor) throw({ forbidden: 'Approving a lab result correction requires a provisioned user identity claim' });
+      if (priorCorrection.proposedById && priorCorrection.proposedById === labActor) {
+        throw({ forbidden: 'A lab result correction must be approved by a second lab tech, not the one who proposed it' });
+      }
+      if (newDoc.correctionVerifiedById !== labActor) {
+        throw({ forbidden: 'correctionVerifiedById must be the user approving the correction' });
+      }
+    }
+  }
+
   // Post-consult outcomes are clinical attestations, not front-desk metadata.
   if (!isDelete && docType === 'clinical_encounter') {
     var actorId = null;

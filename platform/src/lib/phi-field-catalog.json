@@ -45,7 +45,10 @@
         "patientName", "testName", "specimen", "result", "unit", "referenceRange", "observations.**",
         "findings", "impression", "clinicalNotes", "orderComment", "indications", "aoeAnswers.**",
         "safetyChecks.**", "amendedFrom.**", "amendmentReason", "specimenRejectionNotes", "specimenRejectionReason", "specimenCollectionNote",
-        "bodyRegion", "technique", "repeatReason"
+        "bodyRegion", "technique", "repeatReason",
+        "pendingCorrection.result", "pendingCorrection.unit", "pendingCorrection.referenceRange", "pendingCorrection.observations.**",
+        "pendingCorrection.reason", "rejectedCorrections[].result", "rejectedCorrections[].unit", "rejectedCorrections[].referenceRange",
+        "rejectedCorrections[].observations.**", "rejectedCorrections[].reason", "rejectedCorrections[].rejectionReason"
       ]
     },
     "prescription": {
@@ -66,7 +69,8 @@
     "triage": {
       "fields": [
         "patientName", "chiefComplaint", "notes", "symptomDuration", "knownAllergies", "injuryMechanism",
-        "preArrivalCare", "immediateInterventions", "handoffNote", "vitalUrgencyOverrideReason", "infectionRiskSigns"
+        "preArrivalCare", "immediateInterventions", "handoffNote", "vitalUrgencyOverrideReason", "infectionRiskSigns",
+        "medicationReview.added", "medicationReview.edited", "medicationReview.stopped", "medicationReview.removed"
       ]
     },
     "shift_handoff": { "fields": ["notes", "patients.**"] },

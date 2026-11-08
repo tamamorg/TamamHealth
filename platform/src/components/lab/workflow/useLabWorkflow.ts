@@ -20,10 +20,11 @@ import {
   getLabReferenceRange,
   type CriticalObservationHit,
 } from '@/lib/services/lab-critical-flag';
-import { effectiveOrderStatus } from '@/lib/services/lab-service';
-import type { LabResultDoc } from '@/lib/db-types';
+import { effectiveOrderStatus, getLabResultById } from '@/lib/services/lab-service';
+import type { LabResultCorrection, LabResultDoc } from '@/lib/db-types';
 import {
   completedThrough,
+  correctionReviewState,
   fallbackAccessionNumber,
   resultWithUnit,
 } from './lab-workflow-types';
@@ -223,7 +224,10 @@ export function useLabWorkflow(
       return true;
     } catch (err) {
       console.error('[lab-workflow]', err);
-      setError(describeError(err, t('msg.changeNotSavedTryAgain')));
+      // The workflow's own refusals are thrown as message keys; the panel
+      // translates them. Anything else is described for the user.
+      const message = err instanceof Error ? err.message : '';
+      setError(/^labFlow\.\w+$/.test(message) ? message : describeError(err, t('msg.changeNotSavedTryAgain')));
       return false;
     } finally {
       setBusy(false);
@@ -292,6 +296,33 @@ export function useLabWorkflow(
    * values also page the ordering clinician — best-effort, because a saved
    * result the lab can phone through beats a blocked save.
    */
+  /**
+   * Message the care team about a critical value — best-effort, because a
+   * saved result the lab can phone through beats a blocked save. Filing and
+   * an approved correction send the same message.
+   */
+  const sendCriticalAlert = useCallback(async (result: string, unit: string, referenceRange: string) => {
+    try {
+      const { createMessage } = await import('@/modules/communication/services/message-service');
+      await createMessage({
+        recipientType: 'staff',
+        patientId: order.patientId,
+        patientName: order.patientName,
+        patientPhone: '',
+        fromDoctorId: currentUser?._id || 'lab',
+        fromDoctorName: currentUser?.name || 'Laboratory',
+        fromHospitalName: currentUser?.hospitalName || order.hospitalName || '',
+        subject: `CRITICAL: ${order.testName} for ${order.patientName}`,
+        body: `Critical lab result for ${order.patientName} — ${order.testName}: ${result}${unit ? ` ${unit}` : ''}${referenceRange ? ` (reference range: ${referenceRange})` : ''}. Please review immediately.`,
+        channel: 'app',
+        sentAt: new Date().toISOString(),
+        orgId: currentUser?.orgId || order.orgId,
+      });
+    } catch (err) {
+      console.error('[lab-workflow] critical-result alert failed; phone the clinician', err);
+    }
+  }, [currentUser, order.hospitalName, order.orgId, order.patientId, order.patientName, order.testName]);
+
   const fileResult = useCallback(() => run(async () => {
     const profile = resultProfile;
     const observations = profile ? buildLabObservations(profile, resultDraft.observations) : [];
@@ -319,61 +350,112 @@ export function useLabWorkflow(
     });
 
     if (resultDraft.critical) {
-      try {
-        const { createMessage } = await import('@/modules/communication/services/message-service');
-        await createMessage({
-          recipientType: 'staff',
-          patientId: order.patientId,
-          patientName: order.patientName,
-          patientPhone: '',
-          fromDoctorId: currentUser?._id || 'lab',
-          fromDoctorName: currentUser?.name || 'Laboratory',
-          fromHospitalName: currentUser?.hospitalName || order.hospitalName || '',
-          subject: `CRITICAL: ${order.testName} for ${order.patientName}`,
-          body: `Critical lab result for ${order.patientName} — ${order.testName}: ${result}${!profile && resultDraft.unit.trim() ? ` ${resultDraft.unit.trim()}` : ''}${!profile && resultDraft.referenceRange.trim() ? ` (reference range: ${resultDraft.referenceRange.trim()})` : ''}. Please review immediately.`,
-          channel: 'app',
-          sentAt: new Date().toISOString(),
-          orgId: currentUser?.orgId || order.orgId,
-        });
-      } catch (err) {
-        console.error('[lab-workflow] critical-result alert failed; phone the clinician', err);
-      }
+      await sendCriticalAlert(result, profile ? '' : resultDraft.unit.trim(), profile ? '' : resultDraft.referenceRange.trim());
     }
-  }), [advance, currentUser, order, receiveDraft, resultDraft, resultProfile, run, stage, update]);
+  }), [advance, currentUser, order, receiveDraft, resultDraft, resultProfile, run, sendCriticalAlert, stage, update]);
 
   /**
-   * Correct a filed value without moving the order backwards in its lifecycle.
-   *
-   * Stamps the amendment onto the document. A clinician may already have acted
-   * on the old value, so a correction that reads identically to an original
-   * result is the one thing this must not produce — the report and the chart
-   * both surface `amended` and show what it previously said.
+   * Propose a correction to a filed value. Nothing on the filed result moves:
+   * the correction waits on the document until a second lab tech approves it,
+   * because a clinician may already have acted on the value it would replace.
+   * One at a time — a second proposal would bury the first unreviewed.
    */
   const amendResult = useCallback(() => run(async () => {
-    const reason = amendReason;
+    const reason = amendReason.trim();
     const profile = resultProfile;
     const observations = profile ? buildLabObservations(profile, resultDraft.observations) : [];
     const result = profile ? summarizeLabObservations(observations) : resultDraft.result.trim();
     if (!result) throw new Error('labFlow.errResultValue');
-    if (!reason.trim()) throw new Error('labFlow.errAmendReason');
-    const previous = resultWithUnit(order.result, order.unit) || '—';
-    await update(order._id, {
+    if (!reason) throw new Error('labFlow.errAmendReason');
+    if (!currentUser?._id) throw new Error('labFlow.errNoUser');
+    const latest = await getLabResultById(order._id);
+    if (!latest) throw new Error('labFlow.errGeneric');
+    if (latest.pendingCorrection) throw new Error('labFlow.errCorrectionPending');
+    const correction: LabResultCorrection = {
       result,
       unit: profile ? '' : resultDraft.unit.trim(),
       referenceRange: profile ? '' : resultDraft.referenceRange.trim(),
-      observations: profile ? observations : order.observations,
+      ...(profile ? { observations } : {}),
       abnormal: resultDraft.abnormal,
       critical: resultDraft.critical,
+      reason,
+      proposedBy: currentUser.name || 'Lab',
+      proposedById: currentUser._id,
+      proposedAt: new Date().toISOString(),
+    };
+    await update(order._id, { pendingCorrection: correction });
+    setAmendReason('');
+  }), [amendReason, currentUser, order._id, resultDraft, resultProfile, run, update]);
+
+  /** Why the reviewer turned a correction down. Required to reject. */
+  const [correctionRejectReason, setCorrectionRejectReason] = useState('');
+
+  /** Who may approve or reject the correction on this result, right now. */
+  const correctionReview = correctionReviewState(order, currentUser, canWork);
+
+  /**
+   * Re-read the result and check the viewer may act on its correction. Read
+   * fresh, not from the list: another tech may have approved or replaced it.
+   */
+  const pendingForReview = useCallback(async () => {
+    const latest = await getLabResultById(order._id);
+    const pending = latest?.pendingCorrection;
+    if (!latest || !pending) throw new Error('labFlow.errNoCorrection');
+    const state = correctionReviewState(latest, currentUser, true);
+    if (state === 'own') throw new Error('labFlow.errOwnCorrection');
+    if (state !== 'can_review') throw new Error('labFlow.readOnly');
+    return { latest, pending };
+  }, [currentUser, order._id]);
+
+  /**
+   * A second lab tech approves: the correction becomes the result, with the
+   * amendment stamps every reader already shows, plus who verified it.
+   */
+  const approveCorrection = useCallback(() => run(async () => {
+    const { latest, pending } = await pendingForReview();
+    const previous = resultWithUnit(latest.result, latest.unit) || '—';
+    await update(order._id, {
+      result: pending.result,
+      unit: pending.unit,
+      referenceRange: pending.referenceRange,
+      observations: pending.observations?.length ? pending.observations : latest.observations,
+      abnormal: pending.abnormal,
+      critical: pending.critical,
       amended: true,
       amendedAt: new Date().toISOString(),
-      amendedBy: currentUser?.name || 'Lab',
+      amendedBy: pending.proposedBy,
       // Keep the FIRST reported value across repeat corrections — that is the
       // one a clinician may have acted on.
-      amendedFrom: order.amendedFrom || previous,
-      amendmentReason: reason.trim(),
+      amendedFrom: latest.amendedFrom || previous,
+      amendmentReason: pending.reason,
+      correctionVerifiedBy: currentUser?.name || 'Lab',
+      correctionVerifiedById: currentUser?._id,
+      correctionVerifiedAt: new Date().toISOString(),
+      pendingCorrection: undefined,
     });
-    setAmendReason('');
-  }), [amendReason, currentUser, order, resultDraft, resultProfile, run, update]);
+    if (pending.critical) await sendCriticalAlert(pending.result, pending.unit, pending.referenceRange);
+  }), [currentUser, order._id, pendingForReview, run, sendCriticalAlert, update]);
+
+  /** A second lab tech turns the correction down. The filed value stands. */
+  const rejectCorrection = useCallback(() => run(async () => {
+    const reason = correctionRejectReason.trim();
+    if (!reason) throw new Error('labFlow.errCorrectionRejectReason');
+    const { latest, pending } = await pendingForReview();
+    await update(order._id, {
+      pendingCorrection: undefined,
+      rejectedCorrections: [
+        ...(latest.rejectedCorrections || []),
+        {
+          ...pending,
+          rejectedBy: currentUser?.name || 'Lab',
+          rejectedById: currentUser?._id || '',
+          rejectedAt: new Date().toISOString(),
+          rejectionReason: reason,
+        },
+      ],
+    });
+    setCorrectionRejectReason('');
+  }), [correctionRejectReason, currentUser, order._id, pendingForReview, run, update]);
 
   /**
    * Close out the tail of the lifecycle.
@@ -419,6 +501,7 @@ export function useLabWorkflow(
     receiveDraft, setReceiveDraft,
     resultDraft, setResultDraft, setResultValue, setObservationValue, criticalVerdict,
     amendReason, setAmendReason,
+    correctionReview, correctionRejectReason, setCorrectionRejectReason, approveCorrection, rejectCorrection,
     collect, reject, fileResult, hasResultEntry, amendResult, releaseReport,
     markReviewed, markActedUpon, markCommunicated,
     canCloseOut,

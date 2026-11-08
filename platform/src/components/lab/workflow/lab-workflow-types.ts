@@ -95,3 +95,24 @@ export function fallbackAccessionNumber(order: { _id: string; accessionNumber?: 
   if (order.accessionNumber) return order.accessionNumber;
   return `ACC-${accessionDay(order.orderedAt || Date.now())}-${order._id.replace(/^lab-/, '').slice(0, 5).toUpperCase()}`;
 }
+
+/**
+ * What the viewer may do with the correction waiting on a result:
+ *  - 'none'       nothing is waiting;
+ *  - 'own'        they proposed it, so a second lab tech must review it;
+ *  - 'can_review' a different lab tech, who may approve or reject it;
+ *  - 'view'       anyone else, who sees it but cannot act.
+ * Compared by user id, not name: two techs can share a name.
+ */
+export type CorrectionReviewState = 'none' | 'own' | 'can_review' | 'view';
+
+export function correctionReviewState(
+  order: { pendingCorrection?: { proposedById: string } },
+  viewer: { _id?: string; role?: string } | null | undefined,
+  canWork = true,
+): CorrectionReviewState {
+  const pending = order.pendingCorrection;
+  if (!pending) return 'none';
+  if (viewer?._id && viewer._id === pending.proposedById) return 'own';
+  return canWork && viewer?._id && viewer.role === 'lab_tech' ? 'can_review' : 'view';
+}

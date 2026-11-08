@@ -73,6 +73,12 @@ export interface TriageDraft {
   vitalUrgencyOverrideReason: string;
   currentMedications: string;
   chronicConditions: string[];
+  /** The medication list review's tick and the changes already written to the
+   *  list during this triage. Optional: drafts saved before it have none. */
+  medicationReview?: {
+    reviewed: boolean;
+    changes: { added: string[]; edited: string[]; stopped: string[]; removed: string[] };
+  };
   unmeasuredVitalReasons: Record<string, string>;
   manualPriorityRaise: 'RED' | 'YELLOW' | '';
   manualUpgradeReason: string;
@@ -110,6 +116,8 @@ export function triageDraftHasContent(draft: TriageDraft): boolean {
     || draft.context.symptomDuration.trim() || draft.context.referralSource.trim()
     || draft.context.knownAllergies.trim() || draft.context.modeOfArrival
     || draft.currentMedications.trim() || draft.chronicConditions.length
+    || draft.medicationReview?.reviewed
+    || Object.values(draft.medicationReview?.changes ?? {}).some(names => names.length > 0)
     || Object.keys(draft.unmeasuredVitalReasons).length
     || draft.handoffNote.trim() || draft.manualUpgradeReason.trim()
     || draft.preArrivalCare.trim() || draft.immediateInterventions.trim(),
@@ -242,11 +250,26 @@ export function normalizeTriageDraft(raw: unknown, expectedPatientId: string): T
     vitalUrgencyOverrideReason: str(raw.vitalUrgencyOverrideReason),
     currentMedications: str(raw.currentMedications),
     chronicConditions: stringArray(raw.chronicConditions),
+    ...(raw.medicationReview === undefined ? {} : { medicationReview: normalizeMedicationReview(raw.medicationReview) }),
     unmeasuredVitalReasons: stringRecord(raw.unmeasuredVitalReasons),
     manualPriorityRaise: oneOf(raw.manualPriorityRaise, ['RED', 'YELLOW', ''] as const, ''),
     manualUpgradeReason: str(raw.manualUpgradeReason),
     editingTriageId: strOrNull(raw.editingTriageId),
     resumePendingTriageId: strOrNull(raw.resumePendingTriageId),
     encounterId: strOrNull(raw.encounterId),
+  };
+}
+
+function normalizeMedicationReview(value: unknown): NonNullable<TriageDraft['medicationReview']> {
+  const src = isRecord(value) ? value : {};
+  const changes = isRecord(src.changes) ? src.changes : {};
+  return {
+    reviewed: bool(src.reviewed),
+    changes: {
+      added: stringArray(changes.added),
+      edited: stringArray(changes.edited),
+      stopped: stringArray(changes.stopped),
+      removed: stringArray(changes.removed),
+    },
   };
 }

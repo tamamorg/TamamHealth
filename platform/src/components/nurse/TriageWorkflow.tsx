@@ -11,6 +11,7 @@ import { TriagePatientPicker, TriageChiefComplaint, TriageVitalSafetySummary } f
 import { TriageAbccAssessment, TriageDangerSigns, TriagePriorityResult } from './triage/TriageAssessmentSections';
 import { TriageVitalsSection, TriageIntakeHistory, TriageVisitContext, TriageHandoffSection, TriageNotesSection, TriageFormActions } from './triage/TriageDetailSections';
 import { TriageRecentList } from './triage/TriageRecentList';
+import { TriageMedicationReview } from './triage/TriageMedicationReview';
 import { O3Layout } from '@/components/forms/O3Form';
 import '@/components/forms/o3-form.css';
 
@@ -53,6 +54,7 @@ export default function TriageWorkflow(props: TriageWorkflowProps) {
           ] },
           { id: 'history', label: t('triageO3.pageHistory'), sections: [
             { id: 'intake', label: t('triageO3.intakeHistory'), body: <TriageIntakeHistory f={f} /> },
+            { id: 'medications', label: t('triageMeds.heading'), body: <TriageMedicationReview f={f} /> },
             { id: 'visit', label: t('triageO3.visitContext'), body: <TriageVisitContext f={f} /> },
           ] },
           { id: 'handoff', label: t('triageO3.pageHandoff'), sections: [
@@ -138,6 +140,9 @@ export default function TriageWorkflow(props: TriageWorkflowProps) {
           <TriageVitalsSection f={f} />
 
           <TriageIntakeHistory f={f} />
+
+          <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)', margin: 0 }}>{t('triageMeds.heading')}</h3>
+          <TriageMedicationReview f={f} />
 
           <TriageVisitContext f={f} />
 

@@ -14,6 +14,7 @@ import { toIsoDate } from '../date-utils';
 import { formatDateTime } from '../format-utils';
 import type { TriageDoc } from '../db-types';
 import type { NoteSectionId } from './note-catalog';
+import { formatMedicationReview } from '../clinical/triage-medication-review';
 
 /** The longest a triage with no visit link can wait for its note. */
 export const UNLINKED_TRIAGE_WINDOW_HOURS = 24;
@@ -53,6 +54,7 @@ function historyText(triage: TriageDoc): string {
     line('Pregnancy', pregnancy(triage)),
     line('Mechanism of injury', triage.injuryMechanism),
     line('Care before arrival', triage.preArrivalCare),
+    line('Medication list', triage.medicationReview ? formatMedicationReview(triage.medicationReview) : ''),
     line('Triage notes', triage.notes),
   ].filter(Boolean);
   return lines.length ? [source(triage), ...lines].join('\n') : '';

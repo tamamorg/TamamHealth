@@ -41,14 +41,24 @@ interface ReportedMedicationsProps {
   adding: boolean;
   onCloseAdd: () => void;
   markInError: (id: string, actor?: { userId?: string; userName?: string }) => Promise<unknown>;
+  /** Mark a medicine as no longer taken. Without it the row offers no Stop. */
+  stop?: (id: string, actor?: { userId?: string; userName?: string }) => Promise<unknown>;
+  /** Told about each change saved here, e.g. so triage can summarise its review. */
+  onChanged?: (change: ReportedMedicationChange) => void;
   /** Render only the form slider, not the list. */
   formOnly?: boolean;
+}
+
+/** One change saved from this list: never an order, only the medication list. */
+export interface ReportedMedicationChange {
+  kind: 'added' | 'edited' | 'stopped' | 'removed';
+  entry: HistoryEntryDoc;
 }
 
 const SUB = { color: 'var(--ehr-muted, #5D728B)', fontSize: 12 } as const;
 
 export default function ReportedMedications({
-  patientId, patientName, medications, entries, loadFailed, canRecord, currentUser, adding, onCloseAdd, markInError, formOnly,
+  patientId, patientName, medications, entries, loadFailed, canRecord, currentUser, adding, onCloseAdd, markInError, stop, onChanged, formOnly,
 }: ReportedMedicationsProps) {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -72,9 +82,32 @@ export default function ReportedMedications({
       // null: not found, or not in this user's scope. Not a success.
       if (!(await markInError(entry._id, { userId: currentUser?._id || currentUser?.username, userName: currentUser?.name }))) throw new Error('Change not saved. Try again.');
       showToast(t('history.markedError'), 'success');
+      onChanged?.({ kind: 'removed', entry });
     } catch (err) {
       console.error(err);
       showToast(describeError(err, t('history.updateFailed')), 'error');
+    } finally {
+      setRetiring(null);
+    }
+  };
+
+  const handleStop = async (entry: HistoryEntryDoc) => {
+    if (!stop) return;
+    const ok = await confirm({
+      title: t('meds.reported.confirmStopTitle'),
+      message: t('meds.reported.confirmStopBody', { entry: formatHistoryEntry(entry) }),
+      confirmLabel: t('meds.reported.stopAction'),
+      tone: 'warning',
+    });
+    if (!ok) return;
+    setRetiring(entry._id);
+    try {
+      if (!(await stop(entry._id, { userId: currentUser?._id || currentUser?.username, userName: currentUser?.name }))) throw new Error('Change not saved. Try again.');
+      showToast(t('meds.reported.stopped'), 'success');
+      onChanged?.({ kind: 'stopped', entry });
+    } catch (err) {
+      console.error(err);
+      showToast(describeError(err, t('meds.reported.stopFailed')), 'error');
     } finally {
       setRetiring(null);
     }
@@ -114,6 +147,7 @@ export default function ReportedMedications({
                         ariaLabel={t('chart.medicationRowActions', { name: entry.title })}
                         actions={[
                           { key: 'edit', label: t('history.edit'), onClick: () => setEditing(entry) },
+                          ...(stop ? [{ key: 'stop', label: t('meds.reported.stopAction'), disabled: retiring === entry._id, onClick: () => void handleStop(entry) }] : []),
                           { key: 'error', label: t('history.confirmErrorAction'), tone: 'danger', disabled: retiring === entry._id, onClick: () => void handleMarkInError(entry) },
                         ]}
                       />
@@ -143,7 +177,7 @@ export default function ReportedMedications({
               entry={editing}
               entries={entries}
               currentUser={currentUser}
-              onSaved={closeForm}
+              onSaved={saved => { onChanged?.({ kind: editing ? 'edited' : 'added', entry: saved }); closeForm(); }}
               onCancel={closeForm}
             />
           </div>
