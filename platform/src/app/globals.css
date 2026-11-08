@@ -35436,6 +35436,14 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 
 .modal-portal-backdrop--slider > .tm-slider { margin-inline-start: auto; }
 
+/* The lab/imaging requisition wizard (rail + requisition column) is the one
+   slider that is laid out for its asked width, not the 560px column: squeezed
+   to 560 its patient facts broke a letter per line and its step rail was cut.
+   The page keeps at least 320px beside it (see "Sliders squeeze the page"). */
+@media (min-width: 900px) {
+  .tm-slider.tm-slider--lab-wizard { width: min(var(--slider-w, 1320px), calc(100vw - 320px)) !important; }
+}
+
 
 .tm-slider > :is(.modal-panel, .modal-content, .card-elevated, div) {
   flex: 1 1 auto;
@@ -35863,6 +35871,14 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   gap: 4px 16px;
   padding: 10px 0;
   border-bottom: 1px solid var(--border-light);
+}
+/* The requisition's patient strip is a row of short facts, not a list: each
+   keeps its label over its value (a row layout in 1/6 of the width broke the
+   name and phone number a letter per line). */
+:is(.tm-slider, .tamam-drawer) .labord-patient-strip > div:has(> .labord-field-label + .labord-field-value) {
+  display: block;
+  padding: 0;
+  border-bottom: 0;
 }
 /* Consecutive facts sit flush: the section's own gap would split the list. */
 :is(.tm-slider, .tamam-drawer) :not(.obf-row) > .obf-field:has(> .obf-value) + .obf-field:has(> .obf-value) { margin-top: -16px; }

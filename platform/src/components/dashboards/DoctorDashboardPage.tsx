@@ -418,6 +418,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
 
   const transferEntries = incomingTransfers.map(t => {
     const overdue = isTransferOverdue(t, now);
+    const crossFacility = !!t.from?.facilityId && !!t.to?.facilityId && t.from.facilityId !== t.to.facilityId;
     return {
       id: t._id,
       title: t.patientName || 'Patient',
@@ -426,9 +427,12 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
       // An unanswered transfer past its acknowledgement window is a patient
       // nobody has taken responsibility for, so it outranks ordinary warnings.
       tone: overdue ? ('danger' as const) : ('warning' as const),
-      href: `/patients/${t.patientId}?tab=referrals`,
+      // Another facility's patient is not the receiver's to open until the
+      // transfer is accepted ("Patient not found"), so a cross-facility
+      // transfer goes to the transfers queue, where Accept is inline.
+      href: crossFacility ? '/transfers' : `/patients/${t.patientId}?tab=referrals`,
       actionLabel: 'Review transfer',
-      actionHref: `/patients/${t.patientId}?tab=referrals`,
+      actionHref: crossFacility ? '/transfers' : `/patients/${t.patientId}?tab=referrals`,
     };
   });
 

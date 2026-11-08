@@ -110,6 +110,8 @@ export function usePatientAppointments(patientId?: string) {
   }, [patientId, scope]);
 
   useEffect(() => { load(); }, [load]);
+  // A booking made anywhere (the chart's Book panel, the desk) shows here too.
+  usePouchLiveReload({ load, database: appointmentsDB });
 
   return { appointments, loading, error: error && t(error), reload: load };
 }

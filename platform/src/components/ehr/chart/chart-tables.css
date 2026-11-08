@@ -120,3 +120,53 @@ body .tamam-root table thead th.tamam-col-actions { width: 72px; text-align: cen
    scrolls sideways instead. */
 .tamam-root .tamam-section-body > .tamam-table { min-width: 560px; }
 .tamam-root .tamam-section-body:has(> .tamam-table) { overflow-x: auto; }
+
+/* Beside a docked workspace (the drawer) or an open slider the chart column
+   is 370-580px, so a list's head and last column were cut off ("Date of ser",
+   "Ac"). Cells and heads take 8px sides here and a head wraps at its spaces
+   instead of being clipped. From 1400px the column is wide enough for the
+   table to fit it; below that the table keeps its 560px floor and scrolls
+   sideways, with the Actions column pinned so the row menu is always in
+   reach. */
+body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-section-body > .tamam-table :is(thead th, tbody td),
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-section-body > .tamam-table :is(thead th, tbody td) {
+  padding-inline: 8px !important;
+}
+body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-section-body > .tamam-table thead th,
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-section-body > .tamam-table thead th {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-section-body > .tamam-table td.tamam-num,
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-section-body > .tamam-table td.tamam-num {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+@media (min-width: 1400px) {
+  body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-section-body > .tamam-table,
+  html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-section-body > .tamam-table {
+  min-width: 0;
+}
+}
+@media (max-width: 1399.98px) {
+  body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-section-body > .tamam-table :is(thead th, tbody td):last-child,
+  html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-section-body > .tamam-table :is(thead th, tbody td):last-child {
+    position: sticky;
+    right: 0;
+    background: var(--bg-card-solid) !important;
+    box-shadow: -1px 0 0 var(--border-light);
+}
+}
+/* Notes beside a workspace: Type must hold "Consultation" whole, Status its pill. */
+body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-table--notes th:nth-child(1),
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-table--notes th:nth-child(1) { width: 20%; }
+body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-table--notes th:nth-child(2),
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-table--notes th:nth-child(2) { width: 22%; }
+body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-table--notes th:nth-child(3),
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-table--notes th:nth-child(3) { width: 16%; }
+body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-table--notes th:nth-child(4),
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-table--notes th:nth-child(4) { width: 18%; }
+body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-table--notes th:nth-child(5),
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-table--notes th:nth-child(5) { width: 18%; }

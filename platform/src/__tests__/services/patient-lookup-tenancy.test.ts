@@ -90,6 +90,19 @@ describe('checkDuplicates via createPatient: scoped disclosure', () => {
     expect((await getPatientById(parent._id, DESK_A1_SCOPE))?.phone).toBe(child.phone);
   });
 
+  test('a walk-in registered after one was referred out of the facility still gets a free temporary ID', async () => {
+    const first = await createPatient(registration({ firstName: 'Walkin', phone: '0990000201' }), DESK_A1_SCOPE);
+    // Referral acceptance re-homes the patient to the receiving facility; they
+    // keep the identifier issued here, and leave this facility's view.
+    await patientsDB().put({ ...((await patientsDB().get(first._id)) as object), registrationHospital: HOSP_A2 } as never);
+    const next = await createPatient(
+      registration({ firstName: 'Nextwalkin', surname: 'Other', dateOfBirth: '1970-02-02', phone: '0990000202' }),
+      DESK_A1_SCOPE,
+    );
+    expect(next.geocodeId).toMatch(/^UNKNOWN-/);
+    expect(next.geocodeId).not.toBe(first.geocodeId);
+  });
+
   test('a duplicate INSIDE the caller\'s scope is still named in full (name and DOB match)', async () => {
     const existing = await seedPatient({
       _id: 'pat-inscope-phone', orgId: ORG_A, registrationHospital: HOSP_A1,

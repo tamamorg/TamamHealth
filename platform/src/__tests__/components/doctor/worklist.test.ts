@@ -458,6 +458,22 @@ describe('assembleDoctorWorklist — outstanding: awaiting labs', () => {
 });
 
 describe('assembleDoctorWorklist — outstanding: transfers', () => {
+  test('a transfer from another facility opens the transfers queue, not a chart the receiver cannot open', () => {
+    const cross = makeTransfer({
+      _id: 'xfer-cross',
+      patientId: 'patient-cross',
+      status: 'requested',
+      urgency: 'routine',
+      requestedAt: '2026-08-04T11:00:00.000Z',
+      from: { facilityId: 'hosp-001', facilityName: 'Juba Teaching Hospital' },
+      to: { facilityId: 'hosp-002', facilityName: 'Wau State Hospital' },
+    });
+    const result = assembleDoctorWorklist(baseInput({ incomingTransfers: [cross] }));
+    const entry = result.outstanding.find(o => o.label === 'Transfers to accept')?.entries?.[0];
+    expect(entry?.href).toBe('/transfers');
+    expect(entry?.actionHref).toBe('/transfers');
+  });
+
   test('an overdue transfer gets danger tone on its entry and the item; href targets the referrals tab', () => {
     const overdue = makeTransfer({
       _id: 'xfer-overdue',
