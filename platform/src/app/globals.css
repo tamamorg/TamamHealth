@@ -7960,8 +7960,10 @@ button.ward-stat-chip:focus:not(:focus-visible) {
   padding-top: 4px;
 }
 /* In the slider the rail sits below the dialog header, so its own scrollport
-   is the viewport minus that header. (Under 900px the form stacks into one
-   column and the global rule un-pins the rail, which is right there too.) */
+   is the viewport minus that header (about 120px of chrome). The slider keeps
+   its two columns at every width (registration-slider.css forces the grid and
+   the sticky rail above the global ≤900px un-pin rule), so this cap is what
+   keeps a short window's rail reachable. */
 .fd-reg-slider .tamam-reg-rail {
   max-height: calc(100dvh - 120px);
 }
