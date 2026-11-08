@@ -9284,6 +9284,7 @@ const apd: TranslationMap = {
   'meds.reported.colActions': 'الإجراءات',
   'meds.reported.loadFailed': 'ما قدرنا نجيب الأدوية الكلّم بيها العيان. عيد التحميل وجرّب تاني. حدّث الصفحة وجرّب تاني.',
   'meds.reported.saved': 'الدوا اتسجّل',
+  'meds.reported.tag': 'المريض قال كدا',
   'meds.reported.stopAction': 'علّم إنو وقف',
   'meds.reported.confirmStopTitle': 'تعلّم الدوا ده إنو وقف؟',
   'meds.reported.confirmStopBody': '“{{entry}}” بيطلع من قائمة الأدوية الحالية. بيقعد في السجل.',

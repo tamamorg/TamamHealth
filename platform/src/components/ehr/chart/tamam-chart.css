@@ -2436,6 +2436,12 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   color: var(--ehr-text-strong, var(--text-primary));
 }
 .tamam-reported-meds > p { margin: 0 0 8px; }
+/* In a 560px drawer (the triage form) five columns do not fit on one line each:
+   the nowrap header labels ran into each other ("How it is takenSince"). Let the
+   labels wrap and give the medicine name the room. */
+.tamam-drawer .tamam-reported-meds .tamam-table thead th { white-space: normal; vertical-align: bottom; }
+.tamam-drawer .tamam-reported-meds .tamam-table td:first-child,
+.tamam-drawer .tamam-reported-meds .tamam-table th:first-child { min-width: 110px; padding-right: 8px; }
 
 /* Latest-triage source block on the patient summary. This is fed from the
    same record as the vitals timeline, so the summary does not keep

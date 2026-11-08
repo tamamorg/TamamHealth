@@ -9295,6 +9295,7 @@ const en: TranslationMap = {
   'meds.reported.colActions': 'Actions',
   'meds.reported.loadFailed': 'Patient-reported medications not loaded. Reload the page to try again.',
   'meds.reported.saved': 'Medication recorded',
+  'meds.reported.tag': 'Patient-reported',
   'meds.reported.stopAction': 'Mark as stopped',
   'meds.reported.confirmStopTitle': 'Mark this medicine as stopped?',
   'meds.reported.confirmStopBody': '“{{entry}}” leaves the current medication list. It stays on the record.',

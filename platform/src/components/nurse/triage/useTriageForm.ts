@@ -446,10 +446,18 @@ export function useTriageForm({
     // this component already knows. Nothing left to resolve.
     if (editingTriageId) return;
     let cancelled = false;
+    // True once the lookup has run to a conclusion. A cleanup that fires before
+    // that (React StrictMode's dev-only mount, unmount, mount; a fast patient
+    // switch) cancelled the lookup AFTER the one-shot ref was spent, so the
+    // re-run saw "already checked" and nothing was ever prefilled or loaded:
+    // the chief complaint stayed blank and re-opening a saved 'seen' triage
+    // fell through to a fresh create ("already has an active triage").
+    let settled = false;
     (async () => {
       const draft = await loadTriageDraft(patientId);
       if (cancelled) return;
       if (draft) {
+        settled = true;
         applyTriageDraft(draft);
         setDraftRestoredNotice(true);
         return;
@@ -472,8 +480,12 @@ export function useTriageForm({
       } catch (err) {
         console.error('Could not resolve an existing triage/encounter for this patient:', err);
       }
+      settled = true;
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (!settled && resumeCheckedPatientRef.current === patientId) resumeCheckedPatientRef.current = null;
+    };
     // `!!dataScope` (not the object) so scope HYDRATION re-arms the un-consumed
     // one-shot without identity churn re-triggering it after it has run.
     // eslint-disable-next-line react-hooks/exhaustive-deps
