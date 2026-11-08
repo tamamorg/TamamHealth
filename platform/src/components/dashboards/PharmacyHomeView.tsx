@@ -39,11 +39,12 @@ import { hasSafetyWarning } from '@/lib/pharmacy/rx-safety';
 import { agoLabel, shortDayLabel } from '@/lib/station-time';
 import { patientDisplayName, patientAge, shortenPersonName } from '@/lib/patient-utils';
 import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
-import { localClockOf, localDayOf, toIsoDate } from '@/lib/date-utils';
+import { localClockOf } from '@/lib/date-utils';
 import { counterActions, counterPillLabel, isParked } from '@/components/pharmacy/workflow/pharmacy-workflow-types';
 import DispenseSlider from '@/components/pharmacy/workflow/DispenseSlider';
 import type { RxIntent } from '@/components/pharmacy/workflow/PharmacyWorkflowPanel';
 import type { PatientDoc, PharmacyInventoryDoc, PrescriptionDoc } from '@/lib/db-types';
+import { facilityDayOf, facilityToday, jubaDate } from '@/lib/time-juba';
 
 /** Opens the chart with the dispensing form up, on one script when `rxId` is given. */
 export function dispenseFormHref(patientId: string, rxId?: string): string {
@@ -83,7 +84,7 @@ export interface PharmacyWorklistResult {
 export function assemblePharmacyWorklist({
   currentUser, patients, prescriptions, labels, now = new Date(),
 }: PharmacyWorklistInput): PharmacyWorklistResult {
-  const today = toIsoDate(now);
+  const today = jubaDate(now);
   const patientById = new Map(patients.map(p => [p._id, p]));
   // Scripts written for an outside pharmacy are the patient's to fill.
   const scripts = prescriptions.filter(rx => !isOutsidePharmacyOrder(rx));
@@ -93,8 +94,8 @@ export function assemblePharmacyWorklist({
       || Number(b.urgency === 'immediate') - Number(a.urgency === 'immediate')
       || comparePharmacyPriority(a, b));
   const dispensedToday = scripts.filter(rx => pharmacyStageGroup(pharmacyStage(rx)) === 'finished'
-    && rx.status !== 'discontinued' && localDayOf(rx.dispensedAt || rx.updatedAt) === today);
-  const clock = (iso?: string) => (iso && localDayOf(iso) === today ? localClockOf(iso) : shortDayLabel(iso));
+    && rx.status !== 'discontinued' && facilityDayOf(rx.dispensedAt || rx.updatedAt) === today);
+  const clock = (iso?: string) => (iso && facilityDayOf(iso) === today ? localClockOf(iso) : shortDayLabel(iso));
 
   const rows: WorklistPatient[] = [];
   const seen = new Set<string>();
@@ -242,7 +243,7 @@ export function assemblePharmacyWorklist({
   const activity: DayStatsItem[] = scripts.map(rx => {
     const done = pharmacyStageGroup(pharmacyStage(rx)) === 'finished';
     const at = (done && (rx.dispensedAt || rx.updatedAt)) || rx.createdAt;
-    return { date: localDayOf(at), time: localClockOf(at), series: (done ? 1 : 0) as 0 | 1 };
+    return { date: facilityDayOf(at), time: localClockOf(at), series: (done ? 1 : 0) as 0 | 1 };
   });
 
   // The ring counts the rows the lanes show (a patient with several scripts is
@@ -301,11 +302,11 @@ export default function PharmacyHomeView() {
   if (!currentUser || !worklist) return null;
 
   const counterRx = counter ? prescriptions.find(rx => rx._id === counter.id) : undefined;
-  const today = toIsoDate(new Date());
+  const today = facilityToday();
   const stationDetail = (patientId: string): ReactNode => {
     const mine = prescriptions.filter(rx => rx.patientId === patientId && !isOutsidePharmacyOrder(rx)
       && rx.status !== 'discontinued'
-      && (pharmacyStageGroup(pharmacyStage(rx)) !== 'finished' || localDayOf(rx.dispensedAt || rx.updatedAt) === today));
+      && (pharmacyStageGroup(pharmacyStage(rx)) !== 'finished' || facilityDayOf(rx.dispensedAt || rx.updatedAt) === today));
     if (!mine.length) return null;
     return (
       <div className="ehr-visit-pop-row">

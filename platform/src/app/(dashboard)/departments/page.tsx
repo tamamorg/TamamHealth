@@ -12,8 +12,8 @@ import { useAuth } from '@/lib/context';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { appointmentBelongsToDepartment } from '@/modules/departments/client';
-import { toIsoDate } from '@/lib/date-utils';
 import { useMemo, useState } from 'react';
+import { facilityToday } from '@/lib/time-juba';
 
 const CONFIG_ROLES = new Set(['super_admin', 'org_admin', 'medical_superintendent', 'hospital_manager']);
 
@@ -27,7 +27,7 @@ export default function DepartmentsPage() {
   const [search, setSearch] = useState('');
   const [provisioning, setProvisioning] = useState(false);
   const [provisionError, setProvisionError] = useState(false);
-  const today = toIsoDate(new Date());
+  const today = facilityToday();
   const activeFacilityId = scope?.hospitalId || currentUser?.hospitalId;
 
   const provision = async () => {

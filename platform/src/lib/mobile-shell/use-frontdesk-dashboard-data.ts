@@ -6,14 +6,11 @@ import { useReferrals } from '@/lib/hooks/useReferrals';
 import type { AppointmentDoc } from '@/lib/db-types';
 import type { MobileDashboardData, MobileLane, MobileOutstandingItem } from './dashboard-strategy';
 import { computeClinicalLanes } from './use-clinical-dashboard-data';
+import { facilityToday } from '@/lib/time-juba';
 
+/** The facility's day: the desk board and calendar default compare against appointmentDate. */
 function todayIso(): string {
-  // Local calendar date, not UTC — see the identical helper + rationale in
-  // use-clinical-dashboard-data.ts.
-  const d = new Date();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${mm}-${dd}`;
+  return facilityToday();
 }
 
 /**

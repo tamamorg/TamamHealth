@@ -31,7 +31,7 @@ import type {
   TriageDoc,
 } from '@/lib/db-types';
 import type { ClinicalNoteDoc } from '@/lib/clinical-notes/types';
-import { toIsoDate } from '@/lib/date-utils';
+import { isOnFacilityDay, jubaDate } from '@/lib/time-juba';
 
 const DEPARTMENTS = ['OPD', 'Emergency', 'Maternity', 'Pediatrics', 'Surgery', 'Lab', 'Pharmacy', 'ICU'];
 
@@ -96,7 +96,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
   } = input;
   const now = input.now ?? new Date();
   const nowMs = now.getTime();
-  const todayIso = toIsoDate(now);
+  const todayIso = jubaDate(now);
 
   // Resolve a patient display name for the signing inbox from the loaded roster.
   const signingPatientName = (patientId: string): string => {
@@ -109,7 +109,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
   {
     const rank = { RED: 3, YELLOW: 2, GREEN: 1 } as const;
     for (const tr of triages) {
-      if (!(tr.triagedAt || '').startsWith(todayIso)) continue;
+      if (!isOnFacilityDay(tr.triagedAt, todayIso)) continue;
       const prev = triagePriorityByPatient[tr.patientId];
       if (!prev || rank[tr.priority] > rank[prev]) triagePriorityByPatient[tr.patientId] = tr.priority;
     }

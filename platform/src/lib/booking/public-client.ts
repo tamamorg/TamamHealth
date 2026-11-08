@@ -227,10 +227,11 @@ export function addDays(iso: string, n: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/** The facility's day, the clock the slot API and the check-in guard use. */
 export function todayIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return facilityToday();
 }
 
 /** "Dr. Achol Mayen Deng" → "AM". Titles are dropped, not initialised. */
 export { initials as monogram } from '@/lib/patient-utils';
+import { facilityToday } from '@/lib/time-juba';

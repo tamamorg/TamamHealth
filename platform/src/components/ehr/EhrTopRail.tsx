@@ -28,7 +28,6 @@ import { usePatients } from '@/lib/hooks/usePatients';
 import { useOrganizations } from '@/lib/hooks/useOrganizations';
 import { useUsers } from '@/lib/hooks/useUsers';
 import { useAppointments } from '@/lib/hooks/useAppointments';
-import { todayIso } from '@/lib/date-utils';
 
 import { useHospitals } from '@/lib/hooks/useHospitals';
 import { patientFullName, patientGenderAge, initials } from '@/lib/patient-utils';
@@ -59,6 +58,7 @@ import { getDisabledAppRoutes, isAppDisabled, subscribeDisabledApps } from '@/li
 import { usePlatformConfig } from '@/lib/hooks/usePlatformConfig';
 import { applyFeatureCatalogToNavigation } from '@/modules/feature-catalog/client';
 import { roleLabel as roleDisplayName } from '@/lib/role-display';
+import { facilityToday } from '@/lib/time-juba';
 
 export default function EhrTopRail() {
   const router = useRouter();
@@ -121,7 +121,7 @@ export default function EhrTopRail() {
   // shows); scheduling and admin roles count the whole board they manage.
   const { appointments } = useAppointments();
   const todaysAppointmentCount = useMemo(() => {
-    const today = todayIso();
+    const today = facilityToday();
     const closed = new Set(['completed', 'cancelled', 'no_show', 'rescheduled']);
     const live = appointments.filter(a => a.appointmentDate === today && !closed.has(a.status));
     return canConsult ? live.filter(a => a.providerId === currentUser?._id).length : live.length;

@@ -12,7 +12,7 @@ import { useAppointments } from '@/lib/hooks/useAppointments';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { appointmentBelongsToDepartment, buildDepartmentReport, sortDepartmentAppointments } from '@/modules/departments/client';
 import { SPECIALTY_PATHWAYS } from '@/modules/specialty-care';
-import { toIsoDate } from '@/lib/date-utils';
+import { facilityToday } from '@/lib/time-juba';
 
 export default function DepartmentDetailPage() {
   const { t } = useTranslation();
@@ -23,7 +23,7 @@ export default function DepartmentDetailPage() {
   const { appointments, loading: appointmentsLoading } = useAppointments();
   const department = departments.find((item) => item._id === id);
   const rows = department ? appointments.filter((appointment) => appointmentBelongsToDepartment(appointment, department)) : [];
-  const today = toIsoDate(new Date());
+  const today = facilityToday();
   const todayRows = department?.queueEnabled === false ? [] : sortDepartmentAppointments(rows.filter((appointment) => appointment.appointmentDate === today));
   const report = buildDepartmentReport(rows);
   const loading = departmentsLoading || appointmentsLoading;

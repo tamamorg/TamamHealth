@@ -4,6 +4,7 @@
 
 import type { TriageDoc } from '@/lib/db-types';
 import { priorityOrder } from '@/lib/clinical/triage-display';
+import { isOnFacilityDay } from '@/lib/time-juba';
 
 /**
  * Once a triage reaches one of these, the patient is no longer someone the
@@ -52,7 +53,7 @@ export function selectTriageQueueRows<T extends { status: TriageDoc['status']; t
 ): T[] {
   return rows.filter(row => {
     if (!isTerminalTriageStatus(row.status)) return true;
-    return options.includeCompletedToday && (row.triagedAt || '').startsWith(options.todayIso);
+    return options.includeCompletedToday && isOnFacilityDay(row.triagedAt, options.todayIso);
   });
 }
 

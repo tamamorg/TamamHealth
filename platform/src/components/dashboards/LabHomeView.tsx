@@ -34,7 +34,7 @@ import { useNow } from '@/lib/hooks/useNow';
 import { isImagingStudy } from '@/lib/clinical-flow/lab-catalog';
 import { patientDisplayName, patientAge, shortenPersonName } from '@/lib/patient-utils';
 import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
-import { localClockOf, localDayOf, toIsoDate } from '@/lib/date-utils';
+import { localClockOf } from '@/lib/date-utils';
 import { agoLabel, durationLabel, shortDayLabel } from '@/lib/station-time';
 import { effectiveOrderStatus, isOpenLabOrder } from '@/lib/services/lab-service';
 import { useCancelLabOrder } from '@/components/lab/useCancelLabOrder';
@@ -43,6 +43,7 @@ import { benchActionLabel, benchActions } from '@/components/lab/workflow/lab-wo
 import LabBenchSlider from '@/components/lab/workflow/LabBenchSlider';
 import LabIntakeSlider from '@/components/lab/order/LabIntakeSlider';
 import type { LabResultDoc, PatientDoc } from '@/lib/db-types';
+import { facilityDayOf, facilityToday, jubaDate } from '@/lib/time-juba';
 
 /** Opens the chart with the lab form up, on one test when `orderId` is given. */
 export function labFormHref(patientId: string, orderId?: string): string {
@@ -102,7 +103,7 @@ const STAGE_RANK: Record<LabBenchStage, number> = { bench: 0, collect: 1, result
 export function assembleLabWorklist({
   currentUser, patients, results, labels, now = new Date(),
 }: LabWorklistInput): LabWorklistResult {
-  const today = toIsoDate(now);
+  const today = jubaDate(now);
   const patientById = new Map(patients.map(p => [p._id, p]));
   const tests = results.filter(r => !isImagingStudy(r) && r.status !== 'cancelled');
   const open = tests
@@ -110,8 +111,8 @@ export function assembleLabWorklist({
     .sort((a, b) => Number(b.critical) - Number(a.critical)
       || STAGE_RANK[labBenchStage(a)] - STAGE_RANK[labBenchStage(b)]
       || (a.orderedAt || '').localeCompare(b.orderedAt || ''));
-  const resultedToday = tests.filter(r => r.status === 'completed' && localDayOf(r.completedAt) === today);
-  const clock = (iso?: string) => (iso && localDayOf(iso) === today ? localClockOf(iso) : shortDayLabel(iso));
+  const resultedToday = tests.filter(r => r.status === 'completed' && facilityDayOf(r.completedAt) === today);
+  const clock = (iso?: string) => (iso && facilityDayOf(iso) === today ? localClockOf(iso) : shortDayLabel(iso));
 
   const rows: WorklistPatient[] = [];
   const seen = new Set<string>();
@@ -227,7 +228,7 @@ export function assembleLabWorklist({
   });
   const toCollect = open.filter(r => labBenchStage(r) === 'collect');
   const onBench = open.filter(r => labBenchStage(r) === 'bench');
-  const critical = tests.filter(r => r.critical && (isOpenLabOrder(r) || (r.status === 'completed' && localDayOf(r.completedAt) === today)));
+  const critical = tests.filter(r => r.critical && (isOpenLabOrder(r) || (r.status === 'completed' && facilityDayOf(r.completedAt) === today)));
   const assignedToMe = patients.filter(p => p.stationAssignments?.lab?.staffId === currentUser._id);
 
   const outstanding: OutstandingItem[] = [
@@ -255,7 +256,7 @@ export function assembleLabWorklist({
   const activity: DayStatsItem[] = tests.map(r => {
     const resulted = r.status === 'completed';
     const at = (resulted && r.completedAt) || r.orderedAt;
-    return { date: localDayOf(at), time: localClockOf(at), series: (resulted ? 1 : 0) as 0 | 1 };
+    return { date: facilityDayOf(at), time: localClockOf(at), series: (resulted ? 1 : 0) as 0 | 1 };
   });
 
   const minutes = resultedToday
@@ -307,12 +308,12 @@ export default function LabHomeView({ onBatchEntry }: { onBatchEntry?: () => voi
 
   if (!currentUser || !worklist) return null;
 
-  const today = toIsoDate(new Date());
+  const today = facilityToday();
   // The row's panel leads with the patient's tests: each one's stage, and the
   // way into it on the bench. Open tests and today's results only.
   const stationDetail = (patientId: string): ReactNode => {
     const mine = results.filter(r => r.patientId === patientId && !isImagingStudy(r)
-      && (isOpenLabOrder(r) || (r.status === 'completed' && localDayOf(r.completedAt) === today)));
+      && (isOpenLabOrder(r) || (r.status === 'completed' && facilityDayOf(r.completedAt) === today)));
     if (!mine.length) {
       // Sent here by the desk with nothing ordered: the lab takes the request.
       return canEnterLabResults ? (

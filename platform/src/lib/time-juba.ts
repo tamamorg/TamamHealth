@@ -49,6 +49,32 @@ export function jubaDate(d: Date | string | number = new Date()): string {
   return `${j.getUTCFullYear()}-${String(j.getUTCMonth() + 1).padStart(2, '0')}-${String(j.getUTCDate()).padStart(2, '0')}`;
 }
 
+/**
+ * The facility's "today" (`YYYY-MM-DD`). Use for every appointment / visit /
+ * clinical-day comparison or default so the desk board, dashboards, top-rail
+ * count, booking default and check-in guard agree. Personal calendar UI keeps
+ * the device-local `todayIso()` from `lib/date-utils`.
+ */
+export function facilityToday(): string {
+  return jubaDate();
+}
+
+/** The facility day of a stored value: date-only strings pass through, instants convert. '' when missing. */
+export function facilityDayOf(value?: string | null): string {
+  if (!value) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? value.slice(0, 10) : jubaDate(d);
+}
+
+/** True when the instant (ISO datetime or date) falls on the facility day `day`. */
+export function isOnFacilityDay(instant: string | number | Date | undefined | null, day: string): boolean {
+  if (!instant) return false;
+  const d = new Date(instant);
+  if (Number.isNaN(d.getTime())) return false;
+  return jubaDate(d) === day;
+}
+
 export function jubaIsInMonth(date: string | undefined, yyyyMm: string): boolean {
   if (!date) return false;
   return jubaYearMonth(date) === yyyyMm;

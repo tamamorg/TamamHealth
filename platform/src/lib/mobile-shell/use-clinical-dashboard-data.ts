@@ -12,15 +12,11 @@ import type { AppointmentDoc, LabResultDoc, PhoneNoteDoc, ReferralDoc } from '@/
 import type { MobileDashboardData, MobileLane, MobileOutstandingItem } from './dashboard-strategy';
 import { appointmentStatusGroup, APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
 import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
+import { facilityToday } from '@/lib/time-juba';
 
+/** The facility's day: the desk board and calendar default compare against appointmentDate. */
 function todayIso(): string {
-  // Local calendar date, not UTC — see identical helper + rationale in
-  // use-mobile-shell-state.ts (must stay in sync with the calendar tab's
-  // default day and the dashboard header's locale-based "today" heading).
-  const d = new Date();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${mm}-${dd}`;
+  return facilityToday();
 }
 
 /**

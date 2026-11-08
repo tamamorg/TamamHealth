@@ -37,9 +37,10 @@ import { useNutritionSupplies } from '@/lib/hooks/useNutritionSupplies';
 import { classifySupplyStatus, type NutritionSupplyDoc } from '@/lib/services/nutrition-supply-service';
 import { patientDisplayName, patientAge, shortenPersonName } from '@/lib/patient-utils';
 import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
-import { localClockOf, localDayOf, toIsoDate } from '@/lib/date-utils';
+import { localClockOf } from '@/lib/date-utils';
 import { agoLabel, shortDayLabel } from '@/lib/station-time';
 import type { NutritionScreeningDoc, PatientDoc } from '@/lib/db-types';
+import { facilityDayOf, jubaDate } from '@/lib/time-juba';
 
 export const NUTRITION_SUPPLIES_HREF = '/dashboard/nutrition/supplies';
 
@@ -83,7 +84,7 @@ export function assembleNutritionWorklist({
   }
   const open = [...latestByPatient.values()].filter(needsFollowUp);
 
-  const clockOf = (iso?: string) => (localDayOf(iso) === toIsoDate(now) ? localClockOf(iso) : shortDayLabel(iso));
+  const clockOf = (iso?: string) => (facilityDayOf(iso) === jubaDate(now) ? localClockOf(iso) : shortDayLabel(iso));
   const rows: WorklistPatient[] = open.map(s => {
     const doc = patientById.get(s.patientId as string);
     const context = `${s.status} · ${labels.muac(s.muac)}`;
@@ -119,8 +120,8 @@ export function assembleNutritionWorklist({
   });
 
   // And anyone the desk routed here who has no open case yet.
-  const today = toIsoDate(now);
-  const clock = (iso?: string) => (localDayOf(iso) === today ? localClockOf(iso) : shortDayLabel(iso));
+  const today = jubaDate(now);
+  const clock = (iso?: string) => (facilityDayOf(iso) === today ? localClockOf(iso) : shortDayLabel(iso));
   const assignedToMe = patients.filter(p => p.stationAssignments?.nutrition?.staffId === currentUser._id);
   const listed = new Set(rows.map(row => row._id));
   for (const doc of assignedToMe) {
@@ -217,7 +218,7 @@ export function assembleNutritionWorklist({
   // — the nutritionist holds few appointments, so a schedule-derived chart
   // would read "no activity" on a busy screening week.
   const activity: DayStatsItem[] = screenings.map(s => ({
-    date: localDayOf(s.createdAt) || s.screeningDate,
+    date: facilityDayOf(s.createdAt) || s.screeningDate,
     time: s.createdAt ? localClockOf(s.createdAt) : undefined,
     series: (FLAGGED.has(s.status) ? 0 : 1) as 0 | 1,
   }));

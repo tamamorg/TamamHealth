@@ -1,7 +1,6 @@
 'use client';
 
 import { AlertTriangle, X } from '@/components/icons/lucide';
-import { todayIso } from '@/lib/date-utils';
 import { countActiveRedTriage } from './triage-queue';
 import { ACCENT } from './shared';
 import { useTriageForm } from './triage/useTriageForm';
@@ -16,6 +15,7 @@ import { O3Layout } from '@/components/forms/O3Form';
 import '@/components/forms/o3-form.css';
 
 export { mayAutoResume } from './triage/triage-helpers';
+import { facilityToday, isOnFacilityDay } from '@/lib/time-juba';
 
 export default function TriageWorkflow(props: TriageWorkflowProps) {
   const f = useTriageForm(props);
@@ -90,7 +90,7 @@ export default function TriageWorkflow(props: TriageWorkflowProps) {
                   a nurse marked them 'seen', long before a doctor picked them
                   up, understating how many critical patients were still
                   waiting. */}
-              {t('nurse.triageHeaderSummary', { today: triageHistory.filter(ti => (ti.triagedAt || '').startsWith(todayIso())).length, red: countActiveRedTriage(triageHistory) })}
+              {t('nurse.triageHeaderSummary', { today: triageHistory.filter(ti => isOnFacilityDay(ti.triagedAt, facilityToday())).length, red: countActiveRedTriage(triageHistory) })}
             </span>
           </div>
         )}

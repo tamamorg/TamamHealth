@@ -14,7 +14,7 @@ import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { COMMON_ICD11_CODES } from '@/lib/icd11-codes';
-import { toIsoDate, todayIso } from '@/lib/date-utils';
+import { todayIso } from '@/lib/date-utils';
 import EhrListHeader, { LIST_STAT_COLORS } from '@/components/ehr/EhrListHeader';
 import FormSlider from '@/components/overlay/FormSlider';
 
@@ -24,6 +24,7 @@ import PrintListDialog from '@/components/PrintListDialog';
 import { DeathRecordSlider } from '@/components/vital-events/VitalRecordSliders';
 import Select from '@/components/Select';
 import NumberInput from '@/components/forms/NumberInput';
+import { facilityToday } from '@/lib/time-juba';
 
 /**
  * One WHO cause-of-death line's ICD-11 picker.
@@ -299,7 +300,7 @@ export default function DeathsPage() {
       if (linkedPatientId) {
         try {
           const { getAppointmentsByPatient, updateAppointmentStatus } = await import('@/lib/services/appointment-service');
-          const today = toIsoDate(new Date());
+          const today = facilityToday();
           const upcoming = (await getAppointmentsByPatient(linkedPatientId))
             .filter(a => (a.status === 'scheduled' || a.status === 'confirmed') && a.appointmentDate >= today);
           for (const appt of upcoming) {

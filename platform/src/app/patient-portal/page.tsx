@@ -27,6 +27,7 @@ import { Empty, CardHead, dateParts, shortDate, type ChipTone } from '@/componen
 import { buildVitalTiles, ageInYears } from '@/components/patient-portal/vitals-tiles';
 import { todayIso } from '@/lib/date-utils';
 import { dismissBackdrop } from '@/lib/a11y';
+import { facilityToday } from '@/lib/time-juba';
 
 type Tab = 'overview' | 'appointments' | 'records' | 'lab' | 'prescriptions' | 'radiology' | 'immunizations' | 'messages' | 'chat' | 'billing' | 'profile';
 
@@ -118,7 +119,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
   }, [onLogout, patient._id]);
 
   const upcomingApts = useMemo(() => {
-    const today = todayIso();
+    const today = facilityToday();
     return appointments.filter(a => a.appointmentDate >= today && a.status !== 'cancelled' && a.status !== 'no_show');
   }, [appointments]);
 

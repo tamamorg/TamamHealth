@@ -20,10 +20,9 @@ import { patientFullName, patientAge, patientAgeYearsExact } from '@/lib/patient
 import { type TriageDraft, loadTriageDraft, saveTriageDraft, dropTriageDraft } from '@/lib/triage-draft';
 import { manualPriorityRaiseNeedsReason, composeTriageIntakeNotes } from '../triage-intake-notes';
 import { mayAutoResume } from './triage-helpers';
-import { jubaDate } from '@/lib/time-juba';
+import { jubaDate, facilityToday } from '@/lib/time-juba';
 import { APPOINTMENT_CLOSED_STATUSES } from '@/lib/appointment-status';
 import { sortTriageQueueRows, selectTriageQueueRows } from '../triage-queue';
-import { todayIso } from '@/lib/date-utils';
 import { ClipboardList, AlertTriangle, Activity, Clock, Send } from '@/components/icons/lucide';
 import type { TriageWorkflowProps } from './types';
 import { useHistoryEntries } from '@/lib/hooks/useHistoryEntries';
@@ -1017,7 +1016,7 @@ export function useTriageForm({
   // the same acuity. The per-patient page's own "Triage history" is a real
   // history across visits and keeps its plain newest-first order.
   const stationQueueRows = useMemo(
-    () => sortTriageQueueRows(selectTriageQueueRows(filteredHistory, { includeCompletedToday: showCompletedToday, todayIso: todayIso() })),
+    () => sortTriageQueueRows(selectTriageQueueRows(filteredHistory, { includeCompletedToday: showCompletedToday, todayIso: facilityToday() })),
     [filteredHistory, showCompletedToday],
   );
   const displayedTriageRows = lockedPatientId ? filteredHistory : stationQueueRows;

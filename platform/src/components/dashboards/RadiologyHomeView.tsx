@@ -36,9 +36,10 @@ import { useCancelLabOrder } from '@/components/lab/useCancelLabOrder';
 import { isImagingStudy } from '@/lib/clinical-flow/lab-catalog';
 import { patientDisplayName, patientAge, shortenPersonName } from '@/lib/patient-utils';
 import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
-import { localClockOf, localDayOf, toIsoDate } from '@/lib/date-utils';
+import { localClockOf } from '@/lib/date-utils';
 import { agoLabel, shortDayLabel } from '@/lib/station-time';
 import type { LabResultDoc, PatientDoc } from '@/lib/db-types';
+import { facilityDayOf, jubaDate } from '@/lib/time-juba';
 
 /** Opens the chart with the imaging report form up. */
 export function imagingReportHref(patientId: string): string {
@@ -77,7 +78,7 @@ export function assembleRadiologyWorklist({
 
   // One row per patient: their most pressing open study names the row, the
   // rest are a count. Reporting is per study, in the chart form.
-  const clockOf = (iso?: string) => (localDayOf(iso) === toIsoDate(now) ? localClockOf(iso) : shortDayLabel(iso));
+  const clockOf = (iso?: string) => (facilityDayOf(iso) === jubaDate(now) ? localClockOf(iso) : shortDayLabel(iso));
   const rows: WorklistPatient[] = [];
   const seen = new Set<string>();
   for (const study of open) {
@@ -120,8 +121,8 @@ export function assembleRadiologyWorklist({
   }
 
   // And anyone the desk routed here who has no open study yet.
-  const today = toIsoDate(now);
-  const clock = (iso?: string) => (localDayOf(iso) === today ? localClockOf(iso) : shortDayLabel(iso));
+  const today = jubaDate(now);
+  const clock = (iso?: string) => (facilityDayOf(iso) === today ? localClockOf(iso) : shortDayLabel(iso));
   const assignedToMe = patients.filter(p => p.stationAssignments?.radiology?.staffId === currentUser._id);
   for (const doc of assignedToMe) {
     if (seen.has(doc._id)) continue;
@@ -161,7 +162,7 @@ export function assembleRadiologyWorklist({
     title: shortenPersonName(s.patientName),
     subtitle: s.orderedBy ? `${s.testName} · ${s.orderedBy}` : s.testName,
     // The list's When column: the order's clock time, or its day if older.
-    meta: localDayOf(s.orderedAt) === toIsoDate(now) ? localClockOf(s.orderedAt) : localDayOf(s.orderedAt),
+    meta: facilityDayOf(s.orderedAt) === jubaDate(now) ? localClockOf(s.orderedAt) : facilityDayOf(s.orderedAt),
     tone: s.critical ? 'danger' : 'warning',
     href: imagingReportHref(s.patientId),
   });
@@ -169,7 +170,7 @@ export function assembleRadiologyWorklist({
   const toReport = open.filter(s => s.status === 'in_progress');
   const urgent = open.filter(s => s.critical);
   const reportedToday = studies.filter(s => s.status === 'completed'
-    && localDayOf(s.reportedAt || s.completedAt) === today);
+    && facilityDayOf(s.reportedAt || s.completedAt) === today);
 
   const outstanding: OutstandingItem[] = [
     { label: labels.urgent, count: urgent.length, tone: urgent.length ? 'danger' : 'neutral', entries: urgent.map(entry) },
@@ -201,7 +202,7 @@ export function assembleRadiologyWorklist({
   const activity: DayStatsItem[] = studies.map(s => {
     const reported = s.status === 'completed';
     const at = (reported && (s.reportedAt || s.completedAt)) || s.orderedAt;
-    return { date: localDayOf(at), time: localClockOf(at), series: (reported ? 1 : 0) as 0 | 1 };
+    return { date: facilityDayOf(at), time: localClockOf(at), series: (reported ? 1 : 0) as 0 | 1 };
   });
 
   return { patients: rows, outstanding, activity };

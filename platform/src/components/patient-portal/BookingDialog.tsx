@@ -22,6 +22,7 @@ import {
 } from './booking-logic';
 import { describeError } from '@/lib/user-facing-error';
 import { FormError } from '@/components/overlay/FormNotices';
+import { facilityToday } from '@/lib/time-juba';
 
 interface Reason { id: string; name: string; durationMinutes: number; description?: string }
 type Step = 'reason' | 'slots' | 'confirm' | 'done';
@@ -54,7 +55,7 @@ export default function BookingDialog({ patient, facilityName, onClose, onBooked
   onBooked: (appointment: AppointmentDoc) => void;
 }) {
   const { t } = useTranslation();
-  const today = useMemo(() => todayIso(), []);
+  const today = useMemo(() => facilityToday(), []);
   const [step, setStep] = useState<Step>('reason');
   const [reasons, setReasons] = useState<Reason[] | null>(null);
   const [facility, setFacility] = useState(facilityName);

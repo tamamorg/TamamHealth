@@ -6,6 +6,7 @@ import { usePouchLiveReload } from '@/lib/hooks/usePouchLiveReload';
 import { referralsDB, appointmentsDB, labResultsDB, prescriptionsDB, consultationProgressDB, patientTransfersDB, triageDB, encountersDB, messagesDB, conversationsDB } from '@/lib/db';
 import { isForViewer, isKindRelevantToRole } from '@/modules/communication/notifications/notification-scope';
 import type { NotificationKind } from '@/modules/communication/notifications/notification-scope';
+import { facilityToday } from '@/lib/time-juba';
 // The shapes moved to `notifications/types.ts` so a server module can name a
 // notification without importing a React hook. Re-exported so existing
 // consumers of this file keep working.
@@ -13,7 +14,6 @@ export type {
   NotificationType, NotificationSeverity, NotificationItem,
 } from '@/modules/communication/notifications/types';
 import type { NotificationItem } from '@/modules/communication/notifications/types';
-import { todayIso as isoToday } from '@/lib/date-utils';
 import {
   NOTIFICATION_READS_EVENT,
   getReadNotificationIds,
@@ -378,7 +378,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       }
     } catch { /* offline */ }
 
-    const todayIso = isoToday();
+    const todayIso = facilityToday();
     const RECENT_MS = 3 * 24 * 60 * 60 * 1000;
     const nowMsLocal = Date.now();
 

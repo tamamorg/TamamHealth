@@ -22,9 +22,10 @@ import { patientDisplayName, patientAge, shortenPersonName } from '@/lib/patient
 import type { AppointmentDoc, PatientDoc, TriageDoc, FollowUpDoc, ShiftHandoffDoc } from '@/lib/db-types';
 import type { AdmissionDoc } from '@/lib/db-types-ward';
 import type { RoomingWorklistEntry } from '@/lib/services/rooming-service';
-import { localClockOf, localDayOf, toIsoDate } from '@/lib/date-utils';
+import { localClockOf, localDayOf } from '@/lib/date-utils';
 import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
 import { APPOINTMENT_CLOSED_STATUSES } from '@/lib/appointment-status';
+import { isOnFacilityDay, jubaDate } from '@/lib/time-juba';
 
 // Same due-window as the doctor worklist's "Follow-ups due" rail (see
 // DoctorDashboardPage.tsx) — a community-health follow-up counts as "due" here
@@ -102,7 +103,7 @@ export function assembleNurseWorklist(input: NurseWorklistInput): NurseWorklistR
   } = input;
   const now = input.now ?? new Date();
   const nowMs = now.getTime();
-  const todayIso = toIsoDate(now);
+  const todayIso = jubaDate(now);
 
   const patientById = new Map(patients.map(p => [p._id, p]));
 
@@ -113,7 +114,7 @@ export function assembleNurseWorklist(input: NurseWorklistInput): NurseWorklistR
   {
     const rank = { RED: 3, YELLOW: 2, GREEN: 1 } as const;
     for (const tr of triages) {
-      if (!(tr.triagedAt || '').startsWith(todayIso)) continue;
+      if (!isOnFacilityDay(tr.triagedAt, todayIso)) continue;
       const prev = triagePriorityByPatient[tr.patientId];
       if (!prev || rank[tr.priority] > rank[prev]) triagePriorityByPatient[tr.patientId] = tr.priority;
     }

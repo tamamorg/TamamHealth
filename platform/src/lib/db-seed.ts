@@ -1,5 +1,5 @@
 import { localClockOf } from './date-utils';
-import { jubaDate } from './time-juba';
+import { jubaDate, isOnFacilityDay } from './time-juba';
 import { generateTempPassword, hashPassword } from '@/modules/identity/client';
 import { runWithoutEncryption } from './encrypted-db';
 
@@ -2197,7 +2197,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         { id: 'ca-demo-1', category: 'clinical_risk', message: 'Severe penicillin allergy (anaphylaxis) — avoid all beta-lactams.', priority: 'high', status: 'active', recordedByName: 'Dr. Achol Mayen Deng', recordedAt: now },
       ],
       directives: [
-        { id: 'dir-demo-1', type: 'informed_consent', description: 'General consent to treat — signed at registration.', startDate: now.slice(0, 10), status: 'active', recordedByName: 'Amira Juma Hassan', recordedAt: now },
+        { id: 'dir-demo-1', type: 'informed_consent', description: 'General consent to treat — signed at registration.', startDate: jubaDate(now), status: 'active', recordedByName: 'Amira Juma Hassan', recordedAt: now },
       ],
     },
     'pat-00040': {
@@ -2205,7 +2205,7 @@ async function seedDatabaseExclusive(): Promise<void> {
         { id: 'ca-demo-2', category: 'safety', message: 'High fall risk — assist with ambulation.', priority: 'high', status: 'active', recordedByName: 'Nurse Grace Achai Lual', recordedAt: now },
       ],
       directives: [
-        { id: 'dir-demo-2', type: 'privacy_consent', description: 'Patient prefers phone calls only — no SMS reminders.', startDate: now.slice(0, 10), status: 'active', recordedByName: 'Amira Juma Hassan', recordedAt: now },
+        { id: 'dir-demo-2', type: 'privacy_consent', description: 'Patient prefers phone calls only — no SMS reminders.', startDate: jubaDate(now), status: 'active', recordedByName: 'Amira Juma Hassan', recordedAt: now },
       ],
     },
   };
@@ -2223,12 +2223,12 @@ async function seedDatabaseExclusive(): Promise<void> {
     { id: 'alg-sample-7', substance: 'Shellfish', classification: 'food', criticality: 'mild', reaction: 'Nausea', status: 'active', recordedByName: 'CO Deng Mabior Kuol', recordedAt: now },
   ];
   const SAMPLE_DIRECTIVES: DirectiveEntry[] = [
-    { id: 'dir-sample-1', type: 'informed_consent', description: 'General consent to treat — signed at registration.', startDate: now.slice(0, 10), status: 'active', recordedByName: 'Amira Juma Hassan', recordedAt: now },
-    { id: 'dir-sample-2', type: 'privacy_consent', description: 'Consent to share records within the facility network.', startDate: now.slice(0, 10), status: 'active', recordedByName: 'Amira Juma Hassan', recordedAt: now },
-    { id: 'dir-sample-3', type: 'advance_directive', description: 'Do-not-resuscitate (DNR) on file — reviewed with next of kin.', startDate: now.slice(0, 10), status: 'active', recordedByName: 'Dr. James Wani Igga', recordedAt: now },
-    { id: 'dir-sample-4', type: 'release_of_information', description: 'Authorisation to release summary to referring clinic.', startDate: now.slice(0, 10), status: 'active', recordedByName: 'Amira Juma Hassan', recordedAt: now },
-    { id: 'dir-sample-5', type: 'abn_noncovered', description: 'Advance beneficiary notice — ultrasound not covered.', startDate: now.slice(0, 10), status: 'active', recordedByName: 'Amira Juma Hassan', recordedAt: now },
-    { id: 'dir-sample-6', type: 'privacy_consent', description: 'Patient prefers phone calls only — no SMS reminders.', startDate: now.slice(0, 10), status: 'active', recordedByName: 'Amira Juma Hassan', recordedAt: now },
+    { id: 'dir-sample-1', type: 'informed_consent', description: 'General consent to treat — signed at registration.', startDate: jubaDate(now), status: 'active', recordedByName: 'Amira Juma Hassan', recordedAt: now },
+    { id: 'dir-sample-2', type: 'privacy_consent', description: 'Consent to share records within the facility network.', startDate: jubaDate(now), status: 'active', recordedByName: 'Amira Juma Hassan', recordedAt: now },
+    { id: 'dir-sample-3', type: 'advance_directive', description: 'Do-not-resuscitate (DNR) on file — reviewed with next of kin.', startDate: jubaDate(now), status: 'active', recordedByName: 'Dr. James Wani Igga', recordedAt: now },
+    { id: 'dir-sample-4', type: 'release_of_information', description: 'Authorisation to release summary to referring clinic.', startDate: jubaDate(now), status: 'active', recordedByName: 'Amira Juma Hassan', recordedAt: now },
+    { id: 'dir-sample-5', type: 'abn_noncovered', description: 'Advance beneficiary notice — ultrasound not covered.', startDate: jubaDate(now), status: 'active', recordedByName: 'Amira Juma Hassan', recordedAt: now },
+    { id: 'dir-sample-6', type: 'privacy_consent', description: 'Patient prefers phone calls only — no SMS reminders.', startDate: jubaDate(now), status: 'active', recordedByName: 'Amira Juma Hassan', recordedAt: now },
   ];
   // Inject the shared sample set when a patient has none of its own. Demo-only.
   // Generic for the same reason as `safePut`: taking a bare index signature
@@ -2433,7 +2433,7 @@ async function seedDatabaseExclusive(): Promise<void> {
     {
       _id: 'mr-demo-draft-1', type: 'medical_record',
       patientId: 'pat-00003', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',
-      visitDate: daysAgo(1).slice(0, 10), consultedAt: daysAgo(1),
+      visitDate: dateAgo(1), consultedAt: daysAgo(1),
       visitType: 'outpatient', providerName: 'Dr. James Wani Igga', providerRole: 'Doctor',
       department: 'General Medicine', chiefComplaint: 'Persistent cough and fever',
       historyOfPresentIllness: 'Patient presents with 5-day history of productive cough and fever.',
@@ -2445,7 +2445,7 @@ async function seedDatabaseExclusive(): Promise<void> {
     {
       _id: 'mr-demo-draft-2', type: 'medical_record',
       patientId: 'pat-00007', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',
-      visitDate: daysAgo(2).slice(0, 10), consultedAt: daysAgo(2),
+      visitDate: dateAgo(2), consultedAt: daysAgo(2),
       visitType: 'outpatient', providerName: 'Dr. Achol Mayen Deng', providerRole: 'Doctor',
       department: 'Obstetrics & Gynaecology', chiefComplaint: 'Antenatal visit — 28 weeks',
       historyOfPresentIllness: 'Routine ANC visit. No complaints.',
@@ -2457,7 +2457,7 @@ async function seedDatabaseExclusive(): Promise<void> {
     {
       _id: 'mr-demo-draft-3', type: 'medical_record',
       patientId: 'pat-00015', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',
-      visitDate: daysAgo(0).slice(0, 10), consultedAt: daysAgo(0),
+      visitDate: dateAgo(0), consultedAt: daysAgo(0),
       visitType: 'emergency', providerName: 'Dr. James Wani Igga', providerRole: 'Doctor',
       department: 'Emergency', chiefComplaint: 'Chest pain — 2 hours',
       historyOfPresentIllness: 'Acute onset central chest pain radiating to left arm.',
@@ -2469,7 +2469,7 @@ async function seedDatabaseExclusive(): Promise<void> {
     {
       _id: 'mr-demo-cosign-1', type: 'medical_record',
       patientId: 'pat-00012', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',
-      visitDate: daysAgo(1).slice(0, 10), consultedAt: daysAgo(1),
+      visitDate: dateAgo(1), consultedAt: daysAgo(1),
       visitType: 'outpatient', providerName: 'Intern Kuol Deng Majok', providerRole: 'Medical Intern',
       department: 'General Medicine', chiefComplaint: 'HIV follow-up — CD4 review',
       historyOfPresentIllness: 'Patient on ARVs, doing well. CD4 trending up.',
@@ -2483,7 +2483,7 @@ async function seedDatabaseExclusive(): Promise<void> {
     {
       _id: 'mr-demo-cosign-2', type: 'medical_record',
       patientId: 'pat-00020', hospitalId: 'hosp-001', hospitalName: 'Juba Teaching Hospital',
-      visitDate: daysAgo(0).slice(0, 10), consultedAt: daysAgo(0),
+      visitDate: dateAgo(0), consultedAt: daysAgo(0),
       visitType: 'outpatient', providerName: 'Intern Aluel Bol Ring', providerRole: 'Medical Intern',
       department: 'Paediatrics', chiefComplaint: 'Malaria — follow-up day 3',
       historyOfPresentIllness: 'Child improving after Coartem. Fever resolved.',
@@ -2897,7 +2897,7 @@ async function seedDatabaseExclusive(): Promise<void> {
       if (a.appointmentDate === todayIso) curatedTodayIds.add(a.patientId);
     }
     for (const t of seedTriage) {
-      if ((t.triagedAt || '').slice(0, 10) === todayIso.slice(0, 10)) curatedTodayIds.add(t.patientId);
+      if (isOnFacilityDay(t.triagedAt, todayIso)) curatedTodayIds.add(t.patientId);
     }
 
     // Statuses that assert the patient has already arrived (or finished).
@@ -3590,7 +3590,7 @@ async function seedDatabaseExclusive(): Promise<void> {
     const facilityId = gp.registrationHospital || 'hosp-001';
     const gName = `${gp.firstName} ${gp.surname}`;
     const ts = daysAgo((_gi % 18) + 2);
-    const svcDate = ts.slice(0, 10);
+    const svcDate = jubaDate(ts);
     const enc = `enc-gen-${gp.id}`;
     const s1 = GEN_SERVICES[_gi % GEN_SERVICES.length];
     const s2 = GEN_SERVICES[(_gi + 2) % GEN_SERVICES.length];
