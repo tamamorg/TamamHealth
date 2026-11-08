@@ -231,7 +231,7 @@ export default function AppointmentEditModal({
     // A booking is checked in on its own day (Start a visit and the
     // dashboards' check-in slider refuse a later one the same way).
     if (checkingIn && appointment.appointmentDate !== jubaDate()) {
-      setSaveError(t('statusSlider.notToday', { date: appointment.appointmentDate }));
+      setSaveError(t('statusSlider.notToday', { date: appointment.appointmentDate, today: jubaDate() }));
       return;
     }
     // A check-in needs to know how the visit is paid before it opens.

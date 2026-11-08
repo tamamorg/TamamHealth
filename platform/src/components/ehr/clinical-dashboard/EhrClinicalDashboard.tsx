@@ -51,6 +51,7 @@ import StatusChangeSlider from '@/components/appointments/StatusChangeSlider';
 import { useVisitStatusChange } from '@/lib/hooks/useVisitStatusChange';
 import { addDays, addMonths, formatMonthTitle, startOfMonth } from '@/components/ehr/EhrMiniCalendar';
 import { parseIsoDate, toIsoDate } from '@/lib/date-utils';
+import { jubaDate } from '@/lib/time-juba';
 import type { DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import EhrVisitPopup, { EhrQueueMoveDialog } from '@/components/ehr/EhrVisitPopup';
 import EhrVisitActionDialog, { type VisitActionKind } from '@/components/ehr/EhrVisitActionDialog';
@@ -234,7 +235,8 @@ export default function EhrClinicalDashboard({
     const liveById = new Map(liveAppointments.map(a => [a._id, a]));
     return propAppointments.map(a => liveById.get(a._id) || a);
   }, [propAppointments, liveAppointments]);
-  const todayIso = useMemo(() => toIsoDate(new Date()), []);
+  // Facility day (same clock as check-in and the seeded bookings), not the device's.
+  const todayIso = useMemo(() => jubaDate(), []);
   // A station row (lab, pharmacy, radiology, nutrition) is the station's work
   // item, not the visit — but the patient's visit today still moves from it,
   // within the station's rungs (In progress, Completed). The newest live

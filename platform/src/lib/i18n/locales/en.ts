@@ -5666,7 +5666,7 @@ const en: TranslationMap = {
   'statusSlider.title': 'Change visit status',
   'statusSlider.titleGeneric': 'Change status',
   'statusSlider.titleAction': 'Confirm action',
-  'statusSlider.notToday': 'This booking is for {{date}}. Check the patient in on the day of the visit.',
+  'statusSlider.notToday': 'This booking is for {{date}}; today at the facility (Juba time) is {{today}}. Check the patient in on the day of the visit.',
   'statusSlider.from': 'Now',
   'statusSlider.to': 'Change to',
   'statusSlider.confirm': 'Set to {{status}}',
