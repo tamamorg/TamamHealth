@@ -18,6 +18,7 @@ import { useHandoffs } from '@/lib/hooks/useHandoffs';
 import ListSearch from './ListSearch';
 import { toIsoDate } from '@/lib/date-utils';
 import { printElementById } from '@/lib/safe-html';
+import { isDuplicateHandoff } from '@/lib/handoff-rules';
 
 // Per-patient SBAR + tasks captured in the editor (string form for the textarea).
 interface SbarDraft {
@@ -105,12 +106,7 @@ export default function HandoffWorkflow({
 
     // Guard against a duplicate sign-off for the same nurse + shiftDate that
     // hasn't been acknowledged yet (prevents orphaned duplicates).
-    if (
-      latest &&
-      latest.outgoingNurseId === currentUser._id &&
-      latest.shiftDate === todayKey &&
-      latest.status !== 'acknowledged'
-    ) {
+    if (isDuplicateHandoff(latest, currentUser._id, todayKey, shift)) {
       showToast(t('nurse.handoffDuplicateToast'), 'error');
       return;
     }

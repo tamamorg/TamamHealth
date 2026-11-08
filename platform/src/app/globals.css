@@ -6935,7 +6935,11 @@ button.ward-stat-chip:focus:not(:focus-visible) {
      minmax) so the Dashboard/Calendar toggle always matches the actual
      rail column width below it, including at breakpoints where --rail-col
      shrinks. */
-  grid-template-columns: var(--rail-col, minmax(230px, 260px)) minmax(0, 1fr) max-content;
+  /* The third column takes the actions at their natural width up to 62% of
+     the header and wraps beyond that: with `max-content` a long action row
+     (the data-entry board has a dozen) took the whole header and squeezed the
+     greeting to zero width, so it painted over the buttons. */
+  grid-template-columns: var(--rail-col, minmax(230px, 260px)) minmax(0, 1fr) fit-content(62%);
   /* Centre the three columns so the Check-in toggle, the "Welcome, {name}"
      greeting, and the action buttons all sit on one line. (This header renders
      only the single-line greeting — no subtitle — so there's no tall middle
@@ -6994,7 +6998,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .ehr-care-dashboard .ehr-schedule-actions {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .ehr-care-dashboard .ehr-schedule-actions {
@@ -16897,6 +16901,15 @@ span:has(> svg:only-child) {
   gap: 12px;
   padding: 16px;
   background: var(--bg-card-solid);
+}
+
+/* The body is a flex column that scrolls. Its sections clip their own overflow,
+   so with the default flex-shrink they were squeezed to a fraction of their
+   content (the SBAR form and the sign-off button were cut off and the body
+   never scrolled). Keep every section its natural height and let the body
+   scroll. */
+.ehr-handoff-body > * {
+  flex-shrink: 0;
 }
 
 .ehr-handoff-stats {

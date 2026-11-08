@@ -26,29 +26,29 @@ import { getPrintIdentity, pageFooterCss, printDate } from './print-identity';
 import { escapeHtml, openIsolatedHtmlWindow } from './safe-html';
 
 const CERT_CSS = `
-  body { font-size:8.8pt; line-height:1.35; }
-  .cert { border:1.5pt solid var(--ink); outline:.5pt solid var(--ink); outline-offset:1mm; padding:5mm 6.5mm 4mm; }
-  .cert-head { text-align:center; padding-bottom:2.5mm; border-bottom:.75pt solid var(--line); break-inside:avoid; }
-  .cert-logo { width:9mm; height:9mm; object-fit:contain; display:block; margin:0 auto 1.2mm; }
+  body { font-size:8.2pt; line-height:1.28; }
+  .cert { border:1.5pt solid var(--ink); outline:.5pt solid var(--ink); outline-offset:1mm; padding:3.5mm 6mm 3mm; }
+  .cert-head { text-align:center; padding-bottom:1.5mm; border-bottom:.75pt solid var(--line); break-inside:avoid; }
+  .cert-logo { width:8mm; height:8mm; object-fit:contain; display:block; margin:0 auto .8mm; }
   .cert-country { margin:0; font-size:11pt; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
   .cert-ministry { margin:.6mm 0 0; font-size:10pt; font-weight:700; }
   .cert-facility { margin:.6mm 0 0; font-size:9pt; color:var(--muted); }
-  .cert-title { margin:2.5mm 0 0; font-size:15pt; font-weight:700; letter-spacing:.02em; }
+  .cert-title { margin:1.5mm 0 0; font-size:14pt; font-weight:700; letter-spacing:.02em; }
   .cert-subtitle { font-size:8pt; color:var(--muted); text-align:center; }
-  .cert-ids { display:flex; justify-content:space-between; align-items:baseline; gap:6mm; margin-top:2.5mm; font-size:9pt; text-align:left; }
+  .cert-ids { display:flex; justify-content:space-between; align-items:baseline; gap:6mm; margin-top:1.5mm; font-size:9pt; text-align:left; }
   .cert-ids strong { font-variant-numeric:tabular-nums; }
   .cert-statement { margin:2.5mm 0 0; font-size:9pt; }
-  .cert-section { margin-top:3mm; break-inside:avoid; }
-  .cert-section h3 { margin:0 0 1.5mm; padding-bottom:.8mm; font-size:10pt; font-weight:700; border-bottom:.75pt solid var(--line); }
+  .cert-section { margin-top:2mm; break-inside:avoid; }
+  .cert-section h3 { margin:0 0 1mm; padding-bottom:.8mm; font-size:9.5pt; font-weight:700; border-bottom:.75pt solid var(--line); }
   .cert-section h3 small { font-weight:400; color:var(--muted); font-size:7.5pt; margin-left:2mm; }
-  .cert-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:1.6mm 6mm; }
+  .cert-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:1mm 6mm; }
   .cert-grid.two { grid-template-columns:repeat(2, minmax(0, 1fr)); }
   .cert-grid.four { grid-template-columns:repeat(4, minmax(0, 1fr)); }
   .cert-grid .span2 { grid-column:span 2; }
   .cert-grid .wide { grid-column:1 / -1; }
-  .blank { display:block; min-height:4.2mm; border-bottom:.5pt solid var(--ink); }
+  .blank { display:block; min-height:3.4mm; border-bottom:.5pt solid var(--ink); }
   .cause { margin:0 0 2mm; font-size:8.8pt; }
-  .cause th, .cause td { padding:1.2mm 2mm; }
+  .cause th, .cause td { padding:.8mm 2mm; }
   .cause th:first-child, .cause td:first-child { width:9mm; text-align:center; }
   .cause th.code, .cause td.code { width:20mm; font-variant-numeric:tabular-nums; }
   .cause th.interval, .cause td.interval { width:50mm; }
@@ -58,14 +58,14 @@ const CERT_CSS = `
   .opts { display:flex; flex-wrap:wrap; gap:1.6mm 5mm; margin:0; padding:0; list-style:none; font-size:8.5pt; }
   .opts li { margin:0; display:inline-flex; align-items:center; gap:1.4mm; }
   .box { display:inline-flex; align-items:center; justify-content:center; width:3.2mm; height:3.2mm; border:.75pt solid var(--ink); font-size:7pt; font-weight:700; line-height:1; }
-  .q { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:1mm 6mm; align-items:center; margin:0 0 1mm; font-size:8.5pt; }
+  .q { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:1mm 6mm; align-items:center; margin:0 0 .6mm; font-size:8.5pt; }
   .hint { color:var(--muted); font-size:7.5pt; margin:0 0 1.2mm; }
-  .cert-sign { display:grid; grid-template-columns:minmax(0, 1fr) 38mm; gap:8mm; margin-top:3mm; break-inside:avoid; }
+  .cert-sign { display:grid; grid-template-columns:minmax(0, 1fr) 38mm; gap:8mm; margin-top:2mm; break-inside:avoid; }
   .cert-sign .lines { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:3mm 8mm; }
-  .cert-sign .line { padding-top:5mm; border-bottom:.75pt solid var(--ink); font-weight:700; }
+  .cert-sign .line { padding-top:3mm; border-bottom:.75pt solid var(--ink); font-weight:700; }
   .cert-sign .line-label { margin-top:1mm; color:var(--muted); font-size:7.5pt; }
-  .stamp { height:24mm; border:.75pt dashed var(--muted); display:flex; align-items:flex-end; justify-content:center; padding-bottom:2mm; color:var(--muted); font-size:7.5pt; }
-  .cert-foot { margin-top:3mm; padding-top:1.8mm; border-top:.75pt solid var(--line); font-size:7.5pt; break-inside:avoid; }
+  .stamp { height:16mm; border:.75pt dashed var(--muted); display:flex; align-items:flex-end; justify-content:center; padding-bottom:2mm; color:var(--muted); font-size:7.5pt; }
+  .cert-foot { margin-top:2mm; padding-top:1.2mm; border-top:.75pt solid var(--line); font-size:7.5pt; break-inside:avoid; }
   .cert-foot strong { display:block; margin-bottom:.8mm; }
 `;
 
@@ -335,7 +335,7 @@ export function buildDeathCertificateHtml(d: DeathRegistrationDoc, issued: Date 
     <h3>Fetal or infant death</h3>
     ${yesNo('Multiple pregnancy?')}
     ${yesNo('Stillborn?')}
-    <div class="cert-grid">
+    <div class="cert-grid four">
       ${field('If death within 24 h, hours survived')}
       ${field('Birth weight (grams)')}
       ${field('Completed weeks of pregnancy')}

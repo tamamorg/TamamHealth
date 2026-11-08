@@ -274,6 +274,13 @@
      button crowd the rail column it shares a track with. */
   .ehr-label-full { display: none !important; }
   .ehr-label-compact { display: inline !important; }
+  /* A board with a long action row (data entry lists a dozen) cannot compress
+     onto one line: the `auto` column took all of it and squeezed the greeting to
+     nothing. Cap the column and let only that case wrap. */
+  .ehr-care-dashboard .ehr-schedule-header {
+    grid-template-columns: var(--tablet-rail) minmax(0, 1fr) fit-content(60%) !important;
+  }
+  .ehr-care-dashboard .ehr-schedule-header .ehr-schedule-actions { flex-wrap: wrap !important; }
   .ehr-clinical-dashboard-header-main { flex-direction: row !important; align-items: center !important; }
   .ehr-clinical-dashboard-header .ehr-schedule-actions { display: flex !important; }
   .ehr-center-panel > .ehr-clinical-strip { display: grid !important; }
@@ -645,7 +652,7 @@
   }
   .ehr-clinical-dashboard-header > .ehr-clinical-dashboard-header-main { order: 0; flex: 1 1 200px; min-width: 0; }
   .ehr-clinical-dashboard-header > .ehr-clinical-dashboard-tabs { order: 1; flex: 0 0 auto; }
-  .ehr-clinical-dashboard-header > .ehr-schedule-actions { order: 2; flex: 0 0 auto; }
+  .ehr-clinical-dashboard-header > .ehr-schedule-actions { order: 2; flex: 0 1 auto; min-width: 0; max-width: 100%; flex-wrap: wrap; }
   .ehr-clinical-dashboard-tabs .ehr-segmented-single { display: inline-flex !important; width: auto !important; }
   .ehr-clinical-dashboard-tabs .ehr-segmented-single > button {
     width: auto !important;

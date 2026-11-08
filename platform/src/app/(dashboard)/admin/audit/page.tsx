@@ -23,7 +23,7 @@ import { FilterSelect } from '@/components/filters';
 import { X } from '@/components/icons/lucide';
 import { getRiskResolutions, indexResolutions } from '@/lib/services/risk-resolution-service';
 import { reopenRisk, resolveRisk } from '@/lib/services/risk-resolution-client';
-import { SaTable, classifyAuditRisk, formatWhen, type SaSeverity } from '@/components/admin/sa-ui';
+import { SaTable, classifyAuditRisk, formatAuditAction, formatWhen, type SaSeverity } from '@/components/admin/sa-ui';
 import { SadbPage, SadbCard, SadbChip, SadbSearch, SadbKvRow, SEVERITY_CHIP } from '@/components/admin/sadb-ui';
 import { todayIso } from '@/lib/date-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
@@ -186,7 +186,7 @@ export default function AuditLogsPage() {
         if (!byId && !byName) return false;
       }
       if (q) {
-        const haystack = `${log.action} ${log.username || ''} ${orgNameForLog(log)} ${log.details || ''}`.toLowerCase();
+        const haystack = `${log.action} ${formatAuditAction(log.action)} ${log.username || ''} ${orgNameForLog(log)} ${log.details || ''}`.toLowerCase();
         if (!haystack.includes(q)) return false;
       }
       return true;
@@ -317,7 +317,7 @@ export default function AuditLogsPage() {
               <tr
                 key={log._id}
                 tabIndex={0}
-                aria-label={t('adminMgmt.openAuditEntry', { action: log.action })}
+                aria-label={t('adminMgmt.openAuditEntry', { action: formatAuditAction(log.action) })}
                 style={{ cursor: 'pointer' }}
                 onClick={() => setSelected({ log, risk })}
                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected({ log, risk }); } }}
@@ -330,7 +330,7 @@ export default function AuditLogsPage() {
                 </td>
                 <td>{formatWhen(log.createdAt)}</td>
                 <td>{orgNameForLog(log)}</td>
-                <td>{log.action}</td>
+                <td>{formatAuditAction(log.action)}</td>
                 <td>{log.details || '—'}</td>
                 <td><SadbChip tone={log.success ? 'green' : 'red'}>{log.success ? t('admin.statusSuccess') : t('ui.failure')}</SadbChip></td>
                 <td><SadbChip tone={SEVERITY_CHIP[risk]}>{t(SEVERITY_KEY[risk])}</SadbChip></td>
@@ -470,7 +470,7 @@ function AuditEntryDialog({
           opened it; stop them here so the row does not re-open the entry. */}
       <div style={{ display: 'contents' }} {...stopsClickPropagation}>
       <DialogFrame>
-        <DialogHeader titleId="audit-entry-title" title={log.action} description={when} onClose={onClose} />
+        <DialogHeader titleId="audit-entry-title" title={formatAuditAction(log.action)} description={when} onClose={onClose} />
         <DialogBody>
         <div className="flex items-center flex-wrap gap-2" style={{ margin: '0 0 16px' }}>
           {log.success ? <SadbChip tone="green">{t('admin.statusSuccess')}</SadbChip> : <SadbChip tone="red">{t('ui.failure')}</SadbChip>}
