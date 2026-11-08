@@ -1525,7 +1525,7 @@ const en: TranslationMap = {
   'appointments.statusRequested': 'Requested',
   'appointments.statusRescheduled': 'Rescheduled',
   'appointments.statusScheduled': 'Scheduled',
-  'appointments.statusTriaged': 'In Progress',
+  'appointments.statusTriaged': 'Triage Complete',
   'appointments.startConsultation': 'Start Consultation',
   'appointments.startTriage': 'Start Triage',
   'appointments.toastBooked': 'Appointment booked.',

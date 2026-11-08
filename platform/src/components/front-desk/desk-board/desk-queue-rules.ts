@@ -5,6 +5,7 @@ import { patientFullName, patientAgeLabel } from '@/lib/patient-utils';
 import { appointmentTriage } from '@/lib/clinical/triage-display';
 import { buildQueueFromTriage, STAGE_LABELS, deriveAppointmentWait } from '@/lib/services/patient-queue-service';
 import { suggestDepartment, splitDateTime, appointmentMoment, isoDateKey, patientFacilityName } from '@/lib/front-desk-utils';
+import { resolveVisitDisplay, type VisitDisplayInput } from '@/lib/visit-display-status';
 import { resolveOperationalVisitState } from '@/lib/clinical-flow/visit-state';
 import { findActiveAppointmentForPatient } from '@/lib/appointment-workflow';
 import type { QueueItem } from './desk-types';
@@ -14,6 +15,12 @@ import type { QueueItem } from './desk-types';
  * encounters, ordered by acuity+wait score. Moved verbatim from page.tsx's
  * `queue` memo; the memo (and its dependency list) stays in FrontDeskBoard.
  */
+/** The shared tab + colour tone for a queue item (visit-display-status.ts). */
+function visitDisplayFields(input: VisitDisplayInput) {
+  const d = resolveVisitDisplay(input);
+  return { visitTab: d.tab, visitTone: d.rowTone };
+}
+
 export function buildDeskQueue({
   patients, hospitalName, viewingToday, encounters, today, boardDate, triages,
   todaysAppointments, nursingReviewIds, queueNowMs,
@@ -101,11 +108,13 @@ export function buildDeskQueue({
     const checkoutEncounter = checkoutEncounterByPatient.get(entry.patientId);
     const isCheckout = Boolean(checkoutEncounter);
     const room = triageDoc?.assignedRoom;
-    // A clinician has taken the patient when the triage records a handoff
-    // (entry.assignedToId) or was marked seen — the same "in service"
-    // signal the doctor/nurse boards derive from this engine, so reception
-    // can tell who is actually with a clinician vs still queued.
-    const inConsult = Boolean(entry.assignedToId) || triageDoc?.status === 'seen';
+    // A clinician has taken the patient when the handoff was ACCEPTED
+    // (acknowledged / in consultation) or the triage was marked seen. A
+    // handoff that is merely assigned stays Waiting: ownership begins when
+    // care begins, not when a name is put on the row.
+    const inConsult = triageDoc?.handoffStatus === 'acknowledged'
+      || triageDoc?.handoffStatus === 'in_consultation'
+      || triageDoc?.status === 'seen';
     // The booking this walk-in's visit is threaded onto (check-in creates one
     // for every arrival). Its rung is the authority on where the patient
     // actually is; the triage record only proves an assessment exists, which
@@ -124,6 +133,12 @@ export function buildDeskQueue({
     items.push({
       id: `triage-${entry.triageId}`,
       visitStatus: triageVisitStatus,
+      ...visitDisplayFields({
+        appointmentStatus: triageVisitStatus,
+        encounterStatus: activeEncounter?.status,
+        nursingReviewOpen: !!activeEncounter && nursingReviewIds.has(activeEncounter._id),
+        inService: inConsult,
+      }),
       patientId: entry.patientId,
       patientName: entry.patientName,
       type: 'walk-in',
@@ -190,6 +205,11 @@ export function buildDeskQueue({
     items.push({
       id: `appt-${a._id}`,
       visitStatus: a.status,
+      ...visitDisplayFields({
+        appointmentStatus: a.status,
+        encounterStatus: CLOSED_UNSEEN.has(a.status) ? null : activeEncounter?.status,
+        nursingReviewOpen: !!activeEncounter && nursingReviewIds.has(activeEncounter._id),
+      }),
       patientId: a.patientId,
       patientName: a.patientName,
       type: 'appointment',
@@ -233,10 +253,12 @@ export function buildDeskQueue({
     const patient = patientById.get(enc.patientId);
     items.push({
       id: `encounter-${enc._id}`,
-      // Clinical work is done but the desk has not closed them out, so the
-      // patient is still in the building — In Office, carrying the Checkout
-      // action. Finished means checked out, which is what that action does.
+      // Clinical work is done but the desk has not closed them out: the
+      // visit files under Finished (Ready for discharge) and carries the
+      // Checkout action there; checkout itself is what completes it.
       visitStatus: 'in_progress',
+      // Provider is done; the desk is closing the visit out: Ready for discharge.
+      ...visitDisplayFields({ appointmentStatus: 'in_progress', encounterStatus: enc.status }),
       patientId: enc.patientId,
       patientName: enc.patientName || (patient ? patientFullName(patient) : 'Patient'),
       type: 'walk-in',

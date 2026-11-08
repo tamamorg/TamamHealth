@@ -610,6 +610,27 @@
   --semantic-inactive-bg: var(--color-slate-50);
   --semantic-inactive-border: var(--color-slate-150);
 
+  /* Visit-status colours, by meaning (owner key 2026-11-07): slate = idle,
+     blue = queue action needed, purple = active encounter, green = nothing
+     left to do, red = cancelled / no-show. Purple is the one hue the nine
+     palette colours lack; it is the chart's violet, used only for "an
+     encounter is in progress". Ink >= 4.5:1 on its wash, bar >= 3:1. */
+  --visit-slate: var(--semantic-neutral);
+  --visit-slate-bg: var(--semantic-neutral-bg);
+  --visit-slate-bar: var(--color-slate-600);
+  --visit-blue: var(--semantic-active);
+  --visit-blue-bg: var(--semantic-active-bg);
+  --visit-blue-bar: var(--tm-dodger);
+  --visit-purple: #5B2D9E;
+  --visit-purple-bg: #EFE9FA;
+  --visit-purple-bar: #6D45C2;
+  --visit-green: var(--semantic-success);
+  --visit-green-bg: var(--semantic-success-bg);
+  --visit-green-bar: var(--color-success-500);
+  --visit-red: var(--semantic-danger);
+  --visit-red-bg: var(--semantic-danger-bg);
+  --visit-red-bar: var(--color-danger-500);
+
   /* ── Category hues ── a second axis, orthogonal to status.
      Status says how something is GOING (success/warning/danger/info); a
      category says what KIND of thing it is, carries no urgency, and never
@@ -910,6 +931,10 @@
   --semantic-inactive: var(--color-slate-600);
   --semantic-inactive-bg: var(--color-slate-50);
   --semantic-inactive-border: var(--color-slate-150);
+
+  --visit-purple: #CDBBF3;
+  --visit-purple-bg: color-mix(in srgb, #8B6AD6 20%, var(--tm-ink));
+  --visit-purple-bar: #9B7FE0;
 
   --category-clinical: var(--brand-300);
   --category-clinical-bg: color-mix(in srgb, var(--tm-deep) 35%, var(--tm-ink));
@@ -36928,3 +36953,62 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
   details[open]::details-content { block-size: auto; }
 }
 
+/* ── Visit status colours, by meaning ─────────────────────────────────────────
+   One key for every worklist (doctor, front desk, nurse, station): slate =
+   idle, blue = queue action needed, purple = active encounter, green = zero
+   tasks left, red = cancelled / no-show. The tone comes from
+   src/lib/visit-display-status.ts. The pill keeps its label (colour only
+   reinforces) and the row takes a left accent bar plus a faint wash.
+   status-tone-* are the only classes that carry the visit colours, so the
+   older generic status-* classes keep their own meaning in the lab, pharmacy
+   and patient lists. Doubled class beats the duplicates above. */
+.appointment-status-pill.appointment-status-pill.status-tone-slate,
+.ehr-care-row-status .status-tone-slate {
+  border-color: var(--visit-slate-bar);
+  background: var(--visit-slate-bg);
+  color: var(--visit-slate);
+}
+.appointment-status-pill.appointment-status-pill.status-tone-blue,
+.ehr-care-row-status .status-tone-blue {
+  border-color: var(--visit-blue-bar);
+  background: var(--visit-blue-bg);
+  color: var(--visit-blue);
+}
+.appointment-status-pill.appointment-status-pill.status-tone-purple,
+.ehr-care-row-status .status-tone-purple {
+  border-color: var(--visit-purple-bar);
+  background: var(--visit-purple-bg);
+  color: var(--visit-purple);
+}
+.appointment-status-pill.appointment-status-pill.status-tone-green,
+.ehr-care-row-status .status-tone-green {
+  border-color: var(--visit-green-bar);
+  background: var(--visit-green-bg);
+  color: var(--visit-green);
+}
+.appointment-status-pill.appointment-status-pill.status-tone-red,
+.ehr-care-row-status .status-tone-red {
+  border-color: var(--visit-red-bar);
+  background: var(--visit-red-bg);
+  color: var(--visit-red);
+}
+/* The row: a 3px left bar (a pseudo-element, because the flat-design reset
+   strips box-shadow with !important) and a faint wash. The wash needs
+   !important to beat the row's own `background: initial !important`. */
+.ehr-appointment-row.appointment-card-row[data-visit-tone] { position: relative; }
+.ehr-appointment-row.appointment-card-row[data-visit-tone]::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--visit-bar);
+  pointer-events: none;
+}
+.ehr-appointment-row.appointment-card-row[data-visit-tone] {
+  background-color: color-mix(in srgb, var(--visit-bar) 5%, var(--bg-card-solid, transparent)) !important;
+}
+.ehr-appointment-row.appointment-card-row[data-visit-tone="scheduled"] { --visit-bar: var(--visit-slate-bar); }
+.ehr-appointment-row.appointment-card-row[data-visit-tone="ready"] { --visit-bar: var(--visit-blue-bar); }
+.ehr-appointment-row.appointment-card-row[data-visit-tone="active"] { --visit-bar: var(--visit-purple-bar); }
+.ehr-appointment-row.appointment-card-row[data-visit-tone="done"] { --visit-bar: var(--visit-green-bar); }
+.ehr-appointment-row.appointment-card-row[data-visit-tone="danger"] { --visit-bar: var(--visit-red-bar); }

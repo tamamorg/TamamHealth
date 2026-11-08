@@ -78,8 +78,9 @@ describe('status vocabulary is self-consistent', () => {
     // telling reception the visit was open when it was still theirs to open.
     for (const s of ALL) {
       const laneLabel = APPOINTMENT_STATUS_GROUP_LABELS[appointmentStatusGroup(s)];
+      // A checked-in patient is still queued: Waiting until care begins.
       if (APPOINTMENT_STATUS_LABELS[s] === 'Checked In') {
-        expect(laneLabel).toBe('In service');
+        expect(laneLabel).toBe('Waiting');
       }
     }
     expect(APPOINTMENT_STATUS_LABELS.arrived).toBe('Arrived');
@@ -109,7 +110,8 @@ describe('status vocabulary is self-consistent', () => {
     // …but "Checked In" must not sweep up a row whose pill reads "Arrived".
     expect(appointmentMatchesStatusFilter('arrived', 'checked_in')).toBe(false);
     expect(appointmentMatchesStatusFilter('arrived', 'arrived')).toBe(true);
-    expect(appointmentMatchesStatusFilter('triaged', 'in_progress')).toBe(true);
+    // Triage Complete (blue) is its own word now, not In Progress (purple).
+    expect(appointmentMatchesStatusFilter('triaged', 'in_progress')).toBe(false);
   });
 
   test('every status counts into the bucket its filter selects', () => {

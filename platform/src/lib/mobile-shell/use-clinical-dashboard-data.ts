@@ -8,9 +8,11 @@ import { computeSignCount, type SigningInboxCounts } from '@/lib/hooks/signing-i
 import { usePhoneNotesInbox } from '@/lib/hooks/usePhoneNotesInbox';
 import { useReferrals } from '@/lib/hooks/useReferrals';
 import { useLabResults } from '@/lib/hooks/useLabResults';
-import type { AppointmentDoc, LabResultDoc, PhoneNoteDoc, ReferralDoc } from '@/lib/db-types';
+import type { AppointmentDoc, EncounterDoc, LabResultDoc, PhoneNoteDoc, ReferralDoc } from '@/lib/db-types';
 import type { MobileDashboardData, MobileLane, MobileOutstandingItem } from './dashboard-strategy';
-import { appointmentStatusGroup, APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
+import { APPOINTMENT_STATUS_GROUP_LABELS } from '@/lib/appointment-status';
+import { resolveVisitDisplay } from '@/lib/visit-display-status';
+import { useEncounters } from '@/lib/hooks/useEncounters';
 import { appointmentsVisibleToUser } from '@/lib/appointment-visibility';
 
 function todayIso(): string {
@@ -34,11 +36,23 @@ function todayIso(): string {
  * Pure and exported so the lane split is directly testable without rendering
  * the mobile shell.
  */
-export function computeClinicalLanes(appointments: AppointmentDoc[], today: string): MobileLane<AppointmentDoc>[] {
+export function computeClinicalLanes(
+  appointments: AppointmentDoc[],
+  today: string,
+  /** Encounters, when known: the encounter stage outranks the appointment
+   *  status (resolveVisitDisplay), exactly as the desktop boards file a row. */
+  encounters: Pick<EncounterDoc, 'appointmentId' | 'status'>[] = [],
+): MobileLane<AppointmentDoc>[] {
   const todays = appointments.filter((a) => a.appointmentDate === today);
-  const scheduled = todays.filter((a) => appointmentStatusGroup(a.status) === 'scheduled');
-  const inOffice = todays.filter((a) => appointmentStatusGroup(a.status) === 'in_office');
-  const finished = todays.filter((a) => appointmentStatusGroup(a.status) === 'finished');
+  const encounterByAppointment = new Map<string, Pick<EncounterDoc, 'appointmentId' | 'status'>>();
+  for (const e of encounters) if (e.appointmentId) encounterByAppointment.set(e.appointmentId, e);
+  const tabOf = (a: AppointmentDoc) => resolveVisitDisplay({
+    appointmentStatus: a.status,
+    encounterStatus: encounterByAppointment.get(a._id)?.status,
+  }).tab;
+  const scheduled = todays.filter((a) => tabOf(a) === 'scheduled');
+  const inOffice = todays.filter((a) => tabOf(a) === 'in_office');
+  const finished = todays.filter((a) => tabOf(a) === 'finished');
   return [
     { key: 'scheduled', label: `${scheduled.length} ${APPOINTMENT_STATUS_GROUP_LABELS.scheduled}`, tone: 'info', items: scheduled },
     { key: 'in_office', label: `${inOffice.length} ${APPOINTMENT_STATUS_GROUP_LABELS.in_office}`, tone: 'warning', items: inOffice },
@@ -97,12 +111,13 @@ export function useClinicalDashboardData(): MobileDashboardData {
   const { notes: phoneNotes, loading: phoneLoading } = usePhoneNotesInbox();
   const { referrals, loading: referralsLoading } = useReferrals();
   const { results: labResults, loading: labLoading } = useLabResults();
+  const { encounters } = useEncounters();
 
   const today = todayIso();
 
   const lanes = useMemo<MobileLane<AppointmentDoc>[]>(
-    () => computeClinicalLanes(appointmentsVisibleToUser(appointments, currentUser), today),
-    [appointments, currentUser, today],
+    () => computeClinicalLanes(appointmentsVisibleToUser(appointments, currentUser), today, encounters),
+    [appointments, currentUser, today, encounters],
   );
 
   const outstanding = useMemo<MobileOutstandingItem[]>(() => computeClinicalOutstanding({

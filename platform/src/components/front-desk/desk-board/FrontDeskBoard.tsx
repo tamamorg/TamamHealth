@@ -11,7 +11,7 @@ import { useAppointments } from '@/lib/hooks/useAppointments';
 import { useTriage } from '@/lib/hooks/useTriage';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { AppointmentDoc, AppointmentStatus, EncounterDoc, TriageDoc } from '@/lib/db-types';
-import { APPOINTMENT_STATUS_TONES, APPOINTMENT_PENDING_STATUSES, appointmentStatusOptionsForRole, appointmentStatusGroup, APPOINTMENT_STATUS_GROUP_LABELS, type AppointmentStatusGroup } from '@/lib/appointment-status';
+import { APPOINTMENT_STATUS_TONES, APPOINTMENT_PENDING_STATUSES, appointmentStatusOptionsForRole, APPOINTMENT_STATUS_GROUP_LABELS, type AppointmentStatusGroup } from '@/lib/appointment-status';
 import { formatClockTime } from '@/lib/format-utils';
 import { patientRegisteredAt, patientFullName } from '@/lib/patient-utils';
 import { type AssignDoctorTarget } from '@/components/AssignDoctorModal';
@@ -226,7 +226,7 @@ export default function FrontDeskBoard() {
 
   /**
    * The queue split into the three lanes, by the SHARED rule
-   * (`appointmentStatusGroup`) every role dashboard files a visit under —
+   * (`resolveVisitDisplay`) every role dashboard files a visit under —
    * never by the coarse WAITING/DONE field, which put a booking still on
    * "Scheduled" into In Office because a triage record happened to exist.
    *
@@ -238,7 +238,7 @@ export default function FrontDeskBoard() {
     const lanes: Record<AppointmentStatusGroup, QueueItem[]> = {
       scheduled: [], in_office: [], finished: [],
     };
-    for (const item of boardQueue) lanes[appointmentStatusGroup(item.visitStatus)].push(item);
+    for (const item of boardQueue) lanes[item.visitTab].push(item);
     return lanes;
   }, [boardQueue]);
 
