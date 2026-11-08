@@ -22,7 +22,7 @@ import {
 } from '@/lib/services/drug-interaction-service';
 import type { PrescriptionDoc } from '@/lib/db-types';
 import type { FefoPlan } from '@/lib/services/dispensing-service';
-import { courseQuantity } from './pharmacy-workflow-types';
+import { courseQuantity, isFilled } from './pharmacy-workflow-types';
 import { describeError } from '@/lib/user-facing-error';
 import { paymentHoldFor } from '@/lib/pharmacy-workflow';
 import { formatMoney } from '@/lib/format-utils';
@@ -89,8 +89,10 @@ export function usePharmacyWorkflow(
     clarificationNote: rx.dispenseNote || '',
   });
 
+  /** What is still owed on the course: a second visit after a partial fill hands over the balance. */
+  const remaining = Math.max(0, courseQuantity(rx) - (rx.quantityDispensed || 0));
   const [dispenseDraft, setDispenseDraft] = useState<DispenseDraft>({
-    quantity: rx.quantityDispensed || courseQuantity(rx),
+    quantity: isFilled(stage) ? (rx.quantityDispensed || courseQuantity(rx)) : (remaining || courseQuantity(rx)),
     witnessId: '',
     witnessName: '',
     allowPartial: false,
@@ -172,6 +174,8 @@ export function usePharmacyWorkflow(
 
   /** True when the shelf cannot cover the quantity being handed over. */
   const short = (stock.plan?.shortfall ?? 0) > 0;
+  /** Nothing dispensable on the shelf at all: a partial fill cannot help. */
+  const outOfStock = !stock.loading && stock.plan !== null && stock.plan.available <= 0;
   /** A controlled batch in the allocation needs a second signature. */
   const needsWitness = useMemo(
     () => (stock.plan?.allocations || []).some(a => !!a.batch.controlledSchedule),
@@ -217,6 +221,7 @@ export function usePharmacyWorkflow(
   const fill = useCallback(() => run(async () => {
     if (hasSafetySignal && !reviewDraft.checksAcknowledged) throw new Error('rxFlow.errChecksUnread');
     if (dispenseDraft.quantity <= 0) throw new Error('rxFlow.errQuantity');
+    if (dispenseDraft.quantity > remaining) throw dispenseStop(t('rxFlow.errOverCourse', { remaining }));
     // Nothing on the shelf: say so plainly. Filling short cannot help, and
     // the server's own stock gate would only refuse it after the hops below.
     if (stock.plan && stock.plan.available <= 0) throw dispenseStop(t('rxFlow.errNotInStock', { medication: rx.medication }));
@@ -261,7 +266,7 @@ export function usePharmacyWorkflow(
       allergyReview: dispenseDraft.allergyReview.trim() || undefined,
       clearForDispensing: true,
     });
-  }), [advance, currentUser, dispense, dispenseDraft, hasSafetySignal, needsWitness, reviewDraft.checksAcknowledged, rx, run, scope, short, stage, stock.plan, t]);
+  }), [advance, currentUser, dispense, dispenseDraft, hasSafetySignal, remaining, needsWitness, reviewDraft.checksAcknowledged, rx, run, scope, short, stage, stock.plan, t]);
 
   /** Record that the shelf could not cover it — the script stays active. */
   const recordStockOut = useCallback(() => run(async () => {
@@ -307,7 +312,8 @@ export function usePharmacyWorkflow(
     error,
     lastError,
     safety, hasSafetySignal,
-    stock, short, needsWitness,
+    remaining,
+    stock, short, outOfStock, needsWitness,
     reviewDraft, setReviewDraft,
     dispenseDraft, setDispenseDraft,
     fill, hold, recordStockOut, recall, reverse,

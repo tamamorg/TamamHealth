@@ -4341,6 +4341,7 @@ const en: TranslationMap = {
   'rxFlow.errHoldReason': 'Name what the prescriber needs to clarify.',
   'rxFlow.errQuantity': 'Enter a quantity greater than zero.',
   'rxFlow.errNotInStock': '{{medication}} is not currently in stock. Record a stock-out or refer the patient to an outside pharmacy.',
+  'rxFlow.errOverCourse': 'The quantity is more than the prescribed course. {{remaining}} remain to be dispensed.',
   'rxFlow.errShortStock': 'Stock will not cover the course. Fill short deliberately, or record a stock-out.',
   'rxFlow.errWitness': 'A controlled dispense needs a witness.',
   'rxFlow.errUnfilledReason': 'Give a reason for not filling it.',

@@ -5890,6 +5890,16 @@ html:has(.mobile-shell-offline-banner) {
   flex: 0 0 auto;
 }
 
+/* Phones: the search used to be squeezed to zero width beside the action
+   controls (select, export, Receive stock). Let the row wrap so the search
+   keeps a full line and the actions sit beneath it. */
+@media (max-width: 639px) {
+  .ehr-list-header-toolbar { flex-wrap: wrap; }
+  .ehr-list-header-search { flex: 1 1 100%; }
+  .ehr-list-header-actions { flex: 1 1 100%; flex-wrap: wrap; min-width: 0; }
+  .ehr-list-header-actions > select { flex: 1 1 140px; min-width: 0; max-width: 100%; }
+}
+
 /* Narrow cards can't hold the field beside the title and the lanes, so the row
    stacks. Queried against `.ehr-center-panel`, the daybar's own parent — the
    `@media (max-width: 900px)` this replaces tested the VIEWPORT, which is not

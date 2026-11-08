@@ -4333,6 +4333,7 @@ const apd: TranslationMap = {
   'rxFlow.errHoldReason': 'اكتب شنو المحتاج الواصف يوضحو.',
   'rxFlow.errQuantity': 'ادخل كمية أكبر من صفر.',
   'rxFlow.errNotInStock': '{{medication}} ما موجود في المخزون هسع. سجّل إنو المخزون خلص أو حوّل العيان لصيدلية برّا.',
+  'rxFlow.errOverCourse': 'الكمية أكتر من الكورس الموصوف. باقي {{remaining}} للصرف.',
   'rxFlow.errShortStock': 'المخزون ما بيغطي الكورس. اصرف ناقص بقصد، أو سجل نفاد مخزون.',
   'rxFlow.errWitness': 'الصرف المراقب محتاج شاهد.',
   'rxFlow.errUnfilledReason': 'اكتب سبب عدم الصرف.',

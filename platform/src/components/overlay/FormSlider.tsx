@@ -57,6 +57,8 @@ export interface FormSliderProps {
   /** Extra class on the panel surface. */
   className?: string;
   disableBackdropClose?: boolean;
+  /** False when a restored draft would be unsafe (a handover quantity restored onto another script). */
+  keepDraft?: boolean;
   children: ReactNode;
 }
 
@@ -75,6 +77,7 @@ export default function FormSlider({
   flush = false,
   className,
   disableBackdropClose,
+  keepDraft,
   children,
 }: FormSliderProps) {
   const titleId = useId();
@@ -91,6 +94,7 @@ export default function FormSlider({
       labelledBy={titleId}
       describedBy={subtitle ? descId : undefined}
       disableBackdropClose={disableBackdropClose}
+      keepDraft={keepDraft}
     >
       <DialogFrame busy={busy} busyLabel={busyLabel}>
         <DialogHeader
