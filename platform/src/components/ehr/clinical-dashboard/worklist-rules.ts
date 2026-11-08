@@ -319,12 +319,12 @@ export function buildQueueEntryByPatient(activeTriageByPatient: Map<string, Tria
 
 /** A station row's pill tint; a doctor's patient rows keep the confirmed tint. */
 export function stationPillClass(tone: NonNullable<WorklistPatient['station']>['statusTone']): string {
-  return tone === 'done' ? 'status-completed'
-    : tone === 'active' ? 'status-checked-in'
-    : tone === 'danger' ? 'status-no-show'
+  return tone === 'done' ? 'status-tone-green'
+    : tone === 'active' ? 'status-tone-purple'
+    : tone === 'danger' ? 'status-tone-red'
     : tone === 'warning' ? 'status-attention'
-    : tone === 'scheduled' ? 'status-scheduled'
-    : 'status-confirmed';
+    : tone === 'scheduled' ? 'status-tone-slate'
+    : 'status-tone-blue';
 }
 
 export function computeRowQueueColumns(
@@ -346,7 +346,10 @@ export function computeRowQueueColumns(
   const operationalState = encounter
     ? resolveOperationalVisitState(row.appointment ?? { status: row.status }, encounter, { nursingReviewOpen })
     : null;
-  const inService = triage?.handoffStatus === 'in_consultation' || Boolean(triage?.handoffTo) || row.status === 'in_progress';
+  // Ownership begins when care begins: an ACCEPTED handoff (acknowledged /
+  // in consultation) or a visit already in progress. Merely assigned
+  // (`handoffTo` set, not yet accepted) stays Waiting.
+  const inService = triage?.handoffStatus === 'in_consultation' || triage?.handoffStatus === 'acknowledged' || row.status === 'in_progress';
   // The shared tab + colour rule (visit-display-status.ts): the encounter wins
   // once there is one; a provider taking the patient lifts a queued row to In service.
   const visitDisplay = resolveVisitDisplay({

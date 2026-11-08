@@ -16,12 +16,12 @@ import { useAuth } from '@/lib/context';
 import { useVisitStatusChange } from '@/lib/hooks/useVisitStatusChange';
 
 const TONE_CLASS: Record<string, string> = {
-  done: 'status-completed',
-  active: 'status-checked-in',
-  ready: 'status-confirmed',
-  danger: 'status-no-show',
+  done: 'status-tone-green',
+  active: 'status-tone-purple',
+  ready: 'status-tone-blue',
+  danger: 'status-tone-red',
   warning: 'status-attention',
-  scheduled: 'status-scheduled',
+  scheduled: 'status-tone-slate',
 };
 
 export default function VisitStatusPicker({ appointmentId, status, patientName }: {

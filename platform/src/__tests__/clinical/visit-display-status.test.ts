@@ -7,6 +7,7 @@
 import { resolveVisitDisplay, ENCOUNTER_DISPLAY, APPOINTMENT_DISPLAY } from '@/lib/visit-display-status';
 import { appointmentStatusGroup, APPOINTMENT_STATUS_TONES } from '@/lib/appointment-status';
 import { ENCOUNTER_TRANSITIONS } from '@/lib/clinical-flow/encounter-journey';
+import { resolveRowStatusTone, statusToneClass } from '@/components/ehr/EhrCareDashboard';
 import type { AppointmentStatus } from '@/lib/db-types';
 import type { EncounterStatus } from '@/lib/clinical-flow/encounter-journey';
 
@@ -77,5 +78,28 @@ describe('resolveVisitDisplay: the owner spec', () => {
     expect(APPOINTMENT_STATUS_TONES.scheduled).toBe('scheduled');
     expect(APPOINTMENT_STATUS_TONES.completed).toBe('done');
     expect(APPOINTMENT_STATUS_TONES.cancelled).toBe('danger');
+  });
+});
+
+describe('pill colour agrees with the tab (encounter-aware rows)', () => {
+  it('checked_in + encounter in_triage: In service and purple, not the ladder blue', () => {
+    const d = resolveVisitDisplay({ appointmentStatus: 'checked_in', encounterStatus: 'in_triage' });
+    expect(d.tab).toBe(S);
+    const tone = resolveRowStatusTone({ visitTone: d.rowTone, statusTone: 'ready' }, 'checked_in');
+    expect(tone).toBe('active');
+    expect(statusToneClass(tone)).toBe('status-tone-purple');
+  });
+
+  it('in_progress + encounter ready_for_clinic_checkout: Finished and blue, not the ladder purple', () => {
+    const d = resolveVisitDisplay({ appointmentStatus: 'in_progress', encounterStatus: 'ready_for_clinic_checkout' });
+    expect(d.tab).toBe(F);
+    const tone = resolveRowStatusTone({ visitTone: d.rowTone, statusTone: 'active' }, 'in_progress');
+    expect(tone).toBe('ready');
+    expect(statusToneClass(tone)).toBe('status-tone-blue');
+  });
+
+  it('without a resolved tone the ladder status still decides', () => {
+    expect(resolveRowStatusTone({ statusTone: 'danger' }, 'checked_in')).toBe('ready');
+    expect(resolveRowStatusTone({ statusTone: 'danger' })).toBe('danger');
   });
 });

@@ -1635,12 +1635,12 @@ export default function EhrClinicalDashboard({
                           {row.appointment ? (() => {
                             const visitStatus = row.appointment!.status;
                             const tone = columns.visitTone;
-                            const pillClass = tone === 'done' ? 'status-completed'
-                              : tone === 'active' ? 'status-checked-in'
-                              : tone === 'ready' ? 'status-confirmed'
-                              : tone === 'danger' ? 'status-no-show'
+                            const pillClass = tone === 'done' ? 'status-tone-green'
+                              : tone === 'active' ? 'status-tone-purple'
+                              : tone === 'ready' ? 'status-tone-blue'
+                              : tone === 'danger' ? 'status-tone-red'
                               : tone === 'warning' ? 'status-attention'
-                              : 'status-scheduled';
+                              : 'status-tone-slate';
                             return (
                               <AppointmentStatusPillSelect
                                 status={visitStatus}

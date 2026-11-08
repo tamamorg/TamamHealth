@@ -234,33 +234,22 @@ export const APPOINTMENT_STATUS_I18N_KEYS: Record<AppointmentStatus, string> = {
 };
 
 /**
- * Pill colours. The ladder warms as the patient gets closer to the clinician
- * (blue booked → amber present → green in the room), and the three exits are
- * muted or red so a wall of rows reads at a glance.
+ * Pill colours, derived from the one display mapping (visit-display-status.ts):
+ * slate idle, blue queue action needed, purple active encounter, green done,
+ * red cancelled / no-show / rescheduled.
  */
-export const APPOINTMENT_STATUS_COLORS: Record<AppointmentStatus, { color: string; bg: string }> = {
-  // `color` is pill TEXT, so every entry takes the darker `-text` rung of its
-  // token pair — the base fills would sit at ~3:1 behind 10px type. The ladder
-  // still warms blue → amber → green; it just says so in tokens now, which is
-  // what lets a tenant's brand blue reach the booked rungs.
-  requested:     { color: 'var(--semantic-request)', bg: 'var(--semantic-request-bg)' },
-  scheduled:     { color: 'var(--accent-text)', bg: 'var(--color-info-bg)' },
-  // A pill that reads the same word must look the same: reminder_sent and
-  // confirmed both display "Scheduled", so they take Scheduled's colours.
-  // Three shades behind one word made the ladder look like it had rungs the
-  // vocabulary no longer names.
-  reminder_sent: { color: 'var(--accent-text)', bg: 'var(--color-info-bg)' },
-  confirmed:     { color: 'var(--accent-text)', bg: 'var(--color-info-bg)' },
-  arrived:       { color: 'var(--color-warning-text)', bg: 'var(--color-warning-bg)' },
-  checked_in:    { color: 'var(--color-warning)', bg: 'var(--color-warning-bg)' },
-  // triaged displays as "In Progress" — same word, same colour.
-  triaged:       { color: 'var(--color-success)', bg: 'var(--color-success-bg)' },
-  in_progress:   { color: 'var(--color-success)', bg: 'var(--color-success-bg)' },
-  completed:     { color: 'var(--color-success-text)', bg: 'var(--color-success-bg)' },
-  no_show:       { color: 'var(--text-muted)', bg: 'var(--semantic-inactive-bg)' },
-  rescheduled:   { color: 'var(--semantic-request)', bg: 'var(--semantic-request-bg)' },
-  cancelled:     { color: 'var(--color-danger)', bg: 'var(--color-danger-bg)' },
-};
+export const APPOINTMENT_STATUS_COLORS: Record<AppointmentStatus, { color: string; bg: string }> = Object.fromEntries(
+  (Object.keys(APPOINTMENT_DISPLAY) as AppointmentStatus[]).map(status => {
+    // `requested` is a portal ask, not a rung of the visit: it keeps its own
+    // pending-action colour. Everything else wears the owner's key (slate idle,
+    // blue queue action, purple active, green done, red cancelled) through the
+    // --visit-* tokens, so a status looks the same on every screen and two
+    // statuses reading the same word cannot differ in colour.
+    if (status === 'requested') return [status, { color: 'var(--semantic-request)', bg: 'var(--semantic-request-bg)' }];
+    const tone = APPOINTMENT_DISPLAY[status][1];
+    return [status, { color: `var(--visit-${tone})`, bg: `var(--visit-${tone}-bg)` }];
+  }),
+) as Record<AppointmentStatus, { color: string; bg: string }>;
 
 /**
  * Row tone for the shared `status-*` pill classes on the role dashboards,

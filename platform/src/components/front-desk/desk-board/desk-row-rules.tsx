@@ -273,6 +273,8 @@ export function buildFrontDeskRows({
       statusSecondary: statusContext,
       // Colour by meaning (slate/blue/purple/green/red), from the shared rule.
       statusTone: entry.visitTone,
+      visitTone: entry.visitTone,
+      visitTab: entry.visitTab,
       // A queue row is movable too — advancing a checked-in patient to
       // Roomed, or closing them out, is the desk's most common action. The
       // walk-in's triage row is mirrored in the same write so the two

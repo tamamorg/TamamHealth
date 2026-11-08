@@ -36934,34 +36934,35 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
    tasks left, red = cancelled / no-show. The tone comes from
    src/lib/visit-display-status.ts. The pill keeps its label (colour only
    reinforces) and the row takes a left accent bar plus a faint wash.
-   Pill class names are historical: status-confirmed = blue,
-   status-checked-in = purple. Doubled class beats the older duplicates above. */
-.appointment-status-pill.appointment-status-pill.status-scheduled,
-.ehr-care-row-status .status-scheduled {
+   status-tone-* are the only classes that carry the visit colours, so the
+   older generic status-* classes keep their own meaning in the lab, pharmacy
+   and patient lists. Doubled class beats the duplicates above. */
+.appointment-status-pill.appointment-status-pill.status-tone-slate,
+.ehr-care-row-status .status-tone-slate {
   border-color: var(--visit-slate-bar);
   background: var(--visit-slate-bg);
   color: var(--visit-slate);
 }
-.appointment-status-pill.appointment-status-pill.status-confirmed,
-.ehr-care-row-status .status-confirmed {
+.appointment-status-pill.appointment-status-pill.status-tone-blue,
+.ehr-care-row-status .status-tone-blue {
   border-color: var(--visit-blue-bar);
   background: var(--visit-blue-bg);
   color: var(--visit-blue);
 }
-.appointment-status-pill.appointment-status-pill.status-checked-in,
-.ehr-care-row-status .status-checked-in {
+.appointment-status-pill.appointment-status-pill.status-tone-purple,
+.ehr-care-row-status .status-tone-purple {
   border-color: var(--visit-purple-bar);
   background: var(--visit-purple-bg);
   color: var(--visit-purple);
 }
-.appointment-status-pill.appointment-status-pill.status-completed,
-.ehr-care-row-status .status-completed {
+.appointment-status-pill.appointment-status-pill.status-tone-green,
+.ehr-care-row-status .status-tone-green {
   border-color: var(--visit-green-bar);
   background: var(--visit-green-bg);
   color: var(--visit-green);
 }
-.appointment-status-pill.appointment-status-pill.status-no-show,
-.ehr-care-row-status .status-no-show {
+.appointment-status-pill.appointment-status-pill.status-tone-red,
+.ehr-care-row-status .status-tone-red {
   border-color: var(--visit-red-bar);
   background: var(--visit-red-bg);
   color: var(--visit-red);

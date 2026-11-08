@@ -23,9 +23,10 @@ import { getRoleConfig } from '@/lib/permissions';
 import { uniqueAllowedNavItems, getPageHeaderNavItems } from '@/components/ehr/ehr-navigation';
 import {
   APPOINTMENT_STATUS_TONES, APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_GROUPS,
-  APPOINTMENT_STATUS_DESCRIPTIONS, appointmentStatusGroup, appointmentStatusLabel,
+  APPOINTMENT_STATUS_DESCRIPTIONS, appointmentStatusLabel,
   canonicalAppointmentStatus, APPOINTMENT_SLOT_RELEASED_STATUSES, appointmentStatusNeedsReason, type AppointmentStatusGroup,
 } from '@/lib/appointment-status';
+import { resolveVisitDisplay } from '@/lib/visit-display-status';
 import StatusChangeSlider from '@/components/appointments/StatusChangeSlider';
 import CheckInSlider from '@/components/appointments/CheckInSlider';
 import { toIsoDate as visitIsoDate } from '@/components/ehr/EhrMiniCalendar';
@@ -115,6 +116,14 @@ export type EhrCareDashboardRow = {
   statusLabel?: string;
   statusTone?: 'scheduled' | 'ready' | 'active' | 'done' | 'warning' | 'danger';
   /**
+   * The visit's tone and tab as resolved by `resolveVisitDisplay` (encounter
+   * stage included). When a row supplies them they win over the appointment
+   * status alone, so the pill colour, the row accent, the label and the tab
+   * cannot disagree.
+   */
+  visitTone?: 'scheduled' | 'ready' | 'active' | 'done' | 'warning' | 'danger';
+  visitTab?: AppointmentStatusGroup;
+  /**
    * Set these together and the status pill becomes a picker, so a booking can
    * be moved along the ladder from the row being read instead of only from the
    * appointment editor.
@@ -168,18 +177,28 @@ export type EhrCareDashboardRow = {
   chartSeries?: 0 | 1;
 };
 
+/** The tone a row's pill and accent wear: the resolved visit tone (encounter
+ *  stage included) when the row supplies one, else the ladder status's tone
+ *  when the ladder owns the pill, else the row's own tone. */
+export function resolveRowStatusTone(
+  row: Pick<EhrCareDashboardRow, 'visitTone' | 'statusTone'>,
+  ladderStatus?: AppointmentStatus,
+): EhrCareDashboardRow['statusTone'] {
+  return row.visitTone ?? (ladderStatus ? APPOINTMENT_STATUS_TONES[ladderStatus] : row.statusTone);
+}
+
 /** The status pill's tint class for a row tone. Exported so an order list
  *  inside a row's panel tints its pills the same way the row does. */
 export function statusToneClass(tone: EhrCareDashboardRow['statusTone']): string {
-  return tone === 'done' ? 'status-completed'
-    : tone === 'active' ? 'status-checked-in'
-    : tone === 'ready' ? 'status-confirmed'
-    : tone === 'danger' ? 'status-no-show'
+  return tone === 'done' ? 'status-tone-green'
+    : tone === 'active' ? 'status-tone-purple'
+    : tone === 'ready' ? 'status-tone-blue'
+    : tone === 'danger' ? 'status-tone-red'
     : tone === 'warning' ? 'status-attention'
     // 'scheduled' used to fall through to no class, so a booked row was the
     // one pill in the list with no tint — the Scheduled tab's picker looked
     // unlike every other tab's.
-    : tone === 'scheduled' ? 'status-scheduled'
+    : tone === 'scheduled' ? 'status-tone-slate'
     : '';
 }
 
@@ -580,14 +599,17 @@ export default function EhrCareDashboard({
     if (process.env.NODE_ENV === 'production') return;
     if (!APPOINTMENT_STATUS_GROUPS.includes(activeTab as AppointmentStatusGroup)) return;
     const misfiled = visibleRows.filter(row => {
+      // An encounter-aware row names its own tab; otherwise the appointment
+      // status decides, through the same resolver.
+      if (row.visitTab) return row.visitTab !== activeTab;
       const status = row.status as AppointmentStatus | undefined;
       if (!status || !(status in APPOINTMENT_STATUS_LABELS)) return false;
-      return appointmentStatusGroup(status) !== activeTab;
+      return resolveVisitDisplay({ appointmentStatus: status }).tab !== activeTab;
     });
     if (misfiled.length > 0) {
       console.warn(
         `[EhrCareDashboard] ${misfiled.length} row(s) in the "${activeTab}" lane carry a status belonging to another lane ` +
-        `(e.g. ${misfiled[0].title}: "${misfiled[0].status}"). File rows with appointmentStatusGroup() so the pill and the lane agree.`,
+        `(e.g. ${misfiled[0].title}: "${misfiled[0].status}"). File rows with resolveVisitDisplay() (and set row.visitTab) so the pill and the lane agree.`,
       );
     }
   }, [activeTab, visibleRows]);
@@ -1020,7 +1042,7 @@ export default function EhrCareDashboard({
                     // tone otherwise. The two used to be wired independently, so
                     // a critical lab result could carry the ladder's "Checked
                     // In" text in the order's own red danger colour.
-                    const effectiveStatusTone = ladderOwnsRow ? APPOINTMENT_STATUS_TONES[visit!.status] : row.statusTone;
+                    const effectiveStatusTone = resolveRowStatusTone(row, ladderOwnsRow ? visit!.status : undefined);
                     const statusPillClass = statusToneClass(effectiveStatusTone);
                     // Under-pill cue: acuity when known, else the countdown.
                     const cue = priorityCode

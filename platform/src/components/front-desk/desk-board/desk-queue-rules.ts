@@ -108,11 +108,13 @@ export function buildDeskQueue({
     const checkoutEncounter = checkoutEncounterByPatient.get(entry.patientId);
     const isCheckout = Boolean(checkoutEncounter);
     const room = triageDoc?.assignedRoom;
-    // A clinician has taken the patient when the triage records a handoff
-    // (entry.assignedToId) or was marked seen — the same "in service"
-    // signal the doctor/nurse boards derive from this engine, so reception
-    // can tell who is actually with a clinician vs still queued.
-    const inConsult = Boolean(entry.assignedToId) || triageDoc?.status === 'seen';
+    // A clinician has taken the patient when the handoff was ACCEPTED
+    // (acknowledged / in consultation) or the triage was marked seen. A
+    // handoff that is merely assigned stays Waiting: ownership begins when
+    // care begins, not when a name is put on the row.
+    const inConsult = triageDoc?.handoffStatus === 'acknowledged'
+      || triageDoc?.handoffStatus === 'in_consultation'
+      || triageDoc?.status === 'seen';
     // The booking this walk-in's visit is threaded onto (check-in creates one
     // for every arrival). Its rung is the authority on where the patient
     // actually is; the triage record only proves an assessment exists, which
@@ -251,9 +253,9 @@ export function buildDeskQueue({
     const patient = patientById.get(enc.patientId);
     items.push({
       id: `encounter-${enc._id}`,
-      // Clinical work is done but the desk has not closed them out, so the
-      // patient is still in the building — In Office, carrying the Checkout
-      // action. Finished means checked out, which is what that action does.
+      // Clinical work is done but the desk has not closed them out: the
+      // visit files under Finished (Ready for discharge) and carries the
+      // Checkout action there; checkout itself is what completes it.
       visitStatus: 'in_progress',
       // Provider is done; the desk is closing the visit out: Ready for discharge.
       ...visitDisplayFields({ appointmentStatus: 'in_progress', encounterStatus: enc.status }),

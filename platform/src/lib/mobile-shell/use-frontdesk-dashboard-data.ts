@@ -5,6 +5,7 @@ import { useAppointments } from '@/lib/hooks/useAppointments';
 import { useReferrals } from '@/lib/hooks/useReferrals';
 import type { AppointmentDoc } from '@/lib/db-types';
 import type { MobileDashboardData, MobileLane, MobileOutstandingItem } from './dashboard-strategy';
+import { useEncounters } from '@/lib/hooks/useEncounters';
 import { computeClinicalLanes } from './use-clinical-dashboard-data';
 
 function todayIso(): string {
@@ -26,12 +27,13 @@ function todayIso(): string {
 export function useFrontDeskDashboardData(): MobileDashboardData {
   const { appointments, loading: apptLoading } = useAppointments();
   const { referrals, loading: referralsLoading } = useReferrals();
+  const { encounters } = useEncounters();
 
   const today = todayIso();
 
   const lanes = useMemo<MobileLane<AppointmentDoc>[]>(
-    () => computeClinicalLanes(appointments, today),
-    [appointments, today],
+    () => computeClinicalLanes(appointments, today, encounters),
+    [appointments, today, encounters],
   );
 
   const outstanding = useMemo<MobileOutstandingItem[]>(() => {
