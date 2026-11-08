@@ -24,7 +24,7 @@ export default async function HomePage() {
             <h2 style={{ fontSize: "clamp(26px, 3.8vw, 42px)", margin: 0, color: "#FFFFFF" }}>{t("The problem is enormous. The fix is buildable.")}</h2>
             <span style={{ width: 100, height: 3, background: "#7CC7FF" }} />
             <p style={{ margin: 0, fontSize: 16, lineHeight: 1.7, color: "rgba(255,255,255,0.82)" }}>
-              {t("TamamHealth is a nonprofit organization founded at Tufts University. We build offline-first health records for South Sudan, with sub-Saharan Africa in view. We welcome inquiries from health facilities, NGOs and funders.")}
+              {t("We are on a mission to digitize healthcare in South Sudan, with offline-first health records that work wherever care is delivered and with sub-Saharan Africa in view. TamamHealth is a nonprofit organization founded at Tufts University. We welcome inquiries from health facilities, NGOs and funders.")}
             </p>
             <Link href="/about" style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 18, color: "#7CC7FF", textDecoration: "none" }}>
               {t("Who we are  ›")}
