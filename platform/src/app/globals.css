@@ -26473,7 +26473,9 @@ table.patient-data-table.patient-data-table {
 }
 .tamam-reg .tamam-reg-fields .btn-secondary:hover {
   background: var(--tamam-interactive);
-  color: #fff;
+  /* !important: accent-pass.css sets the secondary-button text colour at
+     higher specificity, which left blue type on this blue fill on hover. */
+  color: #fff !important;
 }
 
 /* ══════════════════ Photo well ══════════════════

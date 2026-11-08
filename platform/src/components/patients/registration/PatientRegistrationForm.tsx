@@ -22,6 +22,7 @@ import {
 import { enrollFingerprint } from '@/lib/services/fingerprint-service';
 import { isValidPhone, isValidEmail, isValidNationalId } from '@/lib/field-formats';
 import { isPathAllowed } from '@/lib/role-routes';
+import { DOC_WRITE_ROLES } from '@/lib/sync/write-permissions';
 import RegistrationJumpNav from './RegistrationJumpNav';
 import RegistrationReview from './RegistrationReview';
 import DuplicateWarning from './DuplicateWarning';
@@ -108,6 +109,13 @@ export function PatientRegistrationForm({
   // nutrition, radiology) would only land on Access Restricted, so they don't
   // get the button.
   const canCheckIn = isPathAllowed(currentUser?.role || '', '/appointments');
+  // /patients is open to lab and pharmacy (chart access), and /patients/new
+  // sits under it. A role the sync validator would refuse to create a patient
+  // for must not get the form: it would "save" locally and never replicate.
+  const mayRegister = !currentUser || (DOC_WRITE_ROLES.patient as readonly string[]).includes(currentUser.role);
+  useEffect(() => {
+    if (!mayRegister) router.replace('/patients');
+  }, [mayRegister, router]);
   /**
    * A user with no facility of their own — a platform super_admin, an org_admin
    * between postings — has to say which facility they are registering at. The
@@ -157,6 +165,9 @@ export function PatientRegistrationForm({
   /** The slip to hand over, and what registration does once it is dismissed. */
   const [portalSlip, setPortalSlip] = useState<PortalSlip | null>(null);
   const afterSlip = useRef<(() => void) | null>(null);
+  // The record this form just created, so the duplicate check on the read-back
+  // (still on screen behind the slip) does not warn about the patient itself.
+  const [registeredId, setRegisteredId] = useState<string | null>(null);
   // Which section the clerk is currently looking at — a different question
   // from how much is done, and the one the nav marks.
   const [activeSection, setActiveSection] = useState(DEMOGRAPHICS_SECTION);
@@ -367,8 +378,9 @@ export function PatientRegistrationForm({
       county: form.county,
     }, patients);
     const seen = new Set(local.map(m => m.patient._id));
-    return [...local, ...mpiMatches.filter(m => !seen.has(m.patient._id))].slice(0, 5);
-  }, [warnDuplicates, reviewMode, patients,
+    return [...local, ...mpiMatches.filter(m => !seen.has(m.patient._id))]
+      .filter(m => m.patient._id !== registeredId).slice(0, 5);
+  }, [warnDuplicates, reviewMode, patients, registeredId,
       form.firstName, form.middleName, form.surname, form.dateOfBirth,
       form.estimatedAge, form.gender, form.state, form.county, mpiMatches]);
 
@@ -524,6 +536,8 @@ export function PatientRegistrationForm({
         },
       } : undefined);
 
+      if (result?._id) setRegisteredId(result._id);
+
       // Persist fingerprint enrollments now that the patient _id exists.
       // Best-effort: a biometric failure must never roll back registration.
       if (fingerprints.length > 0 && result?._id) {
@@ -632,6 +646,8 @@ export function PatientRegistrationForm({
     );
   };
 
+  if (!mayRegister) return null;
+
   return (
     <>
       <main className={`page-container page-enter patient-registration-page${embedded ? ' patient-registration-page--embedded' : ''}`}>
@@ -653,7 +669,11 @@ export function PatientRegistrationForm({
               onOpenReview={openReview}
               optionalLabel={t('patientNew.optionalLabel')}
             />
-            <div className="tamam-reg-railactions">
+            {/* A <footer>, not a <div>: inside a slider the shared action-bar kit
+                (.tm-slider div:has(> .btn-primary):has(> .btn-secondary):last-child)
+                grabbed this element on the read-back and laid it out as a row of
+                one-letter-wide columns. */}
+            <footer className="tamam-reg-railactions">
               {/* Filling and committing are different moments, so they get
                   different buttons. While the form is open the primary action
                   is Review; the registering actions only appear on the
@@ -680,7 +700,7 @@ export function PatientRegistrationForm({
               <button type="button" onClick={handleCancel} className="tamam-reg-cancel">
                 {t('patientNew.cancel')}
               </button>
-            </div>
+            </footer>
           </aside>
 
           <div className="patient-registration-shell tamam-reg-form">

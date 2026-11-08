@@ -22,6 +22,14 @@ export interface ReviewGroup {
   rows: [string, string][];
 }
 
+/** The coverage option's own label (the form's keys), not its stored slug. */
+const COVERAGE_LABEL_KEYS: Record<string, string> = {
+  'out-of-pocket': 'patientNew.coverageOutOfPocket',
+  program: 'patientNew.coverageProgram',
+  exemption: 'patientNew.coverageExemption',
+  ngo: 'patientNew.coverageNgo',
+};
+
 /** The slice of registration state the read-back displays. */
 export interface ReviewSource {
   form: Record<string, string>;
@@ -117,7 +125,7 @@ export function buildReviewGroups(
       section: 4,
       title: steps[4],
       rows: [
-        [t('patientNew.coverageTypeLabel'), form.payorCoverageType],
+        [t('patientNew.coverageTypeLabel'), COVERAGE_LABEL_KEYS[form.payorCoverageType] ? t(COVERAGE_LABEL_KEYS[form.payorCoverageType]) : form.payorCoverageType],
         [t('patientNew.programName'), form.payorProgram],
         [t('patientNew.ngoName'), form.payorNgo],
         [t('patientNew.exemptionReasonLabel'), form.payorExemptionReason === 'Other'
