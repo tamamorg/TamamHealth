@@ -1037,4 +1037,5 @@ export const apd: Dictionary = {
   "Map of South Sudan drawn in dots": "خريطة جنوب السودان مرسومة بالنقط",
   "Juba: testing now": "جوبا: التجربة هسة",
   "Juba is where testing is under way; the other sites are state hospitals in the deployment plan. Boundaries: geoBoundaries, CC BY 4.0.": "جوبا هي المحل البتحصل فيهو التجربة هسة؛ المواقع التانية مستشفيات ولايات في خطة التشغيل. الحدود: geoBoundaries، CC BY 4.0.",
+  "The problem is enormous. The fix is buildable.": "المشكلة ضخمة. والحل قابل للبناء.",
 };
