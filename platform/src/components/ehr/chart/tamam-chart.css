@@ -1874,6 +1874,30 @@ body .tamam-root .tamam-table tbody tr.tamam-activity-tr.is-nested > td.tamam-ac
   min-width: 0;
 }
 
+/* The drawer is a fixed frame: only the content inside it scrolls.
+   - overscroll-behavior: contain on the drawer and everything in it, so
+     scrolling past the end of a form (or over the header/footer, which do not
+     scroll) never hands the wheel to the chart behind it. `overflow: hidden`
+     makes the drawer itself a scroll container, which is what lets `contain`
+     stop the chain where nothing inside can scroll.
+   - The chart page's bottom padding sat outside .tamam-root, so at the end of
+     a long chart the drawer's containing block ended 16px before the
+     scrollport did and pushed the sticky drawer up with the chart. The page
+     carries no bottom padding; the main column keeps the breathing room. */
+.tamam-drawer {
+  overscroll-behavior: contain;
+  overflow: hidden;
+}
+.tamam-drawer :where(*) {
+  overscroll-behavior: contain;
+}
+.page-container.ehr-chart-page {
+  padding-bottom: 0 !important;
+}
+.tamam-root .tamam-main-col {
+  padding-bottom: 16px;
+}
+
 .tamam-drawer-header {
   display: flex;
   align-items: stretch;
