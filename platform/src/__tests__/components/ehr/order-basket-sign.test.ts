@@ -66,6 +66,23 @@ describe('signOrders', () => {
     orders, patient, currentUser: user, scope, onSitePharmacy: true, confirmPrompt, t,
   });
 
+  test('each written order is reported at once, before a later prompt is answered', async () => {
+    const first = filled();
+    const second = filled({ id: 'second' } as Partial<DrugOrderDraft>);
+    // The second drug hits a safety stop whose prompt is never answered.
+    assessPrescriptionSafety
+      .mockResolvedValueOnce({ allergyWarnings: [], allergyCheckUnavailable: false })
+      .mockResolvedValueOnce({ allergyWarnings: [{ allergy: 'Penicillin', requiresOverride: true }], allergyCheckUnavailable: false });
+    const onSigned = jest.fn();
+    let promptOpened!: () => void;
+    const opened = new Promise<void>(resolve => { promptOpened = resolve; });
+    const confirmPrompt = jest.fn(() => { promptOpened(); return new Promise<string | null>(() => {}); });
+    void signOrders({ orders: [first, second], patient, currentUser: user, scope, onSitePharmacy: true, confirmPrompt, t, onSigned });
+    await opened;
+    expect(onSigned).toHaveBeenCalledWith([first.id]);
+    expect(onSigned).not.toHaveBeenCalledWith([second.id]);
+  });
+
   test('a drug order is written to the pharmacy queue with its sig, quantity and instructions', async () => {
     const order = filled({ prn: true, prnReason: 'pain', patientInstructions: 'After food', indication: 'Otitis media' });
     const outcome = await sign([order]);

@@ -217,6 +217,7 @@ export default function OrderBasketPanel({
         onSitePharmacy: clinicalPolicy.onSitePharmacy,
         confirmPrompt,
         t,
+        onSigned: ids => ids.forEach(id => basket.remove(id)),
       });
       const signedSet = new Set(outcome.signed);
       const signedOrders = basket.orders.filter(o => signedSet.has(o.id));
