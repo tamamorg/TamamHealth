@@ -1168,8 +1168,8 @@ export const NEWS: NewsItem[] = [
     date: "November 2026",
     dateISO: "2026-11",
     title: "TamamHealth begins platform testing at Iteru Medical Center in Juba",
-    image: "/assets/news/iteru-medical-center-testing.jpg",
-    imageAlt: "The TamamHealth logo beside the Iteru Medical Center logo, under the words pre-launch testing, Juba",
+    image: "/assets/news/iteru-medical-center-logo-cover.jpg",
+    imageAlt: "The Iteru Medical Center logo",
     summary:
       "Iteru Medical Center in Juba, South Sudan, is testing the TamamHealth platform ahead of its planned launch at the facility.",
     body: [
@@ -1197,8 +1197,8 @@ export const NEWS: NewsItem[] = [
     date: "November 2026",
     dateISO: "2026-11",
     title: "TamamHealth announces fiscal sponsorship by Elimisha Kakuma",
-    image: "/assets/news/elimisha-kakuma-fiscal-sponsor.jpg",
-    imageAlt: "The TamamHealth logo beside the Elimisha Kakuma tree logo, under the words fiscal sponsor",
+    image: "/assets/news/elimisha-kakuma-logo-cover.jpg",
+    imageAlt: "The Elimisha Kakuma logo, a tree, above the organization's name",
     summary:
       "Elimisha Kakuma, a U.S. 501(c)(3) nonprofit organization, is now the fiscal sponsor of TamamHealth.",
     body: [
@@ -1227,8 +1227,8 @@ export const NEWS: NewsItem[] = [
     date: "November 2026",
     dateISO: "2026-11",
     title: "TamamHealth incorporates in Massachusetts",
-    image: "/assets/news/massachusetts-incorporation.jpg",
-    imageAlt: "TamamHealth mark above the words: officially registered, incorporated in Massachusetts",
+    image: "/assets/news/massachusetts-cover.jpg",
+    imageAlt: "TamamHealth mark above the words incorporated in Massachusetts",
     summary:
       "TamamHealth is now registered as a corporation in the Commonwealth of Massachusetts.",
     body: [
