@@ -96,6 +96,7 @@ COPY --from=builder /app/src/lib/sync ./src/lib/sync
 COPY --from=builder /app/src/lib/services/patient-transfer-permissions.ts ./src/lib/services/patient-transfer-permissions.ts
 COPY --from=builder /app/src/lib/care-team-permissions.ts ./src/lib/care-team-permissions.ts
 COPY --from=builder /app/src/lib/appointment-status.ts ./src/lib/appointment-status.ts
+COPY --from=builder /app/src/lib/visit-display-status.ts ./src/lib/visit-display-status.ts
 COPY --from=builder /app/src/lib/db-types.ts ./src/lib/db-types.ts
 # One-off data jobs run by hand after a release (docs/DEPLOY-PRODUCTION.md). They
 # ship here for the same reason as the installer: what runs against production

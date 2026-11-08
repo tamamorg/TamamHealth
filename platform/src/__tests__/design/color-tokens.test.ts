@@ -281,10 +281,14 @@ describe('the palette holds', () => {
     '#FCEEED', '#FAE6E4', '#F9DDDB',
   ];
   const CHART_EXCEPTION = ['#BE185D', '#0D9488', '#6D45C2'];
+  // The visit-status purple (PR #280, the user's colour-by-meaning rule:
+  // slate / blue / purple / green / red, one mapping in visit-display-status.ts).
+  // Light ink and wash, then the dark-theme ink, mix base and bar.
+  const VISIT_STATUS = ['#5B2D9E', '#EFE9FA', '#CDBBF3', '#8B6AD6', '#9B7FE0'];
 
   const ALLOWED = new Set([
     '#FFFFFF', '#000000',
-    ...NINE, ...DERIVED, ...CLINICAL, ...CHART_EXCEPTION,
+    ...NINE, ...DERIVED, ...CLINICAL, ...CHART_EXCEPTION, ...VISIT_STATUS,
   ]);
 
   test('globals.css introduces no colour outside the palette', () => {
