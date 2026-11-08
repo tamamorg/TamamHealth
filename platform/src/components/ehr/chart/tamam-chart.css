@@ -220,6 +220,22 @@
   .page-container.ehr-chart-page {
     margin-top: max(0px, calc(var(--app-top-rail-height, 72px) - var(--ehr-top-rail-height, 60px)));
   }
+
+  /* The shell's own min-height subtracts --ehr-top-rail-height (60px), but the
+     page now starts one rail-step lower and keeps 16px of bottom padding, so a
+     short chart overflowed the page by 12 + 16px and the page scrolled by 28px
+     for no content. Size the shell to the space the page really has. */
+  .page-container.ehr-chart-page .tamam-root {
+    min-height: calc(100svh - max(var(--ehr-top-rail-height, 60px), var(--app-top-rail-height, 72px)) - 16px);
+  }
+  .page-container.ehr-chart-page .tamam-left-rail {
+    max-height: calc(100svh - var(--app-top-rail-height, 72px) - 17px); /* 16px page padding + 1px shell border */
+  }
+  /* The icon rail stretches with the shell; its own full-viewport minimum
+     (chart-frame.css) would push the shell back past the page. */
+  body .page-container.ehr-chart-page .tamam-root .tamam-right-rail {
+    min-height: 0;
+  }
 }
 
 /* ══════════════════ MAIN COLUMN ══════════════════ */

@@ -144,5 +144,11 @@ export function resolveVisitDisplay(input: VisitDisplayInput): VisitDisplay {
     cell = (appointmentStatus && APPOINTMENT_DISPLAY[appointmentStatus]) || [W, 'slate'];
   }
   if (inService && cell[0] === W) cell = [S, 'purple'];
+  // Triage is complete and the patient is only being sent on, so the row is
+  // already In service (blue: "pull them in"). Once a provider has accepted the
+  // handoff somebody owns the patient, so it reads as an active encounter.
+  else if (inService && (encounterStatus === 'routed_to_clinic' || encounterStatus === 'triaged_awaiting_destination')) {
+    cell = [S, 'purple'];
+  }
   return { tab: cell[0], tone: cell[1], rowTone: VISIT_TONE_TO_ROW_TONE[cell[1]] };
 }

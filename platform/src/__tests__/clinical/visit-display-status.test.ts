@@ -29,6 +29,8 @@ const SPEC: Row[] = [
   ['Triage Complete (appointment)', { a: 'triaged' }, S, 'blue'],
   ['Triage Complete (encounter)', { e: 'triaged_awaiting_destination' }, S, 'blue'],
   ['Roomed / Ready for Provider', { e: 'ready_for_clinician' }, S, 'blue'],
+  ['Triage Complete, provider accepted the handoff', { e: 'triaged_awaiting_destination', inService: true }, S, 'purple'],
+  ['Routed to clinic, provider accepted the handoff', { e: 'routed_to_clinic', inService: true }, S, 'purple'],
   ['In rooming', { e: 'in_rooming' }, S, 'purple'],
   ['With Provider (encounter)', { e: 'with_clinician' }, S, 'purple'],
   ['With Provider (appointment)', { a: 'in_progress' }, S, 'purple'],

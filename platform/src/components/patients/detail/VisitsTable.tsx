@@ -158,7 +158,7 @@ export default function VisitsTable(props: VisitsTableProps) {
             <tr><td colSpan={5} className="vt-empty">{t('visits.empty')}</td></tr>
           )}
           {days.map(day => {
-            const dx = visitDiagnoses(props.records, day);
+            const dx = visitDiagnoses(props.records, day, props.notes);
             const note = props.notes.filter(n => dayOf(n.serviceDate || n.createdAt) === day)
               .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))[0];
             const isOpen = open.has(day);

@@ -16,6 +16,16 @@ describe('clinical visit summary', () => {
     ]);
   });
 
+  it('takes coded diagnoses from a signed note, since signing writes no MedicalRecord', () => {
+    const note = (status: string) => ({
+      status, serviceDate: '2026-10-28', createdAt: '2026-10-28T03:00:00Z',
+      sections: [{ diagnoses: [{ id: 'd1', name: 'Malaria', icd11Code: '1F40', addedAt: 'x' }] }],
+    }) as never;
+    expect(visitDiagnoses([], '2026-10-28', [note('signed')])).toEqual([{ name: 'Malaria', certainty: 'Confirmed', rank: 1 }]);
+    expect(visitDiagnoses([], '2026-10-28', [note('draft')])).toEqual([]);
+    expect(visitDiagnoses([rec([{ name: 'malaria', type: 'primary', certainty: 'confirmed' }])], '2026-10-28', [note('signed')])).toHaveLength(1);
+  });
+
   it('prints the O3 sections in order, the patient block first', () => {
     const html = buildClinicalVisitSummaryHtml({
       patient, day: '2026-10-28', facilityName: 'Juba Teaching Hospital',
