@@ -5652,7 +5652,7 @@ const apd: TranslationMap = {
   'statusSlider.title': 'غيّر حالة الزيارة',
   'statusSlider.titleGeneric': 'غيّر الحالة',
   'statusSlider.titleAction': 'أكّد الحاجة دي',
-  'statusSlider.notToday': 'الموعد دا لي يوم {{date}}. سجّل دخول العيان في يوم الزيارة.',
+  'statusSlider.notToday': 'الموعد دا لي يوم {{date}}؛ اليوم في المرفق (بتوقيت جوبا) هو {{today}}. سجّل دخول العيان في يوم الزيارة.',
   'statusSlider.from': 'هسي',
   'statusSlider.to': 'غيّرها لي',
   'statusSlider.confirm': 'خليها {{status}}',

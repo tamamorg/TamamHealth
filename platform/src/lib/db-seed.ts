@@ -1,4 +1,5 @@
 import { localClockOf } from './date-utils';
+import { jubaDate } from './time-juba';
 import { generateTempPassword, hashPassword } from '@/modules/identity/client';
 import { runWithoutEncryption } from './encrypted-db';
 
@@ -68,15 +69,14 @@ const SEED_NOW = Date.now();
 function daysAgo(n: number): string {
   return new Date(SEED_NOW - n * 86400000).toISOString();
 }
-// Date-ONLY fields (appointmentDate etc.) must be in the browser's LOCAL
-// calendar, not UTC: the dashboards compute "today" with local getFullYear/
-// getMonth/getDate (see toIsoDate in EhrMiniCalendar). With UTC dates, anyone
-// west of UTC using the app in the evening got "today's" seeded bookings
-// stamped with tomorrow's date — schedule boards looked empty right after a
-// fresh seed. Timestamps (daysAgo above) stay UTC ISO instants.
+// Date-ONLY fields (appointmentDate etc.) are on the FACILITY's calendar
+// (jubaDate), the clock the desk's check-in guard, booking form and day board
+// compare against. The device's local day disagreed with it for anyone outside
+// the clinic's zone: a booking seeded "today" locally (Nov 7, 20:30 US Eastern)
+// is already Nov 8 in Juba, and the check-in slider refused it as "not today".
+// Timestamps (daysAgo above) stay UTC ISO instants.
 function localIsoDate(ms: number): string {
-  const d = new Date(ms);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return jubaDate(ms);
 }
 function dateAgo(n: number): string {
   return localIsoDate(SEED_NOW - n * 86400000);

@@ -82,7 +82,7 @@ export default function CheckInSlider({ appointment, hospitalNumber, onClose, on
     >
       <div className="sv-root sv-root--slider">
         {error && <FormError message={error} />}
-        {!onTheDay && <p className="status-slider-body">{t('statusSlider.notToday', { date: appointment.appointmentDate })}</p>}
+        {!onTheDay && <p className="status-slider-body">{t('statusSlider.notToday', { date: appointment.appointmentDate, today: jubaDate() })}</p>}
         {onTheDay && (<>
         <section className="sv-section">
           <h3 className="sv-section-title">{t('startVisit.detailsTitle')}</h3>

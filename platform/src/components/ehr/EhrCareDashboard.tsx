@@ -29,6 +29,7 @@ import {
 import StatusChangeSlider from '@/components/appointments/StatusChangeSlider';
 import CheckInSlider from '@/components/appointments/CheckInSlider';
 import { toIsoDate as visitIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import { jubaDate } from '@/lib/time-juba';
 import type { AppointmentStatus } from '@/lib/db-types';
 import { readCareDashboardUrl, updateCareDashboardSearch } from '@/lib/navigation/care-dashboard-url';
 import { stopsClickPropagation } from '@/lib/a11y';
@@ -454,7 +455,8 @@ export default function EhrCareDashboard({
     return map;
   }, [appointments]);
 
-  const todayIso = useMemo(() => toIsoDate(new Date()), []);
+  // Facility day (same clock as check-in and the seeded bookings), not the device's.
+  const todayIso = useMemo(() => jubaDate(), []);
   // The calendar main-view toggle was removed — the dashboard is the only view
   // for all users. Typed as the union so the (now-inert) calendar branches below
   // still compile; the mini-calendar sidebar (showCalendar) is unaffected.
