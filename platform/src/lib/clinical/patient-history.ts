@@ -78,9 +78,12 @@ export const FAMILY_RELATIONS: readonly string[] = [
   'Other relative',
 ];
 
-/** Entries a reader should see: withdrawn mistakes are kept, not shown. */
+/**
+ * Entries a reader should see: withdrawn mistakes and medicines the patient
+ * has stopped are kept on disk, not shown as current.
+ */
 export function activeHistory(entries: readonly HistoryEntryDoc[]): HistoryEntryDoc[] {
-  return entries.filter(e => e.status !== 'entered_in_error');
+  return entries.filter(e => e.status !== 'entered_in_error' && e.status !== 'stopped');
 }
 
 export function historyForDomain(

@@ -911,6 +911,98 @@ export function buildValidateDocUpdateFn(
     }
   }
 
+  // ── Lab result corrections: four eyes ──────────────────────────────────
+  // A correction to a filed result is proposed by one lab tech and approved
+  // by another. The app checks this; the server must too, or a device could
+  // approve its own user's correction. Identity comes from the user: role.
+  if (!isDelete && oldDoc && docType === 'lab_result') {
+    var labActor = null;
+    for (var la = 0; la < roles.length; la++) if (roles[la].indexOf('user:') === 0) labActor = roles[la].substring(5);
+    var priorCorrection = oldDoc.pendingCorrection;
+    var nextCorrection = newDoc.pendingCorrection;
+    var oldRejected = oldDoc.rejectedCorrections || [];
+    var nextRejected = newDoc.rejectedCorrections || [];
+    function sameLabValue(a, b) { return JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b); }
+    function labPayloadChanged() {
+      return !sameLabValue(newDoc.result, oldDoc.result)
+        || !sameLabValue(newDoc.unit, oldDoc.unit)
+        || !sameLabValue(newDoc.referenceRange, oldDoc.referenceRange)
+        || !sameLabValue(newDoc.observations, oldDoc.observations)
+        || !sameLabValue(newDoc.abnormal, oldDoc.abnormal)
+        || !sameLabValue(newDoc.critical, oldDoc.critical);
+    }
+    var resultChanged = labPayloadChanged();
+    var correctionStateChanged = !sameLabValue(nextCorrection, priorCorrection)
+      || !sameLabValue(nextRejected, oldRejected)
+      || !sameLabValue(newDoc.correctionVerifiedById, oldDoc.correctionVerifiedById)
+      || !sameLabValue(newDoc.correctionVerifiedAt, oldDoc.correctionVerifiedAt);
+    var filedResult = !!oldDoc.completedAt || oldDoc.status === 'completed'
+      || contains(['resulted', 'reviewed_by_clinician', 'acted_upon', 'communicated_to_patient'], oldDoc.orderStatus);
+    var correctionWrite = correctionStateChanged || (filedResult && resultChanged);
+    if (correctionWrite && actingRole !== 'lab_tech') {
+      throw({ forbidden: 'Only a lab tech may propose, approve or reject a filed lab result correction' });
+    }
+    if (correctionWrite && !labActor) {
+      throw({ forbidden: 'Lab result correction writes require a provisioned user identity claim' });
+    }
+    if (nextCorrection && !priorCorrection) {
+      if (nextCorrection.proposedById !== labActor) {
+        throw({ forbidden: 'A lab result correction must name the user proposing it' });
+      }
+      if (resultChanged || !sameLabValue(nextRejected, oldRejected)) {
+        throw({ forbidden: 'Proposing a lab result correction must leave the filed value and rejection history unchanged' });
+      }
+    } else if (nextCorrection && priorCorrection && !sameLabValue(nextCorrection, priorCorrection)) {
+      throw({ forbidden: 'A pending lab result correction is immutable until it is approved or rejected' });
+    }
+    var approvedNow = priorCorrection && !nextCorrection && newDoc.correctionVerifiedAt
+      && newDoc.correctionVerifiedAt !== oldDoc.correctionVerifiedAt;
+    if (approvedNow) {
+      if (priorCorrection.proposedById && priorCorrection.proposedById === labActor) {
+        throw({ forbidden: 'A lab result correction must be approved by a second lab tech, not the one who proposed it' });
+      }
+      if (newDoc.correctionVerifiedById !== labActor) {
+        throw({ forbidden: 'correctionVerifiedById must be the user approving the correction' });
+      }
+      if (!resultChanged || !sameLabValue(nextRejected, oldRejected)
+        || !sameLabValue(newDoc.result, priorCorrection.result)
+        || !sameLabValue(newDoc.unit, priorCorrection.unit)
+        || !sameLabValue(newDoc.referenceRange, priorCorrection.referenceRange)
+        || !sameLabValue(newDoc.abnormal, priorCorrection.abnormal)
+        || !sameLabValue(newDoc.critical, priorCorrection.critical)
+        || !sameLabValue(newDoc.observations, priorCorrection.observations || oldDoc.observations)
+        || newDoc.amended !== true
+        || !newDoc.amendedAt
+        || !sameLabValue(newDoc.amendedBy, priorCorrection.proposedBy)
+        || !sameLabValue(newDoc.amendmentReason, priorCorrection.reason)) {
+        throw({ forbidden: 'An approved correction must apply the pending value and amendment audit fields exactly' });
+      }
+    } else if (priorCorrection && !nextCorrection) {
+      var rejectedNow = nextRejected.length === oldRejected.length + 1;
+      var rejection = rejectedNow ? nextRejected[nextRejected.length - 1] : null;
+      if (!rejectedNow || !sameLabValue(nextRejected.slice(0, -1), oldRejected)
+        || !rejection || rejection.rejectedById !== labActor
+        || rejection.proposedById === labActor
+        || !rejection.rejectedAt || !rejection.rejectionReason
+        || !sameLabValue(rejection.result, priorCorrection.result)
+        || !sameLabValue(rejection.unit, priorCorrection.unit)
+        || !sameLabValue(rejection.referenceRange, priorCorrection.referenceRange)
+        || !sameLabValue(rejection.observations, priorCorrection.observations)
+        || !sameLabValue(rejection.abnormal, priorCorrection.abnormal)
+        || !sameLabValue(rejection.critical, priorCorrection.critical)
+        || !sameLabValue(rejection.reason, priorCorrection.reason)
+        || !sameLabValue(rejection.proposedById, priorCorrection.proposedById)
+        || !sameLabValue(rejection.proposedAt, priorCorrection.proposedAt)
+        || resultChanged) {
+        throw({ forbidden: 'Rejecting a correction requires a second lab tech and an immutable audit entry' });
+      }
+    } else if (filedResult && resultChanged) {
+      throw({ forbidden: 'A filed lab result may change only through an approved pending correction' });
+    } else if (!sameLabValue(nextRejected, oldRejected)) {
+      throw({ forbidden: 'Rejected lab result corrections are immutable' });
+    }
+  }
+
   // Post-consult outcomes are clinical attestations, not front-desk metadata.
   if (!isDelete && docType === 'clinical_encounter') {
     var actorId = null;

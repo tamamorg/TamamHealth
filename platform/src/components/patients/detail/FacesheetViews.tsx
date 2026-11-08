@@ -17,6 +17,7 @@ import { clickable } from '@/lib/a11y';
 import { useNow } from '@/lib/hooks/useNow';
 import { FACESHEET_PANEL_OPTIONS, type FacesheetPanelId, type ChartVitalsLike, type FacesheetActions } from './chart-constants';
 import { appointmentStatusLabel } from '@/lib/appointment-status';
+import { formatMedicationReview } from '@/lib/clinical/triage-medication-review';
 
 /**
  * Facesheet card header — icon + title on the left, the card's primary write
@@ -214,6 +215,9 @@ export function PatientFacesheetView({
             {/* A patient waiting for their first note has no other place in the
                 chart to read what set this priority. */}
             {latestTriage.isolationRequired && <p className="tebra-triage-snapshot__sign is-red"><strong>{t('ptDetail.triageIsolation')}</strong></p>}
+            {latestTriage.medicationReview && (
+              <p className="tebra-triage-snapshot__sign"><strong>{t('triageMeds.heading')}:</strong> {formatMedicationReview(latestTriage.medicationReview, t)}</p>
+            )}
             {([
               ['ptDetail.triageDangerSigns', iittCodeLabels(latestTriage.redCriteria, IITT_RED_CRITERIA), 'is-red'],
               ['ptDetail.triageUrgentSigns', iittCodeLabels(latestTriage.yellowCriteria, IITT_YELLOW_CRITERIA), 'is-yellow'],

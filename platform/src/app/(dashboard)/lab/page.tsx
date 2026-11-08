@@ -36,6 +36,7 @@ import type { LabResultDoc } from '@/lib/db-types';
 import Select from '@/components/Select';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { useNow } from '@/lib/hooks/useNow';
+import PendingCorrectionNotice from '@/components/lab/workflow/PendingCorrectionNotice';
 
 // Human labels for the granular diagnostics lifecycle (Stage 6).
 const ORDER_STAGE_LABEL: Record<LabOrderStatus, string> = {
@@ -458,6 +459,7 @@ export default function LabPage() {
                     <div className="appointment-card-provider">
                       <strong>{order.testName}</strong>
                       {order.tier && <span className="capitalize">{order.tier} tier</span>}
+                      {order.pendingCorrection && <PendingCorrectionNotice correction={order.pendingCorrection} compact showValue={false} />}
                     </div>
 
                     <div className="appointment-card-provider">

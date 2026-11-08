@@ -5,6 +5,8 @@
  * the patient chart. There are no steps to walk: the form opens on what the test
  * needs. A new test asks for the specimen; a specimen in hand asks for the result;
  * a filed result shows its report, and amending it swaps the report for the form.
+ * A correction is only proposed there: a second lab tech approves it from the
+ * report before it replaces the filed value.
  * Save does that one thing; the lifecycle's own hops happen behind it (see
  * `fileResult` in useLabWorkflow).
  */
@@ -64,7 +66,7 @@ export default function LabWorkflowPanel({
     if (!canWork) return null;
     if (amending) {
       return {
-        run: () => void runAction(ctrl.amendResult, 'labFlow.okAmended').then(ok => { if (ok) setAmending(false); }),
+        run: () => void runAction(ctrl.amendResult, 'labFlow.okCorrectionSent').then(ok => { if (ok) setAmending(false); }),
         // An amendment without a stated reason is just an overwrite.
         blocked: !ctrl.amendReason.trim(),
       };
@@ -114,7 +116,7 @@ export default function LabWorkflowPanel({
                 but that report is theirs to read and print — so it sits outside
                 the fieldset and guards its own write controls. A disabled
                 fieldset disables every button inside it, Print included. */}
-            {filed && !amending && <ReportStep order={order} ctrl={ctrl} readOnly={!canWork} onAmend={canWork ? () => setAmending(true) : undefined} />}
+            {filed && !amending && <ReportStep order={order} ctrl={ctrl} readOnly={!canWork} onAmend={canWork && !order.pendingCorrection ? () => setAmending(true) : undefined} />}
             <fieldset className="lwf-fields" disabled={!canWork}>
               {/* What this form is open to do comes first; the clinician's notes
                   stay above it, and what is already on record follows. */}

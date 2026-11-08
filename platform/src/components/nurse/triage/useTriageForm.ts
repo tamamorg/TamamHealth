@@ -26,6 +26,14 @@ import { sortTriageQueueRows, selectTriageQueueRows } from '../triage-queue';
 import { todayIso } from '@/lib/date-utils';
 import { ClipboardList, AlertTriangle, Activity, Clock, Send } from '@/components/icons/lucide';
 import type { TriageWorkflowProps } from './types';
+import { useHistoryEntries } from '@/lib/hooks/useHistoryEntries';
+import { usePermissions } from '@/lib/hooks/usePermissions';
+import { MEDICATION_HISTORY_DOMAIN, historyForDomain } from '@/lib/clinical/patient-history';
+import {
+  NO_MEDICATION_CHANGES, buildMedicationReview, medicationReviewBlocksSave, mergeMedicationChanges, recordMedicationChange,
+  type MedicationReviewChanges,
+} from '@/lib/clinical/triage-medication-review';
+import type { ReportedMedicationChange } from '@/components/ehr/chart/sections/ReportedMedications';
 
 export function useTriageForm({
   initialPatientId,
@@ -139,6 +147,14 @@ export function useTriageForm({
   // report) — folded into `notes` on save with a clear label.
   const [currentMedications, setCurrentMedications] = useState('');
   const [chronicConditionsSelected, setChronicConditionsSelected] = useState<string[]>([]);
+  // Medication list review: the nurse's required tick, and what changed on the
+  // patient's medication list while this triage was open. The list itself is
+  // written as it changes (history entries); these only describe the review.
+  const [medicationReviewed, setMedicationReviewed] = useState(false);
+  const [medicationChanges, setMedicationChanges] = useState<MedicationReviewChanges>(NO_MEDICATION_CHANGES);
+  const noteMedicationChange = (change: ReportedMedicationChange) =>
+    setMedicationChanges(previous => recordMedicationChange(previous, change.kind, change.entry.title));
+  const { canRecordMedicationHistory } = usePermissions();
   // Per-vital "couldn't measure this" reason, keyed by field. Presence of a
   // key (even '') means the nurse has flagged that vital as unmeasured.
   const [unmeasuredVitalReasons, setUnmeasuredVitalReasons] = useState<Partial<Record<TriageVitalField, string>>>({});
@@ -172,6 +188,10 @@ export function useTriageForm({
     [lockedPatient, triagePatientId, patients]
   );
   const selectedPatientAge = selectedTriagePatient ? patientAge(selectedTriagePatient) ?? undefined : undefined;
+  const selectedPatientFullName = selectedTriagePatient ? patientFullName(selectedTriagePatient) : '';
+  // The patient's medication list, live — the review section edits it and the
+  // save counts it.
+  const medicationHistory = useHistoryEntries(selectedTriagePatient?._id);
   // FRACTIONAL, not whole years — required by getTriageVitalWarnings' IITT
   // infant age bands (< 8 days RED, < 6 months YELLOW, MUAC eligibility from
   // 0.5y). `selectedPatientAge` above rounds to whole years, so every infant
@@ -276,6 +296,10 @@ export function useTriageForm({
     setCurrentMedications('');
     setChronicConditionsSelected([]);
     setUnmeasuredVitalReasons({});
+    // A correction is saved as this nurse's review: it is ticked again, and
+    // what the saved review already listed as changed carries forward.
+    setMedicationReviewed(false);
+    setMedicationChanges(mergeMedicationChanges(ti.medicationReview, NO_MEDICATION_CHANGES));
     setDraftRestoredNotice(false);
     setTriagePatientId(ti.patientId);
     setTriagePatientSearch('');
@@ -387,6 +411,8 @@ export function useTriageForm({
     setVitalUrgencyOverrideReason(draft.vitalUrgencyOverrideReason);
     setCurrentMedications(draft.currentMedications);
     setChronicConditionsSelected(draft.chronicConditions);
+    setMedicationReviewed(draft.medicationReview?.reviewed ?? false);
+    setMedicationChanges(mergeMedicationChanges(draft.medicationReview?.changes, NO_MEDICATION_CHANGES));
     setUnmeasuredVitalReasons(draft.unmeasuredVitalReasons as Partial<Record<TriageVitalField, string>>);
     setManualPriorityRaise(draft.manualPriorityRaise);
     setManualUpgradeReason(draft.manualUpgradeReason);
@@ -487,6 +513,7 @@ export function useTriageForm({
         vitalUrgencyOverrideReason,
         currentMedications,
         chronicConditions: chronicConditionsSelected,
+        medicationReview: { reviewed: medicationReviewed, changes: medicationChanges },
         unmeasuredVitalReasons,
         manualPriorityRaise,
         manualUpgradeReason,
@@ -503,6 +530,7 @@ export function useTriageForm({
     gestationalAgeWeeks, injuryMechanism, infectionRiskSigns, isolationRequired, preArrivalCare,
     immediateInterventions, triageDisposition, destinationClinic, assignedProviderId, handoffNote,
     overrideVitalUrgency, vitalUrgencyOverrideReason, currentMedications, chronicConditionsSelected,
+    medicationReviewed, medicationChanges,
     unmeasuredVitalReasons, manualPriorityRaise, manualUpgradeReason, editingTriageId,
     resumePendingTriageId, encounterIdForNewTriage,
   ]);
@@ -662,6 +690,8 @@ export function useTriageForm({
     setManualUpgradeReason('');
     setCurrentMedications('');
     setChronicConditionsSelected([]);
+    setMedicationReviewed(false);
+    setMedicationChanges(NO_MEDICATION_CHANGES);
     setUnmeasuredVitalReasons({});
     // Let the patient-select effect re-resolve a pending/active triage (or a
     // fresh draft) rather than treating this patient as "already checked" —
@@ -722,6 +752,11 @@ export function useTriageForm({
       document.getElementById('triage-manual-raise-reason')?.focus();
       return;
     }
+    if (medicationReviewBlocksSave({ patientKnown: Boolean(selectedTriagePatient), reviewed: medicationReviewed })) {
+      showToast(t('triageMeds.errNotReviewed'), 'error');
+      document.getElementById('triage-medication-reviewed')?.focus();
+      return;
+    }
     try {
       setTriageSubmitting(true);
       const now = new Date().toISOString();
@@ -775,6 +810,13 @@ export function useTriageForm({
         symptomDuration: triageContext.symptomDuration || undefined,
         referralSource: triageContext.referralSource || undefined,
         knownAllergies: triageContext.knownAllergies || undefined,
+        medicationReview: buildMedicationReview({
+          reviewedAt: now,
+          reviewedBy: currentUser._id,
+          reviewedByName: currentUser.name || 'Unknown Nurse',
+          activeCount: historyForDomain(medicationHistory.entries, MEDICATION_HISTORY_DOMAIN).length,
+          changes: medicationChanges,
+        }),
         presentationCategory,
         triagePathway,
         redCriteria,
@@ -1081,6 +1123,13 @@ export function useTriageForm({
     setCurrentMedications,
     chronicConditionsSelected,
     setChronicConditionsSelected,
+    medicationReviewed,
+    setMedicationReviewed,
+    medicationChanges,
+    noteMedicationChange,
+    medicationHistory,
+    canRecordMedicationHistory,
+    selectedPatientFullName,
     unmeasuredVitalReasons,
     setUnmeasuredVitalReasons,
     triageSubmitting,

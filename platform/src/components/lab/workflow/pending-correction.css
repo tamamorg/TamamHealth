@@ -1,0 +1,48 @@
+/* Correction awaiting review (PendingCorrectionNotice). Staff screens only. */
+.lab-pcorr {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-warning-border);
+  border-inline-start: 3px solid var(--color-warning);
+  background: var(--bg-card-solid, var(--bg-primary));
+  color: var(--text-primary);
+  font-size: 14px;
+}
+.lab-pcorr-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-weight: 600;
+  color: var(--color-warning-text);
+}
+.lab-pcorr-fields { display: grid; gap: 4px; margin: 0; }
+.lab-pcorr-fields > div { display: flex; flex-wrap: wrap; gap: 4px 8px; }
+.lab-pcorr-fields dt { min-width: 120px; color: var(--text-secondary); font-weight: 500; }
+.lab-pcorr-fields dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.lab-pcorr-help { margin: 6px 0 0; font-size: 13px; color: var(--text-secondary); }
+.lab-pcorr-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.lab-pcorr-reject { margin-top: 10px; }
+
+/* Doubled class: list rows style their own spans (display, ellipsis). */
+.lab-pcorr.lab-pcorr--compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 1px 6px;
+  border: 1px solid var(--color-warning-border);
+  border-inline-start-width: 1px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-warning-text);
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+/* Above a report sheet: as wide as the sheet it sits over. */
+.rs-desk > .lab-pcorr { max-width: 960px; margin: 0 auto 12px; }
+
+@media print {
+  .lab-pcorr { display: none !important; }
+}
