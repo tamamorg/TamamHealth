@@ -18,7 +18,7 @@ import { useRouter } from 'next/navigation';
 import { Save, Check, Copy, Send, ClipboardList, DollarSign, Plus, ArrowLeft, ChevronDown } from '@/components/icons/lucide';
 
 import { useToast } from '@/components/Toast';
-import Modal from '@/components/Modal';
+import FormSlider from '@/components/overlay/FormSlider';
 import NoteSectionCard from './NoteSectionCard';
 import AssignPicker from './AssignPicker';
 import { patientFullName } from '@/lib/patient-utils';
@@ -1069,30 +1069,34 @@ export default function ClinicalNoteEditor({
     <>
       {/* Add optional section */}
       {isPanel('addOptional') && (
-        <Modal variant="slider" onClose={() => closePanel('addOptional')} width={420}>
-          <div style={{ padding: 18 }}>
-            <div className="modal-headband">
-              <h2 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>{t('noteEditor.addSectionTitle')}</h2>
-            </div>
-            {optionalAvailable.length === 0 && (
-              <p className="cn-popover-empty">{t('noteEditor.allSectionsAdded')}</p>
-            )}
-            {optionalAvailable.map(def => (
-              <button
-                key={def.id}
-                type="button"
-                className="cn-popover-item"
-                onClick={async () => {
-                  const updated = await persist(() => addNoteSection(noteId, def.id));
-                  closePanel('addOptional');
-                  await fillEmptyDerived(updated);
-                }}
-              >
-                {sectionLabel(t, def.id)}
-              </button>
-            ))}
-          </div>
-        </Modal>
+        <FormSlider
+          title={t('noteEditor.addSectionTitle')}
+          onClose={() => closePanel('addOptional')}
+          width={420}
+          footer={(
+            <button type="button" className="btn btn-secondary" onClick={() => closePanel('addOptional')}>
+              {t('common.cancel')}
+            </button>
+          )}
+        >
+          {optionalAvailable.length === 0 && (
+            <p className="cn-popover-empty">{t('noteEditor.allSectionsAdded')}</p>
+          )}
+          {optionalAvailable.map(def => (
+            <button
+              key={def.id}
+              type="button"
+              className="cn-popover-item"
+              onClick={async () => {
+                const updated = await persist(() => addNoteSection(noteId, def.id));
+                closePanel('addOptional');
+                await fillEmptyDerived(updated);
+              }}
+            >
+              {sectionLabel(t, def.id)}
+            </button>
+          ))}
+        </FormSlider>
       )}
 
       {/* Sign confirmation */}

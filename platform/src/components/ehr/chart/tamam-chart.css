@@ -208,6 +208,14 @@
   max-height: calc(100svh - var(--app-top-rail-height, 72px));
 }
 
+/* The rail is a flex column and its card has `overflow: hidden`, which drops
+   the card's automatic min-height to 0: in a short window the card shrank to
+   the rail's height and clipped the lower rows, so the rail itself never had
+   anything to scroll. Rows keep their natural height; the rail scrolls. */
+.tamam-left-rail > * {
+  flex-shrink: 0;
+}
+
 @media (min-width: 1280px) {
   .page-container.ehr-chart-page {
     margin-top: max(0px, calc(var(--app-top-rail-height, 72px) - var(--ehr-top-rail-height, 60px)));
