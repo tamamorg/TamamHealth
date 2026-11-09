@@ -8,8 +8,15 @@ export type MobileShellTab = 'dashboard' | 'patients' | 'calendar' | 'inbox' | n
 export type MobileShellOverlay = 'create' | 'modules' | null;
 export type MobileShellLane = 'scheduled' | 'in_office' | 'finished';
 
-function tabForPathname(pathname: string): MobileShellTab {
+export function tabForPathname(pathname: string): MobileShellTab {
   if (pathname.startsWith('/dashboard')) return 'dashboard';
+  // Registration is a form, not the patient list: it renders the real page
+  // inside the shell chrome (as every route outside the four tabs does).
+  if (pathname === '/patients/new' || pathname.startsWith('/patients/new/')) return null;
+  // A patient's own page (/patients/<id>, with ?form=triage-form and the like)
+  // is a real page too. Treated as the list tab it showed the patient list and
+  // dropped the form, so triage from the rooming screen was a dead end on a phone.
+  if (/^\/patients\/[^/]+/.test(pathname)) return null;
   if (pathname.startsWith('/patients')) return 'patients';
   if (pathname.startsWith('/appointments')) return 'calendar';
   if (pathname.startsWith('/messages')) return 'inbox';

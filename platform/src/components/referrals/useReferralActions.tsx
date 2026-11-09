@@ -84,8 +84,8 @@ export function useReferralActions({ canViewClinical, onChanged, onOpenAll }: {
     const line = text.trim();
     if (mode === 'accept') {
       return write(async () => {
-        const { acceptReferral } = await import('@/lib/services/referral-service');
-        if (!(await acceptReferral(ref._id))) throw new Error('not saved');
+        const { acceptReferralFromDevice } = await import('@/lib/services/referral-service');
+        if (!(await acceptReferralFromDevice(ref._id))) throw new Error('not saved');
       }, t('referrals.toastAccepted', { name: ref.patientName }), t('referrals.toastAcceptFailed'));
     }
     if (mode === 'decline') {

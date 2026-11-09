@@ -29,3 +29,16 @@ describe('isAwaitingClinicianRecords', () => {
     expect(isAwaitingClinicianRecords([], 'ready_for_clinic_checkout', true)).toBe(false);
   });
 });
+
+import { resolveLinkOpensForViewer } from '@/components/front-desk/CheckoutModal';
+
+describe('resolveLinkOpensForViewer', () => {
+  it('hides the payments link from someone who cannot open the payments screen', () => {
+    expect(resolveLinkOpensForViewer('/payments?patientId=p1', null, false)).toBe(false);
+    expect(resolveLinkOpensForViewer('/payments?patientId=p1', null, true)).toBe(true);
+  });
+  it('still follows the chart tabs for chart links', () => {
+    expect(resolveLinkOpensForViewer('/patients/p1?tab=notes', ['overview'], false)).toBe(false);
+    expect(resolveLinkOpensForViewer('/patients/p1?tab=overview', ['overview'], false)).toBe(true);
+  });
+});

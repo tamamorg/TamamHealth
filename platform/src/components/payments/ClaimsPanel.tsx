@@ -14,6 +14,7 @@
  * this panel for roles that hold the grant.
  */
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { defaultCurrency, offeredCurrencies } from '@/lib/country/country-pack';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -31,7 +32,7 @@ import { patientFullName, shortenPersonName } from '@/lib/patient-utils';
 import { computeAdjudicatedStatus } from '@/lib/services/payment-service';
 import type { ClaimDoc, ClaimStatus, InsurancePolicyDoc } from '@/lib/db-types-payments';
 import type { BillingDoc } from '@/lib/db-types-billing';
-import { formatMoney } from '@/lib/format-utils';
+import { formatMoney, formatDate } from '@/lib/format-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { PAYER_LABEL_KEYS } from './claims-filter';
 import { ClaimEvidence } from '@/modules/insurance/client';
@@ -351,7 +352,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                 <td className="bl-num bl-right">{formatMoney(claim.status === 'paid' ? claim.settlement?.amount ?? claim.totalApproved ?? 0 : 0, { currency: claim.currency || defaultCurrency(), decimals: 2 })}</td>
                 <td><span className={`bl-chip ${CLAIM_STATUS_CHIP[claim.status]}`}>{t(`claims.status_${claim.status}`)}</span></td>
                 <td style={{ whiteSpace: 'nowrap' }}>
-                  {claim.submittedDate ? new Date(claim.submittedDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                  {formatDate(claim.submittedDate)}
                 </td>
               </tr>
             ))}
@@ -410,18 +411,18 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                   </div>
                   <div className="bl-totals-row">
                     <dt>{t('claims.colSubmittedDate')}</dt>
-                    <dd>{openClaim.submittedDate ? new Date(openClaim.submittedDate).toLocaleDateString() : '—'}</dd>
+                    <dd>{formatDate(openClaim.submittedDate)}</dd>
                   </div>
                   {openClaim.adjudicatedDate && (
                     <div className="bl-totals-row">
                       <dt>{t('claims.adjudicated')}</dt>
-                      <dd>{new Date(openClaim.adjudicatedDate).toLocaleDateString()}{openClaim.adjudicatedBy ? ` · ${openClaim.adjudicatedBy}` : ''}</dd>
+                      <dd>{formatDate(openClaim.adjudicatedDate)}{openClaim.adjudicatedBy ? ` · ${openClaim.adjudicatedBy}` : ''}</dd>
                     </div>
                   )}
                   {!!openClaim.resubmissionCount && (
                     <div className="bl-totals-row">
                       <dt>{t('claims.resubmissions')}</dt>
-                      <dd>{openClaim.resubmissionCount}{openClaim.lastResubmittedAt ? ` · ${new Date(openClaim.lastResubmittedAt).toLocaleDateString()}` : ''}</dd>
+                      <dd>{openClaim.resubmissionCount}{openClaim.lastResubmittedAt ? ` · ${formatInFacilityZone(new Date(openClaim.lastResubmittedAt), {})}` : ''}</dd>
                     </div>
                   )}
                   <div className="bl-totals-row">

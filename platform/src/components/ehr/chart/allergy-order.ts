@@ -2,6 +2,8 @@ export interface BannerAllergy {
   substance: string;
   /** mild | moderate | severe | unknown. Absent (legacy string list) = unknown. */
   criticality?: string;
+  /** Reported by the patient at registration, not yet confirmed. */
+  unverified?: boolean;
 }
 
 /** Severe and unknown-criticality allergies are the ones that change what is

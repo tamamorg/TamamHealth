@@ -18,6 +18,12 @@ export async function assertDischargeAllowed(id: string, status: string, actor: 
     userId: actor.actorId, role: actor.actorRole, orgId: doc.orgId, hospitalId: doc.hospitalId,
   });
   if (!exceptional && !evaluation.canDischarge) throw new Error(`CHECKOUT_BLOCKED: ${evaluation.blocking.map(b => b.key).join(', ')}`);
+  // A clinician override can waive the other open items, never a balance: that
+  // needs it paid, waived or carried as a debt. Only a walk-out (the patient has
+  // already gone) is recorded regardless.
+  if (status === 'discharged_with_pending_items' && evaluation.blocking.some(b => b.key === 'payment_status_determined')) {
+    throw new Error('CHECKOUT_BLOCKED: payment_status_determined');
+  }
   if (exceptional) await auditOverrideOnce(id, status, actor.actorId,
     `Encounter ${id}: ${status}; ${evaluation.blocking.map(b => b.key).join(', ')}; reason recorded on the visit`);
 }

@@ -1,4 +1,5 @@
 import type { PatientDoc } from '@/lib/db-types';
+import { areLinkedCopies } from '@/lib/patient-referral-link';
 
 /** One pair of records that look like the same person, and why. */
 export interface DupPair {
@@ -35,6 +36,8 @@ export function findDuplicateCandidates(patients: readonly PatientDoc[]): DupPai
       for (let j = i + 1; j < group.length; j++) {
         const key = [group[i]._id, group[j]._id].sort().join('|');
         if (pairKeys.has(key)) continue;
+        // Two copies of one cross-organisation referral are linked, not duplicates.
+        if (areLinkedCopies(group[i], group[j])) continue;
         pairKeys.add(key);
         pairs.push({ a: group[i], b: group[j], basis });
       }

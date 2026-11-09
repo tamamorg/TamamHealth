@@ -281,6 +281,7 @@ export default function DeskOverlays({
             onClose={() => setCheckoutTarget(null)}
             onComplete={handleCompleteCheckout}
             canCollectPayment={canUseRoute('/payments')}
+            canRecordDebt={canUseRoute('/payments') || currentUser?.role === 'front_desk'}
             onCollectPayment={(pid) => {
               router.push(`/payments?patientId=${pid}`);
             }}

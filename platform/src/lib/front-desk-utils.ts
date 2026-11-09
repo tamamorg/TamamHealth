@@ -1,6 +1,6 @@
 import type { EncounterDoc, PatientDoc } from '@/lib/db-types';
 import { formatClockTime } from '@/lib/format-utils';
-import { jubaDate } from '@/lib/time-juba';
+import { jubaDate, formatInFacilityZone } from '@/lib/time-juba';
 import { canTransition, isTerminal } from '@/lib/clinical-flow/encounter-journey';
 
 // Exam rooms / bays a walk-in patient can be placed in to meet the provider.
@@ -37,7 +37,7 @@ export function splitDateTime(iso?: string | null): { date: string; time: string
   if (!iso) return { date: '—', time: '' };
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return { date: iso, time: '' };
-  const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const date = formatInFacilityZone(d, { month: 'short', day: 'numeric' });
   const time = /T\d{2}:\d{2}/.test(iso) ? formatClockTime(d) : '';
   return { date, time };
 }

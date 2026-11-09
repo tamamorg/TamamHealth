@@ -1,4 +1,5 @@
 'use client';
+import { useState } from 'react';
 
 import { O3MultiSelectField, O3Question, O3SelectField, O3TextField } from '@/components/forms/O3Form';
 import { X } from '@/components/icons/lucide';
@@ -7,6 +8,72 @@ import { TRIAGE_CHRONIC_CONDITIONS } from './constants';
 import { ACCENT } from '../shared';
 import { type TriageDisposition } from '@/lib/db-types';
 import type { TriageFormState } from './useTriageForm';
+
+import { useAuth } from '@/lib/context';
+import { useToast } from '@/components/Toast';
+import { useDataScope } from '@/lib/hooks/useDataScope';
+import { updateAllergy, removeAllergy } from '@/lib/services/allergy-service';
+import { describeError } from '@/lib/user-facing-error';
+import type { PatientDoc } from '@/lib/db-types';
+
+/**
+ * Triage's allergy review of what the patient told the desk at registration.
+ * Each unverified entry is confirmed (stays, no longer marked unverified) or
+ * removed with the review reason on record. Renders nothing when there is none.
+ */
+function ReportedAllergyReview({ patient, t }: { patient: PatientDoc | null; t: (key: string) => string }) {
+  const { currentUser } = useAuth();
+  const scope = useDataScope();
+  const { showToast } = useToast();
+  const [handled, setHandled] = useState<Set<string>>(new Set());
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const pending = (patient?.structuredAllergies ?? []).filter(
+    a => a.status === 'active' && a.verified === false && !handled.has(a.id),
+  );
+  if (!patient || pending.length === 0) return null;
+  const actor = { id: currentUser?._id, name: currentUser?.name || currentUser?.username };
+
+  async function review(id: string, action: 'confirm' | 'remove') {
+    if (!scope || !patient) return;
+    setBusyId(id);
+    try {
+      if (action === 'confirm') {
+        await updateAllergy(patient._id, scope, id, {
+          verified: true,
+          ...(actor.id ? { updatedBy: actor.id } : {}),
+          ...(actor.name ? { updatedByName: actor.name } : {}),
+        });
+      } else {
+        await removeAllergy(patient._id, scope, id, t('triage.allergyRemoveReason'), 'entered_in_error', actor);
+      }
+      setHandled(prev => new Set(prev).add(id));
+    } catch (e) {
+      showToast(describeError(e, t('msg.allergyReviewNotSaved')), 'error');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <div id="triage-reported-allergies" style={{ gridColumn: '1 / -1' }}>
+      <p style={{ fontWeight: 600, margin: '0 0 2px' }}>{t('triage.allergyReviewHeading')}</p>
+      <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 8px' }}>{t('triage.allergyReviewHint')}</p>
+      {pending.map(a => (
+        <div key={a.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid var(--border-light)' }}>
+          <span style={{ flex: '1 1 100%', minWidth: 0 }}>
+            <strong>{a.substance}</strong>{a.reaction ? ` · ${a.reaction}` : ''}
+          </span>
+          <button type="button" className="btn btn-primary btn-sm" disabled={busyId === a.id} onClick={() => review(a.id, 'confirm')}>
+            {t('allergy.confirm')}
+          </button>
+          <button type="button" className="btn btn-secondary btn-sm" disabled={busyId === a.id} onClick={() => review(a.id, 'remove')}>
+            {t('action.remove')}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function TriageVitalsSection({ f }: { f: TriageFormState }) {
   const { t, triageVitals, setTriageVitals, unmeasuredVitalReasons, setUnmeasuredVitalReasons, vitalErrors, warningByVital, calculatedBmi, resetVitalOverride } = f;
@@ -105,6 +172,7 @@ export function TriageVisitContext({ f }: { f: TriageFormState }) {
         placeholder={t('nurse.symptomDurationPlaceholder')} onChange={value => setTriageContext({ ...triageContext, symptomDuration: value })} />
       <O3TextField id="triage-referral-source" label={t('nurse.referralSource')} value={triageContext.referralSource}
         placeholder={t('nurse.referralSourcePlaceholder')} onChange={value => setTriageContext({ ...triageContext, referralSource: value })} />
+      <ReportedAllergyReview patient={f.selectedTriagePatient} t={t} />
       <O3TextField id="triage-known-allergies" label={t('nurse.knownAllergies')} value={triageContext.knownAllergies}
         placeholder={t('nurse.knownAllergiesPlaceholder')} onChange={value => setTriageContext({ ...triageContext, knownAllergies: value })} />
     </div>

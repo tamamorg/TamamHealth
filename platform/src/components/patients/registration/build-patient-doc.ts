@@ -12,14 +12,19 @@
  * clerk just confirmed is the record that gets created.
  */
 
+import { v4 as uuidv4 } from 'uuid';
+import { isNoAllergySentinel } from '@/lib/clinical-roles';
 import { normalizePhone, normalizeEmail, normalizeNationalId } from '@/lib/field-formats';
 import { identifiersFrom } from '@/lib/country/patient-identity';
 import type { PatientDoc } from '@/lib/db-types';
-import type { AdditionalNok, RegistrationForm } from './registration-form';
+import type { AllergyEntry } from '@/lib/types/patient-clinical';
+import type { AdditionalNok, RegistrationForm, ReportedAllergy } from './registration-form';
 
 export interface BuildPatientDocInput {
   form: RegistrationForm;
   additionalNok: AdditionalNok[];
+  /** Allergies the patient reports at the desk. Optional; empty keeps "Not recorded". */
+  reportedAllergies?: ReportedAllergy[];
   geocodeId?: string;
   photoUrl: string | null;
   /** Who is registering, and where. */
@@ -36,10 +41,46 @@ function optionalInt(value: string): number | undefined {
   return Number.isNaN(parsed) ? undefined : parsed;
 }
 
+/**
+ * Patient-reported allergies as unverified structured entries. Registration can
+ * never say "no known allergies": an empty list stays empty (chart: "Not
+ * recorded"). Blank rows and repeats are dropped; triage's allergy review
+ * verifies or removes what remains.
+ */
+export function buildReportedAllergyEntries(
+  reported: ReportedAllergy[],
+  nowIso: string,
+  recordedByName: string,
+  newId: () => string,
+): AllergyEntry[] {
+  const seen = new Set<string>();
+  const entries: AllergyEntry[] = [];
+  for (const row of reported) {
+    const substance = row.substance.trim();
+    const key = substance.toLowerCase();
+    if (!substance || seen.has(key) || isNoAllergySentinel(substance)) continue;
+    seen.add(key);
+    const reaction = row.reaction.trim();
+    entries.push({
+      id: newId(),
+      substance,
+      criticality: 'unknown',
+      status: 'active',
+      ...(reaction ? { reaction } : {}),
+      source: 'patient_reported_at_registration',
+      verified: false,
+      ...(recordedByName ? { recordedByName } : {}),
+      recordedAt: nowIso,
+    });
+  }
+  return entries;
+}
+
 export function buildPatientDoc({
-  form, additionalNok, geocodeId, photoUrl, hospitalId, registeredBy, nowIso,
+  form, additionalNok, reportedAllergies = [], geocodeId, photoUrl, hospitalId, registeredBy, nowIso,
 }: BuildPatientDocInput) {
   const today = nowIso.split('T')[0];
+  const allergyEntries = buildReportedAllergyEntries(reportedAllergies, nowIso, registeredBy, uuidv4);
   const namedNok = additionalNok.filter(n => n.name.trim());
   const exemptionReason = form.payorCoverageType === 'exemption'
     ? (form.payorExemptionReason === 'Other' ? form.payorExemptionOther.trim() : form.payorExemptionReason)
@@ -101,7 +142,8 @@ export function buildPatientDoc({
     // a 'None known' entry here read as "no known allergies" on the chart
     // before anyone had asked (2026-11-05); the chart now says "Not recorded".
     bloodType: 'Unknown' as const,
-    allergies: [],
+    allergies: allergyEntries.map(e => e.substance),
+    ...(allergyEntries.length > 0 ? { structuredAllergies: allergyEntries } : {}),
     chronicConditions: ['None'],
     ...(photoUrl ? { photoUrl } : {}),
     registrationHospital: hospitalId,

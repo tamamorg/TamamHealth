@@ -10,8 +10,10 @@ import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import { findByType } from './db-query';
 import { getSettings } from '../settings/settings-store';
+import { DEFAULT_FACILITY_SETTINGS, normalizeHospitalPrefix } from '../settings/facility-settings';
 import { normalizePhone, normalizeEmail, normalizeNationalId } from '../field-formats';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
+import { isReferredOut, withoutShadowedCopies } from '../patient-referral-link';
 import { todayIso } from '@/lib/date-utils';
 import { suggestPortalUsername, uniquePortalUsername } from '@/modules/identity/client';
 import {
@@ -74,7 +76,9 @@ export function isMarkedDuplicate(p: { duplicateOf?: string }): boolean {
  */
 export async function getAllPatients(scope: DataScope, options: PatientListOptions = {}): Promise<PatientDoc[]> {
   const rows = filterByScope(await readEveryPatientOnDevice(), scope);
-  return options.includeDuplicates ? rows : rows.filter(p => !isMarkedDuplicate(p));
+  // A viewer who sees both organisations after a cross-organisation referral
+  // gets the person once: the sender's read-only copy yields to the receiver's.
+  return options.includeDuplicates ? rows : withoutShadowedCopies(rows.filter(p => !isMarkedDuplicate(p)));
 }
 
 async function readEveryPatientOnDevice(): Promise<PatientDoc[]> {
@@ -178,7 +182,17 @@ const DEFAULT_HOSPITAL_PREFIX =
  * 'TAB', so behaviour is identical until an admin changes it.
  */
 function defaultHospitalPrefix(): string {
-  return getSettings().hospitalNumberPrefix || DEFAULT_HOSPITAL_PREFIX;
+  return normalizeHospitalPrefix(getSettings().hospitalNumberPrefix) || DEFAULT_HOSPITAL_PREFIX;
+}
+
+/**
+ * The prefix an admin set in Facility settings, or '' when none was set.
+ * The settings default ('TAB') counts as "not set" so a facility that never
+ * touched the field keeps the prefix its hospital record gives it.
+ */
+export function configuredHospitalPrefix(): string {
+  const set = normalizeHospitalPrefix(getSettings().hospitalNumberPrefix);
+  return set && set !== DEFAULT_FACILITY_SETTINGS.hospitalNumberPrefix ? set : '';
 }
 
 /**
@@ -198,6 +212,8 @@ function deriveHospitalPrefix(name: string): string {
 
 /* istanbul ignore next -- private utility: hospital prefix lookup */
 async function getHospitalPrefix(hospitalId?: string): Promise<string> {
+  const configured = configuredHospitalPrefix();
+  if (configured) return configured;
   if (!hospitalId) return defaultHospitalPrefix();
 
   // Prefer the hospital's own `code` (or derived from name) when the doc is
@@ -865,6 +881,14 @@ export async function createPatient(
   return doc;
 }
 
+/** Thrown when a write targets a chart that was referred to another organisation. */
+export class ReferredOutChartError extends Error {
+  name = 'ReferredOutChartError';
+  constructor() {
+    super('Chart not changed. This patient was referred to another organization and the chart is read-only here.');
+  }
+}
+
 export async function updatePatient(
   id: string,
   rawData: Partial<PatientDoc>,
@@ -879,6 +903,9 @@ export async function updatePatient(
   // belongs to the referring org first).
   const stripped = stripProtectedPatientFields(rawData as unknown as Record<string, unknown>);
   if (!options.allowRehome) delete (stripped as Record<string, unknown>).orgId;
+  // The cross-organisation referral link is written by acceptReferral only.
+  delete (stripped as Record<string, unknown>).referredOut;
+  delete (stripped as Record<string, unknown>).referredFrom;
   const data = normalizePatientContact(stripped) as Partial<PatientDoc>;
   const db = patientsDB();
   let existing: PatientDoc;
@@ -895,6 +922,8 @@ export async function updatePatient(
   // Tenant barrier: an id on this device is not authorization to write it. An
   // out-of-scope patient is indistinguishable from a missing one (null).
   if (filterByScope([existing], scope).length === 0) return null;
+  // A chart referred to another organisation is this side's read-only copy.
+  if (isReferredOut(existing)) throw new ReferredOutChartError();
   const inferredOrg = data.orgId || existing.orgId || await inferOrgIdFromHospital(data.registrationHospital || existing.registrationHospital);
   const updated = withPendingOfflineSync({
     ...existing,
@@ -971,6 +1000,9 @@ export async function mutatePatient(
     }
     const rawPatch = mutate(existing);
     if (rawPatch === null) return existing;
+    // Read-only once referred out. The one write that passes is the referral
+    // flow itself, lifting the mark when the patient comes back.
+    if (isReferredOut(existing) && !('referredOut' in (rawPatch as object))) throw new ReferredOutChartError();
     const patch = stripProtectedPatientFields(rawPatch as unknown as Record<string, unknown>) as Partial<PatientDoc>;
     // The tenant (orgId) is never writable through a mutate callback.
     delete (patch as Record<string, unknown>).orgId;

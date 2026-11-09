@@ -1,5 +1,6 @@
 'use client';
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import EhrPageTitle from '@/components/ehr/EhrPageTitle';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -44,7 +45,7 @@ function relTime(iso?: string): string {
 }
 function clockTime(iso?: string): string {
   if (!iso) return '';
-  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  return formatInFacilityZone(new Date(iso), { hour: 'numeric', minute: '2-digit' }, 'en-US');
 }
 /** Render message text with @mentions highlighted. */
 function renderBody(text: string) {

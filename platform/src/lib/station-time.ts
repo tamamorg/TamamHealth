@@ -1,3 +1,4 @@
+import { formatInFacilityZone } from '@/lib/time-juba';
 /** Short durations for station worklists (lab, pharmacy). */
 
 /** How long ago, in the unit that reads at a glance: 12 min, 3 h, 2 d. */
@@ -17,5 +18,5 @@ export function durationLabel(totalMinutes: number): string {
 export function shortDayLabel(iso?: string): string {
   if (!iso) return '';
   const when = new Date(iso);
-  return Number.isNaN(when.getTime()) ? '' : when.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return Number.isNaN(when.getTime()) ? '' : formatInFacilityZone(when, { month: 'short', day: 'numeric' });
 }

@@ -80,16 +80,7 @@ const SCAN_ROOTS = ['src/app', 'src/components'];
 /** Files known to be pending translation. Delete an entry once its page adopts
  *  `useTranslation`; never add one to silence a new violation. */
 const UNTRANSLATED_BASELINE = new Map(Object.entries({
-  'src/components/patients/BillingTab.tsx': 11,
-  'src/components/ehr/chart/ChartHeader.tsx': 6,
-  'src/components/clinical-notes/CareCoordinationModal.tsx': 5,
   'src/app/terms/page.tsx': 4,
-  'src/components/MessagingDock.tsx': 4,
-  'src/components/ehr/chart/panels/VisitNotePanel.tsx': 4,
-  'src/app/global-error.tsx': 3,
-  'src/components/ForcePasswordChange.tsx': 3,
-  'src/components/clinical-notes/prescribe/PrescribeModal.tsx': 3,
-  'src/components/AnnouncementsPanel.tsx': 2,
   'src/components/PublicLegalShell.tsx': 1,
 }));
 

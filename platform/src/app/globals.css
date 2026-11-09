@@ -25829,10 +25829,9 @@ table.patient-data-table.patient-data-table {
 }
 
 /* "Open chart" and "Create clinical note" are peers on this line, so they are
-   one shape in two fills: same height, same pill ends, same label type, glyph
-   then words. Only the fill ranks them — outlined for the chart, salmon for the
-   note action. They came from different stylesheets and looked it: a 30px
-   square-cornered button beside a 36px capsule. */
+   one shape in two fills: same height, same square corners, same label type,
+   glyph then words. Only the fill ranks them — outlined for the chart, blue for
+   the note action. */
 .ehr-visit-pop-actions .ehr-visit-pop-labelled,
 .ehr-visit-pop-actions .cn-split .cn-btn {
   height: 32px;
@@ -25849,7 +25848,7 @@ table.patient-data-table.patient-data-table {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border-radius: 999px;
+  border-radius: 0;
 }
 
 /* The unlabelled actions (move, start consultation) are the same height and the
@@ -25858,18 +25857,20 @@ table.patient-data-table.patient-data-table {
 .ehr-visit-pop-actions .ehr-visit-pop-icon:not(.ehr-visit-pop-labelled) {
   width: 32px;
   height: 32px;
-  border-radius: 999px;
+  border-radius: 0;
 }
-
-
-
-
 
 /* Label side matches "Open chart" inset for inset; the caret is a glyph's worth
    of room past the divider. Both carry `.cn-btn` in the selector to outrank the
    capsule's own padding in clinical-notes.css, whichever sheet loads last. */
 .ehr-visit-pop-actions .cn-split .cn-btn.cn-split-main {
   padding: 0 12px 0 14px;
+}
+
+/* The row's own button colour (muted grey) outranked the primary's white
+   label; on the blue fill that read as a dim label. White, glyph included. */
+.ehr-visit-pop-actions .cn-split .cn-btn.cn-btn-primary {
+  color: #fff;
 }
 
 .ehr-visit-pop-actions .cn-split .cn-btn.cn-split-caret {
@@ -35332,6 +35333,13 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   background: var(--action-secondary-hover);
 }
 
+/* The chart dialog skin outlines every .btn-secondary on hover (blue ink); on
+   the filled slider footer that left blue text on slate. Keep the label white. */
+.tamam-dialog .tm-dialog__foot > :is(.btn-secondary, .btn-ghost, .btn-outline):hover:not(:disabled) {
+  background: var(--action-secondary-hover);
+  color: #fff;
+}
+
 :is(.tm-action-bar__btn--primary, .tm-dialog__foot > .btn-primary,
     .obk-footer-btn--primary, .sv-footer-btn--primary,
     .nv-root--workspace .nv-footer .nv-btn--primary) {
@@ -37080,18 +37088,9 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
   background: var(--visit-red-bg);
   color: var(--visit-red);
 }
-/* The row: a 3px left bar (a pseudo-element, because the flat-design reset
-   strips box-shadow with !important) and a faint wash. The wash needs
-   !important to beat the row's own `background: initial !important`. */
-.ehr-appointment-row.appointment-card-row[data-visit-tone] { position: relative; }
-.ehr-appointment-row.appointment-card-row[data-visit-tone]::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: var(--visit-bar);
-  pointer-events: none;
-}
+/* The row: a faint wash in the visit's tone (no left bar; removed at the
+   owner's request 2026-11-09). The wash needs !important to beat the row's
+   own `background: initial !important`. */
 .ehr-appointment-row.appointment-card-row[data-visit-tone] {
   background-color: color-mix(in srgb, var(--visit-bar) 5%, var(--bg-card-solid, transparent)) !important;
 }
@@ -37100,6 +37099,12 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
 .ehr-appointment-row.appointment-card-row[data-visit-tone="active"] { --visit-bar: var(--visit-purple-bar); }
 .ehr-appointment-row.appointment-card-row[data-visit-tone="done"] { --visit-bar: var(--visit-green-bar); }
 .ehr-appointment-row.appointment-card-row[data-visit-tone="danger"] { --visit-bar: var(--visit-red-bar); }
+
+/* Row actions ("Review transfer", "Start visit"…) take the status pill's round
+   ends, so the action and the status beside it read as one family
+   (owner, 2026-11-09). Square everywhere else per the sharp-edges rule. */
+.appointment-card-row .appointment-card-status .btn,
+.ehr-row-detail__actions .btn { border-radius: 999px !important; }
 
 /* Surveillance > Active alerts sits in a narrow column beside the map. At the
    default cell padding the table is wider than its panel below ~1300px, so the

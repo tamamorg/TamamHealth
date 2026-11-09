@@ -421,6 +421,32 @@ export interface Patient {
   careTeam?: CareTeamMember[];
   /** Hospitals a transfer gave care of this patient, on top of where they registered. */
   transferFacilityIds?: string[];
+  /**
+   * Set on the SENDING organisation's copy when a cross-organisation referral is
+   * accepted. The sender keeps this document (its own records point at it) and
+   * opens it read-only; the receiver works from its own linked copy
+   * (`receiverPatientId`). Written only by the server (the sync validator refuses
+   * a client write), and left unsealed so the filters and the validator can read it.
+   */
+  referredOut?: {
+    referralId: string;
+    toOrgId: string;
+    toHospitalId: string;
+    toHospitalName?: string;
+    toOrgName?: string;
+    receiverPatientId: string;
+    at: string;
+  };
+  /** Set on the RECEIVING organisation's copy: where the chart came from. Same rules as `referredOut`. */
+  referredFrom?: {
+    referralId: string;
+    patientId: string;
+    orgId: string;
+    hospitalId: string;
+    hospitalName?: string;
+    orgName?: string;
+    at: string;
+  };
   isActive: boolean;
   /** Set when patient death is recorded within the platform. */
   deceasedAt?: string;
@@ -1172,6 +1198,12 @@ export interface Referral {
    * Undefined for same-org referrals, where `orgId` already covers both ends.
    */
   toOrgId?: string;
+  /**
+   * The receiving organisation's own patient document, set when a cross-organisation
+   * referral is accepted (the sender keeps `patientId`). Undefined before acceptance
+   * and for same-organisation referrals, which share one patient document.
+   */
+  receiverPatientId?: string;
   /**
    * When the receiving facility is expected to have acknowledged this referral,
    * derived from `urgency` at creation (emergency +4h, urgent +24h, routine

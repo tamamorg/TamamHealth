@@ -513,6 +513,8 @@ export function ReportStep({
               by: order.amendedBy || '—',
               reason: order.amendmentReason || '—',
             })}
+            {/* The reason is free text: close the sentence before the next one starts. */}
+            {order.correctionVerifiedBy && !/[.!?]$/.test((order.amendmentReason || '—').trim()) && '.'}
             {order.correctionVerifiedBy && (
               <> {t('labFlow.correctionVerifiedLine', {
                 by: order.correctionVerifiedBy,

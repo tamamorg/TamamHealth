@@ -92,6 +92,7 @@ export function usePrescriptions(patientId?: string) {
             // out, so an online dispense never carried the pharmacist's review.
             allergyReview: input.allergyReview,
             clearForDispensing: input.clearForDispensing === true,
+            dispensedBeforePayment: input.dispensedBeforePayment,
           }),
         });
       } catch {

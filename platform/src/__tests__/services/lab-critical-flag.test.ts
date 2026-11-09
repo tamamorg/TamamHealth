@@ -59,9 +59,12 @@ describe('evaluating a result against its rule', () => {
   it('treats the threshold itself as critical, not as the edge of normal', () => {
     // `isCritical` uses <= and >=, so a value ON the boundary flags. That is
     // the safe direction for a threshold that means "call someone".
-    expect(evaluateCritical('Hemoglobin', '5').isCriticalValue).toBe(true);
+    expect(evaluateCritical('Hemoglobin', '6').isCriticalValue).toBe(true);
     expect(evaluateCritical('Hemoglobin', '20').isCriticalValue).toBe(true);
-    expect(evaluateCritical('Hemoglobin', '5.01').isCriticalValue).toBe(false);
+    expect(evaluateCritical('Hemoglobin', '6.01').isCriticalValue).toBe(false);
+    expect(evaluateCritical('Hemoglobin', '5.2').isCriticalValue).toBe(true);
+    expect(evaluateCritical('Hemoglobin', '6.0').isCriticalValue).toBe(true);
+    expect(evaluateCritical('Hemoglobin', '6.1').isCriticalValue).toBe(false);
   });
 
   it('does not invent a low threshold where the rule has only a high one', () => {

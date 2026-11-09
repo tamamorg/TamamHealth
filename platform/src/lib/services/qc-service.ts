@@ -150,7 +150,7 @@ export function isCritical(value: number, rule: CriticalValueRule): boolean {
  * Sourced from WHO basic lab handbook + KEMRI critical-value list.
  */
 export const DEFAULT_CRITICAL_VALUES: CriticalValueRule[] = [
-  { testName: 'Hemoglobin (g/dL)',           criticalLow: 5,    criticalHigh: 20,   rationale: 'Severe anemia / polycythemia' },
+  { testName: 'Hemoglobin (g/dL)',           criticalLow: 6,    criticalHigh: 20,   rationale: 'Severe anemia (adult critical-low <=6.0 g/dL: Mayo Clinic Laboratories, UChicago, ChristianaCare) / polycythemia' },
   { testName: 'White Blood Cell (×10⁹/L)',   criticalLow: 1,    criticalHigh: 50,   rationale: 'Severe leukopenia / leukemoid' },
   { testName: 'Platelets (×10⁹/L)',          criticalLow: 20,   criticalHigh: 1000, rationale: 'Bleeding risk / thrombosis' },
   { testName: 'Glucose (mmol/L)',            criticalLow: 2.2,  criticalHigh: 25,   rationale: 'Hypoglycemia / DKA' },

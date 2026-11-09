@@ -5,6 +5,7 @@
  */
 
 import { accessionDay } from '@/lib/accession-date';
+import { LAB_CORRECTION_CLINICIAN_APPROVERS } from '@/lib/lab-correction-approvers';
 import type { LabOrderStatus } from '@/lib/clinical-flow/order-lifecycles';
 
 /** What the next press does to an order at this stage. One label for the row,
@@ -99,20 +100,28 @@ export function fallbackAccessionNumber(order: { _id: string; accessionNumber?: 
 /**
  * What the viewer may do with the correction waiting on a result:
  *  - 'none'       nothing is waiting;
- *  - 'own'        they proposed it, so a second lab tech must review it;
- *  - 'can_review' a different lab tech, who may approve or reject it;
+ *  - 'own'        they proposed it, so someone else must review it;
+ *  - 'can_review' a different lab tech, or a clinician at the same facility,
+ *                 who may approve or reject it;
  *  - 'view'       anyone else, who sees it but cannot act.
  * Compared by user id, not name: two techs can share a name.
  */
 export type CorrectionReviewState = 'none' | 'own' | 'can_review' | 'view';
 
 export function correctionReviewState(
-  order: { pendingCorrection?: { proposedById: string } },
-  viewer: { _id?: string; role?: string } | null | undefined,
+  order: { pendingCorrection?: { proposedById: string }; hospitalId?: string },
+  viewer: { _id?: string; role?: string; hospitalId?: string } | null | undefined,
   canWork = true,
 ): CorrectionReviewState {
   const pending = order.pendingCorrection;
   if (!pending) return 'none';
   if (viewer?._id && viewer._id === pending.proposedById) return 'own';
-  return canWork && viewer?._id && viewer.role === 'lab_tech' ? 'can_review' : 'view';
+  if (!viewer?._id) return 'view';
+  if (canWork && viewer.role === 'lab_tech') return 'can_review';
+  // A clinician reviews too, so a facility with one lab tech can correct a
+  // result. They need not hold the bench permission, but must be at the
+  // facility that owns the result.
+  const sameFacility = !order.hospitalId || !viewer.hospitalId || order.hospitalId === viewer.hospitalId;
+  if (viewer.role && LAB_CORRECTION_CLINICIAN_APPROVERS.includes(viewer.role) && sameFacility) return 'can_review';
+  return 'view';
 }

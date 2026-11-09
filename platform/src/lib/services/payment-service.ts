@@ -24,14 +24,14 @@ export {
 } from './payments/claims';
 export type { SubmitClaimInput, AdjudicateClaimOptions } from './payments/claims';
 export {
-  createAdjustment,
+  createAdjustment, AdjustmentError,
 } from './payments/adjustments';
 export {
   issueRefund, getRefundsByPatient,
 } from './payments/refunds';
 export type { RefundErrorCode } from './payments/refunds';
 export {
-  createPaymentPlan, getPaymentPlansByPatient, getPaymentPlansByPatientUnscopedForPortal, getAllPaymentPlans, recordPlanPayment,
+  createPaymentPlan, getPaymentPlansByPatient, getPaymentPlansByPatientUnscopedForPortal, getAllPaymentPlans, recordPlanPayment, recordDebtToAccount, debtCoveringEncounter,
 } from './payments/payment-plans';
 export {
   generateInvoice, getInvoicesByPatient, updateInvoiceStatus,

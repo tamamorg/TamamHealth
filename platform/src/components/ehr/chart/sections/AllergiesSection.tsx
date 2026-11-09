@@ -287,7 +287,7 @@ export default function AllergiesSection({ patient, autoOpenAdd, onAutoOpenHandl
                     className={a.status === 'active' ? 'is-alert' : 'is-retired'}
                     style={a.id === focusId ? { background: 'var(--accent-light)', boxShadow: 'inset 3px 0 0 var(--accent-primary)' } : undefined}
                   >
-                    <td className="tamam-cell-strong">{a.substance}</td>
+                    <td className="tamam-cell-strong">{a.substance}{a.verified === false && <span title={t('allergy.unverifiedTitle')} style={{ marginLeft: 8, fontWeight: 400, color: 'var(--text-muted)' }}>({t('allergy.unverified')})</span>}</td>
                     <td>
                       <span className={SEVERITY_BADGE[severity] || SEVERITY_BADGE.unknown}>
                         {SEVERITY_LABEL[severity]}

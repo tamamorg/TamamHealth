@@ -8,6 +8,7 @@
 // the two stay in sync; the full page remains for power features (groups,
 // reactions, presence, member management).
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useConfirmPrompt } from '@/components/ConfirmDialog';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -75,7 +76,7 @@ function relTime(iso?: string): string {
 }
 function clockTime(iso?: string): string {
   if (!iso) return '';
-  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  return formatInFacilityZone(new Date(iso), { hour: 'numeric', minute: '2-digit' }, 'en-US');
 }
 
 function Avatar({ name, size = 36, group }: { name: string; size?: number; group?: boolean }) {

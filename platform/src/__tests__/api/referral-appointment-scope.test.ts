@@ -163,10 +163,18 @@ describe('BUG 1 — /api/referrals accept / update_status scope guard', () => {
 
     const persisted = await getReferralById(referral._id);
     expect(persisted?.status).toBe('seen');
-    // Legitimate cross-org referral: the patient is re-homed into the receiver.
-    const moved = await patientsDB().get('pat-2') as unknown as { orgId?: string; registrationHospital?: string };
-    expect(moved.orgId).toBe(ORG_B);
-    expect(moved.registrationHospital).toBe(HOSP_B);
+    // Legitimate cross-org referral: the chart is split, not moved. The sender
+    // keeps its document (marked referred out); the receiver gets its own copy.
+    const kept = await patientsDB().get('pat-2') as unknown as { orgId?: string; registrationHospital?: string; referredOut?: { toOrgId: string; receiverPatientId: string } };
+    expect(kept.orgId).toBe(ORG_A);
+    expect(kept.registrationHospital).toBe(HOSP_A);
+    expect(kept.referredOut).toMatchObject({ toOrgId: ORG_B, receiverPatientId: `pat-2--${ORG_B}` });
+    const copy = await patientsDB().get(`pat-2--${ORG_B}`) as unknown as { orgId?: string; registrationHospital?: string; lastVisitHospital?: string; referredFrom?: { patientId: string } };
+    expect(copy.orgId).toBe(ORG_B);
+    expect(copy.registrationHospital).toBe(HOSP_B);
+    expect(copy.lastVisitHospital).toBe(HOSP_B);
+    expect(copy.referredFrom?.patientId).toBe('pat-2');
+    expect(persisted?.receiverPatientId).toBe(`pat-2--${ORG_B}`);
   });
 
   test('the SENDING org cannot accept its own outbound cross-org referral', async () => {

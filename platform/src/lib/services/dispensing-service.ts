@@ -107,6 +107,8 @@ export interface DispenseInput {
    * The local transaction ignores it; the device already holds the cleared copy.
    */
   clearForDispensing?: boolean;
+  /** Set when released ahead of payment (emergency/STAT/exempt/insured); marks the line. */
+  dispensedBeforePayment?: { reason: NonNullable<PrescriptionDoc['dispensedBeforePayment']>['reason']; balanceDue?: number };
 }
 
 export interface DispenseResult {
@@ -939,6 +941,7 @@ export async function dispenseMedication(input: DispenseInput): Promise<Dispense
       dispenseOutcome: claimedOutcome,
       ...(input.note ? { dispenseNote: input.note } : {}),
       ...(allergyReview ? { dispenseAllergyReview: allergyReview } : {}),
+      ...(input.dispensedBeforePayment ? { dispensedBeforePayment: { ...input.dispensedBeforePayment, at: now } } : {}),
       ...(controlledLogId ? { controlledLogId } : {}),
     });
   } catch {

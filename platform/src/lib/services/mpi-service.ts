@@ -20,6 +20,7 @@ import { patientsDB } from '../db';
 import type { PatientDoc } from '../db-types';
 import { findByType } from './db-query';
 import { filterByScope, type DataScope } from './data-scope';
+import { withoutShadowedCopies } from '../patient-referral-link';
 
 export interface MpiCandidate {
   patient: PatientDoc;
@@ -236,7 +237,13 @@ export async function matchPatient(query: MpiQuery, limit = 10, scope?: DataScop
     if (!prev || c.score > prev.score) bestByPatient.set(c.patient._id, c);
   }
 
+  // The two copies of a cross-organisation referral are one person: offer the
+  // receiver's copy, not both.
+  const hidden = new Set(
+    withoutShadowedCopies(Array.from(bestByPatient.values()).map(c => c.patient)).map(p => p._id),
+  );
   return Array.from(bestByPatient.values())
+    .filter(c => hidden.has(c.patient._id))
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 }
