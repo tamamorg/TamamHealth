@@ -37100,6 +37100,12 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
 .ehr-appointment-row.appointment-card-row[data-visit-tone="done"] { --visit-bar: var(--visit-green-bar); }
 .ehr-appointment-row.appointment-card-row[data-visit-tone="danger"] { --visit-bar: var(--visit-red-bar); }
 
+/* Row actions ("Review transfer", "Start visit"…) take the status pill's round
+   ends, so the action and the status beside it read as one family
+   (owner, 2026-11-09). Square everywhere else per the sharp-edges rule. */
+.appointment-card-row .appointment-card-status .btn,
+.ehr-row-detail__actions .btn { border-radius: 999px !important; }
+
 /* Surveillance > Active alerts sits in a narrow column beside the map. At the
    default cell padding the table is wider than its panel below ~1300px, so the
    Level badge and the row Actions menu were pushed past the clip edge. Tighter
