@@ -9,6 +9,9 @@ import { logAuditSafe } from '../audit-service';
 import { emitSyncEvent } from '../sync-event-service';
 import { createLedgerEntry } from '../ledger-service';
 import { assertRefExists, paymentsDB, toBillingPaymentMethod } from './shared';
+import type { UserRole } from '../../db-types';
+import { WAIVER_APPROVERS } from '../../sync/write-permissions';
+import type { ManagerApproval } from '../../billing/manager-override-policy';
 import { reconcilePaymentLinkState } from './payment-links';
 import { processedRefundsFor } from './refunds';
 import type { RefundErrorCode } from './refunds';
@@ -26,19 +29,69 @@ export interface CollectPaymentInput {
   mobileMoneyPhone?: string;
   cardLast4?: string;
   allocations?: PaymentAllocation[];
+  /**
+   * Cash handed over. When it is more than the balance, `amount` is the
+   * balance and the difference is change; both are kept for the receipt.
+   */
+  tendered?: number;
   notes?: string;
+  /** Required for method 'waiver': a manager other than `processedBy`. */
+  approval?: ManagerApproval;
   processedBy: string;
   processedByName: string;
   facilityId: string;
   orgId?: string;
 }
 
+const cents = (n: number) => Math.round(n * 100);
+
 export async function collectPayment(input: CollectPaymentInput): Promise<PaymentDoc> {
   const db = paymentsDB();
   const now = new Date().toISOString();
+  if (!Number.isFinite(input.amount) || input.amount <= 0) {
+    throw new PaymentOperationError('INVALID_AMOUNT', 'Payment not recorded. Enter an amount above zero.');
+  }
   // Don't post a payment against an encounter/invoice that doesn't exist.
   await assertRefExists('tamamhealth_encounters', input.encounterId, 'Encounter');
   await assertRefExists('tamamhealth_invoices', input.invoiceId, 'Invoice');
+
+  // A waiver is the facility forgiving money: a second person approves it.
+  if (input.method === 'waiver') {
+    const a = input.approval;
+    if (!a?.approvedBy || !a.approvedByRole) {
+      throw new PaymentOperationError('APPROVER_REQUIRED', 'Waiver not recorded. A manager must approve it with their own password.');
+    }
+    if (a.approvedBy === input.processedBy) {
+      throw new PaymentOperationError('SELF_APPROVAL', 'Waiver not recorded. You cannot approve your own waiver. Ask another manager.');
+    }
+    if (!WAIVER_APPROVERS.includes(a.approvedByRole as UserRole)) {
+      throw new PaymentOperationError('APPROVER_ROLE', 'Waiver not recorded. The approver must be a manager or administrator.');
+    }
+  }
+
+  // Record what is owed, give change: a payment can never exceed the balance.
+  // The balance is read here, not trusted from the screen. It is the whole
+  // account (tenant-wide), the same figure settlement pays down.
+  const { getPatientBalance } = await import('../ledger-service');
+  const balanceBefore = await getPatientBalance(input.patientId, orgOnlyScope(input.orgId));
+  if (cents(input.amount) > Math.max(cents(balanceBefore), 0)) {
+    throw new PaymentOperationError(
+      'OVERPAYMENT',
+      balanceBefore > 0
+        ? `Payment not recorded. The balance is ${balanceBefore}. Enter that amount or less.`
+        : 'Payment not recorded. This patient owes nothing.',
+    );
+  }
+  let changeGiven: number | undefined;
+  if (input.tendered !== undefined) {
+    if (input.method !== 'cash') {
+      throw new PaymentOperationError('OVERPAYMENT', 'Payment not recorded. Only cash can be handed over in excess; enter the exact amount.');
+    }
+    if (!Number.isFinite(input.tendered) || cents(input.tendered) < cents(input.amount)) {
+      throw new PaymentOperationError('INVALID_AMOUNT', 'Payment not recorded. The cash handed over is less than the amount paid.');
+    }
+    changeGiven = cents(input.tendered) > cents(input.amount) ? (cents(input.tendered) - cents(input.amount)) / 100 : undefined;
+  }
 
   const doc: PaymentDoc = {
     _id: `pmt-${uuidv4()}`,
@@ -55,6 +108,14 @@ export async function collectPayment(input: CollectPaymentInput): Promise<Paymen
     mobileMoneyPhone: input.mobileMoneyPhone,
     cardLast4: input.cardLast4,
     status: 'posted' as PaymentStatus,
+    balanceBefore,
+    ...(changeGiven !== undefined ? { tendered: input.tendered, changeGiven } : {}),
+    ...(input.method === 'waiver' && input.approval ? {
+      approvedBy: input.approval.approvedBy,
+      approvedByName: input.approval.approvedByName,
+      approvedByRole: input.approval.approvedByRole,
+      approvedAt: input.approval.approvedAt,
+    } : {}),
     processedAt: now,
     processedBy: input.processedBy,
     processedByName: input.processedByName,
@@ -323,7 +384,8 @@ export async function updatePaymentStatus(
 }
 
 export type PaymentReversalErrorCode =
-  | 'PAYMENT_NOT_REVERSIBLE' | 'PAYMENT_REFUNDED';
+  | 'PAYMENT_NOT_REVERSIBLE' | 'PAYMENT_REFUNDED'
+  | 'OVERPAYMENT' | 'INVALID_AMOUNT' | 'APPROVER_REQUIRED' | 'SELF_APPROVAL' | 'APPROVER_ROLE';
 
 export class PaymentOperationError extends Error {
   constructor(public readonly code: PaymentReversalErrorCode | RefundErrorCode, message: string) {

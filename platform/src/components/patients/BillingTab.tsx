@@ -27,6 +27,8 @@ import type {
   AdjustmentType,
 } from '@/lib/db-types-payments';
 import Select from '@/components/Select';
+import ManagerOverrideFields from '@/components/payments/ManagerOverrideFields';
+import type { ManagerApproval } from '@/lib/billing/manager-override-policy';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
 import { printDate } from '@/lib/print-identity';
@@ -295,10 +297,13 @@ export default function BillingTab({
     adjustmentType: 'write_off', amount: 0, reason: '', reasonCode: '',
   });
   const [processingAdj, setProcessingAdj] = useState(false);
+  // A second person approves every adjustment (manager override).
+  const [adjApproval, setAdjApproval] = useState<ManagerApproval | null>(null);
 
   const handleCreateAdjustment = async () => {
     if (!adjForm.reason.trim()) { showToast(t('billing.reasonRequired') || t('billing.reasonRequired'), 'error'); return; }
     if (adjForm.amount <= 0) { showToast(t('billing.invalidAmount') || t('billing.invalidAmount'), 'error'); return; }
+    if (!adjApproval) { showToast(t('override.required'), 'error'); return; }
     setProcessingAdj(true);
     try {
       const svc = await import('@/lib/services/payment-service');
@@ -309,20 +314,24 @@ export default function BillingTab({
         amount: adjForm.amount,
         reason: adjForm.reason.trim(),
         reasonCode: adjForm.reasonCode.trim() || undefined,
-        approvedBy: currentUser?._id ?? '',
-        approvedByName: currentUser?.name ?? '',
+        createdBy: currentUser?._id ?? '',
+        createdByName: currentUser?.name ?? '',
+        approvedBy: adjApproval.approvedBy,
+        approvedByName: adjApproval.approvedByName,
+        approvedByRole: adjApproval.approvedByRole,
         facilityId,
         orgId,
       });
       showToast(t('billing.adjustmentCreated') || t('billing.adjustmentCreated'), 'success');
       setShowAdjustment(false);
       setAdjForm({ adjustmentType: 'write_off', amount: 0, reason: '', reasonCode: '' });
+      setAdjApproval(null);
       setLineInHand(null);
       reloadPayments();
       loadAll();
     } catch (err) {
       console.error('Failed to create adjustment:', err);
-      showToast(t('billing.adjustmentFailed') || t('billing.adjustmentFailed'), 'error');
+      showToast(err instanceof Error && err.name === 'AdjustmentError' ? err.message : t('billing.adjustmentFailed'), 'error');
     }
     setProcessingAdj(false);
   };
@@ -946,6 +955,13 @@ export default function BillingTab({
             <div className="bl-field">
               <label htmlFor="bl-adj-reason">{t('billing.reason')}</label>
               <textarea id="bl-adj-reason" rows={2} value={adjForm.reason} onChange={e => setAdjForm({ ...adjForm, reason: e.target.value })} placeholder={t('billing.reasonPlaceholder')} />
+            </div>
+            <div className="bl-field">
+              <ManagerOverrideFields
+                purpose={`${adjForm.adjustmentType} of ${adjForm.amount} ${defaultCurrency()}`}
+                approval={adjApproval}
+                onApproval={setAdjApproval}
+              />
             </div>
           </div>
         </FormSlider>

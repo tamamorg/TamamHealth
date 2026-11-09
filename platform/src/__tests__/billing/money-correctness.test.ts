@@ -24,6 +24,8 @@ import type { DataScope as __DS } from '@/lib/services/data-scope';
 // Legacy fixtures carry no org; super_admin keeps the national view that filterByScope grants.
 const SUPER: __DS = { role: 'super_admin' };
 
+const MANAGER = { approvedBy: 'mgr', approvedByName: 'Manager', approvedByRole: 'hospital_manager', approvedAt: '2026-11-08T08:00:00.000Z' };
+
 afterEach(async () => {
   await teardownTestDBs();
   uuidCounter = 0;
@@ -40,7 +42,12 @@ function seedBill(total = 100, extra: Record<string, unknown> = {}) {
   });
 }
 
-function pay(amount = 100) {
+// A payment can never exceed what is owed, so the patient is charged first.
+async function pay(amount = 100) {
+  await ledger.createLedgerEntry({
+    patientId: 'pat-1', entryType: 'charge', amount, description: 'Charge', referenceType: 'charge',
+    facilityId: 'hosp-1', orgId: 'org-a', createdBy: 'u',
+  });
   return collectPayment({
     patientId: 'pat-1', patientName: 'Test Patient', method: 'cash', amount,
     processedBy: 'u', processedByName: 'U', facilityId: 'hosp-1', orgId: 'org-a',
@@ -165,7 +172,8 @@ describe('reversePayment', () => {
     const reversals = (await getPatientLedger('pat-1', undefined, SUPER)).filter(e => e.description.startsWith('Payment reversal'));
     expect(reversals).toHaveLength(1);
     expect(reversals[0]).toMatchObject({ currency: p.currency, createdBy: 'u' });
-    expect(await getPatientBalance('pat-1', SUPER)).toBe(0);
+    // The charge the payment settled is owed again once the payment is voided.
+    expect(await getPatientBalance('pat-1', SUPER)).toBe(100);
   });
 
   test('returns null only when not found', async () => {
@@ -177,7 +185,7 @@ describe('waiveBill', () => {
   test('posts a ledger adjustment for the waived balance', async () => {
     const bill = await seedBill(100);
     expect(await getPatientBalance('pat-1', SUPER)).toBe(100);
-    const w = await waiveBill(bill._id, 'u', 'U', 'hardship');
+    const w = await waiveBill(bill._id, 'u', 'U', 'hardship', MANAGER);
     expect(w?.status).toBe('waived');
     expect(await getPatientBalance('pat-1', SUPER)).toBe(0);
   });
@@ -185,16 +193,16 @@ describe('waiveBill', () => {
   test('refuses paid, cancelled-style, already waived and partly paid bills', async () => {
     const paid = await seedBill(100);
     await recordPayment(paid._id, 100, 'cash', 'u', 'U');
-    await expect(waiveBill(paid._id, 'u', 'U', 'x')).rejects.toMatchObject({ code: 'BILL_PAID' });
+    await expect(waiveBill(paid._id, 'u', 'U', 'x', MANAGER)).rejects.toMatchObject({ code: 'BILL_PAID' });
 
     const partial = await seedBill(100);
     await recordPayment(partial._id, 30, 'cash', 'u', 'U');
-    await expect(waiveBill(partial._id, 'u', 'U', 'x')).rejects.toMatchObject({ code: 'BILL_HAS_PAYMENTS' });
+    await expect(waiveBill(partial._id, 'u', 'U', 'x', MANAGER)).rejects.toMatchObject({ code: 'BILL_HAS_PAYMENTS' });
 
     const b = await seedBill(100);
-    await waiveBill(b._id, 'u', 'U', 'x');
-    await expect(waiveBill(b._id, 'u', 'U', 'x')).rejects.toMatchObject({ code: 'BILL_WAIVED' });
-    expect(await waiveBill('missing', 'u', 'U', 'x')).toBeNull();
+    await waiveBill(b._id, 'u', 'U', 'x', MANAGER);
+    await expect(waiveBill(b._id, 'u', 'U', 'x', MANAGER)).rejects.toMatchObject({ code: 'BILL_WAIVED' });
+    expect(await waiveBill('missing', 'u', 'U', 'x', MANAGER)).toBeNull();
   });
 });
 
@@ -211,7 +219,7 @@ describe('recordPayment validation', () => {
 
   test('refuses cancelled / waived / paid bills, accepts exact balance, null for missing', async () => {
     const w = await seedBill(100);
-    await waiveBill(w._id, 'u', 'U', 'x');
+    await waiveBill(w._id, 'u', 'U', 'x', MANAGER);
     await expect(recordPayment(w._id, 10, 'cash', 'u', 'U')).rejects.toBeInstanceOf(BillingError);
     const b = await seedBill(100);
     expect((await recordPayment(b._id, 100, 'cash', 'u', 'U'))?.status).toBe('paid');

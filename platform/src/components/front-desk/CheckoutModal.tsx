@@ -75,6 +75,12 @@ export default function CheckoutModal({
   // resolved or explicitly overridden with a reason.
   const [gate, setGate] = useState<import('@/lib/services/checkout-gate-service').CheckoutGateEvaluation | null>(null);
   const [overrideReason, setOverrideReason] = useState('');
+  // "Bill to account": the cashier carries the balance as a debt, with a reason.
+  const [debtReason, setDebtReason] = useState('');
+  const [debtBusy, setDebtBusy] = useState(false);
+  const [debtError, setDebtError] = useState('');
+  const [encounterId, setEncounterId] = useState<string | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
   const [encounterStatus, setEncounterStatus] = useState<string | null>(null);
   // Whether this device's copy of the encounter shows the post-consult tasks
   // done — a handoff that still blocks then means the care plan it was
@@ -129,6 +135,7 @@ export default function CheckoutModal({
         if (!cancelled) {
           setGate(evaluation);
           setEncounterStatus(enc?.status ?? null);
+          setEncounterId(enc?._id ?? null);
           setHandoffDoneHere(handoffReadyHere);
         }
       } catch { /* non-fatal — balance still shows */ }
@@ -158,7 +165,7 @@ export default function CheckoutModal({
       reload.cancel();
       for (const feed of feeds) { try { feed.cancel(); } catch { /* noop */ } }
     };
-  }, [scope, target.encounterId, target.patientId]);
+  }, [scope, target.encounterId, target.patientId, reloadTick]);
 
   // The encounter says the clinician closed their part of the visit, yet the
   // only open items are ones the clinician's records answer, and they read
@@ -171,6 +178,36 @@ export default function CheckoutModal({
   const awaitingClinicianRecords = isAwaitingClinicianRecords(gate?.blocking ?? [], encounterStatus, handoffDoneHere);
 
   const owes = (balance ?? 0) > 0;
+  // A balance that is neither paid, waived nor carried as a debt holds the
+  // visit open, and no override clears it (only a walk-out is recorded as is).
+  const paymentBlocked = !!gate?.blocking.some(b => b.key === 'payment_status_determined');
+  const overridable = (gate?.blocking ?? []).filter(b => b.key !== 'payment_status_determined');
+
+  const recordDebt = async () => {
+    if (!encounterId || !balance || debtBusy) return;
+    setDebtBusy(true);
+    setDebtError('');
+    try {
+      const { recordDebtToAccount } = await import('@/lib/services/payment-service');
+      await recordDebtToAccount({
+        patientId: target.patientId,
+        patientName: target.patientName,
+        encounterId,
+        balance,
+        reason: debtReason,
+        recordedBy: currentUser?._id ?? '',
+        recordedByName: currentUser?.name ?? '',
+        facilityId: currentUser?.hospitalId ?? '',
+        orgId: currentUser?.orgId,
+      });
+      setDebtReason('');
+      setReloadTick(n => n + 1);
+    } catch (err) {
+      setDebtError(err instanceof Error && err.message === 'DEBT_REASON_REQUIRED' ? t('checkout.debtReasonRequired') : t('checkout.debtFailed'));
+    } finally {
+      setDebtBusy(false);
+    }
+  };
 
   return (
     <FormSlider
@@ -183,9 +220,10 @@ export default function CheckoutModal({
             {t('action.cancel')}
           </button>
           {(() => {
-            const blocked = !!gate && gate.blocking.length > 0;
+            const blocked = overridable.length > 0;
             const needsAuthorization = blocked || disposition === 'dismissed_without_formal_checkout';
             const canSubmit = !!gate && balance !== null && !completing
+              && (!paymentBlocked || disposition === 'dismissed_without_formal_checkout')
               && (!needsAuthorization || (canAuthorize && overrideReason.trim().length > 0));
             return (
               <button
@@ -248,6 +286,26 @@ export default function CheckoutModal({
                 <p className="text-[11px] mt-2" style={{ color: 'var(--text-muted)' }}>
                   {t('ui.sendThisPatientToCashier')}
                 </p>
+              )}
+              {paymentBlocked && (
+                <div className="mt-3" role="status">
+                  <p className="text-[12px] font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    {t('checkout.balanceBlocked', { amount: formatMoney(balance) })}
+                  </p>
+                  {canCollectPayment && (
+                    <div className="mt-2 space-y-2">
+                      <label className="block" style={{ textTransform: 'none', letterSpacing: 'normal' }}>
+                        <span className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('checkout.debtReason')}</span>
+                        <textarea rows={2} maxLength={500} value={debtReason} onChange={e => setDebtReason(e.target.value)}
+                          className="w-full rounded-lg p-2" placeholder={t('checkout.debtReasonPlaceholder')} />
+                      </label>
+                      <button type="button" className="btn btn-secondary" disabled={debtBusy || debtReason.trim().length < 3 || !encounterId} onClick={() => void recordDebt()}>
+                        {debtBusy ? t('common.processing') : t('checkout.recordDebt')}
+                      </button>
+                      {debtError && <p role="alert" className="text-[12px]" style={{ color: 'var(--color-danger-text)' }}>{debtError}</p>}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           ) : (
@@ -327,7 +385,7 @@ export default function CheckoutModal({
               <option value="dismissed_without_formal_checkout">{t('ui.patientLeftWithoutFormalCheckout')}</option>
             </Select>
           </label>
-          {(!!gate?.blocking.length || disposition === 'dismissed_without_formal_checkout') && (
+          {(overridable.length > 0 || disposition === 'dismissed_without_formal_checkout') && (
             <div role="status">
               <p className="text-sm">{t('postConsult.clinicianAuthorization')}</p>
               {canAuthorize && <label style={{ textTransform: 'none', letterSpacing: 'normal' }}>

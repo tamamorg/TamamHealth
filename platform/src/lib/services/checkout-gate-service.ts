@@ -310,17 +310,26 @@ export async function evaluateCheckoutGate(
     push('required_documentation_generated', false, readFailure('Clinical records', err));
   }
 
-  // ── Payment status determined (non-critical) ──────────────────────────
+  // ── Payment status determined ─────────────────────────────────────────
+  // A balance blocks the visit from closing until it is cleared, waived (a
+  // manager-approved waiver clears it) or the cashier records it as a debt
+  // ("bill to account") with a written reason. A walk-out is the one exit that
+  // cannot be held (see assertDischargeAllowed).
   try {
     if (!scope) throw new Error('no tenant scope');
     const { getPatientBalance } = await import('./ledger-service');
     const balance = await getPatientBalance(patientId, scope);
-    // Non-critical by design: an outstanding balance is flagged, not a reason
-    // to detain a patient. Withholding discharge over money is not something
-    // this system should make easy.
-    push('payment_status_determined', balance <= 0,
-      balance > 0 ? `Outstanding balance of ${balance}.` : undefined,
-      balance > 0 ? `/payments?patientId=${patientId}` : undefined);
+    let satisfied = balance <= 0;
+    let debtRecorded = false;
+    if (!satisfied && encounter?._id) {
+      const { debtCoveringEncounter } = await import('./payments/payment-plans');
+      debtRecorded = !!(await debtCoveringEncounter(patientId, encounter._id, balance, scope));
+      satisfied = debtRecorded;
+    }
+    push('payment_status_determined', satisfied,
+      satisfied ? undefined
+        : `Outstanding balance of ${balance}. Collect payment, get a waiver approved by a manager, or record it as a debt with a reason.`,
+      satisfied ? undefined : `/payments?patientId=${patientId}`);
   } catch (err) {
     push('payment_status_determined', false, readFailure('The account balance', err));
   }

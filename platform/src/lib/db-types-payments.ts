@@ -176,6 +176,8 @@ export interface AdjustmentDoc extends BaseDoc {
   reasonCode?: string;
   approvedBy?: string;
   approvedByName?: string;
+  /** Role of the approver at approval time (manager override). */
+  approvedByRole?: string;
   approvedDate?: string;
   facilityId: string;
   orgId?: string;
@@ -232,6 +234,17 @@ export interface PaymentDoc extends BaseDoc {
    * this is just money that isn't pinned to one specific invoice.
    */
   billSettlementUnapplied?: number;
+  /** What the patient owed when this was taken. `amount` never exceeds it. */
+  balanceBefore?: number;
+  /** Cash handed over, when it was more than `amount`; `amount + changeGiven`. */
+  tendered?: number;
+  /** Change handed back: `tendered - amount`. */
+  changeGiven?: number;
+  /** A waiver is approved by someone other than the cashier (manager override). */
+  approvedBy?: string;
+  approvedByName?: string;
+  approvedByRole?: string;
+  approvedAt?: string;
 }
 
 export interface PaymentAllocation {
@@ -295,6 +308,8 @@ export interface PaymentPlanDoc extends BaseDoc {
   endDate: string;
   status: PaymentPlanStatus;
   nextDueDate?: string;
+  /** Why the visit's balance was carried on the account ("bill to account"). */
+  reason?: string;
   paidToDate: number;
   remainingBalance: number;
   missedPayments: number;

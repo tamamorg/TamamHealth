@@ -785,6 +785,14 @@ export interface PrescriptionDoc extends BaseDoc {
       reason: string;
     };
   };
+  /** Set when this was dispensed before the bill was paid (emergency, STAT,
+   *  exempt or insured patient): the charge stays open on the bill. */
+  dispensedBeforePayment?: {
+    reason: 'life_sustaining' | 'stat' | 'emergency' | 'exempt' | 'insured';
+    /** What the patient owed when it was dispensed. */
+    balanceDue?: number;
+    at: string;
+  };
   /** The pharmacist's written review of an allergy conflict that was not
    *  answered at prescribing, usually one recorded after the order. */
   dispenseAllergyReview?: {

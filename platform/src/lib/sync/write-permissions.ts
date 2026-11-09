@@ -78,6 +78,15 @@ export const BILLING: readonly UserRole[] = [
   'medical_superintendent',
 ];
 /**
+ * Who may approve a waiver or adjustment as the second person ("manager
+ * override"): the facility's own management and the admins. A cashier is never
+ * on this list, and nobody approves their own waiver whatever their role.
+ * There is no finance-manager role; `hospital_manager` is the closest.
+ */
+export const WAIVER_APPROVERS: readonly UserRole[] = [
+  'super_admin', 'org_admin', 'hospital_manager', 'medical_superintendent',
+];
+/**
  * BILLING without the front desk: the records that move money. Reception keeps
  * insurance capture and the claim it raises, but it holds neither /payments nor
  * `canCollectPayments`, so a bill or payment from that role was a write no
@@ -507,7 +516,7 @@ export const DOC_UPDATE_ONLY_FIELDS: Readonly<Record<string, readonly string[]>>
   prescription: [
     'status', 'orderStatus', 'dispensedAt', 'dispensedBy', 'dispensedByName',
     'quantityDispensed', 'dispenseAllocations', 'dispenseLock', 'dispenseOutcome',
-    'dispenseNote', 'dispenseAllergyReview', 'dispenseReversals', 'controlledLogId', 'counselledAt', 'counselledBy',
+    'dispenseNote', 'dispenseAllergyReview', 'dispensedBeforePayment', 'dispenseReversals', 'controlledLogId', 'counselledAt', 'counselledBy',
     'counselledPoints', 'counsellingNote', 'updatedAt', 'offlineSync',
   ],
   admission: [
@@ -1008,6 +1017,44 @@ export function buildValidateDocUpdateFn(
       throw({ forbidden: 'A filed lab result may change only through an approved pending correction' });
     } else if (!sameLabValue(nextRejected, oldRejected)) {
       throw({ forbidden: 'Rejected lab result corrections are immutable' });
+    }
+  }
+
+  // ── Waivers and payments: separation of duties, never over the balance ──
+  // A waiver (an adjustment, or a payment taken as a waiver) is approved by a
+  // second person holding an approver role, never by who entered it. A payment
+  // never exceeds what the patient owed when it was taken: the cash handed over
+  // may, and the difference is recorded as change.
+  if (!isDelete && !oldDoc && (docType === 'adjustment' || (docType === 'payment' && newDoc.method === 'waiver'))) {
+    var moneyActor = null;
+    for (var ma = 0; ma < roles.length; ma++) if (roles[ma].indexOf('user:') === 0) moneyActor = roles[ma].substring(5);
+    if (!newDoc.approvedBy || typeof newDoc.approvedBy !== 'string') {
+      throw({ forbidden: 'A waiver or adjustment must name the manager who approved it' });
+    }
+    if (newDoc.approvedBy === newDoc.createdBy || newDoc.approvedBy === newDoc.processedBy || (moneyActor && newDoc.approvedBy === moneyActor)) {
+      throw({ forbidden: 'A waiver or adjustment cannot be approved by the person who entered it' });
+    }
+    if (!contains(${JSON.stringify(WAIVER_APPROVERS)}, newDoc.approvedByRole)) {
+      throw({ forbidden: 'A waiver or adjustment must be approved by a manager or administrator' });
+    }
+  }
+  if (!isDelete && docType === 'billing' && newDoc.status === 'waived' && (!oldDoc || oldDoc.status !== 'waived')) {
+    var billActor = null;
+    for (var ba = 0; ba < roles.length; ba++) if (roles[ba].indexOf('user:') === 0) billActor = roles[ba].substring(5);
+    if (!newDoc.waiverApprovedBy || (billActor && newDoc.waiverApprovedBy === billActor)
+      || !contains(${JSON.stringify(WAIVER_APPROVERS)}, newDoc.waiverApprovedByRole)) {
+      throw({ forbidden: 'A waived bill must be approved by a manager other than the person who waived it' });
+    }
+  }
+  if (!isDelete && !oldDoc && docType === 'payment') {
+    if (typeof newDoc.balanceBefore === 'number' && Math.round(newDoc.amount * 100) > Math.max(Math.round(newDoc.balanceBefore * 100), 0)) {
+      throw({ forbidden: 'A payment cannot be more than the balance owed' });
+    }
+    if (newDoc.changeGiven !== undefined || newDoc.tendered !== undefined) {
+      if (newDoc.method !== 'cash' || typeof newDoc.tendered !== 'number' || typeof newDoc.changeGiven !== 'number'
+        || Math.round((newDoc.amount + newDoc.changeGiven) * 100) !== Math.round(newDoc.tendered * 100)) {
+        throw({ forbidden: 'Cash tendered must equal the amount paid plus the change given' });
+      }
     }
   }
 

@@ -6,6 +6,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { forbidden, getAuthPayload, hasRole, logApiError, serverError, unauthorized } from '@/modules/identity';
 import { withAuditLog } from '@/lib/audit/with-audit';
 import type { UserRole } from '@/lib/db-types';
+
+const BEFORE_PAYMENT_REASONS = ['life_sustaining', 'stat', 'emergency', 'exempt', 'insured'] as const;
+
+/** Only the five known release reasons are kept; anything else is dropped. */
+function parseBeforePayment(raw: unknown): { reason: (typeof BEFORE_PAYMENT_REASONS)[number]; balanceDue?: number } | undefined {
+  const value = raw as { reason?: unknown; balanceDue?: unknown } | null | undefined;
+  const reason = BEFORE_PAYMENT_REASONS.find(r => r === value?.reason);
+  if (!reason) return undefined;
+  return { reason, balanceDue: typeof value?.balanceDue === 'number' && Number.isFinite(value.balanceDue) ? value.balanceDue : undefined };
+}
 const WRITE_ROLES: UserRole[] = [
   'super_admin', 'doctor', 'clinical_officer', 'pharmacist', 'medical_superintendent',
 ];
@@ -126,6 +136,7 @@ async function patchHandler(
           note: typeof body.note === 'string' ? body.note : undefined,
           counsellingConfirmed: body.counsellingConfirmed === true,
           allergyReview: typeof body.allergyReview === 'string' ? body.allergyReview : undefined,
+          dispensedBeforePayment: parseBeforePayment(body.dispensedBeforePayment),
         });
         return NextResponse.json({
           prescription: result.prescription,

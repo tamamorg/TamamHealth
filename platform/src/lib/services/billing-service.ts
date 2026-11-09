@@ -10,6 +10,8 @@ import { getDB } from '../db';
 import type {
   BillingDoc, BillLineItem, PaymentRecord, PaymentMethod,
 } from '../db-types-billing';
+import type { UserRole } from '../db-types';
+import { WAIVER_APPROVERS } from '../sync/write-permissions';
 import type { DataScope } from './data-scope';
 import { filterByScope } from './data-scope';
 import { v4 as uuidv4 } from 'uuid';
@@ -29,7 +31,8 @@ const billingDB = () => getDB('tamamhealth_billing');
 export type BillingErrorCode =
   | 'INVALID_AMOUNT' | 'AMOUNT_EXCEEDS_BALANCE' | 'INVALID_METHOD'
   | 'BILL_NOT_PAYABLE' | 'BILL_PAID' | 'BILL_CANCELLED' | 'BILL_WAIVED'
-  | 'BILL_HAS_PAYMENTS' | 'CHARGE_REVERSED' | 'INVALID_REASON';
+  | 'BILL_HAS_PAYMENTS' | 'CHARGE_REVERSED' | 'INVALID_REASON'
+  | 'APPROVER_REQUIRED' | 'SELF_APPROVAL' | 'APPROVER_ROLE';
 
 export class BillingError extends Error {
   constructor(public readonly code: BillingErrorCode, message: string) {
@@ -995,8 +998,13 @@ export async function waiveBill(
   waivedBy: string,
   waivedByName: string,
   reason: string,
+  /** A manager other than `waivedBy`, verified with their own password. */
+  approval: import('../billing/manager-override-policy').ManagerApproval,
 ): Promise<BillingDoc | null> {
   if (typeof reason !== 'string' || !reason.trim()) throw new BillingError('INVALID_REASON', 'Enter the reason for the waiver.');
+  if (!approval?.approvedBy || !approval.approvedByRole) throw new BillingError('APPROVER_REQUIRED', 'Waiver not recorded. A manager must approve it with their own password.');
+  if (approval.approvedBy === waivedBy) throw new BillingError('SELF_APPROVAL', 'Waiver not recorded. You cannot approve your own waiver. Ask another manager.');
+  if (!WAIVER_APPROVERS.includes(approval.approvedByRole as UserRole)) throw new BillingError('APPROVER_ROLE', 'Waiver not recorded. The approver must be a manager or administrator.');
   const db = billingDB();
   let bill: BillingDoc;
   try {
@@ -1017,6 +1025,10 @@ export async function waiveBill(
   const charged = bill.status !== 'draft'; // a draft never reached the ledger
   bill.status = 'waived';
   bill.discountReason = reason.trim();
+  bill.waiverApprovedBy = approval.approvedBy;
+  bill.waiverApprovedByName = approval.approvedByName;
+  bill.waiverApprovedByRole = approval.approvedByRole;
+  bill.waiverApprovedAt = approval.approvedAt;
   bill.balanceDue = 0;
   bill.updatedAt = new Date().toISOString();
   const resp = await db.put(bill);
@@ -1026,7 +1038,7 @@ export async function waiveBill(
 
   await logAuditSafe(
     'BILL_WAIVED', waivedBy, waivedByName,
-    `Waived ${bill.invoiceNumber}: ${waivedAmount} ${bill.currency}; reason recorded on the bill`
+    `Waived ${bill.invoiceNumber}: ${waivedAmount} ${bill.currency}; approved by ${approval.approvedByName} (${approval.approvedBy}); reason recorded on the bill`
   );
 
   emitSyncEvent({

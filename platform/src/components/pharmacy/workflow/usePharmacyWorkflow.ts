@@ -24,7 +24,7 @@ import type { PrescriptionDoc } from '@/lib/db-types';
 import type { FefoPlan } from '@/lib/services/dispensing-service';
 import { courseQuantity, isFilled, remainingOnCourse } from './pharmacy-workflow-types';
 import { describeError } from '@/lib/user-facing-error';
-import { paymentHoldFor } from '@/lib/pharmacy-workflow';
+import { paymentHoldFor, paymentReleaseFor, type PaymentRelease, type PaymentReleaseContext } from '@/lib/pharmacy-workflow';
 import { formatMoney } from '@/lib/format-utils';
 
 /** A stop the pharmacist can act on, shown as written (see describeError). */
@@ -238,7 +238,24 @@ export function usePharmacyWorkflow(
         balance = await getPatientBalance(rx.patientId, scope);
       }
     } catch { balance = null; }
-    const hold = paymentHoldFor(rx, balance);
+    // Pay-before-dispense never blocks emergency care or a patient who does
+    // not pay at the till: those go out with the charge left open, marked on
+    // the line. What the visit says is read here; an unreadable visit simply
+    // leaves the ordinary hold in place.
+    let release: PaymentRelease | null = paymentReleaseFor(rx);
+    if (!release && rx.encounterId) {
+      try {
+        const ctx: PaymentReleaseContext = {};
+        const { getEncounter } = await import('@/lib/services/encounter-service');
+        const enc = await getEncounter(rx.encounterId);
+        if (enc?.visitBilling) ctx.visitBilling = enc.visitBilling;
+        const { getTriageByEncounter } = await import('@/lib/services/triage-service');
+        const triage = await getTriageByEncounter(rx.encounterId).catch(() => null);
+        if (triage?.priority) ctx.triagePriority = triage.priority;
+        release = paymentReleaseFor(rx, ctx);
+      } catch { /* keep the ordinary hold */ }
+    }
+    const hold = paymentHoldFor(rx, balance, release);
     if (hold === 'unknown') throw dispenseStop(t('msg.sBalanceCouldNotBe', { patientName: rx.patientName }));
     if (hold === 'due') {
       throw dispenseStop(t('rxFlow.errBalanceDue', { medication: rx.medication, amount: formatMoney(balance ?? 0), patientName: rx.patientName }));
@@ -266,6 +283,9 @@ export function usePharmacyWorkflow(
       note: dispenseDraft.note.trim() || undefined,
       allergyReview: dispenseDraft.allergyReview.trim() || undefined,
       clearForDispensing: true,
+      ...(release && (balance === null || balance > 0)
+        ? { dispensedBeforePayment: { reason: release, balanceDue: balance ?? undefined } }
+        : {}),
     });
   }), [advance, currentUser, dispense, dispenseDraft, hasSafetySignal, remaining, needsWitness, reviewDraft.checksAcknowledged, rx, run, scope, short, stage, stock.plan, t]);
 

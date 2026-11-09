@@ -723,9 +723,15 @@ export default function PharmacyPage() {
                         {/* Payment sits mid-table, so it aligns under its own
                             head instead of anchoring to the table's far edge. */}
                         <div className="appointment-card-status appointment-card-status--start">
-                          <span className={`appointment-status-pill ${paymentClear ? 'status-completed' : balanceKnown ? 'status-attention' : 'status-scheduled'}`}>
-                            {paymentClear ? 'Clear' : balanceKnown ? formatMoney(balance) : 'Unknown'}
-                          </span>
+                          {rx.dispensedBeforePayment && !paymentClear ? (
+                            <span className="appointment-status-pill status-attention" title={t(`rxFlow.beforePaymentReason.${rx.dispensedBeforePayment.reason}`)}>
+                              {t('rxFlow.dispensedBeforePayment')}
+                            </span>
+                          ) : (
+                            <span className={`appointment-status-pill ${paymentClear ? 'status-completed' : balanceKnown ? 'status-attention' : 'status-scheduled'}`}>
+                              {paymentClear ? 'Clear' : balanceKnown ? formatMoney(balance) : 'Unknown'}
+                            </span>
+                          )}
                         </div>
 
                         <div className="appointment-card-status">

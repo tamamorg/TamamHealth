@@ -23,6 +23,9 @@ export interface ReceiptData {
   processedBy: string;
   facilityName: string;
   notes?: string;
+  /** Cash handed over and the change given back, when the patient paid more than was owed. */
+  tendered?: number;
+  changeGiven?: number;
 }
 
 function getMethodLabel(method: string): string {
@@ -57,6 +60,7 @@ export function buildReceiptData(payment: PaymentDoc, facilityName?: string, hos
     processedBy: payment.processedByName,
     facilityName: facilityName || 'TamamHealth Health Facility',
     notes: payment.notes,
+    ...(payment.changeGiven ? { tendered: payment.tendered, changeGiven: payment.changeGiven } : {}),
   };
 }
 
@@ -74,7 +78,9 @@ export function generateReceiptHTML(receipt: ReceiptData): string {
         { label: 'Notes', value: receipt.notes },
       ])}
       <div class="totals">
+        ${receipt.changeGiven ? `<div class="total-row"><span>Cash received</span><strong>${escapeHtml((receipt.tendered ?? 0).toLocaleString())} ${escapeHtml(receipt.currency)}</strong></div>` : ''}
         <div class="total-row grand"><strong>Amount Paid</strong><strong>${escapeHtml(receipt.amount.toLocaleString())} ${escapeHtml(receipt.currency)}</strong></div>
+        ${receipt.changeGiven ? `<div class="total-row"><span>Change given</span><strong>${escapeHtml(receipt.changeGiven.toLocaleString())} ${escapeHtml(receipt.currency)}</strong></div>` : ''}
         <div class="total-row"><span>Status</span><strong class="status">Paid</strong></div>
       </div>
     </section>`;
