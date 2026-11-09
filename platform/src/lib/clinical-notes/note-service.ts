@@ -117,7 +117,7 @@ function noteId(): string {
  * outstanding": the safe direction is to leave the visit parked, never to
  * push it toward checkout on a guess.
  */
-async function hasOutstandingParkedWork(
+export async function hasOutstandingParkedWork(
   status: 'awaiting_pharmacy' | 'awaiting_labs' | 'awaiting_imaging',
   encounterId: string,
   patientId: string,
@@ -300,6 +300,40 @@ async function triageForNote(input: CreateNoteInput): Promise<TriageDoc | null> 
   } catch {
     return null;
   }
+}
+
+/**
+ * Has the clinician written anything beyond what the visit's triage put there?
+ * Pure: `prefill` is what `noteTextFromTriage` would seed. A section equal to
+ * its prefill (or empty) is not typed content; a coded diagnosis, a structured
+ * form's answers, or any other wording is.
+ */
+export function hasTypedContentBeyondPrefill(
+  note: Pick<ClinicalNoteDoc, 'sections' | 'formData'>,
+  prefill: Partial<Record<NoteSectionId, string>> = {},
+): boolean {
+  if (Object.values(note.formData ?? {}).some(v => String(v ?? '').trim())) return true;
+  return note.sections.some(section => {
+    if ((section.diagnoses ?? []).length > 0) return true;
+    const text = stripTemplateMarkers(section.text || '').trim();
+    if (!text) return false;
+    return text !== stripTemplateMarkers(prefill[section.sectionId] || '').trim();
+  });
+}
+
+/** `hasTypedContentBeyondPrefill`, with the prefill looked up from the note's own visit. */
+export async function noteHasTypedContent(
+  note: Pick<ClinicalNoteDoc, 'sections' | 'formData' | 'patientId' | 'patientName' | 'noteType' | 'serviceDate' | 'encounterId' | 'hospitalId' | 'orgId' | 'amendsNoteId'>,
+): Promise<boolean> {
+  let prefill: Partial<Record<NoteSectionId, string>> = {};
+  if (!note.amendsNoteId && !note.formData) {
+    const triage = await triageForNote({
+      patientId: note.patientId, patientName: note.patientName, noteType: note.noteType,
+      serviceDate: note.serviceDate, encounterId: note.encounterId, hospitalId: note.hospitalId, orgId: note.orgId,
+    });
+    if (triage) prefill = noteTextFromTriage(triage, note.sections.map(sec => sec.sectionId));
+  }
+  return hasTypedContentBeyondPrefill(note, prefill);
 }
 
 /**

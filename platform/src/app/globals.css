@@ -25829,10 +25829,9 @@ table.patient-data-table.patient-data-table {
 }
 
 /* "Open chart" and "Create clinical note" are peers on this line, so they are
-   one shape in two fills: same height, same pill ends, same label type, glyph
-   then words. Only the fill ranks them — outlined for the chart, salmon for the
-   note action. They came from different stylesheets and looked it: a 30px
-   square-cornered button beside a 36px capsule. */
+   one shape in two fills: same height, same square corners, same label type,
+   glyph then words. Only the fill ranks them — outlined for the chart, blue for
+   the note action. */
 .ehr-visit-pop-actions .ehr-visit-pop-labelled,
 .ehr-visit-pop-actions .cn-split .cn-btn {
   height: 32px;
@@ -25849,7 +25848,7 @@ table.patient-data-table.patient-data-table {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border-radius: 999px;
+  border-radius: 0;
 }
 
 /* The unlabelled actions (move, start consultation) are the same height and the
@@ -25858,18 +25857,20 @@ table.patient-data-table.patient-data-table {
 .ehr-visit-pop-actions .ehr-visit-pop-icon:not(.ehr-visit-pop-labelled) {
   width: 32px;
   height: 32px;
-  border-radius: 999px;
+  border-radius: 0;
 }
-
-
-
-
 
 /* Label side matches "Open chart" inset for inset; the caret is a glyph's worth
    of room past the divider. Both carry `.cn-btn` in the selector to outrank the
    capsule's own padding in clinical-notes.css, whichever sheet loads last. */
 .ehr-visit-pop-actions .cn-split .cn-btn.cn-split-main {
   padding: 0 12px 0 14px;
+}
+
+/* The row's own button colour (muted grey) outranked the primary's white
+   label; on the blue fill that read as a dim label. White, glyph included. */
+.ehr-visit-pop-actions .cn-split .cn-btn.cn-btn-primary {
+  color: #fff;
 }
 
 .ehr-visit-pop-actions .cn-split .cn-btn.cn-split-caret {

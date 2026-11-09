@@ -53,6 +53,7 @@ import {
   addNoteAddendum, recordPlanAction, isNoteLocked,
   foldRetiredNoteSections, includeChartHistory, sectionBody,
   cosignClinicalNote, copyForwardIntoDraft, findLastSignedNote, missingRequiredSections, hasContent,
+  deleteClinicalNote, noteHasTypedContent,
 } from '@/lib/clinical-notes/note-service';
 import { canEditDraft } from '@/lib/clinical-notes/draft-access';
 import { isProviderRole } from '@/lib/clinical-roles';
@@ -916,6 +917,40 @@ export default function ClinicalNoteEditor({
     else router.push(note ? `/patients/${note.patientId}?tab=notes` : '/patients');
   };
 
+  /**
+   * Cancel on an unsigned note. A note holding nothing the clinician typed (it
+   * is empty, or only the triage prefill) is discarded without a question;
+   * one with their own wording asks: keep the draft, discard it, or go back.
+   */
+  const handleCancel = async () => {
+    if (!note) return;
+    if (await noteHasTypedContent(note)) {
+      let discard = false;
+      const keep = await confirm({
+        title: t('noteEditor.keepDraftTitle'),
+        message: t('noteEditor.keepDraftMessage'),
+        confirmLabel: t('noteEditor.keepDraft'),
+        alternateLabel: t('noteEditor.discardDraft'),
+        onAlternate: () => { discard = true; },
+        cancelLabel: t('noteEditor.backToNote'),
+        tone: 'warning',
+      });
+      if (!keep && !discard) return;
+      if (keep) { await handleSaveAndClose(); return; }
+    }
+    for (const timer of Object.values(timers.current)) clearTimeout(timer);
+    timers.current = {};
+    pendingSaves.current = {};
+    const removed = await deleteClinicalNote(noteId, currentUser?.name).catch(() => false);
+    if (!removed) {
+      showToast(t('noteEditor.discardFailed'), 'error');
+      return;
+    }
+    showToast(t('noteEditor.draftDiscarded'), 'success');
+    if (onClose) onClose();
+    else router.push(`/patients/${note.patientId}?tab=notes`);
+  };
+
   // ── Render ──────────────────────────────────────────────────────────────
   if (loading) return <div className="cn-empty">{t('noteEditor.loadingNote')}</div>;
   if (!note || !typeDef) return <div className="cn-empty">{t('noteEditor.noteNotFound')}</div>;
@@ -1338,7 +1373,7 @@ export default function ClinicalNoteEditor({
             {saving ? t('noteEditor.saving') : savedAt ? t('noteEditor.lastSaved', { time: formatInFacilityZone(new Date(savedAt), { hour: 'numeric', minute: '2-digit', second: '2-digit' }) }) : ''}
           </span>
           <div className="omf-bar">
-            <button type="button" className="omf-bar-btn omf-bar-btn--secondary" onClick={() => void handleSaveAndClose()}>
+            <button type="button" className="omf-bar-btn omf-bar-btn--secondary" onClick={() => void (locked ? handleSaveAndClose() : handleCancel())}>
               {locked ? t('noteEditor.close') : t('noteEditor.cancel')}
             </button>
             {!locked && (

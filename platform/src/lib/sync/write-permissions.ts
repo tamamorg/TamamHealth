@@ -838,6 +838,7 @@ export function buildValidateDocUpdateFn(
   const patientCareTeamFieldsJson = JSON.stringify(PATIENT_CARE_TEAM_FIELDS);
   const careTeamRolesJson = JSON.stringify(CARE_TEAM_ASSIGNMENT_ROLES);
   const transferWriteRolesJson = JSON.stringify(TRANSFER_WRITE_ROLES);
+  const referralReceiverRolesJson = JSON.stringify(CLINICIANS);
   const sealedFieldsJson = JSON.stringify(sealedFields);
 
   return `function (newDoc, oldDoc, userCtx, secObj) {
@@ -1262,6 +1263,7 @@ export function buildValidateDocUpdateFn(
     var CARE_TEAM_FIELDS = ${patientCareTeamFieldsJson};
     var CARE_TEAM_ROLES = ${careTeamRolesJson};
     var TRANSFER_ROLES = ${transferWriteRolesJson};
+    var REFERRAL_RECEIVER_ROLES = ${referralReceiverRolesJson};
     var careTeamChanged = false;
     for (var ct = 0; ct < CARE_TEAM_FIELDS.length; ct++) {
       var careField = CARE_TEAM_FIELDS[ct];
@@ -1299,7 +1301,29 @@ export function buildValidateDocUpdateFn(
         && newDoc.assignmentTransferId !== oldDoc.assignmentTransferId
         && !nursingChanged;
 
-      if (!terminalCleanup && !transferChange) {
+      // Accepting a referral keeps the SENDING facility's access to the chart,
+      // the way a transfer does: the receiving clinician adds the facilities to
+      // transferFacilityIds. Only that read list may change on this path, and
+      // only by GROWING: no existing entry may be dropped, and no assignment
+      // field moves, so it can widen who sees the chart to the two facilities
+      // of a referral but never re-route care or withdraw anyone's access.
+      var referralKeep = false;
+      if (contains(REFERRAL_RECEIVER_ROLES, actingRole)) {
+        var onlyReadListChanged = true;
+        for (var rk = 0; rk < CARE_TEAM_FIELDS.length; rk++) {
+          if (CARE_TEAM_FIELDS[rk] === 'transferFacilityIds') continue;
+          if (JSON.stringify(newDoc[CARE_TEAM_FIELDS[rk]]) !== JSON.stringify(oldDoc[CARE_TEAM_FIELDS[rk]])) { onlyReadListChanged = false; break; }
+        }
+        var oldFacilityIds = oldDoc.transferFacilityIds || [];
+        var newFacilityIds = newDoc.transferFacilityIds || [];
+        var keepsEvery = Array.isArray(newFacilityIds) && Array.isArray(oldFacilityIds);
+        for (var kf = 0; keepsEvery && kf < oldFacilityIds.length; kf++) {
+          if (newFacilityIds.indexOf(oldFacilityIds[kf]) === -1) keepsEvery = false;
+        }
+        referralKeep = onlyReadListChanged && keepsEvery;
+      }
+
+      if (!terminalCleanup && !transferChange && !referralKeep) {
         throw({ forbidden: 'role ' + actingRole + ' may not change patient care-team assignment fields' });
       }
     }

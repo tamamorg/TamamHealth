@@ -230,6 +230,21 @@ describe('org-scoped validate_doc_update', () => {
       }, patient, nurseUser)).toMatch(/may not change patient care-team assignment fields/);
     });
 
+    it('lets a clinician accepting a referral add facilities to the read list, never remove one or move care', () => {
+      const patient = {
+        _id: 'patient-1', type: 'patient', orgId: 'org-a',
+        assignedDoctor: 'doctor-1', transferFacilityIds: ['h-1'],
+      };
+      expect(reasonFor({ ...patient, transferFacilityIds: ['h-1', 'h-2', 'h-3'] }, patient, clinicUser)).toBeNull();
+      expect(reasonFor({ ...patient, transferFacilityIds: ['h-2'] }, patient, clinicUser))
+        .toMatch(/may not change patient care-team assignment fields/);
+      expect(reasonFor({ ...patient, transferFacilityIds: ['h-1', 'h-2'], assignedDoctor: 'doctor-2' }, patient, clinicUser))
+        .toMatch(/may not change patient care-team assignment fields/);
+      // A nurse is not a referral receiver.
+      expect(reasonFor({ ...patient, transferFacilityIds: ['h-1', 'h-2'] }, patient, nurseUser))
+        .toMatch(/may not change patient care-team assignment fields/);
+    });
+
     it('allows terminal assignment cleanup but cannot disguise a new owner as completion', () => {
       const patient = {
         _id: 'patient-1', type: 'patient', orgId: 'org-a',

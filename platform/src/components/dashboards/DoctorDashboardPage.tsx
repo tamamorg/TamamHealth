@@ -16,6 +16,7 @@ import { useTriage } from '@/lib/hooks/useTriage';
 import { useReferrals } from '@/lib/hooks/useReferrals';
 import { useAppointments } from '@/lib/hooks/useAppointments';
 import { useFollowUpsDue } from '@/lib/hooks/useFollowUpsDue';
+import { useEncounters } from '@/lib/hooks/useEncounters';
 import { patientFullName, patientDisplayName, shortenPersonName, patientAge } from '@/lib/patient-utils';
 import { getNoteType } from '@/lib/clinical-notes/note-catalog';
 import { useTransferQueue } from '@/lib/hooks/usePatientTransfers';
@@ -23,6 +24,7 @@ import { describeTransferSide, isTransferOverdue } from '@/lib/services/patient-
 import type {
   AppointmentDoc,
   AssessmentDoc,
+  EncounterDoc,
   MedicalRecordDoc,
   FollowUpDoc,
   PatientDoc,
@@ -62,6 +64,8 @@ export interface DoctorWorklistInput {
   resumableEncounters: ResumableEncounter[];
   incomingTransfers: PatientTransferDoc[];
   followUpsDue: FollowUpDoc[];
+  /** Visit threads, so a walk-in (a booking with no provider on it) the clinician saw still reaches the Finished lane. */
+  encounters?: EncounterDoc[];
   /** Injectable so callers (tests) get a deterministic "today" / cutoff instead
    *  of the real wall clock. Defaults to `new Date()`. */
   now?: Date;
@@ -276,8 +280,22 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
   // rows, so dropping them here would pin that lane at zero and make a visit
   // vanish from the board the moment it is checked out.
   const apptKey = (a: { appointmentDate: string; appointmentTime?: string }) => `${a.appointmentDate}T${a.appointmentTime || '00:00'}`;
+  // A walk-in's booking is written at check-in with NO provider (the desk does
+  // not choose one), so `providerId === me` alone dropped every walk-in the
+  // clinician saw from the board the moment it closed — booked visits stayed,
+  // walk-ins vanished. A provider-less booking is this clinician's when the
+  // visit thread it links to was taken by them (care-team two-doc model: the
+  // visit names its clinician on the ENCOUNTER / triage, not on the booking).
+  const mineViaVisit = (a: AppointmentDoc): boolean => {
+    if (a.providerId) return false;
+    const enc = (input.encounters || []).find(e => e.appointmentId === a._id);
+    if (enc) return enc.clinicianId === currentUser._id || enc.assignedClinicianId === currentUser._id;
+    return triages.some(tr => tr.patientId === a.patientId
+      && tr.assignedProviderId === currentUser._id
+      && (tr.triagedAt || '').startsWith(a.appointmentDate));
+  };
   const myAppts = (appointments || [])
-    .filter(a => a.providerId === currentUser._id)
+    .filter(a => a.providerId === currentUser._id || mineViaVisit(a))
     .sort((x, y) => apptKey(x).localeCompare(apptKey(y)));
   // Still-live bookings only — where a completed or
   // cancelled visit is no longer something to join.
@@ -495,6 +513,7 @@ export default function ClinicianHomeView() {
   const { incoming: incomingTransfers } = useTransferQueue();
   // Community-health follow-ups due (or nearly due) — the "Follow-ups due" rail.
   const { followUpsDue } = useFollowUpsDue();
+  const { encounters } = useEncounters();
 
   // DashboardPage only renders this view once currentUser is loaded and its
   // role has been checked — this guard is purely for TypeScript's benefit
@@ -505,7 +524,7 @@ export default function ClinicianHomeView() {
     patients, triages, currentUser, appointments,
     unsignedDrafts, awaitingCosign, heldAssessments, unsignedNotes,
     phoneNotesInbox, referrals, resumableEncounters, incomingTransfers,
-    followUpsDue,
+    followUpsDue, encounters,
   });
 
   return (

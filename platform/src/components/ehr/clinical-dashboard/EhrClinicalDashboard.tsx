@@ -35,6 +35,9 @@ import {
   type AppointmentStatusGroup,
 } from '@/lib/appointment-status';
 import { useToast } from '@/components/Toast';
+import { useConfirm } from '@/components/ConfirmDialog';
+import { isProviderRole } from '@/lib/clinical-roles';
+import { canFinishVisit } from '@/lib/services/finish-visit-service';
 import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -185,6 +188,7 @@ export default function EhrClinicalDashboard({
   const { t } = useTranslation();
   const search = searchParams.toString();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   // "My queue" settings (design 11). Read live, so changing them in Settings
   // reorders this list without a reload.
   const queueSort = useRoleChoice('queue.sort', 'Longest wait first');
@@ -661,7 +665,10 @@ export default function EhrClinicalDashboard({
     queueNowMs,
     { enabled: queueOverTarget, targetMinutes: facilitySettings.clinicalPolicy.doorToClinicianMinutes },
     encounterForRow(row),
-    (() => { const enc = encounterForRow(row); return !!enc && nursingReviewIds.has(enc._id); })(),
+    // Post-consult nursing keeps a visit In service for the desk and the nurses.
+    // A provider's part ends when they finish (or sign): the nurse's review is
+    // not theirs to wait on, so their board moves the visit to Finished.
+    (() => { const enc = encounterForRow(row); return !isProviderRole(currentUser?.role) && !!enc && nursingReviewIds.has(enc._id); })(),
   );
 
   // Daybar filter pills — the shared three-lane vocabulary every role
@@ -975,6 +982,39 @@ export default function EhrClinicalDashboard({
     }
 
     router.push(`/consultation?patientId=${row.patientId}`);
+  };
+
+  // "Finish visit": the clinician's part is over. Lists unsigned notes first so
+  // they can be signed; finishing anyway is allowed (signing gates nothing else)
+  // and the notes stay in the signing inbox. The move itself is the one a signed
+  // note already makes, so the checkout gates (money, nursing) are untouched.
+  const finishVisitFor = async (row: UnifiedPatientRow) => {
+    const encounter = encounterForRow(row);
+    if (!encounter || !dataScope) return;
+    const { unsignedNotesForVisit, finishVisit } = await import('@/lib/services/finish-visit-service');
+    let unsigned: { id: string; label: string }[] = [];
+    try { unsigned = await unsignedNotesForVisit(encounter, dataScope); } catch { /* the question below still asks */ }
+    const first = unsigned[0];
+    const proceed = await confirm({
+      title: t('finishVisit.title', { name: row.name }),
+      message: unsigned.length > 0
+        ? t('finishVisit.unsigned', { items: unsigned.map(item => item.label).join(', ') })
+        : t('finishVisit.message'),
+      confirmLabel: unsigned.length > 0 ? t('finishVisit.finishAnyway') : t('finishVisit.finish'),
+      ...(first ? {
+        alternateLabel: t('finishVisit.signFirst'),
+        onAlternate: () => router.push(`/notes/${first.id}`),
+      } : {}),
+      tone: 'warning',
+    });
+    if (!proceed) return;
+    try {
+      await finishVisit(encounter._id, { id: currentUser?._id, role: currentUser?.role });
+      showToast(t('finishVisit.done', { name: row.name }), 'success');
+      setVisitRow(null);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : t('finishVisit.failed'), 'error');
+    }
   };
 
   const handleMove = async (change: { stage: QueueEntry['stage'] | null; priority: QueueEntry['acuity']; room: string; comment: string }) => {
@@ -1752,6 +1792,9 @@ export default function EhrClinicalDashboard({
                               && (columns.triage.status === 'pending' || columns.triage.status === 'seen')
                               && columns.triage.handoffStatus !== 'returned_to_desk'
                               ? () => setVisitAction({ kind: 'return_to_desk', triage: columns.triage! })
+                              : undefined}
+                            onFinishVisit={canConsult && isProviderRole(currentUser?.role) && canFinishVisit(encounterForRow(row)?.status)
+                              ? () => void finishVisitFor(row)
                               : undefined}
                             creatingNote={creatingNote}
                             onCreateNote={row.patientId && canWriteNotes ? (noteType) => {
