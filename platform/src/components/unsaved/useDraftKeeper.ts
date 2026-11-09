@@ -18,6 +18,7 @@
  * back. Nothing in any form has to be wired by hand.
  */
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
 import * as AppContextModule from '@/lib/context';
 import * as ToastModule from '@/components/Toast';
@@ -184,7 +185,7 @@ export function useDraftKeeper(rootRef: RefObject<HTMLElement | null>, options: 
         if (restored.size > 0 && !announced) {
           announced = true;
           const { toast: api, t: tr } = latest.current;
-          const time = new Date(draft.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const time = formatInFacilityZone(new Date(draft.savedAt), { hour: '2-digit', minute: '2-digit' }, []);
           api?.showToast(tr('drafts.restored', { time }), 'info', {
             action: { label: tr('drafts.discard'), onClick: discard },
             durationMs: 15000,

@@ -1,5 +1,6 @@
 'use client';
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -223,7 +224,7 @@ export default function PatientsPage() {
     if (!value) return '—';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '—';
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    return formatInFacilityZone(date, { month: 'short', day: 'numeric', year: 'numeric' });
   };
   // registrationHospital is a facility id ("hosp-001"); show the facility's name.
   const { hospitals } = useHospitals();

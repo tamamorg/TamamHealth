@@ -14,6 +14,7 @@
  * copied onto a printed slip or read aloud across a desk.
  */
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api-fetch';
 import { Check, Copy, Loader2, Printer, UserX } from '@/components/icons/lucide';
@@ -150,7 +151,7 @@ export default function PortalAccessCard({ patientId, patientName, hospitalNumbe
           <dl className="pac-slip">
             <dt>{t('pac.username')}</dt><dd>{issued.username}</dd>
             <dt>{t('pac.activationCode')}</dt><dd className="pac-code">{issued.activationCode}</dd>
-            <dt>{t('pac.expires')}</dt><dd>{new Date(issued.expiresAt).toLocaleDateString()}</dd>
+            <dt>{t('pac.expires')}</dt><dd>{formatInFacilityZone(new Date(issued.expiresAt), {})}</dd>
           </dl>
           <div className="pac-actions">
             <button
@@ -187,7 +188,7 @@ export default function PortalAccessCard({ patientId, patientName, hospitalNumbe
                 ? t('pac.suspended', { username: access.username ?? '' })
                 : access.activated
                   ? `${t('pac.activeAs', { username: access.username ?? '' })} ${access.lastLoginAt
-                      ? t('pac.lastSignedIn', { date: new Date(access.lastLoginAt).toLocaleDateString() })
+                      ? t('pac.lastSignedIn', { date: formatInFacilityZone(new Date(access.lastLoginAt), {}) })
                       : t('pac.neverSignedIn')}`
                   : access.activationPending
                     ? t('pac.notActivated', { username: access.username ?? '' })

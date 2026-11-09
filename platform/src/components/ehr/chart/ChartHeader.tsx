@@ -289,17 +289,17 @@ export default function ChartHeader({
                 </div>
                 {canManageReferrals && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onExchange(); }}>
-                    <DuotoneIcon name="arrowRightLeft" size={15} /> Refer patient
+                    <DuotoneIcon name="arrowRightLeft" size={15} /> {t('chart.referPatient')}
                   </button>
                 )}
                 {onTransfer && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onTransfer(); }}>
-                    <DuotoneIcon name="arrowRightLeft" size={15} /> Transfer patient
+                    <DuotoneIcon name="arrowRightLeft" size={15} /> {t('chart.transferPatient')}
                   </button>
                 )}
                 {onStartVisit && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onStartVisit(); }}>
-                    <DuotoneIcon name="calendar" size={15} /> Add visit
+                    <DuotoneIcon name="calendar" size={15} /> {t('chart.addVisit')}
                   </button>
                 )}
                 {canSendMessages && (

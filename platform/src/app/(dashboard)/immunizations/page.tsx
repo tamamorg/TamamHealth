@@ -1,5 +1,6 @@
 'use client';
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -504,7 +505,7 @@ export default function ImmunizationsPage() {
                                   </span>
                                   <div className="flex items-center gap-3">
                                     <span style={{ color: 'var(--text-secondary)' }}>
-                                      {new Date(i.dateGiven).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                      {formatInFacilityZone(new Date(i.dateGiven), { month: 'short', day: 'numeric', year: 'numeric' })}
                                     </span>
                                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{
                                       background: scheduledOnTime ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'color-mix(in srgb, var(--color-warning) 10%, transparent)',

@@ -13,6 +13,7 @@
  * afterwards renders read-only with corrections routed to addenda.
  */
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Save, Check, Copy, Send, ClipboardList, DollarSign, Plus, ArrowLeft, ChevronDown } from '@/components/icons/lucide';
@@ -1334,7 +1335,7 @@ export default function ClinicalNoteEditor({
             other panel: Cancel on the left, the primary actions after it. */}
         <div className="omf-actionbar">
           <span className="omf-saved" aria-live="polite">
-            {saving ? t('noteEditor.saving') : savedAt ? t('noteEditor.lastSaved', { time: new Date(savedAt).toLocaleTimeString() }) : ''}
+            {saving ? t('noteEditor.saving') : savedAt ? t('noteEditor.lastSaved', { time: formatInFacilityZone(new Date(savedAt), { hour: 'numeric', minute: '2-digit', second: '2-digit' }) }) : ''}
           </span>
           <div className="omf-bar">
             <button type="button" className="omf-bar-btn omf-bar-btn--secondary" onClick={() => void handleSaveAndClose()}>
@@ -1512,7 +1513,7 @@ export default function ClinicalNoteEditor({
         <div className="cn-footer-spacer" />
 
         <span className="cn-saved">
-          {saving ? t('noteEditor.saving') : savedAt ? t('noteEditor.lastSaved', { time: new Date(savedAt).toLocaleTimeString() }) : ''}
+          {saving ? t('noteEditor.saving') : savedAt ? t('noteEditor.lastSaved', { time: formatInFacilityZone(new Date(savedAt), { hour: 'numeric', minute: '2-digit', second: '2-digit' }) }) : ''}
         </span>
         {!locked && (
           <button

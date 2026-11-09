@@ -1,5 +1,6 @@
 'use client';
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { defaultCurrency } from '@/lib/country/country-pack';
 import { useState, useEffect } from 'react';
 import { Banknote, Smartphone, CreditCard, Building2, Shield, CheckCircle2, Loader2, Printer, Mail } from '@/components/icons/lucide';
@@ -308,7 +309,7 @@ export default function PaymentPanel({
           <dl className="bl-totals">
             {[
               { label: t('payments.receiptNumberLabel'), value: paymentDoc.reference || paymentDoc._id },
-              { label: t('payments.dateLabel'), value: new Date(paymentDoc.processedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) },
+              { label: t('payments.dateLabel'), value: formatInFacilityZone(new Date(paymentDoc.processedAt), { month: 'long', day: 'numeric', year: 'numeric' }, 'en-US') },
               { label: t('payments.methodLabel'), value: tab === 'cash' ? t('payments.methodCash') : tab === 'mobile' ? (mobileProvider === 'mpesa' ? t('payments.methodMpesa') : mobileProvider === 'airtel' ? t('payments.methodAirtelMoney') : t('payments.methodMtnMomo')) : tab === 'card' ? t('payments.methodCard') : tab === 'bank' ? t('payments.methodBankTransfer') : insuranceWaiverMode === 'insurance' ? t('billing.insurance') : t('payments.methodWaiver') },
               { label: t('payments.processedByLabel'), value: paymentDoc.processedByName },
             ].map(row => <div key={row.label} className="bl-totals-row"><dt>{row.label}</dt><dd>{row.value}</dd></div>)}

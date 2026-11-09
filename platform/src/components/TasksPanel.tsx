@@ -9,6 +9,7 @@
  * input dropped in a flex row claims the whole row. Every field here therefore
  * sets its own width/flex explicitly.
  */
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ClipboardList, Check, Clock, Calendar, Plus, Trash2, X, Flag, Pencil, Search, User,
@@ -34,7 +35,7 @@ function dueLabel(due?: string): { text: string; overdue: boolean; timed?: boole
   // A critical result carries a time as well: one hour, not one day.
   const at = due.length > 10 ? new Date(due) : null;
   if (at && !Number.isNaN(at.getTime())) {
-    const clock = at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const clock = formatInFacilityZone(at, { hour: '2-digit', minute: '2-digit' }, []);
     if (at.getTime() < Date.now()) return { text: `Overdue · ${clock}`, overdue: true, timed: true };
     if (toIsoDate(at) === today) return { text: `Due ${clock}`, overdue: false, timed: true };
     return { text: toIsoDate(at), overdue: false };

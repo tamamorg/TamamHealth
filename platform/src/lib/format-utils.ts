@@ -14,12 +14,25 @@
 
 import { defaultCurrency } from '@/lib/country/country-pack';
 import { parseIsoDate } from './date-utils';
+import { formatInFacilityZone, jubaDate } from './time-juba';
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Parse a date string without letting a calendar day travel through UTC. */
 function asLocalDay(value: string): Date {
   return DATE_ONLY.test(value) ? parseIsoDate(value) : new Date(value);
+}
+
+/**
+ * Date-part / time-part renderers. A bare calendar day is shown as written; a
+ * real instant renders in the FACILITY zone (Africa/Juba by default), never the
+ * device's, so a record reads the same clock time on every device.
+ */
+function datePart(d: Date, isDay: boolean, opts: Intl.DateTimeFormatOptions): string {
+  return isDay ? d.toLocaleDateString(undefined, opts) : formatInFacilityZone(d, opts, undefined);
+}
+function timePart(d: Date): string {
+  return formatInFacilityZone(d, { hour: '2-digit', minute: '2-digit' }, undefined);
 }
 
 /**
@@ -34,10 +47,9 @@ export function formatDateTime(iso?: string | null): string {
   const d = asLocalDay(iso);
   if (Number.isNaN(d.getTime())) return iso;
   const hasTime = /T\d{2}:\d{2}/.test(iso);
-  const dateStr = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  const dateStr = datePart(d, !hasTime, { year: 'numeric', month: 'short', day: 'numeric' });
   if (!hasTime) return dateStr;
-  const timeStr = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  return `${dateStr} at ${timeStr}`;
+  return `${dateStr} at ${timePart(d)}`;
 }
 
 /**
@@ -48,11 +60,10 @@ export function formatCompactDateTime(iso?: string | null): string {
   if (!iso) return '—';
   const d = asLocalDay(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   const hasTime = /T\d{2}:\d{2}/.test(iso);
+  const dateStr = datePart(d, !hasTime, { month: 'short', day: 'numeric' });
   if (!hasTime) return dateStr;
-  const timeStr = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  return `${dateStr} · ${timeStr}`;
+  return `${dateStr} · ${timePart(d)}`;
 }
 
 /**
@@ -73,7 +84,7 @@ export function formatClockTime(value?: string | Date | null): string {
   }
   const d = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(d.getTime())) return typeof value === 'string' ? value : '';
-  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+  return formatInFacilityZone(d, { hour: '2-digit', minute: '2-digit', hour12: false }, 'en-GB');
 }
 
 /**
@@ -83,7 +94,7 @@ export function formatDate(iso?: string | null): string {
   if (!iso) return '—';
   const d = asLocalDay(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  return datePart(d, DATE_ONLY.test(iso), { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -109,16 +120,19 @@ export function formatShortDate(value?: string | Date | null, opts?: { year?: bo
   let day: number;
   if (typeof value === 'string') {
     const parts = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (parts) {
+    const instant = /T\d{2}:\d{2}/.test(value) && !!parts;
+    if (parts && !instant) {
       year = Number(parts[1]);
       month = Number(parts[2]);
       day = Number(parts[3]);
     } else {
       const d = new Date(value);
       if (Number.isNaN(d.getTime())) return value;
-      year = d.getFullYear();
-      month = d.getMonth() + 1;
-      day = d.getDate();
+      // An instant is a facility-zone calendar day, not the device's.
+      const [y, m, dd] = jubaDate(d).split('-').map(Number);
+      year = y;
+      month = m;
+      day = dd;
     }
   } else {
     if (Number.isNaN(value.getTime())) return '';
@@ -174,7 +188,7 @@ export function isoWeek(
 export function formatLongDate(input?: Date | string | null): string {
   const d = input ? new Date(input) : new Date();
   if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  return formatInFacilityZone(d, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }, 'en-GB');
 }
 
 /**

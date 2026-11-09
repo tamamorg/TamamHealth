@@ -1,5 +1,6 @@
 'use client';
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { resultWithUnit } from '@/components/lab/workflow/lab-workflow-types';
 import { Fragment, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -356,7 +357,7 @@ function TransferPackageViewer({ pkg, refAttachments, reason, notes, onPreview }
           <Package className="w-4 h-4" style={{ color: 'var(--tamamhealth-blue)' }} />
         </div>
         <span style={{ color: 'var(--text-muted)' }}>
-          {t('referrals.packagedByPrefix')} <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{pkg.packagedBy}</span> {t('referrals.packagedOnAt', { date: new Date(pkg.packagedAt).toLocaleDateString(), time: new Date(pkg.packagedAt).toLocaleTimeString() })}
+          {t('referrals.packagedByPrefix')} <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{pkg.packagedBy}</span> {t('referrals.packagedOnAt', { date: formatInFacilityZone(new Date(pkg.packagedAt), {}), time: formatInFacilityZone(new Date(pkg.packagedAt), { hour: 'numeric', minute: '2-digit', second: '2-digit' }) })}
         </span>
         <span style={{ color: 'var(--text-muted)' }}>
           {t('referrals.totalSize')} <span className="font-semibold">{formatFileSize(pkg.packageSizeBytes)}</span>

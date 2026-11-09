@@ -8,12 +8,29 @@
 // If this screen depended on any of those, a hard crash would fall through to
 // raw, unstyled browser HTML instead of a usable error page.
 
+import { CRITICAL_TRANSLATIONS } from '@/lib/i18n/critical-translations';
+
+/**
+ * This screen renders outside every provider, so it reads the saved locale
+ * straight from storage and uses the small shell-bundle map (never the lazy
+ * locale chunk, which may be what failed). Anything unreadable falls back to
+ * English.
+ */
+function crashText() {
+  let apd = false;
+  try { apd = typeof window !== 'undefined' && window.localStorage.getItem('tamamhealth-locale') === 'apd'; } catch { /* storage blocked */ }
+  const map = CRITICAL_TRANSLATIONS[apd ? 'apd' : 'en'];
+  const en = CRITICAL_TRANSLATIONS.en;
+  return { t: (key: string) => map?.[key] || en[key] || key, dir: apd ? 'rtl' : 'ltr', lang: apd ? 'apd' : 'en' };
+}
+
 export default function GlobalError({
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { t, dir, lang } = crashText();
   const colors = {
     bg: '#001D3F',
     text: '#F1F3F5',
@@ -27,29 +44,29 @@ export default function GlobalError({
   };
 
   return (
-    <html lang="en">
+    <html lang={lang} dir={dir}>
       <body style={{ margin: 0, background: colors.bg, color: colors.text, fontFamily: 'system-ui, sans-serif' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '24px', boxSizing: 'border-box' }}>
           <div style={{ maxWidth: '420px', width: '100%', textAlign: 'center' }}>
             <div style={{ width: 56, height: 56, borderRadius: 0, margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: colors.dangerBg, border: `1px solid ${colors.dangerBorder}` }}>
               <span style={{ fontSize: 28, lineHeight: 1 }} aria-hidden>⚠️</span>
             </div>
-            <h2 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 8px' }}>This page could not be loaded</h2>
+            <h2 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 8px' }}>{t('errorScreen.title')}</h2>
             <p style={{ fontSize: '14px', color: colors.muted, margin: '0 0 24px', lineHeight: 1.5 }}>
-              TamamHealth hit an unexpected problem. Records that were already saved are not affected. Reload the page, and contact your administrator if it happens again.
+              {t('errorScreen.body')}
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
                 onClick={() => { try { reset(); } catch { window.location.reload(); } }}
                 style={{ background: colors.primary, color: colors.white, border: 'none', padding: '12px 24px', borderRadius: '0', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
               >
-                Try again
+                {t('errorScreen.retry')}
               </button>
               <button
                 onClick={() => window.location.reload()}
                 style={{ background: 'transparent', color: colors.secondaryText, border: `1px solid ${colors.secondaryBorder}`, padding: '12px 24px', borderRadius: '0', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
               >
-                Reload page
+                {t('errorScreen.reload')}
               </button>
             </div>
           </div>

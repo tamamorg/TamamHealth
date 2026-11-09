@@ -1,5 +1,6 @@
 'use client';
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
@@ -391,7 +392,7 @@ export function groupLeadEvent(group: TimelineGroup): TimelineEvent {
 
 function formatEventDate(date: string): string {
   try {
-    return new Date(date).toLocaleDateString(undefined, {
+    return formatInFacilityZone(new Date(date), {
       year: 'numeric', month: 'short', day: 'numeric',
       ...(date.includes('T') ? { hour: '2-digit', minute: '2-digit' } : {}),
     });

@@ -8,6 +8,7 @@
  * Labels arrive translated; nothing here owns copy.
  */
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { printClinicalDocument } from '@/lib/print-document';
 import { escapeHtml } from '@/lib/safe-html';
 
@@ -37,7 +38,7 @@ export interface PortalSlipLabels {
 
 export function portalSlipDate(expiresAt: string): string {
   const date = new Date(expiresAt);
-  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString();
+  return Number.isNaN(date.getTime()) ? '' : formatInFacilityZone(date, {});
 }
 
 /** What "Copy" puts on the clipboard. */

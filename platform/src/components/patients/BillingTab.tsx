@@ -152,7 +152,7 @@ function buildStatementHTML(opts: {
   const totalRow = (label: string, value: string) => `<div class="total-row"><span>${e(label)}</span><strong>${e(value)}</strong></div>`;
   const body = `
     <section class="section">
-      <h2 class="section-title">Account Activity</h2>
+      <h2 class="section-title">${t('billing.accountActivity')}</h2>
       <table><thead><tr><th>${t('billing.activityColumn.date')}</th><th>${t('ui.description')}</th><th>${t('billing.activityColumn.type')}</th><th class="num">${t('billing.activityColumn.amount')}</th><th class="num">${t('financialReview.due')}</th></tr></thead><tbody>${activityRows}</tbody></table>
     </section>
     <div class="totals">

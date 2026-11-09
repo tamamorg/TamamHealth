@@ -1,5 +1,6 @@
 'use client';
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { useAuth } from '@/lib/context';
 import EhrClinicalDashboard, {
   type WorklistPatient,
@@ -282,7 +283,7 @@ export function assembleDoctorWorklist(input: DoctorWorklistInput): DoctorWorkli
   // cancelled visit is no longer something to join.
   // Per-item worklists behind the outstanding counts.
   const shortDate = (iso?: string) =>
-    iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
+    iso ? formatInFacilityZone(new Date(iso), { month: 'short', day: 'numeric' }) : '';
   const patientIds = new Set(patients.map(p => p._id));
 
   // Every row lands on the DOCUMENT it names, not on a tab that merely contains

@@ -256,7 +256,7 @@ export default function VisitNotePanel({ patient, currentUser, canConsult, onClo
 
         <section className="vn-section">
           <label htmlFor="vn-note" className="vn-heading">{t('rxFlow.note')}</label>
-          <p className="vn-help">Write your notes</p>
+          <p className="vn-help">{t('visitNote.writeNotes')}</p>
           <textarea
             id="vn-note"
             className="vn-textarea"

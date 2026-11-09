@@ -1,6 +1,7 @@
 /**
  * Receipt Service — generates printable and emailable receipts for payments.
  */
+import { formatInFacilityZone } from '@/lib/time-juba';
 import type { PaymentDoc } from '../db-types-payments';
 import { escapeHtml, openIsolatedHtmlWindow } from '../safe-html';
 import { buildClinicalPrintDocument, printFields } from '../print-document';
@@ -45,8 +46,8 @@ export function buildReceiptData(payment: PaymentDoc, facilityName?: string, hos
     receiptNumber: payment.reference || payment._id,
     patientName: payment.patientName,
     patientId: hospitalNumber?.trim() || payment.patientId,
-    date: date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-    time: date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    date: formatInFacilityZone(date, { year: 'numeric', month: 'long', day: 'numeric' }, 'en-US'),
+    time: formatInFacilityZone(date, { hour: '2-digit', minute: '2-digit' }, 'en-US'),
     dateIso: printDate(date),
     method: payment.method,
     methodLabel: getMethodLabel(payment.method),

@@ -12907,6 +12907,18 @@ const en: TranslationMap = {
   'msgs.pinToTop': 'Pin to top',
   'o3form.missingRequiredNoUnspecified': '{{count}} required questions not answered. Answer the ones marked in red, then save.',
   'orgHospitals.errNameTooLong': 'Facility name not saved. Use 100 characters or fewer.',
+  'chart.referPatient': 'Refer patient',
+  'chart.transferPatient': 'Transfer patient',
+  'chart.addVisit': 'Add visit',
+  'careCoord.effectiveDate': 'Effective date',
+  'visitNote.writeNotes': 'Write your notes',
+  'prescribe.medicationOrder': 'Medication order',
+  'prescribe.safetyContext': 'Safety context',
+  'billing.accountActivity': 'Account activity',
+  'errorScreen.title': 'This page could not be loaded',
+  'errorScreen.retry': 'Try again',
+  'errorScreen.reload': 'Reload page',
+  'errorScreen.body': 'TamamHealth hit an unexpected problem. Records that were already saved are not affected. Reload the page, and contact your administrator if it happens again.',
 };
 
 export default en;

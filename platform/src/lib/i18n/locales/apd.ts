@@ -12896,6 +12896,18 @@ const apd: TranslationMap = {
   'msgs.pinToTop': 'ثبّت فوق',
   'o3form.missingRequiredNoUnspecified': '{{count}} أسئلة لازم ما اتجاوب. جاوب على العلامة الحمرا، بعدين احفظ.',
   'orgHospitals.errNameTooLong': 'اسم المرفق ما اتحفظ. استخدم 100 حرف أو أقل.',
+  'chart.referPatient': 'حوّل العيان لمرفق تاني',
+  'chart.transferPatient': 'انقل العيان',
+  'chart.addVisit': 'زيد زيارة',
+  'careCoord.effectiveDate': 'تاريخ البداية',
+  'visitNote.writeNotes': 'اكتب ملاحظاتك',
+  'prescribe.medicationOrder': 'طلب الدوا',
+  'prescribe.safetyContext': 'معلومات السلامة',
+  'billing.accountActivity': 'حركة الحساب',
+  'errorScreen.title': 'الصفحة دي ما قدرت تفتح',
+  'errorScreen.retry': 'جرّب تاني',
+  'errorScreen.reload': 'افتح الصفحة من جديد',
+  'errorScreen.body': 'حصلت مشكلة ما متوقعة في تمام هيلث. السجلات البتحفظت قبل كدا ما اتأثرت. افتح الصفحة من جديد، ولو المشكلة اتكررت كلّم الإداري بتاعك.',
 };
 
 export default apd;

@@ -1,5 +1,6 @@
 'use client';
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { defaultCurrency } from '@/lib/country/country-pack';
 import { useState, useEffect, useMemo } from 'react';
 import DemoModeBanner from '@/components/DemoModeBanner';
@@ -376,7 +377,7 @@ export default function PatientPortalPage() {
                               <div className="bl-muted" style={{ fontSize: 11.5 }}>{bill.id}</div>
                             </td>
                             <td className="bl-muted" style={{ whiteSpace: 'nowrap' }}>
-                              {new Date(bill.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                              {formatInFacilityZone(new Date(bill.date), { month: 'short', day: 'numeric', year: 'numeric' })}
                             </td>
                             <td className="bl-num bl-right">{formatMoney(bill.amount)}</td>
                             <td>

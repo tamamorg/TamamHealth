@@ -5,6 +5,7 @@
  * announcements visible to the current user (org/facility/role scoped, not
  * expired or dismissed) and, for authorised roles, an inline compose form.
  */
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/context';
 import type { AnnouncementDoc, AnnouncementAudience, AnnouncementPriority, UserRole } from '@/lib/db-types';
@@ -232,7 +233,7 @@ export default function AnnouncementsPanel({ onClose, onUnreadChange }: { onClos
                 </div>
                 <p className="text-xs mt-1 whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>{a.body}</p>
                 <p className="text-[10px] mt-1.5" style={{ color: 'var(--text-muted)' }}>
-                  {a.authorName} · {a.createdAt ? new Date(a.createdAt).toLocaleDateString() : ''}
+                  {a.authorName} · {a.createdAt ? formatInFacilityZone(new Date(a.createdAt), {}) : ''}
                   {a.audience === 'facility' && a.facilityName ? ` · ${a.facilityName}` : ''}
                   {a.audience === 'role' && (a.targetRoles || []).length > 0
                     ? ` · ${(a.targetRoles || []).map(r => ROLE_PERMISSIONS[r]?.label || r).join(', ')}`

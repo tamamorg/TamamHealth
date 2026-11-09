@@ -13,6 +13,7 @@
  * Everything here is already-scoped input — no fetching, no tenancy filtering.
  */
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import {
   ENQUIRY_STATUS_LABELS, deriveEnquiryStatus, enquiryType, enquiryAssignee,
   type EnquiryStatus,
@@ -79,7 +80,7 @@ export function enquiryChipTone(status: EnquiryStatus): ChipTone {
 function formatClockTimeOrUndefined(iso?: string): string | undefined {
   if (!iso) return undefined;
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? undefined : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  return Number.isNaN(d.getTime()) ? undefined : formatInFacilityZone(d, { hour: '2-digit', minute: '2-digit' }, 'en-US');
 }
 
 /**
