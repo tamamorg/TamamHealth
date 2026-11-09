@@ -52,6 +52,16 @@ export interface RoomClassDef {
   active: boolean;
 }
 
+/** Hospital-number prefix rule: 2-6 uppercase letters or digits. */
+export const HOSPITAL_PREFIX_PATTERN = /^[A-Z0-9]{2,6}$/;
+
+/** Upper-case and strip anything that is not a letter or digit; '' when it cannot be a valid prefix. */
+export function normalizeHospitalPrefix(raw: unknown): string {
+  if (typeof raw !== 'string') return '';
+  const cleaned = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return HOSPITAL_PREFIX_PATTERN.test(cleaned) ? cleaned : '';
+}
+
 export interface FacilitySettings {
   // ── General ─────────────────────────────────────────────────────────────
   /** ISO-ish currency code used for all charges/prices (e.g. 'SSP', 'USD'). */
@@ -363,7 +373,7 @@ export function mergeFacilitySettings(partial?: Partial<FacilitySettings> | null
   if (!partial) return { ...d, labCatalog: [...d.labCatalog], rooms: [...d.rooms], departments: [...d.departments], roomClasses: d.roomClasses.map(item => ({ ...item })), paymentMethods: [...d.paymentMethods], payors: [...d.payors] };
   return {
     currency: partial.currency ?? d.currency,
-    hospitalNumberPrefix: partial.hospitalNumberPrefix ?? d.hospitalNumberPrefix,
+    hospitalNumberPrefix: normalizeHospitalPrefix(partial.hospitalNumberPrefix) || d.hospitalNumberPrefix,
     language: partial.language ?? d.language,
     resultReviewSLA: { ...d.resultReviewSLA, ...(partial.resultReviewSLA ?? {}) },
     acuity: { ...d.acuity, ...(partial.acuity ?? {}) },

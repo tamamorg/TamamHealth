@@ -35,6 +35,7 @@ import DemographicsSection from './sections/DemographicsSection';
 import BiometricsSection from './sections/BiometricsSection';
 import ContactSection, { geocodeIdFor } from './sections/ContactSection';
 import NextOfKinSection from './sections/NextOfKinSection';
+import ReportedAllergiesSection from './sections/ReportedAllergiesSection';
 import CoverageSection from './sections/CoverageSection';
 import { useRoleFlag } from '@/lib/settings/useRoleSetting';
 import { mintPortalInvite } from '@/modules/identity/client';
@@ -44,7 +45,7 @@ import type { PortalSlip } from '@/lib/patient-portal-slip';
 import '@/components/patients/portal-slip.css';
 import {
   EMPTY_REGISTRATION_FORM, MAX_ADDITIONAL_NOK,
-  type AdditionalNok, type CoverageType, type RegistrationTextField,
+  type AdditionalNok, type ReportedAllergy, MAX_REPORTED_ALLERGIES, type CoverageType, type RegistrationTextField,
 } from './registration-form';
 import {
   SECTION_ANCHORS, REVIEW_SECTION, VALIDATED_SECTIONS,
@@ -135,6 +136,7 @@ export function PatientRegistrationForm({
 
   const [form, setForm] = useState({ ...EMPTY_REGISTRATION_FORM });
   const [additionalNok, setAdditionalNok] = useState<AdditionalNok[]>([]);
+  const [reportedAllergies, setReportedAllergies] = useState<ReportedAllergy[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   /** Sections whose fields failed the last submit — flagged in the nav. */
@@ -184,6 +186,7 @@ export function PatientRegistrationForm({
       if (draft) {
         setForm(draft.form);
         setAdditionalNok(draft.additionalNok);
+        setReportedAllergies(draft.reportedAllergies ?? []);
         setFingerprints(draft.fingerprints);
         setPatientPhotoUrl(draft.patientPhotoUrl);
         setReviewMode(draft.reviewMode);
@@ -202,11 +205,12 @@ export function PatientRegistrationForm({
     version: 1,
     form,
     additionalNok,
+    reportedAllergies,
     fingerprints,
     patientPhotoUrl,
     reviewMode,
     portalAccount,
-  }), [form, additionalNok, fingerprints, patientPhotoUrl, reviewMode, portalAccount]);
+  }), [form, additionalNok, reportedAllergies, fingerprints, patientPhotoUrl, reviewMode, portalAccount]);
 
   useEffect(() => {
     if (!draftHydrated) return;
@@ -245,6 +249,13 @@ export function PatientRegistrationForm({
     setAdditionalNok(rs => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
     if ('phone' in patch) clearError(`additionalNok.${i}.phone`);
   };
+  const addAllergyEntry = () => setReportedAllergies(rs => (
+    rs.length >= MAX_REPORTED_ALLERGIES ? rs : [...rs, { substance: '', reaction: '' }]
+  ));
+  const updateAllergyEntry = (i: number, patch: Partial<ReportedAllergy>) => (
+    setReportedAllergies(rs => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)))
+  );
+  const removeAllergyEntry = (i: number) => setReportedAllergies(rs => rs.filter((_, j) => j !== i));
   const removeNokEntry = (i: number) => setAdditionalNok(rs => rs.filter((_, j) => j !== i));
 
   const updateCoverageType = (value: CoverageType) => {
@@ -314,6 +325,7 @@ export function PatientRegistrationForm({
   const reviewGroups = useMemo(() => buildReviewGroups(sectionLabels, {
     form,
     additionalNok,
+    reportedAllergies,
     fingerprintCount: fingerprints.length,
     geocodeId,
     // Named, not the raw id — the read-back is what the clerk confirms, and
@@ -321,7 +333,7 @@ export function PatientRegistrationForm({
     registrationFacilityName: facilityRequired
       ? facilities.find(f => f.id === form.registrationFacility)?.name
       : undefined,
-  }, t), [sectionLabels, form, additionalNok, fingerprints, geocodeId, facilityRequired, facilities, t]);
+  }, t), [sectionLabels, form, additionalNok, reportedAllergies, fingerprints, geocodeId, facilityRequired, facilities, t]);
 
   /** The errors one section is carrying, keyed by form field. */
   // Registration desk settings (design 11, "Registration"). Read live so a
@@ -529,6 +541,7 @@ export function PatientRegistrationForm({
       const result = await createPatient(buildPatientDoc({
         form,
         additionalNok,
+        reportedAllergies,
         geocodeId,
         photoUrl: patientPhotoUrl,
         hospitalId: currentUser?.hospitalId || form.registrationFacility,
@@ -717,8 +730,16 @@ export function PatientRegistrationForm({
               {!reviewMode && (
                 <>
                   {renderSection(DEMOGRAPHICS_SECTION, 'demographics', (
-                    <DemographicsSection {...sectionProps}
-                      facilities={facilities} facilityRequired={facilityRequired} />
+                    <>
+                      <DemographicsSection {...sectionProps}
+                        facilities={facilities} facilityRequired={facilityRequired} />
+                      <ReportedAllergiesSection
+                        allergies={reportedAllergies}
+                        onAdd={addAllergyEntry}
+                        onUpdate={updateAllergyEntry}
+                        onRemove={removeAllergyEntry}
+                      />
+                    </>
                   ))}
                   {/* Biometrics sits directly under Demographics: the photo and
                       prints are taken while the patient is still being

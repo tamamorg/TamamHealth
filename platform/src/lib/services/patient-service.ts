@@ -10,6 +10,7 @@ import { logAuditSafe } from './audit-service';
 import { emitSyncEvent } from './sync-event-service';
 import { findByType } from './db-query';
 import { getSettings } from '../settings/settings-store';
+import { DEFAULT_FACILITY_SETTINGS, normalizeHospitalPrefix } from '../settings/facility-settings';
 import { normalizePhone, normalizeEmail, normalizeNationalId } from '../field-formats';
 import { withPendingOfflineSync } from '../sync/offline-metadata';
 import { todayIso } from '@/lib/date-utils';
@@ -178,7 +179,17 @@ const DEFAULT_HOSPITAL_PREFIX =
  * 'TAB', so behaviour is identical until an admin changes it.
  */
 function defaultHospitalPrefix(): string {
-  return getSettings().hospitalNumberPrefix || DEFAULT_HOSPITAL_PREFIX;
+  return normalizeHospitalPrefix(getSettings().hospitalNumberPrefix) || DEFAULT_HOSPITAL_PREFIX;
+}
+
+/**
+ * The prefix an admin set in Facility settings, or '' when none was set.
+ * The settings default ('TAB') counts as "not set" so a facility that never
+ * touched the field keeps the prefix its hospital record gives it.
+ */
+export function configuredHospitalPrefix(): string {
+  const set = normalizeHospitalPrefix(getSettings().hospitalNumberPrefix);
+  return set && set !== DEFAULT_FACILITY_SETTINGS.hospitalNumberPrefix ? set : '';
 }
 
 /**
@@ -198,6 +209,8 @@ function deriveHospitalPrefix(name: string): string {
 
 /* istanbul ignore next -- private utility: hospital prefix lookup */
 async function getHospitalPrefix(hospitalId?: string): Promise<string> {
+  const configured = configuredHospitalPrefix();
+  if (configured) return configured;
   if (!hospitalId) return defaultHospitalPrefix();
 
   // Prefer the hospital's own `code` (or derived from name) when the doc is

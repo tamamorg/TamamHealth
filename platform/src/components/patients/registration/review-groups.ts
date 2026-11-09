@@ -34,6 +34,7 @@ const COVERAGE_LABEL_KEYS: Record<string, string> = {
 export interface ReviewSource {
   form: Record<string, string>;
   additionalNok: { name: string; relationship: string; phone: string; address: string }[];
+  reportedAllergies?: { substance: string; reaction: string }[];
   fingerprintCount: number;
   geocodeId?: string;
   /**
@@ -50,7 +51,7 @@ export function buildReviewGroups(
   source: ReviewSource,
   t: (key: string, vars?: Record<string, string | number>) => string,
 ): ReviewGroup[] {
-  const { form, additionalNok, fingerprintCount, geocodeId, registrationFacilityName } = source;
+  const { form, additionalNok, reportedAllergies = [], fingerprintCount, geocodeId, registrationFacilityName } = source;
   return [
     {
       section: 0,
@@ -66,6 +67,12 @@ export function buildReviewGroups(
         [t('patientNew.latinName'), form.latinName],
         [t('patientNew.dateOfBirth'), form.dateOfBirth],
         [t('patientNew.estimatedAge'), form.estimatedAge],
+        ...reportedAllergies
+          .filter(a => a.substance.trim())
+          .map((a, i): [string, string] => [
+            `${t('patientNew.allergiesHeading')} ${i + 1}`,
+            [a.substance.trim(), a.reaction.trim()].filter(Boolean).join(' · '),
+          ]),
         [t('patientNew.gender'), form.gender],
         [t('patientNew.tribe'), form.tribe],
         [t('patientNew.primaryLanguage'), form.primaryLanguage],

@@ -84,7 +84,7 @@ function activeAllergies(patient: PatientDoc): BannerAllergy[] | undefined {
   if (patient.structuredAllergies !== undefined) {
     return patient.structuredAllergies
       .filter(a => a.status === 'active')
-      .map(a => ({ substance: a.substance, criticality: a.criticality }));
+      .map(a => ({ substance: a.substance, criticality: a.criticality, unverified: a.verified === false }));
   }
   const recorded = (patient.allergies || [])
     .filter(a => a && !isNoAllergySentinel(a))
@@ -120,7 +120,7 @@ function AllergyBanner({ allergies, onShow }: { allergies?: BannerAllergy[]; onS
     <span className="tamam-allergy-value">
       {shown.map((a, i) => (
         <span key={`${a.substance}-${i}`} className={a.highConcern ? 'tamam-allergy-item tamam-allergy-item--severe' : 'tamam-allergy-item'}>
-          {a.substance}{i < shown.length - 1 ? ', ' : ''}
+          {a.substance}{a.unverified ? ` (${t('allergy.unverified')})` : ''}{i < shown.length - 1 ? ', ' : ''}
         </span>
       ))}
     </span>
