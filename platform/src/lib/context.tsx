@@ -982,6 +982,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         preferences: user.preferences,
         branding,
       };
+      // A password sign-in proves who this is, so the screen-lock state starts
+      // fresh. A session that ended without a sign-out (cookie expired) left
+      // the last activity time behind, and the next sign-in opened straight on
+      // "Session Locked" because the idle window had long passed (2026-11-08).
+      try {
+        const { writeLockState, clearTabLocked } = await import('./security/lock-state');
+        writeLockState(appUser._id, { locked: false, at: Date.now(), fails: 0 });
+        clearTabLocked(appUser._id);
+      } catch { /* the lock screen still works; it would only ask once more */ }
       setCurrentUser(appUser);
       window.localStorage.removeItem(LOGOUT_PENDING_KEY);
       startOfflineSession({

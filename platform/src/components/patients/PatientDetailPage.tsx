@@ -950,6 +950,9 @@ export default function PatientDetailPage() {
                   <BookAppointmentPanel
                     patient={patient}
                     patientName={patientFullName(patient)}
+                    // The tab's list is read once per chart; without this a
+                    // booked visit stayed missing from it until a reload.
+                    onBooked={reloadAppointments}
                     onClose={() => setShowBookAppointment(false)}
                   />
                 ),

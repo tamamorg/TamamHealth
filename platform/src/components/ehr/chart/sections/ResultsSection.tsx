@@ -17,7 +17,7 @@ import ChartSection, { OmrsEmptyState } from '../ChartSection';
 import { useLabResults } from '@/lib/hooks/useLabResults';
 import { formatDate , humanizeStatus } from '@/lib/format-utils';
 import { effectiveOrderStatus } from '@/lib/services/lab-service';
-import { benchActionLabel } from '@/components/lab/workflow/lab-workflow-types';
+import { benchActionLabel, resultWithUnit } from '@/components/lab/workflow/lab-workflow-types';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { clickable } from '@/lib/a11y';
 import type { LabResultDoc } from '@/lib/db-types';
@@ -134,7 +134,7 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
           <span className="block mt-1">{t('results.openToCloseLoop')}</span>
         </div>
       )}
-      <table data-sort="data" className="tamam-table tamam-table--fixed tamam-table--interactive">
+      <table data-sort="data" className="tamam-table tamam-table--fixed tamam-table--interactive tamam-table--results">
           <colgroup>
             <col /><col /><col /><col /><col /><col /><col />
           </colgroup>
@@ -171,7 +171,7 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
               >
                 <td style={{ fontWeight: 600 }}>{l.testName}</td>
                 <td style={{ color: l.abnormal ? (l.critical ? 'var(--color-danger-text)' : 'var(--color-warning-text)') : 'inherit', fontWeight: l.abnormal ? 700 : 400 }}>
-                  {l.result || '—'}{l.unit ? ` ${l.unit}` : ''}
+                  {resultWithUnit(l.result, l.unit) || '—'}
                   {/* A proposed correction is not the result yet: say so beside
                       the filed value, which stays what the row reads. */}
                   {l.pendingCorrection && (

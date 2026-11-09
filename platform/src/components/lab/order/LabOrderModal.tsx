@@ -61,6 +61,9 @@ export default function LabOrderModal({
       // whole screen — stretched to 1560 the two-field cards read as bands of
       // whitespace with a control stranded at each end.
       width={phase === 'dialog' ? 760 : 1320}
+      // The slider kit pins every slider to one 560px column; the wizard's rail
+      // and requisition column need the width asked for above (globals.css).
+      className={phase === 'wizard' ? 'tm-slider--lab-wizard' : undefined}
       // Sit below the app's top rail rather than covering it, so the clinician
       // keeps their bearings — which facility, which patient, what else is
       // waiting — while the order is being written.

@@ -85,7 +85,7 @@ export async function submitLabIntake(input: LabIntakeInput, currentUser: LabOrd
     patient,
     currentUser,
     draft: {
-      ...emptyLabOrderDraft(input.requester.trim() || (input.source === 'walk_in' ? 'Self-request' : currentUser.name || '')),
+      ...emptyLabOrderDraft(input.requester.trim() || (input.source === 'walk_in' ? 'Self-request' : (outside && input.facility.trim()) || currentUser.name || '')),
       patientId: patient._id,
       tests: input.tests,
       priority: input.priority,

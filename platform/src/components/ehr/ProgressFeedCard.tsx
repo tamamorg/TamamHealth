@@ -31,6 +31,7 @@ import { usePrescriptions } from '@/lib/hooks/usePrescriptions';
 import {
   buildProgressFeed,
   progressFeedFor,
+  labsForFeed,
   relativeTime,
   type ProgressEvent,
 } from '@/lib/clinical-flow/progress-feed';
@@ -62,10 +63,10 @@ export default function ProgressFeedCard() {
     if (!config || nowMs === null) return [];
     const allowed = new Set(config.kinds);
     return buildProgressFeed(
-      { triages, labs: results, prescriptions },
+      { triages, labs: labsForFeed(currentUser?.role, results), prescriptions },
       { nowMs },
     ).filter(e => allowed.has(e.kind));
-  }, [config, nowMs, triages, results, prescriptions]);
+  }, [config, nowMs, triages, results, prescriptions, currentUser?.role]);
 
   if (!config) return null;
 

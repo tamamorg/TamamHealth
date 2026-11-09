@@ -463,11 +463,20 @@ export async function resolveAndValidateTargets(input: {
   if (patient.orgId !== input.orgId) throw new Error('You do not have access to this record. It belongs to another facility or organization.');
 
   const { getEncounter, findOpenEncounterForPatient } = await import('./encounter-service');
-  const encounter = input.encounterId
+  const foundEncounter = input.encounterId
     ? await getEncounter(input.encounterId)
     : input.hospitalId
       ? await findOpenEncounterForPatient(input.patientId, input.hospitalId)
       : null;
+  // The patient's open visit was only a guess at what this call is about. When
+  // the caller named an appointment and the open visit belongs to a DIFFERENT
+  // one (a follow-up booked for a patient who is in clinic right now), the two
+  // are unrelated: treating them as one made every such booking fail with
+  // "does not belong to the selected patient".
+  const encounter = !input.encounterId && input.appointmentId
+    && foundEncounter?.appointmentId && foundEncounter.appointmentId !== input.appointmentId
+    ? null
+    : foundEncounter;
   if (encounter && (
     encounter.patientId !== input.patientId ||
     encounter.orgId !== input.orgId ||

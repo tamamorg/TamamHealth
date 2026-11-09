@@ -69,6 +69,18 @@ describe('patient transfers', () => {
       from: { providerId: 'u1', facilityId: 'h-a' }, to: { providerId: 'u2', facilityId: 'h-a' },
     } as never);
   });
+  test('a facility-wide request reaches clinical roles but never a cashier or biller', async () => {
+    await putDoc(patientTransfersDB(), {
+      _id: 'tr-fac', type: 'patient_transfer', orgId: 'org-a', fromHospitalId: 'h-x', hospitalId: 'h-a',
+      patientId: 'p2', status: 'requested', urgency: 'routine', transferType: 'permanent',
+      requestedById: 'u1', requestedAt: '2020-01-01T00:00:00.000Z', createdAt: '2020-01-01T00:00:00.000Z',
+      from: { providerId: 'u1', facilityId: 'h-x' }, to: { facilityId: 'h-a' },
+    } as never);
+    const ids = async (role: string) => (await getIncomingTransfers({ id: 'u9', hospitalId: 'h-a', role: role as never }, A)).map(t => t._id);
+    expect(await ids('nurse')).toContain('tr-fac');
+    expect(await ids('cashier')).toEqual([]);
+    expect(await ids('medical_biller')).toEqual([]);
+  });
   test('another org sees nothing', async () => {
     expect(await getAllTransfers(A)).toHaveLength(1);
     expect(await getAllTransfers(B)).toEqual([]);

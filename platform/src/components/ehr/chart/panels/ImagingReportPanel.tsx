@@ -190,13 +190,15 @@ export default function ImagingReportPanel({ patient, currentUser, onClose, focu
 
   // The O3 frame every clinical form shares: one page, a section per study.
   // In the chart each study files on its own (Submit report), so the foot is
-  // Close only. Focused on one, Save does its next step: start it, then file it.
+  // Close only. Focused on one, Save files the report (it needs findings); Start study begins it.
   const focused = focusId ? studies[0] : undefined;
   const focusedOpen = focused && focused.status !== 'completed';
   const focusedFindings = focused ? (findings[focused._id] || '').trim() : '';
   const saveFocused = async () => {
     if (!focused) return;
-    if (!focusedFindings) await startStudy(focused);
+    // Save never starts a study on its own: an empty save used to move it to
+    // In Progress with no word. Starting is the Start study button's job.
+    if (!focusedFindings) showToast(t('imagingForm.findingsRequired'), 'warning');
     else if (await submitReport(focused)) onClose();
   };
   return (
@@ -232,7 +234,7 @@ export default function ImagingReportPanel({ patient, currentUser, onClose, focu
                     ) : (
                       <>
                         <div className="irp-actions">
-                          {study.status === 'pending' && !focusId && (
+                          {study.status === 'pending' && (
                             <button type="button" onClick={() => void startStudy(study)} disabled={busy}>{t('imagingForm.start')}</button>
                           )}
                           <button type="button" onClick={() => chooseFiles(study)} disabled={busy}>

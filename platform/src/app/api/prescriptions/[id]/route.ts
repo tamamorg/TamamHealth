@@ -195,13 +195,26 @@ async function patchHandler(
     // ── Unfilled outcomes: stock-out referral, or held for prescriber
     // clarification. Both keep the order active. ──
     if (body.action === 'stock_out' || body.action === 'request_clarification') {
-      const { recordUnfilled } = await import('@/lib/services/dispensing-service');
-      const updated = await recordUnfilled(
-        existingRx,
-        body.action === 'stock_out' ? 'stock_out' : 'clarification_requested',
-        typeof body.note === 'string' ? body.note : '',
-        { id: auth.sub, name: auth.name },
-      );
+      // The pharmacy's own outcomes: a prescriber or the generic update roles
+      // above do not get to park, hold or stock-out an order in the pharmacy.
+      if (!hasRole(auth, ['pharmacist'])) {
+        return forbidden('Only a pharmacist can hold an order or record a stock-out.');
+      }
+      const { recordUnfilled, DispenseError } = await import('@/lib/services/dispensing-service');
+      let updated;
+      try {
+        updated = await recordUnfilled(
+          existingRx,
+          body.action === 'stock_out' ? 'stock_out' : 'clarification_requested',
+          typeof body.note === 'string' ? body.note : '',
+          { id: auth.sub, name: auth.name },
+        );
+      } catch (err) {
+        if (err instanceof DispenseError) {
+          return NextResponse.json({ error: err.message, code: err.code }, { status: 409 });
+        }
+        throw err;
+      }
       if (!updated) {
         return NextResponse.json({ error: 'Prescription not found' }, { status: 404 });
       }

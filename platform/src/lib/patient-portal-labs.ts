@@ -55,8 +55,12 @@ export interface PortalLabResult {
 export const isPortalVisibleLab = (doc: Pick<LabResultDoc, 'status'>) => doc.status !== 'cancelled';
 
 /** Whether the patient may see this order's result. */
-export function isReleasedToPatient(doc: Pick<LabResultDoc, 'status' | 'orderStatus'>): boolean {
+export function isReleasedToPatient(doc: Pick<LabResultDoc, 'status' | 'orderStatus' | 'pendingCorrection'>): boolean {
   if (doc.status !== 'completed') return false;
+  // The lab has said this value may be wrong and a second tech has not ruled
+  // on it yet. A clinician may still review it, but the patient waits until
+  // the correction is approved or rejected (2026-11-08 sweep).
+  if (doc.pendingCorrection) return false;
   if (!doc.orderStatus) return true;
   return RELEASED_STAGES.has(doc.orderStatus);
 }

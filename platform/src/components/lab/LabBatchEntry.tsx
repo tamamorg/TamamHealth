@@ -23,6 +23,8 @@ import {
   criticalBoundsInEntryUnit,
 } from '@/lib/services/lab-critical-flag';
 import NumberInput from '@/components/forms/NumberInput';
+import { useAuth } from '@/lib/context';
+import { sendCriticalLabAlert } from '@/components/lab/workflow/send-critical-alert';
 
 const ACCENT = 'var(--accent-primary)';
 
@@ -45,6 +47,7 @@ interface BatchEntry {
 export default function LabBatchEntry({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const { currentUser } = useAuth();
   const { results, update } = useLabResults();
   const { patients } = usePatients();
   const patientById = useMemo(() => new Map(patients.map(patient => [patient._id, patient])), [patients]);
@@ -89,6 +92,9 @@ export default function LabBatchEntry({ onClose }: { onClose: () => void }) {
     const filled = batchEntries.filter(e => e.resultValue.trim() !== '');
     if (filled.length === 0) return;
     setBatchSaving(true);
+    // The orders actually filed, by id: an entry can be skipped (its order left
+    // the pending list mid-batch), so position in `filled` says nothing.
+    const saved = new Set<string>();
     try {
       for (const entry of filled) {
         const order = allPendingOrders.find(o => o._id === entry.orderId);
@@ -110,14 +116,23 @@ export default function LabBatchEntry({ onClose }: { onClose: () => void }) {
           critical: flags.critical,
           completedAt: new Date().toISOString(),
         });
+        saved.add(order._id);
+        // The critical task is raised by the save; the message is the part a
+        // clinician reads first, and the bench form sends it too.
+        if (flags.critical) {
+          await sendCriticalLabAlert(order, { result: entry.resultValue, unit: ref?.unit || order.unit || '', referenceRange: ref?.referenceStr || order.referenceRange || '' }, currentUser);
+        }
       }
       setBatchTestType('');
       setBatchEntries([]);
+      showToast(t('lab.batchSaved', { count: saved.size }), 'success');
     } catch (err) {
       // A result that did not save must not look saved: the entries stay on
       // screen so nothing typed is lost, and the tech is told.
       console.error('Failed to batch save:', err);
-      showToast(t('radiology.updateFailed'), 'error');
+      // Entries already saved leave the draft so a retry cannot file them twice.
+      if (saved.size > 0) setBatchEntries(prev => prev.filter(e => !saved.has(e.orderId)));
+      showToast(t('msg.changeNotSavedTryAgain'), 'error');
     } finally {
       setBatchSaving(false);
     }

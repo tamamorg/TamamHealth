@@ -40,7 +40,7 @@ export interface SignOutcome {
 }
 
 export async function signOrders({
-  orders, patient, currentUser, scope, onSitePharmacy, confirmPrompt, t,
+  orders, patient, currentUser, scope, onSitePharmacy, confirmPrompt, t, onSigned,
 }: {
   orders: BasketOrder[];
   patient: PatientDoc;
@@ -50,6 +50,14 @@ export async function signOrders({
   onSitePharmacy: boolean;
   confirmPrompt: (options: ConfirmPromptOptions) => Promise<string | null>;
   t: Translate;
+  /**
+   * Told the moment each order is written, so the caller can take it out of
+   * the basket then and not only when signing ends. A later safety prompt
+   * left unanswered (the drawer closed mid-sign) used to leave an order that
+   * was already a prescription in the basket, and signing again made a
+   * second one (2026-11-08 end-to-end check).
+   */
+  onSigned?: (ids: string[]) => void;
 }): Promise<SignOutcome> {
   const outcome: SignOutcome = { signed: [], kept: [], warnings: [] };
   const prescriber = currentUser?.name || currentUser?.username || 'Unknown user';
@@ -173,6 +181,7 @@ export async function signOrders({
           }
         }
         outcome.signed.push(order.id);
+        onSigned?.([order.id]);
       } catch (err) {
         outcome.kept.push({ id: order.id, reason: 'failed', message: err instanceof Error ? err.message : undefined });
       }
@@ -204,6 +213,7 @@ export async function signOrders({
         },
       });
       outcome.signed.push(...group.map(o => o.id));
+      onSigned?.(group.map(o => o.id));
       if (placed && placed.billed === false) outcome.warnings.push(t('lab.orderNotBilled', { tests: placed.unbilledTests.join(', ') }));
     } catch (err) {
       for (const o of group) outcome.kept.push({ id: o.id, reason: 'failed', message: err instanceof Error ? err.message : undefined });

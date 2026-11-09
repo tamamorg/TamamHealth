@@ -48,7 +48,7 @@ export function TriageRail({ f }: { f: TriageFormState }) {
               );
             })}
           </nav>
-          <div className="tamam-reg-railactions">
+          <footer className="tamam-reg-railactions">
             <button
               type="button"
               onClick={handleSubmitTriage}
@@ -60,7 +60,7 @@ export function TriageRail({ f }: { f: TriageFormState }) {
             <button type="button" onClick={() => clearForm({ discardDraft: true })} disabled={triageSubmitting} className="btn btn-secondary">
               {t('nurse.reset')}
             </button>
-          </div>
+          </footer>
         </aside>
       )}
     </>

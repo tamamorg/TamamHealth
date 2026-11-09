@@ -18,6 +18,8 @@ import { useNow } from '@/lib/hooks/useNow';
 import { FACESHEET_PANEL_OPTIONS, type FacesheetPanelId, type ChartVitalsLike, type FacesheetActions } from './chart-constants';
 import { appointmentStatusLabel } from '@/lib/appointment-status';
 import { formatMedicationReview } from '@/lib/clinical/triage-medication-review';
+import { useHistoryEntries } from '@/lib/hooks/useHistoryEntries';
+import { MEDICATION_HISTORY_DOMAIN, historyForDomain } from '@/lib/clinical/patient-history';
 
 /**
  * Facesheet card header — icon + title on the left, the card's primary write
@@ -95,6 +97,16 @@ export function PatientFacesheetView({
   // patient is actually taking — excluding it (the old filter) made the panel
   // read "(None documented)" for fully-dispensed patients.
   const currentMeds = prescriptions.filter(rx => rx.status !== 'discontinued').slice(0, 4);
+  // Medicines the patient reports taking (recorded at triage or on the Medications
+  // tab) are part of what they are on: a card that read "(None documented)" beside
+  // a listed Metformin hid it from the prescriber's first screen.
+  const { entries: historyEntries } = useHistoryEntries(patient._id);
+  // A medicine both reported and prescribed is listed once, as the order.
+  const drugKey = (name?: string) => (name || '').trim().toLowerCase().split(/[\s,(]+/)[0];
+  const prescribedDrugs = new Set(prescriptions.filter(rx => rx.status !== 'discontinued').map(rx => drugKey(rx.medication)));
+  const reportedMeds = historyForDomain(historyEntries, MEDICATION_HISTORY_DOMAIN)
+    .filter(entry => !prescribedDrugs.has(drugKey(entry.title)))
+    .slice(0, Math.max(0, 4 - currentMeds.length));
   const recentLabs = [...labResults]
     .sort((a, b) => (b.completedAt || b.createdAt || '').localeCompare(a.completedAt || a.createdAt || ''))
     .slice(0, 4);
@@ -151,7 +163,7 @@ export function PatientFacesheetView({
       {showPanel('medications') && (
       <section className="tebra-panel" {...clickable(() => onOpenTab('prescriptions'), { label: 'Open medications' })}>
         <FacesheetPanelHead icon={Pill} title={t('noteEditor.section.medications')} action={actions.medications} />
-        {currentMeds.length ? (
+        {currentMeds.length || reportedMeds.length ? (
           <div className="tebra-list">
             {currentMeds.map(rx => (
               <div
@@ -161,6 +173,16 @@ export function PatientFacesheetView({
               >
                 <strong>{rx.medication}</strong>
                 <span>{formatRxSig(rx)}</span>
+              </div>
+            ))}
+            {reportedMeds.map(entry => (
+              <div
+                key={entry._id}
+                className="tebra-list-row"
+                {...clickable(event => { event.stopPropagation(); onOpenTab('prescriptions'); }, { label: `Open ${entry.title}` })}
+              >
+                <strong>{entry.title}</strong>
+                <span>{[entry.detail, t('meds.reported.tag')].filter(Boolean).join(' · ')}</span>
               </div>
             ))}
           </div>

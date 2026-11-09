@@ -39,12 +39,22 @@ export function catalogFor(catalog: LabTestDef[], kind: LabOrderKind): LabTestDe
 export function searchCatalog(entries: LabTestDef[], query: string): LabTestDef[] {
   const q = query.trim().toLowerCase();
   if (!q) return entries;
-  return entries.filter(e =>
+  const hits = entries.filter(e =>
     e.name.toLowerCase().includes(q) ||
     e.specimen.toLowerCase().includes(q) ||
     (e.section || '').toLowerCase().includes(q) ||
     (e.loinc || '').toLowerCase().includes(q)
   );
+  // Name matches lead, so the first row is the test that was typed. Matching the
+  // bench section too is useful ("malaria" also finds the other parasitology
+  // tests), but alphabetical order put "Filaria Night Blood Film" above
+  // "Malaria RDT" and a tap on the first result ordered the wrong test.
+  // Array.prototype.sort is stable, so each group keeps catalogue order.
+  const rank = (e: LabTestDef) => {
+    const name = e.name.toLowerCase();
+    return name.startsWith(q) ? 0 : name.includes(q) ? 1 : 2;
+  };
+  return [...hits].sort((a, b) => rank(a) - rank(b));
 }
 
 /** Group entries by bench section for the picker's headings. */

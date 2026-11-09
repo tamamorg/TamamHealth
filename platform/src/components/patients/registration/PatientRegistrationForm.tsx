@@ -22,6 +22,7 @@ import {
 import { enrollFingerprint } from '@/lib/services/fingerprint-service';
 import { isValidPhone, isValidEmail, isValidNationalId } from '@/lib/field-formats';
 import { isPathAllowed } from '@/lib/role-routes';
+import { DOC_WRITE_ROLES } from '@/lib/sync/write-permissions';
 import RegistrationJumpNav from './RegistrationJumpNav';
 import RegistrationReview from './RegistrationReview';
 import DuplicateWarning from './DuplicateWarning';
@@ -101,13 +102,22 @@ export function PatientRegistrationForm({
   const goBack = useGoBack(safeReturnTo(returnTo, '/patients'));
   const { patients, create: createPatient } = usePatients();
   const { currentUser } = useAuth();
-  const { showToast } = useToast();
+  const { showToast, dismissToast } = useToast();
+  /** The "complete the required fields" toast, taken down once validation passes. */
+  const requiredToastId = useRef<number | null>(null);
   // "Register & check in" hands off to the appointments page's walk-in dialog
   // — or to `onCheckIn`, when an embedded host wants to route it itself.
   // Roles that can register a patient but cannot book (lab, pharmacy, records,
   // nutrition, radiology) would only land on Access Restricted, so they don't
   // get the button.
   const canCheckIn = isPathAllowed(currentUser?.role || '', '/appointments');
+  // /patients is open to lab and pharmacy (chart access), and /patients/new
+  // sits under it. A role the sync validator would refuse to create a patient
+  // for must not get the form: it would "save" locally and never replicate.
+  const mayRegister = !currentUser || (DOC_WRITE_ROLES.patient as readonly string[]).includes(currentUser.role);
+  useEffect(() => {
+    if (!mayRegister) router.replace('/patients');
+  }, [mayRegister, router]);
   /**
    * A user with no facility of their own — a platform super_admin, an org_admin
    * between postings — has to say which facility they are registering at. The
@@ -157,6 +167,9 @@ export function PatientRegistrationForm({
   /** The slip to hand over, and what registration does once it is dismissed. */
   const [portalSlip, setPortalSlip] = useState<PortalSlip | null>(null);
   const afterSlip = useRef<(() => void) | null>(null);
+  // The record this form just created, so the duplicate check on the read-back
+  // (still on screen behind the slip) does not warn about the patient itself.
+  const [registeredId, setRegisteredId] = useState<string | null>(null);
   // Which section the clerk is currently looking at — a different question
   // from how much is done, and the one the nav marks.
   const [activeSection, setActiveSection] = useState(DEMOGRAPHICS_SECTION);
@@ -367,8 +380,9 @@ export function PatientRegistrationForm({
       county: form.county,
     }, patients);
     const seen = new Set(local.map(m => m.patient._id));
-    return [...local, ...mpiMatches.filter(m => !seen.has(m.patient._id))].slice(0, 5);
-  }, [warnDuplicates, reviewMode, patients,
+    return [...local, ...mpiMatches.filter(m => !seen.has(m.patient._id))]
+      .filter(m => m.patient._id !== registeredId).slice(0, 5);
+  }, [warnDuplicates, reviewMode, patients, registeredId,
       form.firstName, form.middleName, form.surname, form.dateOfBirth,
       form.estimatedAge, form.gender, form.state, form.county, mpiMatches]);
 
@@ -439,6 +453,10 @@ export function PatientRegistrationForm({
     const perSection = VALIDATED_SECTIONS.map(section => [section, validateSection(section)] as const);
     const allErrors = Object.assign({}, ...perSection.map(([, errs]) => errs));
     if (Object.keys(allErrors).length === 0) {
+      if (requiredToastId.current !== null) {
+        dismissToast?.(requiredToastId.current);
+        requiredToastId.current = null;
+      }
       setErrorSections(new Set());
       return true;
     }
@@ -448,7 +466,7 @@ export function PatientRegistrationForm({
     // A failure found from the review page has to put the form back on screen,
     // otherwise the scroll below targets a section that is not rendered.
     setReviewMode(false);
-    showToast(t('patientNew.toastFillRequired'), 'error');
+    requiredToastId.current = showToast(t('patientNew.toastFillRequired'), 'error');
     const [firstSection, firstErrors] = failed[0];
     const firstField = Object.keys(firstErrors)[0];
     // Deferred a frame: when we have just come back from review the form is
@@ -523,6 +541,8 @@ export function PatientRegistrationForm({
           enabledBy: currentUser?.username,
         },
       } : undefined);
+
+      if (result?._id) setRegisteredId(result._id);
 
       // Persist fingerprint enrollments now that the patient _id exists.
       // Best-effort: a biometric failure must never roll back registration.
@@ -632,6 +652,8 @@ export function PatientRegistrationForm({
     );
   };
 
+  if (!mayRegister) return null;
+
   return (
     <>
       <main className={`page-container page-enter patient-registration-page${embedded ? ' patient-registration-page--embedded' : ''}`}>
@@ -653,7 +675,11 @@ export function PatientRegistrationForm({
               onOpenReview={openReview}
               optionalLabel={t('patientNew.optionalLabel')}
             />
-            <div className="tamam-reg-railactions">
+            {/* A <footer>, not a <div>: inside a slider the shared action-bar kit
+                (.tm-slider div:has(> .btn-primary):has(> .btn-secondary):last-child)
+                grabbed this element on the read-back and laid it out as a row of
+                one-letter-wide columns. */}
+            <footer className="tamam-reg-railactions">
               {/* Filling and committing are different moments, so they get
                   different buttons. While the form is open the primary action
                   is Review; the registering actions only appear on the
@@ -680,7 +706,7 @@ export function PatientRegistrationForm({
               <button type="button" onClick={handleCancel} className="tamam-reg-cancel">
                 {t('patientNew.cancel')}
               </button>
-            </div>
+            </footer>
           </aside>
 
           <div className="patient-registration-shell tamam-reg-form">

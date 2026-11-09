@@ -5,7 +5,7 @@
  * over "No billing activity matches this view".
  */
 import React from 'react';
-import { mountAndFlush, qa, type Mounted } from '../clinical-notes/test-utils';
+import { mountAndFlush, clickAsync, qa, type Mounted } from '../clinical-notes/test-utils';
 
 jest.mock('@/lib/i18n/useTranslation', () => {
   const map = (jest.requireActual('@/lib/i18n/locales/en') as { default: Record<string, string> }).default;
@@ -48,7 +48,7 @@ import type { PatientDoc } from '@/lib/db-types';
 const patient = { _id: 'pat-1', firstName: 'Mary', surname: 'Akol', hospitalNumber: 'H-1' } as unknown as PatientDoc;
 
 let mounted: Mounted | null = null;
-afterEach(() => { mounted?.unmount(); mounted = null; ledger = []; charges = []; });
+afterEach(() => { mounted?.unmount(); mounted = null; ledger = []; charges = []; AUTH.currentUser.role = 'cashier'; });
 
 const render = () => mountAndFlush(
   <BillingTab patient={patient} patientBalance={0} showPaymentPanel={false} showPlanWizard={false}
@@ -93,5 +93,29 @@ describe('BillingTab activity', () => {
     charges = [{ _id: 'ch-2', type: 'charge', patientId: 'pat-1', description: 'Old registration fee', category: 'registration', status: 'paid', billedAmount: 200, serviceDate: '2026-01-02' }];
     mounted = await render();
     expect(rows().join('\n')).toContain('Old registration fee');
+  });
+
+  describe('who is offered the till', () => {
+    const openActions = async () => {
+      mounted = await render();
+      await clickAsync(qa<HTMLButtonElement>(document.body, '.tamam-btn-primary').find(b => /Billing actions/.test(b.textContent || ''))!);
+      return document.body.textContent || '';
+    };
+
+    it('offers a cashier Collect payment, a plan and a payment link', async () => {
+      const text = await openActions();
+      expect(text).toContain('Collect payment');
+      expect(text).toContain('Create Payment Plan');
+      expect(text).toContain('Send payment link');
+    });
+
+    it('does not offer a doctor a payment the sync gateway would refuse', async () => {
+      AUTH.currentUser.role = 'doctor';
+      const text = await openActions();
+      expect(text).not.toContain('Collect payment');
+      expect(text).not.toContain('Create Payment Plan');
+      expect(text).not.toContain('Send payment link');
+      expect(text).toContain('Add services');
+    });
   });
 });

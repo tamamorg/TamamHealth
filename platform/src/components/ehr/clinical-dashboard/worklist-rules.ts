@@ -350,6 +350,10 @@ export function computeRowQueueColumns(
   // in consultation) or a visit already in progress. Merely assigned
   // (`handoffTo` set, not yet accepted) stays Waiting.
   const inService = triage?.handoffStatus === 'in_consultation' || triage?.handoffStatus === 'acknowledged' || row.status === 'in_progress';
+  // A provider has accepted the handoff while the encounter still reads
+  // "Triage completed" / "Awaiting clinic arrival": the stage label would
+  // contradict the In service lane, so the chip says who has the patient.
+  const sentOnStage = encounter?.status === 'routed_to_clinic' || encounter?.status === 'triaged_awaiting_destination';
   // The shared tab + colour rule (visit-display-status.ts): the encounter wins
   // once there is one; a provider taking the patient lifts a queued row to In service.
   const visitDisplay = resolveVisitDisplay({
@@ -405,7 +409,7 @@ export function computeRowQueueColumns(
        patient), so the appointment is the field to read when there is no
        patient record on the row. */
     careTeamSecondary: row.patient?.station?.careTeamSecondary ?? (row.patient?.nurse || row.appointment?.staffName || 'Nurse unassigned'),
-    statusText: row.patient?.station?.status || operationalState?.label || (triage?.handoffStatus === 'acknowledged'
+    statusText: row.patient?.station?.status || (inService && sentOnStage ? null : operationalState?.label) || (triage?.handoffStatus === 'acknowledged'
       ? 'Acknowledged'
       : triage?.assignedProviderId && triage.handoffStatus === 'assigned'
         ? 'Assigned'

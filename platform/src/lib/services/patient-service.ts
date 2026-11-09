@@ -297,7 +297,13 @@ async function assignGeocodeId(data: Record<string, unknown>, scope: DataScope):
   const bomaCode = (data.bomaCode as string | undefined)?.trim();
   const householdNumber = data.householdNumber as string | number | undefined;
   // Duplicates keep the identifiers they were issued; their suffix is not free.
-  const all = await getAllPatients(scope, { includeDuplicates: true });
+  // Read every patient on the device, not the caller's scope: a patient
+  // referred or transferred out of this facility keeps the identifier issued
+  // here, and the duplicate check below is global. Counting only what this
+  // facility still holds handed the next walk-in a number the transferred
+  // patient already owned, and registration was refused.
+  void scope;
+  const all = await getAllPatientsUnscopedForRegistration();
 
   // No boma/household yet — displaced, transient, or an emergency admission.
   // Issue a temporary UNKNOWN- identifier rather than leaving the field empty:

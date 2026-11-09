@@ -581,7 +581,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
           {/* Latest vitals */}
           {vitalTiles.length > 0 && (
             <>
-              <h2 className="pp-section-title"><Heart size={14} strokeWidth={1.8} /> {t('sbar.latestVitals')} <small>{latestDate ? `${shortDate(latestDate)} · ${latestVisitType}` : ''}</small></h2>
+              <h2 className="pp-section-title"><Heart size={14} strokeWidth={1.8} /> {t('patientPortal.latestVitals')} <small>{latestDate ? `${shortDate(latestDate)} · ${latestVisitType}` : ''}</small></h2>
               <div className="pp-tiles">
                 {vitalTiles.map(v => (
                   <div key={v.key} className={`pp-tile pp-tile--${v.tone}`} title={v.note}>

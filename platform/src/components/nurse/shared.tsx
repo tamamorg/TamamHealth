@@ -1,6 +1,7 @@
 // Shared utilities, types, and hooks for the nurse workflow components.
 // Not a component itself — consumers ('use client') import from here.
 
+import { clinicalClockTime } from '@/lib/time-juba';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth, useUi } from '@/lib/context';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -159,6 +160,10 @@ export function useMarEntries() {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
   const { t } = useTranslation();
+  const { activeAdmissions } = useWards();
+  // `activeAdmissions` is a fresh array every render; key the effect on the ids
+  // so it re-runs when the ward changes, not on every render.
+  const admittedKey = activeAdmissions.map(a => a._id).sort().join('|');
   const [marEntries, setMarEntries] = useState<MAREntry[]>([]);
 
   // Expand active/pending prescriptions into one row per scheduled dose for
@@ -174,7 +179,14 @@ export function useMarEntries() {
     // active admission. We surface pending + dispensed alike so an admitted
     // patient's ongoing course shows up; cancelled/complete states never set
     // `status` to those values in this model so they fall through naturally.
+    // The MAR belongs to inpatients: a dose is only due on the ward when its
+    // order is filed under a patient who is still admitted (the same rule the
+    // bedside grid at /wards/mar/[admissionId] uses). Every outpatient and
+    // already-dispensed prescription in the facility used to land here and the
+    // handoff reported hundreds of "overdue" doses for a four-bed ward.
+    const admittedIds = new Set(admittedKey ? admittedKey.split('|') : []);
     for (const rx of prescriptions) {
+      if (!rx.admissionId || !admittedIds.has(rx.admissionId)) continue;
       const times = scheduleForFrequency(rx.frequency, rx.createdAt);
       if (times.length === 0) continue;
 
@@ -214,7 +226,7 @@ export function useMarEntries() {
           id: `mar-${rx._id}-${time}`,
           time: time === 'PRN'
             ? 'PRN'
-            : new Date(scheduledFor).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            : clinicalClockTime(scheduledFor),
           patientId: rx.patientId,
           patientName: rx.patientName,
           medication: rx.medication,
@@ -235,7 +247,7 @@ export function useMarEntries() {
     const order = { overdue: 0, due: 1, upcoming: 2, given: 3 };
     entries.sort((a, b) => order[a.status] - order[b.status]);
     setMarEntries(entries);
-  }, [prescriptions]);
+  }, [prescriptions, admittedKey]);
 
   // MAR: record an administration against the real prescription. Optimistic UI
   // backed by an append-only MedicationAdministration write (recordAdministration).

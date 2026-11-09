@@ -233,7 +233,10 @@ export default function LabPage() {
   // Computed before `filtered` because the worklist filter selects on it.
   const overdueReviews = labResults.filter(o => {
     if (effOrderStatus(o) !== 'resulted') return false;
-    const resultedAt = new Date(o.updatedAt || o.createdAt || '').getTime();
+    // An outside or walk-in request has no clinician here to review it, and the
+    // clock runs from when the result landed, not from the latest write.
+    if (o.requestSource === 'external_facility' || o.requestSource === 'walk_in') return false;
+    const resultedAt = new Date(o.completedAt || o.updatedAt || o.createdAt || '').getTime();
     if (!Number.isFinite(resultedAt)) return false;
     const slaHours = o.critical ? resultReviewSLA.criticalHours : resultReviewSLA.routineHours;
     return (now - resultedAt) / 3_600_000 > slaHours;
@@ -245,7 +248,7 @@ export default function LabPage() {
   const filtered = labResults.filter(o => {
     const f = colFilters;
     if (globalSearch && !((o.patientName || '').toLowerCase().includes(globalSearch.toLowerCase()) || (o.testName || '').toLowerCase().includes(globalSearch.toLowerCase()))) return false;
-    if (quickSearch && !`${o.patientName || ''} ${o.hospitalNumber || ''} ${o.testName || ''} ${o.orderedBy || ''}`.toLowerCase().includes(quickSearch.toLowerCase())) return false;
+    if (quickSearch && !`${o.patientName || ''} ${o.hospitalNumber || ''} ${o.testName || ''} ${o.orderedBy || ''} ${fallbackAccessionNumber(o)}`.toLowerCase().includes(quickSearch.toLowerCase())) return false;
     if (f.patientId && o.patientId !== f.patientId) return false;
     if (f.patient && !`${o.patientName || ''} ${o.hospitalNumber || ''}`.toLowerCase().includes(f.patient.toLowerCase())) return false;
     if (f.test && !(o.testName || '').toLowerCase().includes(f.test.toLowerCase())) return false;
@@ -268,12 +271,20 @@ export default function LabPage() {
   // on — that is what makes it a pin rather than just another sort key.
   const orderedAtMs = (o: LabResultDoc) =>
     new Date(o.orderedAt || o.createdAt || '').getTime() || 0;
+  // A critical result outranks a STAT order, which outranks an urgent one. The
+  // priority was recorded on the order and then never reached the bench list,
+  // so a STAT request sat below older routine work.
+  const urgencyRank = (o: LabResultDoc) => {
+    if (o.critical) return 3;
+    if (!isOpenLabOrder(o)) return 0;
+    return o.priority === 'stat' ? 2 : o.priority === 'urgent' ? 1 : 0;
+  };
   const sortedFiltered = [...filtered].sort((a, b) => {
-    if (labStatTop && a.critical !== b.critical) return a.critical ? -1 : 1;
+    if (labStatTop && urgencyRank(a) !== urgencyRank(b)) return urgencyRank(b) - urgencyRank(a);
     if (labSort === 'Newest first') return orderedAtMs(b) - orderedAtMs(a);
     if (labSort === 'Oldest first') return orderedAtMs(a) - orderedAtMs(b);
     // 'Urgency, then oldest'
-    if (a.critical !== b.critical) return a.critical ? -1 : 1;
+    if (urgencyRank(a) !== urgencyRank(b)) return urgencyRank(b) - urgencyRank(a);
     return orderedAtMs(a) - orderedAtMs(b);
   });
 
@@ -459,6 +470,9 @@ export default function LabPage() {
                     <div className="appointment-card-provider">
                       <strong>{order.testName}</strong>
                       {order.tier && <span className="capitalize">{order.tier} tier</span>}
+                      {isOpenLabOrder(order) && (order.priority === 'stat' || order.priority === 'urgent') && (
+                        <span className="lab-priority-flag">{t(order.priority === 'stat' ? 'basket.priorityName.stat' : 'basket.priorityName.urgent')}</span>
+                      )}
                       {order.pendingCorrection && <PendingCorrectionNotice correction={order.pendingCorrection} compact showValue={false} />}
                     </div>
 

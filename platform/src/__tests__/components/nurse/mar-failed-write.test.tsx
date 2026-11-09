@@ -19,8 +19,10 @@ jest.mock('@/lib/context', () => ({
 }));
 const prescriptions = [{
   _id: 'rx-1', patientId: 'p-1', patientName: 'Mary Akol', medication: 'Amoxicillin', dose: '500 mg',
-  route: 'oral', frequency: 'PRN', status: 'pending', createdAt: '2026-10-27T06:00:00.000Z', administrations: [],
+  route: 'oral', frequency: 'PRN', status: 'pending', admissionId: 'adm-1', createdAt: '2026-10-27T06:00:00.000Z', administrations: [],
 }];
+// A fresh array per render, as the real hook returns: the MAR effect must not loop on it.
+jest.mock('@/lib/hooks/useWards', () => ({ useWards: () => ({ activeAdmissions: [{ _id: 'adm-1' }] }) }));
 jest.mock('@/lib/hooks/usePrescriptions', () => ({
   usePrescriptions: () => ({ prescriptions, administer, voidAdministration }),
 }));
@@ -54,5 +56,16 @@ it('keeps the dose recorded when undoing it fails', async () => {
   expect(hook.marEntries[0].status).toBe('given');
   expect(hook.marEntries[0].administrationId).toBe('adm-1');
   expect(showToast).toHaveBeenCalledWith('nurse.medicationUndoFailedToast', 'error', { sticky: true });
+  unmount();
+});
+
+it('leaves outpatient and discharged-patient prescriptions off the ward MAR', async () => {
+  prescriptions.push(
+    { ...prescriptions[0], _id: 'rx-opd', admissionId: undefined, frequency: 'q8h' } as never,
+    { ...prescriptions[0], _id: 'rx-gone', admissionId: 'adm-discharged', frequency: 'q8h' } as never,
+  );
+  const { unmount } = mount(<Probe onRender={capture} />);
+  expect(hook.marEntries.map(e => e.prescriptionId)).toEqual(['rx-1']);
+  prescriptions.length = 1;
   unmount();
 });

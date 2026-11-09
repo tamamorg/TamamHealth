@@ -51,10 +51,17 @@ function table(head: string[], rows: string[][], empty = 'No data recorded'): st
 
 const section = (title: string, body: string) => `<section class="section"><h2 class="section-title">${e(title)}</h2>${body}</section>`;
 
-/** Diagnoses for the day, in rank order: primary 1, secondary 2, differential 3. */
-export function visitDiagnoses(records: MedicalRecordDoc[], day: string): Array<{ name: string; certainty: 'Confirmed' | 'Provisional'; rank: number }> {
+/**
+ * Diagnoses for the day, in rank order: primary 1, secondary 2, differential 3.
+ *
+ * A signed note never writes a MedicalRecord: its coded diagnoses live on the
+ * Assessment section. So when `notes` are passed, the day's signed (or
+ * amended) notes contribute their coded cards too, first one primary and the
+ * rest secondary, skipping any the record already lists.
+ */
+export function visitDiagnoses(records: MedicalRecordDoc[], day: string, notes: ClinicalNoteDoc[] = []): Array<{ name: string; certainty: 'Confirmed' | 'Provisional'; rank: number }> {
   const rank = { primary: 1, secondary: 2, differential: 3 } as const;
-  return records
+  const fromRecords = records
     .filter(r => onDay(r.consultedAt || r.visitDate || r.createdAt, day))
     .flatMap(r => r.diagnoses || [])
     .filter(d => !!d?.name)
@@ -62,8 +69,24 @@ export function visitDiagnoses(records: MedicalRecordDoc[], day: string): Array<
       name: d.name,
       certainty: d.certainty === 'suspected' || d.type === 'differential' ? 'Provisional' as const : 'Confirmed' as const,
       rank: rank[d.type] ?? 2,
-    }))
-    .sort((a, b) => a.rank - b.rank);
+    }));
+  const seen = new Set(fromRecords.map(d => d.name.trim().toLowerCase()));
+  const hasPrimary = fromRecords.some(d => d.rank === 1);
+  const fromNotes: typeof fromRecords = [];
+  // The first note signed that day leads, so "primary" does not depend on the
+  // order the notes happened to arrive in.
+  const signedFirst = [...notes].sort((a, b) =>
+    (a.signedAt || a.createdAt || '').localeCompare(b.signedAt || b.createdAt || ''));
+  for (const n of signedFirst) {
+    if ((n.status !== 'signed' && n.status !== 'amended') || !onDay(n.serviceDate || n.createdAt, day)) continue;
+    for (const d of n.sections.flatMap(sec => sec.diagnoses ?? [])) {
+      const key = (d.name || '').trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      fromNotes.push({ name: d.name, certainty: 'Confirmed', rank: !hasPrimary && fromNotes.length === 0 ? 1 : 2 });
+    }
+  }
+  return [...fromRecords, ...fromNotes].sort((a, b) => a.rank - b.rank);
 }
 
 function noteText(note: ClinicalNoteDoc): string {
@@ -90,7 +113,7 @@ export function buildClinicalVisitSummaryHtml(input: ClinicalVisitSummaryInput):
   ].join('')}</div>`;
 
   const diagnoses = table(['Diagnosis', 'Certainty', 'Rank'],
-    visitDiagnoses(input.records, day).map(d => [e(d.name), e(d.certainty), `<span class="num">${d.rank}</span>`]));
+    visitDiagnoses(input.records, day, input.notes).map(d => [e(d.name), e(d.certainty), `<span class="num">${d.rank}</span>`]));
 
   const conditions = table(['Condition', 'Onset Date'],
     input.problems

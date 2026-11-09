@@ -64,11 +64,15 @@ export default function LabOrderWizard({
       return;
     }
     if (step === 'review') {
+      const imaging = draft.kind === 'imaging';
+      const count = draft.tests.length;
       try {
         const placed = await submit();
         onPlaced();
         setStep('complete');
-        showToast(t('lab.ordersCreated', { count: draft.tests.length }), 'success');
+        showToast(imaging
+          ? t(count === 1 ? 'lab.imagingOrderCreated' : 'lab.imagingOrdersCreated', { count })
+          : t('lab.ordersCreated', { count }), 'success');
         if (!placed.billed) showToast(t('lab.orderNotBilled', { tests: placed.unbilledTests.join(', ') }), 'warning', { placement: 'corner' });
       } catch (err) {
         console.error(err);

@@ -6,6 +6,7 @@ import { emitSyncEvent } from './sync-event-service';
 import { findByType } from './db-query';
 import { ValidationError } from '../validation';
 import { isStandaloneDemoDeployment } from '../sync/sync-config';
+import { FACILITY_NAME_MAX } from '../facility-form';
 
 const IS_BROWSER = typeof window !== 'undefined';
 
@@ -283,6 +284,12 @@ export async function createHospital(
   if (shouldUseServerHospitalApi()) {
     const body = await postHospitalsApi({ ...data });
     return body.hospital as HospitalDoc;
+  }
+
+  if (typeof data.name === 'string' && data.name.trim().length > FACILITY_NAME_MAX) {
+    throw new ValidationError({
+      name: `Facility name not saved. Use ${FACILITY_NAME_MAX} characters or fewer.`,
+    });
   }
 
   // A facility with no organisation is not a saved facility, however cleanly

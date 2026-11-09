@@ -59,6 +59,7 @@ const OPERATIONAL_STATUS_LABEL_KEYS: Record<OperationalStatus, string> = {
 
 const ERROR_KEY: Record<FacilityFormError, string> = {
   'required': 'orgHospitals.errRequiredFields',
+  'name-too-long': 'orgHospitals.errNameTooLong',
   'beds-negative': 'orgHospitals.errInvalidBeds',
   'beds-breakdown-exceeds-total': 'orgHospitals.errBedBreakdown',
   'coordinates': 'orgHospitals.errCoordinates',
@@ -118,7 +119,7 @@ export default function FacilityFormModal({
     const invalid = validateFacilityForm(form);
     if (invalid) {
       setError(t(ERROR_KEY[invalid]));
-      if (invalid !== 'required') setShowDetails(true);
+      if (invalid !== 'required' && invalid !== 'name-too-long') setShowDetails(true);
       return;
     }
     if (!isEdit && !effectiveOrgId) {

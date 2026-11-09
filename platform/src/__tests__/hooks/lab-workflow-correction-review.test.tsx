@@ -229,8 +229,9 @@ it('never puts the pending value in front of the patient', async () => {
   const order = await filed({ orderStatus: 'communicated_to_patient' });
   await propose(order._id, 'Negative', 'Transcription error');
   const portal = toPortalLabResult((await getLabResultById(order._id))!);
-  expect(portal.result).toBe('Positive (P. falciparum)');
-  expect(JSON.stringify(portal)).not.toMatch(/Transcription|pendingCorrection|Achol/);
+  // Held back while the correction is undecided: neither value reaches the patient.
+  expect(portal.result).toBeUndefined();
+  expect(JSON.stringify(portal)).not.toMatch(/Transcription|pendingCorrection|Achol|Negative|falciparum/);
 });
 
 describe('correctionReviewState', () => {
@@ -243,4 +244,41 @@ describe('correctionReviewState', () => {
     expect(correctionReviewState(pending, DOCTOR)).toBe('view');
     expect(correctionReviewState(pending, { role: 'lab_tech' })).toBe('view');
   });
+});
+
+describe('amending a filed critical result', () => {
+  const criticalHemoglobin = () => filed({
+    testName: 'Hemoglobin', result: '4.2', unit: 'g/dL', referenceRange: '12.0-16.0',
+    abnormal: true, critical: true,
+  });
+
+  it('re-derives the critical flag when the corrected value is no longer critical', async () => {
+    const order = await criticalHemoglobin();
+    await mountAs(TECH_A, order._id);
+    expect(harness.controller!.resultDraft.critical).toBe(true);
+    act(() => { harness.controller!.setResultValue('12.4'); });
+    // Frozen on "critical" before the fix: a false critical alert then went out
+    // when the correction was approved.
+    expect(harness.controller!.resultDraft.critical).toBe(false);
+    expect(harness.controller!.resultDraft.criticalManual).toBe(false);
+  });
+
+  it('keeps a hand-set critical flag on a value the table does not call critical', async () => {
+    const order = await filed({ testName: 'Malaria RDT', result: 'Positive (P. falciparum)', abnormal: true, critical: true });
+    await mountAs(TECH_A, order._id);
+    expect(harness.controller!.resultDraft.criticalManual).toBe(true);
+    act(() => { harness.controller!.setResultValue('Positive (mixed)'); });
+    expect(harness.controller!.resultDraft.critical).toBe(true);
+  });
+});
+
+it('never sends a pending correction to the patient portal', async () => {
+  const order = await filed({ orderStatus: 'reviewed_by_clinician' });
+  await propose(order._id, 'Negative', 'Transcription error');
+  const saved = (await getLabResultById(order._id))!;
+  const portal = toPortalLabResult(saved);
+  // Reviewed, but a correction is pending: the patient waits for the decision.
+  expect(portal.result).toBeUndefined();
+  expect(portal.awaitingReview).toBe(true);
+  expect(JSON.stringify(portal)).not.toMatch(/pendingCorrection|Transcription error|Negative/);
 });

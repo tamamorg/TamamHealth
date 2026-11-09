@@ -1500,6 +1500,22 @@ export async function recordUnfilled(
   note: string,
   actor: { id: string; name: string },
 ): Promise<PrescriptionDoc | null> {
+  // This write sets `status: 'pending'` and parks the order, so on an order
+  // that is already closed it would resurrect a stopped drug or re-open a
+  // handed-over one without its stock coming back. Judged on the stored
+  // copy, not the caller's possibly stale list row.
+  const { getPrescriptionById } = await import('./prescription-service');
+  const current = (await getPrescriptionById(rx._id).catch(() => null)) ?? rx;
+  if (
+    current.status === 'discontinued'
+    || current.status === 'dispensed'
+    || ['dispensed', 'counseled', 'complete'].includes(current.orderStatus ?? '')
+  ) {
+    throw new DispenseError(
+      'This order is already closed, so it cannot be held or marked out of stock. Reverse the dispense first if it went out in error.',
+      'NOT_CLEARED',
+    );
+  }
   const updated = await updatePrescription(rx._id, {
     orderStatus: reason === 'stock_out' ? 'stockout_partial_referred' : 'held_awaiting_clarification',
     status: 'pending',

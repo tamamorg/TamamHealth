@@ -373,7 +373,9 @@
     white-space: normal;
     overflow-wrap: anywhere;
   }
-  .o3f-nav-actions { margin: 12px 0 0; padding: 12px; }
+  /* Stacked: the phone rule above lays them in a row, which in this 148px
+     column cut "Cancel" off beside "Register visit". */
+  .o3f-nav-actions { flex-direction: column; flex-basis: auto; margin: 12px 0 0; padding: 12px; }
   .o3f-section-body { margin-inline-end: 0; padding: 16px; }
   .o3f-page-head, .o3f-section-head { padding-inline: 16px; }
 }

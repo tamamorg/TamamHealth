@@ -22,6 +22,7 @@
  */
 import { chartCareAlerts } from '../care-alert-rules';
 import { v4 as uuidv4 } from 'uuid';
+import { isPathAllowed } from '../role-routes';
 import {
   patientTransfersDB, patientsDB, problemsDB, prescriptionsDB, clinicianTasksDB, getDB,
   medicalRecordsDB, triageDB,
@@ -234,6 +235,9 @@ export async function getIncomingTransfers(
   user: { id: string; department?: string; hospitalId?: string; role?: UserRole },
   scope: DataScope,
 ): Promise<PatientTransferDoc[]> {
+  // A role with no /transfers page (a cashier, a biller) is never the one to
+  // accept a transfer; a facility-wide request must not badge their bell.
+  if (user.role && !isPathAllowed(user.role, '/transfers')) return [];
   const all = await getAllTransfers(scope);
   return all.filter(t => {
     if (t.status !== 'requested') return false;

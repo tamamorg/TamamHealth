@@ -89,14 +89,18 @@ body .tamam-root .tamam-table--orders th:nth-child(5) { width: 9%; }
 body .tamam-root .tamam-table--orders th:nth-child(6) { width: 15%; }
 body .tamam-root .tamam-table--orders th:nth-child(7) { width: 12%; }
 
-body .tamam-root .tamam-table--activity th:nth-child(1) { width: 12%; }
-body .tamam-root .tamam-table--activity th:nth-child(2) { width: 30%; }
+body .tamam-root .tamam-table--activity th:nth-child(1) { width: 15%; }
+body .tamam-root .tamam-table--activity th:nth-child(2) { width: 27%; }
 body .tamam-root .tamam-table--activity th:nth-child(3) { width: 12%; }
 body .tamam-root .tamam-table--activity th:nth-child(4) { width: 13%; }
 body .tamam-root .tamam-table--activity th:nth-child(5) { width: 13%; }
 body .tamam-root .tamam-table--activity th:nth-child(6) { width: 13%; }
 /* Money is never cut short: beside a slider, a figure wraps at its space. */
-body .tamam-root .tamam-table--activity td { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: normal; }
+/* `td.tamam-num` (above) forces nowrap + ellipsis and out-ranks a bare `td`, so
+   the date and the three money columns still read "SS…" beside the Collect
+   payment slider; name it here so this rule wins. */
+body .tamam-root .tamam-table--activity td,
+body .tamam-root .tamam-table--activity td.tamam-num { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: normal; }
 body .tamam-root .tamam-table--activity td:nth-child(2) { overflow-wrap: anywhere; }
 
 body .tamam-root .tamam-table--documents th:nth-child(1) { width: 22%; }
@@ -116,3 +120,80 @@ body .tamam-root table thead th.tamam-col-actions { width: 72px; text-align: cen
    scrolls sideways instead. */
 .tamam-root .tamam-section-body > .tamam-table { min-width: 560px; }
 .tamam-root .tamam-section-body:has(> .tamam-table) { overflow-x: auto; }
+
+/* Beside a docked workspace (the drawer) or an open slider the chart column
+   is 370-580px, so a list's head and last column were cut off ("Date of ser",
+   "Ac"). Cells and heads take 8px sides here and a head wraps at its spaces
+   instead of being clipped. From 1400px the column is wide enough for the
+   table to fit it; below that the table keeps its 560px floor and scrolls
+   sideways, with the Actions column pinned so the row menu is always in
+   reach. */
+body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-section-body > .tamam-table :is(thead th, tbody td),
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-section-body > .tamam-table :is(thead th, tbody td) {
+  padding-inline: 8px !important;
+}
+body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-section-body > .tamam-table thead th,
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-section-body > .tamam-table thead th {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-section-body > .tamam-table td.tamam-num,
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-section-body > .tamam-table td.tamam-num {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+@media (min-width: 1400px) {
+  body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-section-body > .tamam-table,
+  html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-section-body > .tamam-table {
+  min-width: 0;
+}
+}
+@media (max-width: 1399.98px) {
+  body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-section-body > .tamam-table :is(thead th, tbody td):last-child,
+  html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-section-body > .tamam-table :is(thead th, tbody td):last-child {
+    position: sticky;
+    right: 0;
+    background: var(--bg-card-solid) !important;
+    box-shadow: -1px 0 0 var(--border-light);
+}
+}
+/* Notes beside a workspace: Type must hold "Consultation" whole, Status its pill. */
+body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-table--notes th:nth-child(1),
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-table--notes th:nth-child(1) { width: 20%; }
+body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-table--notes th:nth-child(2),
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-table--notes th:nth-child(2) { width: 22%; }
+body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-table--notes th:nth-child(3),
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-table--notes th:nth-child(3) { width: 16%; }
+body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-table--notes th:nth-child(4),
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-table--notes th:nth-child(4) { width: 18%; }
+body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-table--notes th:nth-child(5),
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-table--notes th:nth-child(5) { width: 18%; }
+
+/* Results: the Result column holds a whole panel's values (an 11-analyte
+   blood count), so it takes the widest share. Equal columns left it about
+   60px beside a docked slider, one word per line, with the Actions column cut
+   off. The table keeps a 720px floor even where the squeezed-column rule above
+   would release it, and its section scrolls sideways below that. Shares sum
+   to 94%; the remainder is the fixed 72px Actions column. */
+body .tamam-root .tamam-table--results th:nth-child(1) { width: 17%; }
+body .tamam-root .tamam-table--results th:nth-child(2) { width: 30%; }
+body .tamam-root .tamam-table--results th:nth-child(3) { width: 13%; }
+body .tamam-root .tamam-table--results th:nth-child(4) { width: 12%; }
+body .tamam-root .tamam-table--results th:nth-child(5) { width: 10%; }
+body .tamam-root .tamam-table--results th:nth-child(6) { width: 12%; }
+body .tamam-root .tamam-section-body > .tamam-table.tamam-table--results,
+body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-section-body > .tamam-table.tamam-table--results,
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-section-body > .tamam-table.tamam-table--results {
+  min-width: 720px;
+}
+/* The 720px floor above can overflow the squeezed column at 1400px and wider,
+   where the sticky Actions rule (below 1400px only) is off: pin it here. */
+body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-section-body > .tamam-table--results :is(thead th, tbody td):last-child,
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-section-body > .tamam-table--results :is(thead th, tbody td):last-child {
+  position: sticky;
+  right: 0;
+  background: var(--bg-card-solid) !important;
+  box-shadow: -1px 0 0 var(--border-light);
+}

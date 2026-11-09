@@ -536,6 +536,12 @@ export default function StartVisitPanel({ patient, patientName, currentUser, app
         )}
       </div>
 
+      {/* The payment fields sit below the fold, so say why Start is dimmed. */}
+      {timing === 'new' && activeVisit === null && Boolean(visitType) && !visitBillingComplete(billing) && (
+        <p role="status" style={{ margin: 0, padding: '8px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
+          {t('startVisit.billingIncomplete')}
+        </p>
+      )}
       <div className="sv-footer">
         <button type="button" className="sv-footer-btn sv-footer-btn--discard" onClick={onClose} disabled={saving}>
           {t('startVisit.discard')}

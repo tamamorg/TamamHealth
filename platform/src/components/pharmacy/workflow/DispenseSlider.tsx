@@ -3,6 +3,9 @@
 /**
  * One prescription in the right-hand slider — the dashboard's way in. The same
  * form the chart's Dispense workspace renders.
+ *
+ * It keeps no unsaved draft: two scripts for the same medicine and patient share a title and
+ * subtitle, so a restored quantity or witness could land on the wrong script.
  */
 
 import FormSlider from '@/components/overlay/FormSlider';
@@ -19,7 +22,7 @@ export default function DispenseSlider({ rx, patientName, activeMedications, int
 }) {
   const { canDispense } = usePermissions();
   return (
-    <FormSlider title={rx.medication} subtitle={patientName} className="tamam-dialog" width={560} flush onClose={onClose}>
+    <FormSlider title={rx.medication} subtitle={patientName} className="tamam-dialog" width={560} flush keepDraft={false} onClose={onClose}>
       <PharmacyWorkflowPanel key={rx._id} rx={rx} canWork={canDispense} activeMedications={activeMedications} onClose={onClose} intent={intent} />
     </FormSlider>
   );

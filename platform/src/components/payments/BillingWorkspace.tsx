@@ -677,7 +677,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
           queue used to be squeezed to nothing whenever the analytics panel was
           expanded on a short screen, with no way to scroll it back. */}
       <main className="page-container page-enter" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflowY: 'auto' }}>
-        <div className="bl-root" style={{ flex: 1, minHeight: 0 }}>
+        <div className="bl-root" style={{ flex: '0 0 auto' }}>
           {error && <InlineBanner tone="danger">{error}</InlineBanner>}
 
           {/* No page-head band: the rail already says which module this is, and
@@ -769,7 +769,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
               one search box; the tabs decide which rows and which filters. ── */}
           {/* A floor rather than a share of the viewport — the table always has
               room for a useful number of rows, and the page scrolls past it. */}
-          <div className="bl-card" data-tour="work-queue" style={{ flex: 1, minHeight: 320, display: 'flex', flexDirection: 'column' }}>
+          <div className="bl-card" data-tour="work-queue" style={{ flex: '0 0 auto', minHeight: 320, display: 'flex', flexDirection: 'column' }}>
             <div className="bl-card-head">
               {canSeeClaims ? (
                 <div role="tablist" aria-label={t('billing.queueAria')} className="bl-tabs" data-tab-style="underline">
@@ -830,7 +830,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                 setNewClaimOpen={setNewClaimOpen}
               />
             ) : (
-              <div style={{ overflow: 'auto', flex: 1, minHeight: 0, marginTop: 12 }}>
+              <div style={{ overflowX: 'auto', marginTop: 12 }}>
                 <table className="bl-table bl-table--even bl-table--rows-open bl-workqueue-table" style={{ minWidth: 940 }}>
                   {/* `bl-table--even` is table-layout: fixed — every column
                       takes an equal share of the full width, and none of them

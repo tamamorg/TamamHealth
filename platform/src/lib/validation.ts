@@ -384,6 +384,18 @@ export function validateVitalSigns(
 
   check('systolicBP', vitals.systolicBP ?? vitals.systolic, 'systolicBP', 'Systolic BP');
   check('diastolicBP', vitals.diastolicBP ?? vitals.diastolic, 'diastolicBP', 'Diastolic BP');
+  // A pair that is each in range can still be impossible: the diastolic
+  // pressure is always below the systolic. Typing the two boxes in the wrong
+  // order (60/90) used to save and then read as a real, hypertensive-looking
+  // chart entry.
+  if (!errors.systolicBP && !errors.diastolicBP) {
+    const rawSys = vitals.systolicBP ?? vitals.systolic;
+    const rawDia = vitals.diastolicBP ?? vitals.diastolic;
+    const hasValue = (raw: unknown) => raw !== undefined && raw !== null && raw !== '';
+    if (hasValue(rawSys) && hasValue(rawDia) && Number(rawSys) <= Number(rawDia)) {
+      errors.systolicBP = 'Systolic BP must be higher than diastolic BP';
+    }
+  }
   check('pulse', vitals.pulse, 'pulse', 'Pulse');
   check('respiratoryRate', vitals.respiratoryRate, 'respiratoryRate', 'Respiratory rate');
   check('weight', vitals.weight, 'weight', 'Weight');

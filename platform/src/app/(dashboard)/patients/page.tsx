@@ -27,6 +27,7 @@ import Modal from '@/components/Modal';
 import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { hasUnsyncedWrite } from '@/lib/sync/offline-metadata';
 import { useNow } from '@/lib/hooks/useNow';
+import { useHospitals } from '@/lib/hooks/useHospitals';
 import { formatLocationShared } from '@/lib/field-formats';
 import { useSharedScreenMask } from '@/lib/settings/useRoleSetting';
 import NumberInput from '@/components/forms/NumberInput';
@@ -224,9 +225,14 @@ export default function PatientsPage() {
     if (Number.isNaN(date.getTime())) return '—';
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   };
+  // registrationHospital is a facility id ("hosp-001"); show the facility's name.
+  const { hospitals } = useHospitals();
+  const hospitalNameById = useMemo(() => new Map(hospitals.map(h => [h._id, h.name])), [hospitals]);
   const facilityNameOf = (p: typeof patients[number]) => {
     const named = p as typeof p & { registrationHospitalName?: string; lastVisitHospitalName?: string };
-    return named.registrationHospitalName || named.lastVisitHospitalName || p.registrationHospital || p.lastVisitHospital || 'Facility unknown';
+    const raw = p.registrationHospital || p.lastVisitHospital;
+    return named.registrationHospitalName || named.lastVisitHospitalName
+      || (raw && hospitalNameById.get(raw)) || raw || 'Facility unknown';
   };
 
   return (
@@ -300,7 +306,8 @@ export default function PatientsPage() {
                       <span className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('patients.filterOlderThan')}</span>
                       <div className="relative">
                         <NumberInput step="1" min={0} max={120} value={filters.olderThan} onChange={e => setF('olderThan', e.target.value)} placeholder="—" className="w-full text-sm py-2 ps-3 pe-12" style={fieldStyle} />
-                        <span className="absolute end-3 top-1/2 -translate-y-1/2 text-[11px]" style={{ color: 'var(--text-muted)' }}>{t('patients.filterYears')}</span>
+                        {/* Sits left of the field's own −/+ stepper (~72px), not on top of it. */}
+                        <span className="pointer-events-none absolute top-1/2 -translate-y-1/2 text-[11px]" style={{ color: 'var(--text-muted)', insetInlineEnd: 84 }}>{t('patients.filterYears')}</span>
                       </div>
                     </label>
                     <label className="flex flex-col gap-1">

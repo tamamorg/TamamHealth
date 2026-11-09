@@ -27,7 +27,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { AuditLogDoc, PlatformConfigDoc } from '@/lib/db-types';
 import { DEFAULT_POLICIES } from '@/lib/admin/super-admin-policies';
 import { Lock, FileText, AlertTriangle, Clock, ShieldCheck, Eye } from '@/components/icons/lucide';
-import { classifyAuditRisk, formatWhen, type SaSeverity } from '@/components/admin/sa-ui';
+import { classifyAuditRisk, formatAuditAction, formatWhen, type SaSeverity } from '@/components/admin/sa-ui';
 import { useNow } from '@/lib/hooks/useNow';
 import {
   SadbPage, SadbShell, useSadbTab, SadbPanelHeader, SadbSettingGroup, SadbSettingRow,
@@ -390,7 +390,7 @@ export default function SecurityCompliancePage() {
                   key={log._id}
                   chip={t(SEVERITY_KEY[severity])}
                   chipTone={SEVERITY_CHIP[severity]}
-                  title={log.action}
+                  title={formatAuditAction(log.action)}
                   sub={`${log.username || t('admin.systemUser')} · ${log.details}`}
                   when={formatWhen(log.createdAt)}
                   onClick={() => router.push(`/admin/audit?log=${encodeURIComponent(log._id)}`)}

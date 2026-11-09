@@ -274,6 +274,13 @@
      button crowd the rail column it shares a track with. */
   .ehr-label-full { display: none !important; }
   .ehr-label-compact { display: inline !important; }
+  /* A board with a long action row (data entry lists a dozen) cannot compress
+     onto one line: the `auto` column took all of it and squeezed the greeting to
+     nothing. Cap the column and let only that case wrap. */
+  .ehr-care-dashboard .ehr-schedule-header {
+    grid-template-columns: var(--tablet-rail) minmax(0, 1fr) fit-content(60%) !important;
+  }
+  .ehr-care-dashboard .ehr-schedule-header .ehr-schedule-actions { flex-wrap: wrap !important; }
   .ehr-clinical-dashboard-header-main { flex-direction: row !important; align-items: center !important; }
   .ehr-clinical-dashboard-header .ehr-schedule-actions { display: flex !important; }
   .ehr-center-panel > .ehr-clinical-strip { display: grid !important; }
@@ -645,7 +652,7 @@
   }
   .ehr-clinical-dashboard-header > .ehr-clinical-dashboard-header-main { order: 0; flex: 1 1 200px; min-width: 0; }
   .ehr-clinical-dashboard-header > .ehr-clinical-dashboard-tabs { order: 1; flex: 0 0 auto; }
-  .ehr-clinical-dashboard-header > .ehr-schedule-actions { order: 2; flex: 0 0 auto; }
+  .ehr-clinical-dashboard-header > .ehr-schedule-actions { order: 2; flex: 0 1 auto; min-width: 0; max-width: 100%; flex-wrap: wrap; }
   .ehr-clinical-dashboard-tabs .ehr-segmented-single { display: inline-flex !important; width: auto !important; }
   .ehr-clinical-dashboard-tabs .ehr-segmented-single > button {
     width: auto !important;
@@ -795,4 +802,27 @@
 @media (min-width: 640px) and (max-width: 899px) {
   .tamam-section-body { overflow-x: auto; }
   .tamam-root .tamam-table:has(thead th:nth-child(6)) { min-width: 640px; }
+}
+
+/* Phone: the day / week grid on /appointments.
+   The workspace grid is sized to the screen and the centre panel clips
+   (`overflow: hidden`), so with the mini calendar above it the hour grid got
+   ~80px of height and the hours below 7 AM could not be reached at all. On a
+   phone the page scrolls instead (the main area already does), and the grid
+   gets a screen-sized window of its own that scrolls the hours. */
+@media (max-width: 639px) {
+  .ehr-workspace-grid.is-calendar {
+    height: auto !important;
+    grid-auto-rows: auto;
+  }
+  .ehr-workspace-grid.is-calendar > .ehr-center-panel {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .ehr-center-panel > .rbc-tamam .rbc-time-view {
+    height: 70dvh;
+    min-height: 420px;
+    background: var(--bg-card-solid);
+  }
 }

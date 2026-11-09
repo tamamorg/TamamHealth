@@ -330,7 +330,7 @@ export default function EpidemicIntelligencePage() {
           </section>
 
           {/* Active EWARS Alerts */}
-          <section className="gov-panel flex flex-col" style={{ maxHeight: 480 }}>
+          <section className="gov-panel flex flex-col">
             <PanelHead title={t('epidemic.activeEwarsAlerts')} meta={t('epidemic.activeCount', { n: ewarsAlerts.length.toLocaleString() })} />
             {overviewAlerts.length === 0 ? (
               <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>{t('epidemic.noActiveDiseaseAlerts')}</p>
@@ -436,7 +436,7 @@ export default function EpidemicIntelligencePage() {
               {syndromicAlerts.filter(a => a.exceeded).length === 0 ? (
                 <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>{t('epidemic.noThresholdsExceeded')}</p>
               ) : (
-                <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+                <div>
                   {syndromicAlerts.filter(a => a.exceeded).map((alert, i) => (
                     <div key={i} className="epi-list-row" style={{ alignItems: 'flex-start' }}>
                       <div className="epi-list-main" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
@@ -459,7 +459,7 @@ export default function EpidemicIntelligencePage() {
               {syndromicAlerts.filter(a => !a.exceeded && a.percentChange > 0).length === 0 ? (
                 <p className="text-[12px] p-6 text-center" style={{ color: 'var(--text-muted)' }}>{t('epidemic.noActiveDiseaseAlerts')}</p>
               ) : (
-                <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+                <div>
                   {syndromicAlerts.filter(a => !a.exceeded && a.percentChange > 0).slice(0, 10).map((alert, i) => (
                     <div key={i} className="epi-list-row">
                       <div className="epi-list-main">

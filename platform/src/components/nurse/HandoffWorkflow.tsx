@@ -1,5 +1,6 @@
 'use client';
 
+import { clinicalClockTime, jubaNow } from '@/lib/time-juba';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context';
@@ -18,6 +19,7 @@ import { useHandoffs } from '@/lib/hooks/useHandoffs';
 import ListSearch from './ListSearch';
 import { toIsoDate } from '@/lib/date-utils';
 import { printElementById } from '@/lib/safe-html';
+import { isDuplicateHandoff } from '@/lib/handoff-rules';
 
 // Per-patient SBAR + tasks captured in the editor (string form for the textarea).
 interface SbarDraft {
@@ -62,9 +64,9 @@ export default function HandoffWorkflow({
 
   const now = new Date();
   const todayKey = toIsoDate(now); // YYYY-MM-DD
-  const shift = deriveShift(now.getHours());
+  const shift = deriveShift(jubaNow().getHours());
   const todayDate = formatLongDate(now);
-  const nowTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const nowTime = clinicalClockTime(now);
 
   // Critical = RED triage priority (real triage when present, demo inline otherwise).
   const criticalPatients = useMemo(
@@ -105,12 +107,7 @@ export default function HandoffWorkflow({
 
     // Guard against a duplicate sign-off for the same nurse + shiftDate that
     // hasn't been acknowledged yet (prevents orphaned duplicates).
-    if (
-      latest &&
-      latest.outgoingNurseId === currentUser._id &&
-      latest.shiftDate === todayKey &&
-      latest.status !== 'acknowledged'
-    ) {
+    if (isDuplicateHandoff(latest, currentUser._id, todayKey, shift)) {
       showToast(t('nurse.handoffDuplicateToast'), 'error');
       return;
     }
@@ -210,7 +207,7 @@ export default function HandoffWorkflow({
   };
 
   const signedTime = signedDoc
-    ? new Date(signedDoc.signedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    ? clinicalClockTime(signedDoc.signedAt)
     : '';
 
   // Real KPI strip — only counts we actually have. Colors are the design's
@@ -268,7 +265,7 @@ export default function HandoffWorkflow({
                 <p className="ehr-handoff-note" style={{ color: 'var(--color-success-text)', fontWeight: 700 }}>
                   {t('nurse.handoffAcknowledgedBy', {
                     name: latest.acknowledgedByName ?? '',
-                    time: latest.acknowledgedAt ? new Date(latest.acknowledgedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '',
+                    time: latest.acknowledgedAt ? clinicalClockTime(latest.acknowledgedAt) : '',
                   })}
                 </p>
                 <button

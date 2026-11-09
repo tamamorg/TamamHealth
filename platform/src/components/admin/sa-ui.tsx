@@ -160,6 +160,16 @@ export function classifyAuditRisk(action: string, success: boolean): SaSeverity 
   return 'low';
 }
 
+/**
+ * An audit action code as a reader sees it: `login_success` and
+ * `SHIFT_HANDOFF_SIGNED` print as "Login success" and "Shift handoff signed".
+ * Display only. Search, CSV export and the stored record keep the code.
+ */
+export function formatAuditAction(action?: string): string {
+  const words = (action || '').trim().replace(/[_.\-]+/g, ' ').replace(/\s+/g, ' ').toLowerCase();
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : '';
+}
+
 export function formatWhen(iso?: string): string {
   if (!iso) return '—';
   const d = new Date(iso);

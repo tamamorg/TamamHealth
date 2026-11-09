@@ -94,6 +94,31 @@ describe('recordUnfilled', () => {
     expect(tasks).toHaveLength(1);
     expect(tasks[0].title).toBe('Rx unavailable (stock-out): Ceftriaxone');
   });
+
+  it.each([
+    ['discontinued', { status: 'discontinued' }],
+    ['dispensed', { status: 'dispensed', orderStatus: 'dispensed', dispensedAt: new Date().toISOString(), quantityDispensed: 5 }],
+  ])('refuses to hold or stock-out an order that is already %s, and leaves it untouched', async (_label, closed) => {
+    const rx = await putDoc(prescriptionsDB(), {
+      _id: 'rx-00003', type: 'prescription',
+      patientId: 'pat-00001', patientName: 'Nyakuma Deng',
+      medication: 'Amoxicillin', dose: '500mg', route: 'oral', frequency: 'TDS', duration: '5 days',
+      prescribedBy: 'Dr. Akol', hospitalId: HOSP, orgId: ORG,
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      ...closed,
+    } as never) as unknown as PrescriptionDoc;
+    // A stale list row still says pending; the stored copy decides.
+    const staleRow = { ...rx, status: 'pending', orderStatus: undefined } as PrescriptionDoc;
+
+    await expect(recordUnfilled(staleRow, 'stock_out', 'None on the shelf.', { id: 'user-pharm-1', name: 'Pharm. Achol' }))
+      .rejects.toMatchObject({ name: 'DispenseError', code: 'NOT_CLEARED' });
+    await expect(recordUnfilled(staleRow, 'clarification_requested', 'Query.', { id: 'user-pharm-1', name: 'Pharm. Achol' }))
+      .rejects.toMatchObject({ code: 'NOT_CLEARED' });
+
+    const stored = await prescriptionsDB().get('rx-00003') as unknown as PrescriptionDoc;
+    expect(stored.status).toBe((closed as { status: string }).status);
+    expect(stored.dispenseOutcome).toBeUndefined();
+  });
 });
 
 // ── 2. Referral outcome is recorded for the sender ──────────────────────

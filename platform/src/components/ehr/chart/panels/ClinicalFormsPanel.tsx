@@ -120,7 +120,9 @@ export default function ClinicalFormsPanel({ patient, canConsult, currentUser, o
   const canAdmit = roleFormAllowed('ward-admission', role, true);
 
   const forms = useMemo<ClinicalFormItem[]>(() => {
-    const lastTriage = triages[0];
+    // A 'pending' triage is the front desk's check-in placeholder, not an
+    // assessment: it must not read as "last completed" before a nurse has seen the patient.
+    const lastTriage = triages.find(tr => tr.status !== 'pending');
     const lastANC = [...patientANC].sort((a, b) => (b.visitDate || '').localeCompare(a.visitDate || ''))[0];
     const lastScreening = [...patientScreenings].sort((a, b) => (b.screeningDate || '').localeCompare(a.screeningDate || ''))[0];
     const lastReport = patientImaging

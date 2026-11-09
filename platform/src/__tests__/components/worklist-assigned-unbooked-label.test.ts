@@ -55,3 +55,18 @@ describe('assigned patient WITH a booking', () => {
     expect(computeRowQueueColumns(row, null, null, Date.now()).statusText).not.toBe('Assigned');
   });
 });
+
+describe('provider accepted a handoff while the encounter still reads Awaiting clinic arrival', () => {
+  it('the chip says Acknowledged and the row is purple, not the stale stage label', () => {
+    const [row] = buildUnifiedPatientRows({
+      patients: [patient()], selectedAppointmentsForDay: [], photoByPatientId: new Map(), clinicianName: 'Dr. Hycent',
+    });
+    const triage = { handoffStatus: 'acknowledged', assignedProviderId: 'dr-1' } as never;
+    const cols = computeRowQueueColumns(row, null, triage, Date.now(), undefined, { status: 'routed_to_clinic' });
+    expect(cols.statusText).toBe('Acknowledged');
+    expect(cols.visitTab).toBe('in_office');
+    expect(cols.visitTone).toBe('active');
+    const waiting = computeRowQueueColumns(row, null, { handoffStatus: 'assigned', assignedProviderId: 'dr-1' } as never, Date.now(), undefined, { status: 'routed_to_clinic' });
+    expect(waiting.statusText).toBe('Awaiting clinic arrival');
+  });
+});

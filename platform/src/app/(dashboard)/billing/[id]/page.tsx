@@ -185,7 +185,7 @@ export default function BillDetailPage() {
     await withReload(
       () => applyDiscount(bill._id, amount, reason, actorId, actorName),
       `Discount of ${money(amount)} applied`,
-      'Could not apply discount (it may exceed the bill subtotal)',
+      'Discount not applied. It cannot be more than what is still owed on the bill.',
     );
     setDiscountOpen(false);
     setDiscountAmount('');
@@ -657,7 +657,7 @@ export default function BillDetailPage() {
           onClose={() => setDiscountOpen(false)}
           footer={<>
               <button type="button" className="btn btn-secondary" onClick={() => setDiscountOpen(false)}>{t('action.cancel')}</button>
-              <button type="button" className="btn btn-primary" onClick={handleApplyDiscount} disabled={busy || !discountAmount || !discountReason.trim()}>
+              <button type="button" className="btn btn-primary" onClick={handleApplyDiscount} disabled={busy || !(parseFloat(discountAmount) >= 0) || !discountReason.trim()}>
                 {t('ui.applyDiscount')}
               </button>
           </>}

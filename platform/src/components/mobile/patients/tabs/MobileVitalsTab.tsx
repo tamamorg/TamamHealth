@@ -29,7 +29,7 @@ export default function MobileVitalsTab({ patientId }: { patientId: string }) {
     <div className="mobile-chart-tab-body">
       <div className="mobile-chart-card">
         <div className="mobile-vitals-header">
-          <h3>{t('sbar.latestVitals')}</h3>
+          <h3>{t('patientPortal.latestVitals')}</h3>
           <span>{new Date(latest.recordedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
         </div>
         <div className="mobile-vitals-grid">

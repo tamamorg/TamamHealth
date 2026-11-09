@@ -46,6 +46,11 @@ import { RX_STAGE_PILL_CLASS, prescriptionSig, stockRequiresWitness, type Pharma
 
 import { useUrlView } from '@/lib/navigation/use-url-view';
 
+/** Expired stock is not on the shelf: it never counts as available and is handled under Expiry. */
+function isExpiredItem(i: { status: string; expiryDate?: string }): boolean {
+  return i.status === 'expired' || (!!i.expiryDate && i.expiryDate <= todayIso());
+}
+
 export default function PharmacyPage() {
   const searchParams = useSearchParams();
   // In the URL so Back returns to the tab the user was on.
@@ -342,12 +347,16 @@ export default function PharmacyPage() {
   const daysUntil = (date?: string) =>
     date ? Math.ceil((new Date(date).getTime() - new Date(todayStr).getTime()) / 86400000) : Infinity;
 
+  // Expired stock is not on the shelf: it never counts as available, and it
+  // is handled under Expiry (it needs disposing of, not topping up).
+
   // Reorder: anything at or below its reorder level (low or critical), neediest
   // first. The pharmacist's "Reorder trigger" (`stock.reorder`) widens this to
   // anything with less than that many days of cover, using the item's reorder
   // level as the daily-usage proxy the inventory record actually carries.
   const reorderList = useMemo(() =>
     inventory
+      .filter(i => !isExpiredItem(i))
       .filter(i => i.status === 'low' || i.status === 'critical'
         || (reorderCoverDays > 0 && i.reorderLevel > 0
             && i.stockLevel < (i.reorderLevel / 30) * reorderCoverDays))
@@ -386,8 +395,8 @@ export default function PharmacyPage() {
     for (const i of inventory) {
       const c = map.get(i.category) || { category: i.category, items: 0, units: 0, adequate: 0, low: 0, critical: 0, expired: 0 };
       c.items += 1;
-      c.units += i.stockLevel;
-      c[i.status] += 1;
+      if (isExpiredItem(i)) c.expired += 1;
+      else { c.units += i.stockLevel; c[i.status] += 1; }
       map.set(i.category, c);
     }
     // Surface the categories that need attention first: most at-risk
@@ -401,7 +410,7 @@ export default function PharmacyPage() {
         return riskB - riskA || b.units - a.units;
       });
   }, [inventory, q, categoryFilter]);
-  const totalUnits = inventory.reduce((s, i) => s + i.stockLevel, 0);
+  const totalUnits = inventory.reduce((s, i) => s + (isExpiredItem(i) ? 0 : i.stockLevel), 0);
 
   // Patients: search the real patient registry (name / hospital number / phone),
   // not just people who already have a prescription queued — so any patient is findable.
@@ -930,7 +939,8 @@ export default function PharmacyPage() {
                     <div className="flex justify-between text-[9px]" style={{ color: 'var(--text-muted)' }}>
                       <span style={{ color: 'var(--color-success-text)' }}>{t('pharmacy.catOk', { count: cat.adequate })}</span>
                       <span style={{ color: 'var(--color-warning-text)' }}>{t('pharmacy.catLow', { count: cat.low })}</span>
-                      <span style={{ color: 'var(--color-danger-text)' }}>{t('pharmacy.catCrit', { count: cat.critical + cat.expired })}</span>
+                      <span style={{ color: 'var(--color-danger-text)' }}>{t('pharmacy.catCrit', { count: cat.critical })}</span>
+                      {cat.expired > 0 && <span style={{ color: 'var(--color-danger-text)' }}>{cat.expired} {t('pharmacy.expired')}</span>}
                     </div>
                   </div>
                 );

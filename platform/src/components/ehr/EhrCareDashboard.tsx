@@ -799,7 +799,12 @@ export default function EhrCareDashboard({
               header and was exiled to the left rail. Rendered first so it sits
               alongside Print rather than after it. */}
           {headerExtra}
-          {!compactHeader && quickNavItems.map(item => {
+          {/* A page that supplies its own action for the same destination (the
+              data-entry board lists Vital Statistics, Immunizations, Births...)
+              must not show it twice: the page's own entry wins. */}
+          {!compactHeader && quickNavItems.filter(item => !headerActions.some(
+            action => action.label.trim().toLowerCase() === item.label.trim().toLowerCase(),
+          )).map(item => {
             const ItemIcon = item.icon;
             return (
               <button key={item.href} type="button" aria-label={item.label} onClick={() => router.push(item.href)}>

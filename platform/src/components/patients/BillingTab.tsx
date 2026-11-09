@@ -13,6 +13,7 @@ import { getMethodConfig } from '@/lib/payment-method-config';
 import { apiFetch } from '@/lib/api-fetch';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { useAuth } from '@/lib/context';
+import { usePermissions } from '@/lib/hooks/usePermissions';
 import { useToast } from '@/components/Toast';
 import { useConfirmPrompt } from '@/components/ConfirmDialog';
 import { formatDate, formatMoney } from '@/lib/format-utils';
@@ -206,6 +207,9 @@ export default function BillingTab({
 
   const patientName = `${patient.firstName} ${patient.surname}`;
   const canManageBilling = BILLING_ROLES.includes(currentUser?.role ?? '');
+  // Money moves only at the till: a payment, plan or payment link from any other
+  // role is a write the sync gateway refuses, so the chart does not offer it.
+  const { canCollectPayments } = usePermissions();
   const facilityId = currentUser?.hospitalId ?? '';
   const orgId = currentUser?.orgId;
 
@@ -558,7 +562,7 @@ export default function BillingTab({
     setShowAdjustment(true);
   };
   // Nothing is owed on a voided line, and nothing on one already settled.
-  const canCollect = (line: AccountLine) => line.balance > 0 && line.status !== 'voided';
+  const canCollect = (line: AccountLine) => canCollectPayments && line.balance > 0 && line.status !== 'voided';
 
   // What can be done to one line of the account, from its own ⋮. Reading it
   // opens the slider; refunds are made from the payment inside it. Adjustments
@@ -780,12 +784,12 @@ export default function BillingTab({
           <p>{t('billing.actionsHelp')}</p>
           <div className="bl-action-choices">
             {[
-              { label: t('billing.collectPayment'), icon: Wallet, run: () => setShowPaymentPanel(true) },
+              ...(canCollectPayments ? [{ label: t('billing.collectPayment'), icon: Wallet, run: () => setShowPaymentPanel(true) }] : []),
               { label: t('billing.servicesPopup'), icon: Receipt, run: () => setShowServices(true) },
               { label: addInsuranceLabel, icon: ShieldCheck, run: () => setInsuranceModalOpen(true) },
-              { label: t('billing.createPaymentPlan'), icon: CalendarClock, run: () => setShowPlanWizard(true) },
+              ...(canCollectPayments ? [{ label: t('billing.createPaymentPlan'), icon: CalendarClock, run: () => setShowPlanWizard(true) }] : []),
               { label: t('financialReview.title'), icon: Receipt, run: () => setShowFinancialReview(true) },
-              { label: t('billing.sendPaymentLink'), icon: Send, run: openPaymentLink },
+              ...(canCollectPayments ? [{ label: t('billing.sendPaymentLink'), icon: Send, run: openPaymentLink }] : []),
               { label: t('billing.printStatement'), icon: Printer, run: handlePrintStatement },
               ...(canManageBilling ? [
                 { label: t('billing.issueRefund'), icon: RotateCcw, run: () => openRefund() },

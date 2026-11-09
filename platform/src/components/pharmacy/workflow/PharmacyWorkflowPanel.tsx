@@ -108,6 +108,7 @@ export default function PharmacyWorkflowPanel({
         <RxSafetyNotice
           rx={rx}
           conflicts={conflicts.allergies}
+          activeMedications={activeMedications}
           interactionConflicts={conflicts.interactions}
           review={!filled && !intent ? draft.allergyReview : undefined}
           onReview={!filled && !intent ? allergyReview => setDraft({ ...draft, allergyReview }) : undefined}
@@ -224,7 +225,7 @@ export default function PharmacyWorkflowPanel({
             onChange={e => setDraft({ ...draft, quantity: Number(e.target.value) })}
           />
         </ObfQuestion>
-        <ObfValue label={t('rxFlow.stockAvailable')} value={ctrl.stock.loading ? t('rxFlow.stockChecking') : ctrl.stock.plan?.available ?? 0} />
+        <ObfValue label={t('rxFlow.stockAvailable')} value={ctrl.stock.loading ? t('rxFlow.stockChecking') : String(ctrl.stock.plan?.available ?? 0)} />
         {(ctrl.stock.plan?.allocations || []).map(a => (
           <ObfValue
             key={a.batch._id}
@@ -236,7 +237,17 @@ export default function PharmacyWorkflowPanel({
             value={a.quantity}
           />
         ))}
-        {ctrl.short && (<>
+        {draft.quantity > ctrl.remaining && (
+          <p className="labord-required rx-line" data-testid="rx-over-course">
+            <AlertTriangle className="w-4 h-4" aria-hidden /> {t('rxFlow.errOverCourse', { remaining: ctrl.remaining })}
+          </p>
+        )}
+        {ctrl.outOfStock && (
+          <p className="labord-required rx-line" data-testid="rx-out-of-stock">
+            <AlertTriangle className="w-4 h-4" aria-hidden /> {t('rxFlow.errNotInStock', { medication: rx.medication })}
+          </p>
+        )}
+        {ctrl.short && !ctrl.outOfStock && draft.quantity <= ctrl.remaining && (<>
           <p className="labord-required rx-line">
             <AlertTriangle className="w-4 h-4" aria-hidden /> {t('rxFlow.shortWarning', { shortfall: ctrl.stock.plan?.shortfall ?? 0 })}
           </p>
@@ -263,7 +274,7 @@ export default function PharmacyWorkflowPanel({
     : () => void finish(ctrl.fill, 'rxFlow.okDispensed');
   const blocked = intent === 'hold' ? !ctrl.reviewDraft.clarificationReason
     : intent === 'stockout' ? !draft.unfilledReason
-    : draft.quantity <= 0 || (ctrl.short && !draft.allowPartial) || (ctrl.needsWitness && !draft.witnessId.trim())
+    : draft.quantity <= 0 || draft.quantity > ctrl.remaining || ctrl.outOfStock || (ctrl.short && !draft.allowPartial) || (ctrl.needsWitness && !draft.witnessId.trim())
       || (ctrl.hasSafetySignal && !ctrl.reviewDraft.checksAcknowledged);
 
   return (

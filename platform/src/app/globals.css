@@ -3240,6 +3240,21 @@ html:has(.mobile-shell-offline-banner) {
   color: var(--text-muted);
 }
 
+/* A very long record or facility name must not stretch the bar: every crumb
+   label truncates with an ellipsis, the current page may take the most room. */
+.route-context-crumb a,
+.route-context-crumb [aria-current='page'],
+.route-context-crumb > span:not(.route-context-chevron) {
+  display: block;
+  min-width: 0;
+  max-width: 28ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.route-context-crumb [aria-current='page'] { max-width: 48ch; }
+
 [dir='rtl'] .route-context-back svg,
 [dir='rtl'] .route-context-chevron {
   transform: scaleX(-1);
@@ -5890,6 +5905,16 @@ html:has(.mobile-shell-offline-banner) {
   flex: 0 0 auto;
 }
 
+/* Phones: the search used to be squeezed to zero width beside the action
+   controls (select, export, Receive stock). Let the row wrap so the search
+   keeps a full line and the actions sit beneath it. */
+@media (max-width: 639px) {
+  .ehr-list-header-toolbar { flex-wrap: wrap; }
+  .ehr-list-header-search { flex: 1 1 100%; }
+  .ehr-list-header-actions { flex: 1 1 100%; flex-wrap: wrap; min-width: 0; }
+  .ehr-list-header-actions > select { flex: 1 1 140px; min-width: 0; max-width: 100%; }
+}
+
 /* Narrow cards can't hold the field beside the title and the lanes, so the row
    stacks. Queried against `.ehr-center-panel`, the daybar's own parent — the
    `@media (max-width: 900px)` this replaces tested the VIEWPORT, which is not
@@ -6925,7 +6950,11 @@ button.ward-stat-chip:focus:not(:focus-visible) {
      minmax) so the Dashboard/Calendar toggle always matches the actual
      rail column width below it, including at breakpoints where --rail-col
      shrinks. */
-  grid-template-columns: var(--rail-col, minmax(230px, 260px)) minmax(0, 1fr) max-content;
+  /* The third column takes the actions at their natural width up to 62% of
+     the header and wraps beyond that: with `max-content` a long action row
+     (the data-entry board has a dozen) took the whole header and squeezed the
+     greeting to zero width, so it painted over the buttons. */
+  grid-template-columns: var(--rail-col, minmax(230px, 260px)) minmax(0, 1fr) fit-content(62%);
   /* Centre the three columns so the Check-in toggle, the "Welcome, {name}"
      greeting, and the action buttons all sit on one line. (This header renders
      only the single-line greeting — no subtitle — so there's no tall middle
@@ -6984,7 +7013,7 @@ button.ward-stat-chip:focus:not(:focus-visible) {
 }
 
 .ehr-care-dashboard .ehr-schedule-actions {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .ehr-care-dashboard .ehr-schedule-actions {
@@ -16468,6 +16497,23 @@ span:has(> svg:only-child) {
   gap: 12px;
 }
 
+/* Desktop: the rail is a fixed-height column beside the queue and its base rule
+   is overflow: hidden, so the cards below the first screenful (the progress
+   feed, the coach card) were cut off with no way to reach them on a 900px-tall
+   screen. It scrolls instead; while the appointment detail slider is open the
+   slider fills the rail, so the rail itself holds still. (Below 1280px the
+   tablet band already scrolls the rail.) */
+@media (min-width: 1280px) {
+  .ehr-right-rail {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+  .ehr-right-rail.has-detail {
+    overflow: hidden;
+  }
+}
+
 .ehr-side-card {
   border-color: var(--ehr-border);
   /* One card corner across the app, per the Clinical/Reception design. */
@@ -16870,6 +16916,15 @@ span:has(> svg:only-child) {
   gap: 12px;
   padding: 16px;
   background: var(--bg-card-solid);
+}
+
+/* The body is a flex column that scrolls. Its sections clip their own overflow,
+   so with the default flex-shrink they were squeezed to a fraction of their
+   content (the SBAR form and the sign-off button were cut off and the body
+   never scrolled). Keep every section its natural height and let the body
+   scroll. */
+.ehr-handoff-body > * {
+  flex-shrink: 0;
 }
 
 .ehr-handoff-stats {
@@ -23304,6 +23359,14 @@ textarea.fs-input { resize: vertical; line-height: 1.5; font-family: inherit; }
   font-weight: 700;
 }
 
+/* STAT / urgent open orders: said in text, not only by position. */
+.lab-list-surface .lab-priority-flag,
+.lab-list-surface .appointment-card-row .appointment-card-provider > span.lab-priority-flag {
+  color: var(--color-danger-text) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em;
+}
+
 @media (max-width: 720px) {
   .patients-list-surface {
     width: 100%;
@@ -24491,7 +24554,7 @@ table.patient-data-table.patient-data-table {
 /* Alert rows — the EWARS overview preview and the full Alerts tab share
    this row language. The list scrolls inside a bounded height instead of
    clipping; a footer link is added only when more rows exist than fit. */
-.epi-alert-list { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
+.epi-alert-list { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .epi-alert-row {
   display: flex;
   align-items: center;
@@ -26473,7 +26536,9 @@ table.patient-data-table.patient-data-table {
 }
 .tamam-reg .tamam-reg-fields .btn-secondary:hover {
   background: var(--tamam-interactive);
-  color: #fff;
+  /* !important: accent-pass.css sets the secondary-button text colour at
+     higher specificity, which left blue type on this blue fill on hover. */
+  color: #fff !important;
 }
 
 /* ══════════════════ Photo well ══════════════════
@@ -28845,6 +28910,8 @@ table.patient-data-table.patient-data-table {
   color: var(--ehr-text);
   user-select: none;
   overflow-wrap: anywhere;
+  /* Shift+Enter in the composer writes a line break; keep it when the message is read. */
+  white-space: pre-line;
 }
 .msgs-bubble--mine { background: var(--accent-primary); color: #FFFFFF; }
 .msgs-bubble--deleted {
@@ -29050,6 +29117,9 @@ table.patient-data-table.patient-data-table {
   line-height: 1.6;
   color: var(--ehr-text);
 }
+/* The wrapper carries the one focus line; the global field ring would draw a second, pale box inside it. */
+.msgs-input textarea:focus,
+.msgs-input textarea:focus-visible { box-shadow: none !important; }
 .msgs-input textarea::placeholder { color: var(--ehr-muted); }
 .msgs-send {
   flex: none;
@@ -30239,6 +30309,8 @@ table.patient-data-table.patient-data-table {
   color: var(--text-primary);
   font-size: 13px;
   line-height: 1.5;
+  /* One unbroken run (a pasted link, a held key) wraps inside the bubble instead of running out of it. */
+  overflow-wrap: anywhere;
 }
 .pp-bubble-line.me .pp-bubble { background: var(--accent-primary); color: #ffffff; }
 .pp-bubble small { display: block; margin-top: 3px; font-size: 10px; opacity: 0.65; }
@@ -35380,6 +35452,14 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
 
 .modal-portal-backdrop--slider > .tm-slider { margin-inline-start: auto; }
 
+/* The lab/imaging requisition wizard (rail + requisition column) is the one
+   slider that is laid out for its asked width, not the 560px column: squeezed
+   to 560 its patient facts broke a letter per line and its step rail was cut.
+   The page keeps at least 320px beside it (see "Sliders squeeze the page"). */
+@media (min-width: 900px) {
+  .tm-slider.tm-slider--lab-wizard { width: min(var(--slider-w, 1320px), calc(100vw - 320px)) !important; }
+}
+
 
 .tm-slider > :is(.modal-panel, .modal-content, .card-elevated, div) {
   flex: 1 1 auto;
@@ -35807,6 +35887,14 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   gap: 4px 16px;
   padding: 10px 0;
   border-bottom: 1px solid var(--border-light);
+}
+/* The requisition's patient strip is a row of short facts, not a list: each
+   keeps its label over its value (a row layout in 1/6 of the width broke the
+   name and phone number a letter per line). */
+:is(.tm-slider, .tamam-drawer) .labord-patient-strip > div:has(> .labord-field-label + .labord-field-value) {
+  display: block;
+  padding: 0;
+  border-bottom: 0;
 }
 /* Consecutive facts sit flush: the section's own gap would split the list. */
 :is(.tm-slider, .tamam-drawer) :not(.obf-row) > .obf-field:has(> .obf-value) + .obf-field:has(> .obf-value) { margin-top: -16px; }
@@ -37012,3 +37100,25 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
 .ehr-appointment-row.appointment-card-row[data-visit-tone="active"] { --visit-bar: var(--visit-purple-bar); }
 .ehr-appointment-row.appointment-card-row[data-visit-tone="done"] { --visit-bar: var(--visit-green-bar); }
 .ehr-appointment-row.appointment-card-row[data-visit-tone="danger"] { --visit-bar: var(--visit-red-bar); }
+
+/* Surveillance > Active alerts sits in a narrow column beside the map. At the
+   default cell padding the table is wider than its panel below ~1300px, so the
+   Level badge and the row Actions menu were pushed past the clip edge. Tighter
+   cells and a fixed layout keep all five columns inside the panel. */
+.surv-alerts-table { table-layout: fixed; }
+.surv-alerts-table th,
+.surv-alerts-table td { padding-inline: 8px; overflow-wrap: anywhere; }
+.surv-alerts-table th:nth-child(2),
+.surv-alerts-table td:nth-child(2),
+.surv-alerts-table th:nth-child(3),
+.surv-alerts-table td:nth-child(3) { width: 52px; }
+.surv-alerts-table th:nth-child(4),
+.surv-alerts-table td:nth-child(4) { width: 104px; }
+.surv-alerts-table th:nth-child(5),
+.surv-alerts-table td:nth-child(5) { width: 44px; padding-inline: 4px; }
+
+/* The floating messages button (56px, 24px off the corner) sits over the
+   bottom-right of the right rail; the rail ends clear of it so the last
+   card's text can scroll out from under the button. */
+.ehr-right-rail { padding-bottom: 80px; }
+

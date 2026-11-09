@@ -1,7 +1,7 @@
 jest.mock('@/lib/db', () => require('../helpers/test-db').createDBMock());
 
 import { putDoc, teardownTestDBs } from '../helpers/test-db';
-import { appointmentsDB, patientsDB, usersDB } from '@/lib/db';
+import { appointmentsDB, encountersDB, patientsDB, usersDB } from '@/lib/db';
 import { getAppointmentById } from '@/lib/services/appointment-service';
 import { getPatientById } from '@/lib/services/patient-service';
 import { assignProviderToPatient, reconcileCareTeamFromAppointment, resolveAndValidateTargets } from '@/lib/services/patient-assignment-service';
@@ -100,6 +100,30 @@ describe('patient assignment target integrity', () => {
       .rejects.toThrow('appointment does not belong to the selected patient');
     expect((await getPatientById('patient-1', TEST_SCOPE))?.assignedDoctor).toBeUndefined();
     expect((await getAppointmentById('appointment-2'))?.providerId).toBe('');
+  });
+
+  it('does not bind a follow-up booking to the patient\'s open visit for a different appointment', async () => {
+    await seedIdentity();
+    await seedPatient('patient-1');
+    await seedAppointment('appointment-today', 'patient-1');
+    await seedAppointment('appointment-next-week', 'patient-1', { appointmentDate: '2026-09-08' });
+    // The patient is in clinic right now, on today's appointment.
+    await putDoc(encountersDB(), {
+      _id: 'enc-today', type: 'clinical_encounter', orgId: ORG, patientId: 'patient-1',
+      hospitalId: FACILITY, appointmentId: 'appointment-today', status: 'in_triage',
+      createdAt: new Date().toISOString(),
+    } as never);
+
+    // Booking next week's follow-up must still assign the care team.
+    const targets = await resolveAndValidateTargets(input('patient-1', 'appointment-next-week'));
+    expect(targets.encounter).toBeNull();
+    expect(targets.appointment?._id).toBe('appointment-next-week');
+    await assignProviderToPatient(input('patient-1', 'appointment-next-week'));
+    expect((await getPatientById('patient-1', TEST_SCOPE))?.assignedDoctor).toBe('doctor-1');
+
+    // The visit's own appointment still resolves to the visit.
+    const own = await resolveAndValidateTargets(input('patient-1', 'appointment-today'));
+    expect(own.encounter?._id).toBe('enc-today');
   });
 
   it('uses the same orchestration to assign and clear provider ownership', async () => {
