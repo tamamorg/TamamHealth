@@ -1,5 +1,6 @@
 'use client';
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { defaultCurrency } from '@/lib/country/country-pack';
 import { useState, useEffect } from 'react';
 import { Banknote, Smartphone, CreditCard, Building2, Shield, CheckCircle2, Loader2, Printer, Mail } from '@/components/icons/lucide';
@@ -17,6 +18,8 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import { FormError } from '@/components/overlay/FormNotices';
 import InlineBanner from '@/components/overlay/InlineBanner';
 import NumberInput from '@/components/forms/NumberInput';
+import ManagerOverrideFields from '@/components/payments/ManagerOverrideFields';
+import type { ManagerApproval } from '@/lib/billing/manager-override-policy';
 
 interface PaymentPanelProps {
   patientId: string;
@@ -56,6 +59,10 @@ export default function PaymentPanel({
   // common method at this window, so the usual case needs no extra click.
   const [tab, setTab] = useState<TabType>(defaultPaymentTab);
   const [amount, setAmount] = useState(amountDue > 0 ? amountDue.toString() : '');
+  // What the patient owes: a payment is never recorded above it. Cash handed
+  // over in excess is change, shown to the cashier and kept on the receipt.
+  const [loadedBalance, setLoadedBalance] = useState(0);
+  const balance = amountDue > 0 ? amountDue : loadedBalance;
 
   // Self-load balance if amountDue wasn't provided
   useEffect(() => {
@@ -64,7 +71,7 @@ export default function PaymentPanel({
       try {
         const { getPatientBalance } = await import('@/lib/services/ledger-service');
         const bal = await getPatientBalance(patientId, scope);
-        if (bal > 0) setAmount(bal.toString());
+        if (bal > 0) { setAmount(bal.toString()); setLoadedBalance(bal); }
       } catch { /* offline fallback */ }
     })();
   }, [patientId, amountDue, scope]);
@@ -119,7 +126,7 @@ export default function PaymentPanel({
   const [payerName, setPayerName] = useState('');
   const [claimReference, setClaimReference] = useState('');
   const [waiverReason, setWaiverReason] = useState('');
-  const [approvedBy, setApprovedBy] = useState('');
+  const [approval, setApproval] = useState<ManagerApproval | null>(null);
 
   // Concrete payment methods are gated by the facility's enabled methods
   // (set in Facility Settings). The insurance/waiver path is always available
@@ -143,6 +150,10 @@ export default function PaymentPanel({
     if (tabs.length && !tabs.some(tb => tb.key === tab)) setTab(tabs[0].key);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.paymentMethods]);
+
+  const enteredAmount = Number(amount);
+  const changeDue = tab === 'cash' && balance > 0 && Number.isFinite(enteredAmount) && Math.round(enteredAmount * 100) > Math.round(balance * 100)
+    ? Math.round(enteredAmount * 100 - balance * 100) / 100 : 0;
 
   const handleSubmit = async () => {
     const numAmount = parseFloat(amount);
@@ -176,11 +187,13 @@ export default function PaymentPanel({
       setError(t('payments.errorTransferDateRequired'));
       return;
     }
-    if (tab === 'insurance' && !payerName) {
+    // The payer and claim reference belong to insurance only; a waiver shows
+    // neither field (it used to demand them anyway, so it could never be saved).
+    if (tab === 'insurance' && insuranceWaiverMode === 'insurance' && !payerName) {
       setError(t('payments.errorPayerNameRequired'));
       return;
     }
-    if (tab === 'insurance' && !claimReference) {
+    if (tab === 'insurance' && insuranceWaiverMode === 'insurance' && !claimReference) {
       setError(t('payments.errorClaimRefRequired'));
       return;
     }
@@ -188,10 +201,17 @@ export default function PaymentPanel({
       setError(t('payments.errorWaiverReasonRequired'));
       return;
     }
-    if (tab === 'insurance' && insuranceWaiverMode === 'waiver' && !approvedBy) {
+    if (tab === 'insurance' && insuranceWaiverMode === 'waiver' && !approval) {
       setError(t('payments.errorApprovedByRequired'));
       return;
     }
+    // Cash over the balance is change; every other tender must not exceed it.
+    const overBalance = balance > 0 && Math.round(numAmount * 100) > Math.round(balance * 100);
+    if (overBalance && tab !== 'cash') {
+      setError(t('payments.errorOverBalance', { amount: formatMoney(balance, { currency }) }));
+      return;
+    }
+    const recorded = tab === 'cash' && overBalance ? balance : numAmount;
 
     setProcessing(true);
     setError('');
@@ -230,12 +250,14 @@ export default function PaymentPanel({
         patientName,
         encounterId,
         method,
-        amount: numAmount,
+        amount: recorded,
+        ...(tab === 'cash' && overBalance ? { tendered: numAmount } : {}),
+        ...(method === 'waiver' && approval ? { approval } : {}),
         currency,
         reference,
         mobileMoneyPhone,
         cardLast4: cardLast4Digits,
-        allocations: allocation ? [{ encounterId: allocation.encounterId ?? '', chargeId: allocation.chargeId, amount: numAmount }] : undefined,
+        allocations: allocation ? [{ encounterId: allocation.encounterId ?? '', chargeId: allocation.chargeId, amount: recorded }] : undefined,
         notes: notes || undefined,
         processedBy: currentUser?._id || 'system',
         processedByName: currentUser ? currentUser.name : 'System',
@@ -246,7 +268,10 @@ export default function PaymentPanel({
       setPaymentDoc(pmt);
       setSuccess(true);
     } catch (err) {
-      setError(t('payments.errorPaymentFailed'));
+      // The service's own refusals (over the balance, no approver) are plain
+      // sentences already; anything else is the generic failure.
+      const known = err instanceof Error && err.name === 'PaymentOperationError';
+      setError(known ? (err as Error).message : t('payments.errorPaymentFailed'));
       console.error(err);
     } finally {
       setProcessing(false);
@@ -303,14 +328,19 @@ export default function PaymentPanel({
         <div className="bl-root bl-receipt">
           <div className="bl-receipt-hero">
             <CheckCircle2 size={28} aria-hidden="true" />
-            <strong>{formatMoney(parseFloat(amount), { currency })}</strong>
+            <strong>{formatMoney(paymentDoc.amount, { currency })}</strong>
           </div>
           <dl className="bl-totals">
             {[
               { label: t('payments.receiptNumberLabel'), value: paymentDoc.reference || paymentDoc._id },
-              { label: t('payments.dateLabel'), value: new Date(paymentDoc.processedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) },
+              { label: t('payments.dateLabel'), value: formatInFacilityZone(new Date(paymentDoc.processedAt), { month: 'long', day: 'numeric', year: 'numeric' }, 'en-US') },
               { label: t('payments.methodLabel'), value: tab === 'cash' ? t('payments.methodCash') : tab === 'mobile' ? (mobileProvider === 'mpesa' ? t('payments.methodMpesa') : mobileProvider === 'airtel' ? t('payments.methodAirtelMoney') : t('payments.methodMtnMomo')) : tab === 'card' ? t('payments.methodCard') : tab === 'bank' ? t('payments.methodBankTransfer') : insuranceWaiverMode === 'insurance' ? t('billing.insurance') : t('payments.methodWaiver') },
               { label: t('payments.processedByLabel'), value: paymentDoc.processedByName },
+              ...(paymentDoc.changeGiven ? [
+                { label: t('payments.cashReceived'), value: formatMoney(paymentDoc.tendered ?? 0, { currency }) },
+                { label: t('payments.changeDue'), value: formatMoney(paymentDoc.changeGiven, { currency }) },
+              ] : []),
+              ...(paymentDoc.approvedByName ? [{ label: t('payments.approvedBy'), value: paymentDoc.approvedByName }] : []),
             ].map(row => <div key={row.label} className="bl-totals-row"><dt>{row.label}</dt><dd>{row.value}</dd></div>)}
           </dl>
           <div className="bl-receipt-actions">
@@ -348,7 +378,7 @@ export default function PaymentPanel({
       footer={<>
           <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={onCancel}>{t('action.cancel')}</button>
           <button type="button" className="btn btn-primary" style={{ flex: 2 }} disabled={processing || !Number.isFinite(Number(amount)) || Number(amount) <= 0} onClick={handleSubmit}>
-            {processing ? <><Loader2 size={14} className="animate-spin" /> {t('payments.processing')}</> : t('payments.recordAmount', { amount: (Number.isFinite(Number(amount)) ? Number(amount) : 0).toLocaleString(), currency })}
+            {processing ? <><Loader2 size={14} className="animate-spin" /> {t('payments.processing')}</> : t('payments.recordAmount', { amount: (Number.isFinite(Number(amount)) ? (changeDue > 0 ? balance : Number(amount)) : 0).toLocaleString(), currency })}
           </button>
       </>}
     >
@@ -373,10 +403,15 @@ export default function PaymentPanel({
         <div className="ehr-finance-dialog__body" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Amount */}
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>{t('payments.amountWithCurrency', { currency })}</label>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>{tab === 'cash' ? t('payments.cashReceivedWithCurrency', { currency }) : t('payments.amountWithCurrency', { currency })}</label>
             <NumberInput step="any" value={amount} onChange={e => setAmount(e.target.value)}
               style={{ width: '100%', padding: '10px 12px', borderRadius: 0, border: '1px solid var(--border-medium)', fontSize: 16, fontWeight: 600, background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
             />
+            {tab === 'cash' && changeDue > 0 && (
+              <p role="status" style={{ margin: '8px 0 0', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                {t('payments.changeDueLine', { change: formatMoney(changeDue, { currency }), amount: formatMoney(balance, { currency }) })}
+              </p>
+            )}
           </div>
 
           {/* Tab-specific fields */}
@@ -505,12 +540,13 @@ export default function PaymentPanel({
                       style={{ width: '100%', padding: '10px 12px', borderRadius: 0, border: '1px solid var(--border-medium)', fontSize: 14, background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
                     />
                   </div>
-                  <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>{t('payments.approvedBy')}</label>
-                    <input type="text" value={approvedBy} onChange={e => setApprovedBy(e.target.value)} placeholder={t('payments.approvedByPlaceholder')}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 0, border: '1px solid var(--border-medium)', fontSize: 14, background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                    />
-                  </div>
+                  <ManagerOverrideFields
+                    purpose={`waiver of ${amount} ${currency}`}
+                    subjectId={patientId}
+                    amount={parseFloat(amount) || undefined}
+                    approval={approval}
+                    onApproval={setApproval}
+                  />
                 </>
               )}
             </>

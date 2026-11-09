@@ -23,6 +23,8 @@ export async function createPaymentPlan(input: {
   apr?: number;
   encounterIds: string[];
   autoPayMethodId?: string;
+  /** Set for a debt carried at checkout (see recordDebtToAccount). */
+  reason?: string;
   createdByStaff: string;
   createdByStaffName: string;
   facilityId: string;
@@ -82,6 +84,7 @@ export async function createPaymentPlan(input: {
     autoPayEnabled: !!input.autoPayMethodId,
     autoPayMethodId: input.autoPayMethodId,
     encounterIds: input.encounterIds,
+    ...(input.reason ? { reason: input.reason } : {}),
     installments,
     createdByStaff: input.createdByStaff,
     createdByStaffName: input.createdByStaffName,
@@ -175,4 +178,54 @@ export async function recordPlanPayment(planId: string, installmentNumber: numbe
     });
     return plan;
   } catch { return null; }
+}
+
+/**
+ * "Bill to account": the cashier carries a visit's balance as a debt, with a
+ * written reason, so the visit can close. It is a one-instalment payment plan
+ * covering the visit; the balance stays owed on the ledger and is collected
+ * later through the usual payment screens.
+ */
+export async function recordDebtToAccount(input: {
+  patientId: string;
+  patientName: string;
+  encounterId: string;
+  balance: number;
+  reason: string;
+  currency?: string;
+  recordedBy: string;
+  recordedByName: string;
+  facilityId: string;
+  orgId?: string;
+}): Promise<PaymentPlanDoc> {
+  const reason = input.reason?.trim() ?? '';
+  if (reason.length < 3) throw new Error('DEBT_REASON_REQUIRED');
+  const plan = await createPaymentPlan({
+    patientId: input.patientId,
+    patientName: input.patientName,
+    totalBalance: input.balance,
+    currency: input.currency,
+    termMonths: 1,
+    encounterIds: [input.encounterId],
+    reason,
+    createdByStaff: input.recordedBy,
+    createdByStaffName: input.recordedByName,
+    facilityId: input.facilityId,
+    orgId: input.orgId,
+  });
+  await logAuditSafe('DEBT_RECORDED_AT_CHECKOUT', input.recordedBy, input.recordedByName,
+    `Carried ${input.balance} on account for patient ${input.patientId}; reason recorded on the plan`);
+  return plan;
+}
+
+/**
+ * The debt, if any, that lets this visit close: an active plan with a written
+ * reason that names the encounter and is at least as large as what is owed.
+ */
+export async function debtCoveringEncounter(
+  patientId: string, encounterId: string, balance: number, scope: DataScope,
+): Promise<PaymentPlanDoc | null> {
+  const plans = await readPaymentPlansByPatient(patientId, scope);
+  return plans.find(p => p.status === 'active' && !!p.reason?.trim()
+    && p.encounterIds.includes(encounterId) && p.totalBalance + 0.005 >= balance) ?? null;
 }

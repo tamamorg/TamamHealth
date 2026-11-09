@@ -119,12 +119,28 @@ async function postHandler(request: NextRequest) {
       if (body.reason !== undefined && (typeof body.reason !== 'string' || body.reason.length > 500)) {
         return NextResponse.json({ error: 'reason must be a string of at most 500 characters' }, { status: 400 });
       }
+      // Separation of duties: a second person approves, with their own
+      // password, checked here. The signed-in user cannot approve their own.
+      const approver = body.approver as { username?: unknown; password?: unknown } | undefined;
+      if (typeof approver?.username !== 'string' || typeof approver?.password !== 'string' || !approver.username || !approver.password) {
+        return NextResponse.json({ error: 'Waiver not recorded. A manager must approve it with their own username and password.', code: 'APPROVER_REQUIRED' }, { status: 400 });
+      }
+      const { verifyManagerOverride } = await import('@/lib/services/manager-override-service');
+      const override = await verifyManagerOverride({
+        username: approver.username, password: approver.password, purpose: `waiver of bill ${String(body.billId).slice(0, 64)}`,
+        subjectId: String(body.billId),
+        requester: { sub: auth.sub, username: auth.username, name: auth.name, role: auth.role, orgId: auth.orgId, hospitalId: auth.hospitalId },
+      });
+      if (!override.ok) {
+        return NextResponse.json({ error: override.message, code: override.code }, { status: override.code === 'BAD_CREDENTIALS' ? 422 : 403 });
+      }
       try {
         const result = await waiveBill(
           body.billId as string,
           auth.sub,
           auth.name,
           (typeof body.reason === 'string' && body.reason.trim()) || 'Fee waiver',
+          override.approval,
         );
         if (!result) return NextResponse.json({ error: 'Bill not found' }, { status: 404 });
         return NextResponse.json({ bill: result });

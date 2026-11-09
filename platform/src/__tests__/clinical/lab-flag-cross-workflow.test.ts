@@ -16,8 +16,9 @@ import {
 describe('dashboard flagging uses the QC critical table', () => {
   it.each([
     // [test, dashboard-entry value, expected flag]
-    ['Hemoglobin', '5', 'CRITICAL'],    // QC: ≤ 5 is critical (inclusive)
-    ['Hemoglobin', '6', 'ABNORMAL'],    // old dashboard called < 7 critical
+    ['Hemoglobin', '5.2', 'CRITICAL'],  // QC: ≤ 6.0 is critical (inclusive)
+    ['Hemoglobin', '6', 'CRITICAL'],
+    ['Hemoglobin', '6.1', 'ABNORMAL'],  // old dashboard called < 7 critical
     ['Hemoglobin', '20', 'CRITICAL'],
     ['Hemoglobin', '14', 'NORMAL'],
     ['WBC', '1000', 'CRITICAL'],        // 1.0 ×10⁹/L

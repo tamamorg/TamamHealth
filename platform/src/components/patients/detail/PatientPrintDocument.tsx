@@ -174,12 +174,13 @@ export default function PatientPrintDocument({ patient, patientProblems, allPres
                     <div className="rx-section">
                       <div className="rx-section-title">{t('print.allergies')}</div>
                       <div className="rx-section-body">
-                        {activeAllergies.map((a: { id: string; substance: string; criticality?: string; classification?: string; reaction?: string }) => (
+                        {activeAllergies.map((a: { id: string; substance: string; criticality?: string; classification?: string; reaction?: string; verified?: boolean }) => (
                           <div key={a.id} className="rx-allergy-row">
                             {a.criticality && (
                               <span className={`rx-allergy-sev ${a.criticality.toLowerCase()}`}>{a.criticality}</span>
                             )}
                             <b>{a.substance}</b>
+                            {a.verified === false && <span style={{ color: '#555', fontSize: '8pt' }}>({t('allergy.unverified')})</span>}
                             {a.classification && <span style={{ color: '#555', fontSize: '8pt' }}>{a.classification}</span>}
                             {a.reaction && <span style={{ color: '#555', fontSize: '8pt' }}>{t('ui.reaction2')} {a.reaction}</span>}
                           </div>

@@ -80,6 +80,18 @@ export interface BillingDoc extends BaseDoc {
   subtotal: number;
   discount: number;
   discountReason?: string;
+  /** The manager who approved the waiver, never the person who entered it. */
+  waiverApprovedBy?: string;
+  waiverApprovedByName?: string;
+  waiverApprovedByRole?: string;
+  waiverApprovedAt?: string;
+  /** Who entered the waiver, and when. */
+  waivedBy?: string;
+  waivedAt?: string;
+  /** Signed proof the approver typed their own password (approval-token.ts). */
+  waiverApprovalToken?: string;
+  /** Why a bill was created already waived (an exempt visit); nothing is owed. */
+  exemptReason?: string;
   taxRate: number;           // Percentage (0 for public, varies for private)
   taxAmount: number;
   totalAmount: number;

@@ -1,5 +1,6 @@
 'use client';
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import Modal from '@/components/Modal';
 import { DialogBody, DialogFrame, DialogHeader } from '@/components/overlay/Dialog';
 import { patientFullName } from '@/lib/patient-utils';
@@ -57,7 +58,7 @@ export default function PatientMedHistoryModal({ activePatient, activeRxs, onClo
                       <td className="font-semibold text-sm">{rx.medication}</td>
                       <td className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>{prescriptionSig(rx)}</td>
                       <td className="text-xs" style={{ color: 'var(--text-secondary)' }}>{rx.prescribedBy}</td>
-                      <td className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{rx.createdAt ? new Date(rx.createdAt).toLocaleDateString('en-GB') : '—'}</td>
+                      <td className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{rx.createdAt ? formatInFacilityZone(new Date(rx.createdAt), {}, 'en-GB') : '—'}</td>
                       <td>
                         <span className={`badge text-[10px] ${stage === 'dispensed' || stage === 'counseled' || stage === 'complete' ? 'badge-normal' : 'badge-warning'}`}>
                           {pharmacyStageLabel(stage)}

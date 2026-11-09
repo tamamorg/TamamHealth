@@ -44,7 +44,7 @@ describe('a draft bill', () => {
   });
 
   test('deleting or waiving it writes nothing to the ledger', async () => {
-    expect((await waiveBill('bill-rebuilt-rx', 'c', 'C', 'paid in cash at the time'))?.status).toBe('waived');
+    expect((await waiveBill('bill-rebuilt-rx', 'c', 'C', 'paid in cash at the time', { approvedBy: 'mgr', approvedByName: 'M', approvedByRole: 'hospital_manager', approvedAt: '2026-11-08T08:00:00.000Z' }))?.status).toBe('waived');
     expect(await ledgerRows()).toHaveLength(0);
   });
 

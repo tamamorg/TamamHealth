@@ -106,7 +106,7 @@ export default function AllergyList({ patient, hideAddButton = false }: { patien
             const cs = CRIT_STYLE[a.criticality || 'unknown'] || CRIT_STYLE.unknown;
             return (
               <li key={a.id} className="flex items-center gap-2 py-2 min-w-0 overflow-hidden group">
-                <span className="text-[12px] font-semibold flex-shrink-0" style={{ color: 'var(--text-primary)' }}>{a.substance}</span>
+                <span className="text-[12px] font-semibold flex-shrink-0" style={{ color: 'var(--text-primary)' }}>{a.substance}{a.verified === false ? ` (${t('allergy.unverified')})` : ''}</span>
                 <span className="text-[12px] flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{cs.label}</span>
                 {a.classification && <span className="text-[12px] flex-shrink-0" style={{ color: 'var(--text-muted)' }}>· {a.classification}</span>}
                 {a.reaction && <span className="text-[12px] truncate" style={{ color: 'var(--text-muted)' }}>· {a.reaction}</span>}

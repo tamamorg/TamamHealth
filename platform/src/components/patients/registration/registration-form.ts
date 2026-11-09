@@ -104,6 +104,15 @@ export const RELATIONSHIP_OPTIONS: { value: string; labelKey: string }[] = [
   { value: 'Other', labelKey: 'patientNew.relOther' },
 ];
 
+/** An allergy the patient reports at the desk. Unverified until triage reviews it. */
+export interface ReportedAllergy {
+  substance: string;
+  reaction: string;
+}
+
+/** The most allergies the desk can capture at registration. */
+export const MAX_REPORTED_ALLERGIES = 8;
+
 /** The most extra contacts a patient can carry beyond the primary one. */
 export const MAX_ADDITIONAL_NOK = 3;
 

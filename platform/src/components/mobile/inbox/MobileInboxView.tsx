@@ -1,5 +1,6 @@
 'use client';
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { useMemo } from 'react';
 import { Loader2 } from '@/components/icons/lucide';
 import EmptyState from '@/components/EmptyState';
@@ -45,7 +46,7 @@ export default function MobileInboxView() {
             <span className="mobile-inbox-meta">
               <span className="mobile-inbox-top">
                 <strong style={{ fontWeight: unread ? 800 : 700 }}>{displayName}</strong>
-                <small>{new Date(m.sentAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</small>
+                <small>{formatInFacilityZone(new Date(m.sentAt), { month: 'short', day: 'numeric' })}</small>
               </span>
               <small className="mobile-inbox-preview" style={{ fontWeight: unread ? 700 : 500 }}>{m.subject || m.body}</small>
             </span>

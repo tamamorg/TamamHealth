@@ -9,7 +9,7 @@
 
 import { activeCountry } from '@/lib/country/country-pack';
 import { countryName } from '@/lib/country/world-lists';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Icon as DuotoneIcon } from '@/components/icons';
 import { Stethoscope } from '@/components/icons/lucide';
@@ -84,7 +84,7 @@ function activeAllergies(patient: PatientDoc): BannerAllergy[] | undefined {
   if (patient.structuredAllergies !== undefined) {
     return patient.structuredAllergies
       .filter(a => a.status === 'active')
-      .map(a => ({ substance: a.substance, criticality: a.criticality }));
+      .map(a => ({ substance: a.substance, criticality: a.criticality, unverified: a.verified === false }));
   }
   const recorded = (patient.allergies || [])
     .filter(a => a && !isNoAllergySentinel(a))
@@ -120,7 +120,7 @@ function AllergyBanner({ allergies, onShow }: { allergies?: BannerAllergy[]; onS
     <span className="tamam-allergy-value">
       {shown.map((a, i) => (
         <span key={`${a.substance}-${i}`} className={a.highConcern ? 'tamam-allergy-item tamam-allergy-item--severe' : 'tamam-allergy-item'}>
-          {a.substance}{i < shown.length - 1 ? ', ' : ''}
+          {a.substance}{a.unverified ? ` (${t('allergy.unverified')})` : ''}{i < shown.length - 1 ? ', ' : ''}
         </span>
       ))}
     </span>
@@ -165,6 +165,13 @@ export default function ChartHeader({
   // up to 11 buttons in two rows, several of them duplicating the right-rail
   // workspace panels under different names.
   const [menuOpen, setMenuOpen] = useState(false);
+  // Escape closes the menu, the way every other menu in the kit does.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
   const { t } = useTranslation();
   // Back for the chart: the page has no breadcrumb bar, so the way out is
   // closing the patient, as in a clinical workspace (Epic's patient tab, the
@@ -289,17 +296,17 @@ export default function ChartHeader({
                 </div>
                 {canManageReferrals && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onExchange(); }}>
-                    <DuotoneIcon name="arrowRightLeft" size={15} /> Refer patient
+                    <DuotoneIcon name="arrowRightLeft" size={15} /> {t('chart.referPatient')}
                   </button>
                 )}
                 {onTransfer && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onTransfer(); }}>
-                    <DuotoneIcon name="arrowRightLeft" size={15} /> Transfer patient
+                    <DuotoneIcon name="arrowRightLeft" size={15} /> {t('chart.transferPatient')}
                   </button>
                 )}
                 {onStartVisit && (
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onStartVisit(); }}>
-                    <DuotoneIcon name="calendar" size={15} /> Add visit
+                    <DuotoneIcon name="calendar" size={15} /> {t('chart.addVisit')}
                   </button>
                 )}
                 {canSendMessages && (

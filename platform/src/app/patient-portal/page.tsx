@@ -1,5 +1,6 @@
 'use client';
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   User, Calendar, FileText, FlaskConical, Syringe,
@@ -227,8 +228,8 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
             // Who on the care team wrote it — a reply from "the facility" reads
             // very differently from one signed by the patient's own doctor.
             sender: m.fromDoctorId === 'patient' ? undefined : m.fromDoctorName,
-            time: new Date(m.sentAt || m.createdAt || Date.now())
-              .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            time: formatInFacilityZone(new Date(m.sentAt || m.createdAt || Date.now())
+              , { hour: '2-digit', minute: '2-digit' }, []),
           }));
         if (formatted.length > 0) {
           setChatMessages(formatted);
@@ -249,7 +250,7 @@ function PatientDashboard({ patient, onLogout }: { patient: PatientDoc; onLogout
     setChatSending(true);
     setChatError(null);
     const now = new Date();
-    const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const time = formatInFacilityZone(now, { hour: '2-digit', minute: '2-digit' }, []);
 
     // Optimistically render the patient bubble so the UI feels instant.
     // We tag it with a temporary id so the post-persist replacement is safe.

@@ -1,3 +1,4 @@
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { Minus } from '@/components/icons/lucide';
 import Select from '@/components/Select';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -201,7 +202,7 @@ export function NoteSidePanels({
                     onClick={() => navigateAway(`/patients/${note.patientId}?tab=documents&focus=${encodeURIComponent(doc._id)}`)}
                   >
                     <span className="cn-rail-row-main">
-                      {doc.createdAt ? `${new Date(doc.createdAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })} - ` : ''}{doc.title || doc.fileName}
+                      {doc.createdAt ? `${formatInFacilityZone(new Date(doc.createdAt), { month: 'numeric', day: 'numeric', year: '2-digit' }, 'en-US')} - ` : ''}{doc.title || doc.fileName}
                     </span>
                     <span className="cn-rail-row-sub">{docCategoryLabel(doc.category)}</span>
                   </button>

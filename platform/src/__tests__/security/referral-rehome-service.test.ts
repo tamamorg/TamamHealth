@@ -31,6 +31,7 @@ jest.mock('@/lib/validation', () => ({
 
 import { acceptReferral } from '@/lib/services/referral-service';
 import { updatePatient, mutatePatient } from '@/lib/services/patient-service';
+import { filterByScope } from '@/lib/services/data-scope';
 const SCOPE_A = { orgId: 'org-a', role: 'org_admin' } as import('@/lib/services/data-scope').DataScope;
 
 beforeEach(() => {
@@ -49,7 +50,34 @@ describe('acceptReferral', () => {
     const result = await acceptReferral('ref-1');
     expect(result?.status).toBe('seen');
     expect(store.patients['pat-1'].orgId).toBe('org-b');
-    expect(store.patients['pat-1'].registrationHospital).toBe('hosp-b');
+    // Registered where they were registered; seen at the receiver.
+    expect(store.patients['pat-1'].registrationHospital).toBe('hosp-a');
+    expect(store.patients['pat-1'].lastVisitHospital).toBe('hosp-b');
+  });
+
+  test('a same-org referral leaves the sending facility able to read the chart', async () => {
+    store.hospitals['hosp-c'] = { _id: 'hosp-c', orgId: 'org-a' };
+    store.referrals['ref-1'] = { ...store.referrals['ref-1'], toOrgId: undefined, toHospitalId: 'hosp-c' };
+    await acceptReferral('ref-1');
+    const patient = store.patients['pat-1'] as { orgId: string; transferFacilityIds: string[] };
+    const sender = { orgId: 'org-a', hospitalId: 'hosp-a', role: 'doctor' } as import('@/lib/services/data-scope').DataScope;
+    const receiver = { orgId: 'org-a', hospitalId: 'hosp-c', role: 'doctor' } as import('@/lib/services/data-scope').DataScope;
+    const elsewhere = { orgId: 'org-a', hospitalId: 'hosp-z', role: 'doctor' } as import('@/lib/services/data-scope').DataScope;
+    expect(patient.orgId).toBe('org-a');
+    expect(patient.transferFacilityIds).toEqual(expect.arrayContaining(['hosp-a', 'hosp-c']));
+    expect(filterByScope([patient], sender)).toHaveLength(1);
+    expect(filterByScope([patient], receiver)).toHaveLength(1);
+    expect(filterByScope([patient], elsewhere)).toHaveLength(0);
+  });
+
+  test('the sender stays on the chart even when the patient was registered somewhere else', async () => {
+    store.hospitals['hosp-c'] = { _id: 'hosp-c', orgId: 'org-a' };
+    store.patients['pat-1'] = { ...store.patients['pat-1'], registrationHospital: 'hosp-origin', lastVisitHospital: 'hosp-a' };
+    store.referrals['ref-1'] = { ...store.referrals['ref-1'], toOrgId: undefined, toHospitalId: 'hosp-c' };
+    await acceptReferral('ref-1');
+    const patient = store.patients['pat-1'] as { transferFacilityIds: string[] };
+    const sender = { orgId: 'org-a', hospitalId: 'hosp-a', role: 'doctor' } as import('@/lib/services/data-scope').DataScope;
+    expect(filterByScope([patient], sender)).toHaveLength(1);
   });
 
   test('re-running acceptance after the patient moved is idempotent', async () => {

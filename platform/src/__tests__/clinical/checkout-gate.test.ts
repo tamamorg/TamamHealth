@@ -24,8 +24,11 @@ describe('facility checkout gate', () => {
     }
   });
 
-  test('payment status is explicitly NON-critical (care is not gated on money)', () => {
-    expect(byKey['payment_status_determined'].critical).toBe(false);
+  test('a balance holds the visit open (critical) but never the care itself', () => {
+    // Closing a visit with money owed needs it paid, waived or carried as a
+    // debt with a reason (payment-debt-checkout.test.ts). Treatment, orders
+    // and dispensing of emergency medicines are not behind this gate.
+    expect(byKey['payment_status_determined'].critical).toBe(true);
     expect(byKey['pending_items_flagged'].critical).toBe(false);
   });
 

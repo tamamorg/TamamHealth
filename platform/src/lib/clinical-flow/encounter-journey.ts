@@ -255,7 +255,9 @@ export const FACILITY_CHECKOUT_GATE: readonly CheckoutGateItem[] = [
   { key: 'critical_labs_reviewed', label: 'All same-day critical labs resulted and reviewed (or pending with follow-up plan)', critical: true },
   { key: 'in_clinic_procedures_complete', label: 'In-clinic procedures complete', critical: true },
   { key: 'required_documentation_generated', label: 'All required documentation generated', critical: true },
-  { key: 'payment_status_determined', label: 'Payment status determined', critical: false },
+  // Critical since 2026-11: a visit with a balance leaves only once the balance is
+  // cleared, waived (manager-approved) or recorded as a debt with a reason.
+  { key: 'payment_status_determined', label: 'Payment status determined', critical: true },
   { key: 'pending_items_flagged', label: 'Anything still pending flagged', critical: false },
 ];
 

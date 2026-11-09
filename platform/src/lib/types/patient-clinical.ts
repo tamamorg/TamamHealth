@@ -30,6 +30,11 @@ export interface AllergyEntry {
   recordedBy?: string;
   recordedByName?: string;
   recordedAt: string;
+  /** Where the entry came from. Absent on entries a clinician recorded. */
+  source?: 'patient_reported_at_registration';
+  /** False while nobody clinical has confirmed it; triage's allergy review
+   *  sets it true (or removes the entry). Absent = clinician-recorded. */
+  verified?: boolean;
   /** Who last edited, reinstated or retired the entry, and when. Kept apart
    *  from recordedBy so an edit never re-attributes the original recording. */
   updatedBy?: string;

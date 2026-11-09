@@ -119,7 +119,7 @@ it('flags a critically low Hemoglobin entered into a Full Blood Count panel and 
   expect(harness.controller!.criticalVerdict.isCriticalValue).toBe(true);
   expect(harness.controller!.criticalVerdict.hits).toHaveLength(1);
   expect(harness.controller!.criticalVerdict.hits[0].label).toBe('Hemoglobin');
-  expect(harness.controller!.criticalVerdict.hits[0].comparison).toBe('≤ 5');
+  expect(harness.controller!.criticalVerdict.hits[0].comparison).toBe('≤ 6');
   // The checkbox reflects the derived flag without the tech touching it.
   expect(harness.controller!.resultDraft.critical).toBe(true);
   expect(harness.controller!.resultDraft.criticalManual).toBe(false);

@@ -826,3 +826,70 @@
     background: var(--bg-card-solid);
   }
 }
+
+/* Phone: patient registration (/patients/new) and per-patient triage
+   (/triage/[patientId]) — the two forms built on the `.tamam-reg` rail layout
+   (the embedded dialog / chart-drawer variants are left alone).
+   The left rail stacked above the form pushed the first field ~480px down and
+   left the actions only at the very top of a 5,000px page, and triage's
+   photo block overflowed its column. On a phone the section list becomes a
+   one-line scroller, the patient block a compact line, and the rail's actions
+   dock at the foot of the scrolling page so Review / Register / Save is always
+   one tap away. `X` is "the rail layout, in its full-page form". */
+@media (max-width: 639px) {
+  :is(.patient-registration-page:not(.patient-registration-page--embedded) .tamam-reg, .triage-reg:not(.triage-reg--embedded)) {
+    row-gap: 0;
+  }
+  :is(.patient-registration-page:not(.patient-registration-page--embedded) .tamam-reg, .triage-reg:not(.triage-reg--embedded)) .tamam-reg-rail {
+    display: contents;
+  }
+  :is(.patient-registration-page:not(.patient-registration-page--embedded) .tamam-reg, .triage-reg:not(.triage-reg--embedded)) .tamam-reg-jump,
+  :is(.patient-registration-page:not(.patient-registration-page--embedded) .tamam-reg, .triage-reg:not(.triage-reg--embedded)) .tamam-reg-railnote,
+  :is(.patient-registration-page:not(.patient-registration-page--embedded) .tamam-reg, .triage-reg:not(.triage-reg--embedded)) .triage-patient-photo {
+    display: none;
+  }
+  :is(.patient-registration-page:not(.patient-registration-page--embedded) .tamam-reg, .triage-reg:not(.triage-reg--embedded)) .triage-rail-patient {
+    width: 100%;
+    min-width: 0;
+    margin: 4px 0 8px;
+  }
+  :is(.patient-registration-page:not(.patient-registration-page--embedded) .tamam-reg, .triage-reg:not(.triage-reg--embedded)) .tamam-reg-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 16px;
+    margin: 4px 0 12px;
+    border-bottom: 1px solid var(--border-light);
+    scrollbar-width: none;
+  }
+  :is(.patient-registration-page:not(.patient-registration-page--embedded) .tamam-reg, .triage-reg:not(.triage-reg--embedded)) .tamam-reg-navitem {
+    flex: none;
+    width: auto;
+    white-space: nowrap;
+  }
+  :is(.patient-registration-page:not(.patient-registration-page--embedded) .tamam-reg, .triage-reg:not(.triage-reg--embedded)) .tamam-reg-navarrow,
+  :is(.patient-registration-page:not(.patient-registration-page--embedded) .tamam-reg, .triage-reg:not(.triage-reg--embedded)) .tamam-reg-navmeta {
+    display: none;
+  }
+  :is(.patient-registration-page:not(.patient-registration-page--embedded) .tamam-reg, .triage-reg:not(.triage-reg--embedded)) .tamam-reg-railactions {
+    order: 99;
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin: 12px 0 0;
+    padding: 8px 0;
+    border-top: 1px solid var(--border-light);
+    background: var(--bg-card-solid);
+  }
+  :is(.patient-registration-page:not(.patient-registration-page--embedded) .tamam-reg, .triage-reg:not(.triage-reg--embedded)) .tamam-reg-railactions > .btn,
+  :is(.patient-registration-page:not(.patient-registration-page--embedded) .tamam-reg, .triage-reg:not(.triage-reg--embedded)) .tamam-reg-railactions > .tamam-reg-cancel {
+    min-height: 44px;
+  }
+  :is(.patient-registration-page:not(.patient-registration-page--embedded) .tamam-reg, .triage-reg:not(.triage-reg--embedded)) .tamam-reg-form {
+    order: 1;
+    margin-top: 12px;
+    min-width: 0;
+  }
+}
