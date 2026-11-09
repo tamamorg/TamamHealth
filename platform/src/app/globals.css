@@ -37088,18 +37088,9 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
   background: var(--visit-red-bg);
   color: var(--visit-red);
 }
-/* The row: a 3px left bar (a pseudo-element, because the flat-design reset
-   strips box-shadow with !important) and a faint wash. The wash needs
-   !important to beat the row's own `background: initial !important`. */
-.ehr-appointment-row.appointment-card-row[data-visit-tone] { position: relative; }
-.ehr-appointment-row.appointment-card-row[data-visit-tone]::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: var(--visit-bar);
-  pointer-events: none;
-}
+/* The row: a faint wash in the visit's tone (no left bar; removed at the
+   owner's request 2026-11-09). The wash needs !important to beat the row's
+   own `background: initial !important`. */
 .ehr-appointment-row.appointment-card-row[data-visit-tone] {
   background-color: color-mix(in srgb, var(--visit-bar) 5%, var(--bg-card-solid, transparent)) !important;
 }
