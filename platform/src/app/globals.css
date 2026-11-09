@@ -3240,6 +3240,21 @@ html:has(.mobile-shell-offline-banner) {
   color: var(--text-muted);
 }
 
+/* A very long record or facility name must not stretch the bar: every crumb
+   label truncates with an ellipsis, the current page may take the most room. */
+.route-context-crumb a,
+.route-context-crumb [aria-current='page'],
+.route-context-crumb > span:not(.route-context-chevron) {
+  display: block;
+  min-width: 0;
+  max-width: 28ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.route-context-crumb [aria-current='page'] { max-width: 48ch; }
+
 [dir='rtl'] .route-context-back svg,
 [dir='rtl'] .route-context-chevron {
   transform: scaleX(-1);
@@ -37085,3 +37100,19 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
 .ehr-appointment-row.appointment-card-row[data-visit-tone="active"] { --visit-bar: var(--visit-purple-bar); }
 .ehr-appointment-row.appointment-card-row[data-visit-tone="done"] { --visit-bar: var(--visit-green-bar); }
 .ehr-appointment-row.appointment-card-row[data-visit-tone="danger"] { --visit-bar: var(--visit-red-bar); }
+
+/* Surveillance > Active alerts sits in a narrow column beside the map. At the
+   default cell padding the table is wider than its panel below ~1300px, so the
+   Level badge and the row Actions menu were pushed past the clip edge. Tighter
+   cells and a fixed layout keep all five columns inside the panel. */
+.surv-alerts-table { table-layout: fixed; }
+.surv-alerts-table th,
+.surv-alerts-table td { padding-inline: 8px; overflow-wrap: anywhere; }
+.surv-alerts-table th:nth-child(2),
+.surv-alerts-table td:nth-child(2),
+.surv-alerts-table th:nth-child(3),
+.surv-alerts-table td:nth-child(3) { width: 52px; }
+.surv-alerts-table th:nth-child(4),
+.surv-alerts-table td:nth-child(4) { width: 104px; }
+.surv-alerts-table th:nth-child(5),
+.surv-alerts-table td:nth-child(5) { width: 44px; padding-inline: 4px; }

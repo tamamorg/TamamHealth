@@ -131,8 +131,12 @@ export function facilityFormFrom(hospital: HospitalDoc): FacilityFormValues {
   };
 }
 
+/** Longest facility name accepted; longer ones break the breadcrumb, toasts and printouts. */
+export const FACILITY_NAME_MAX = 100;
+
 export type FacilityFormError =
   | 'required'
+  | 'name-too-long'
   | 'beds-negative'
   | 'beds-breakdown-exceeds-total'
   | 'coordinates'
@@ -149,6 +153,7 @@ export type FacilityFormError =
  */
 export function validateFacilityForm(form: FacilityFormValues): FacilityFormError | null {
   if (!form.name.trim() || !form.state || !form.town.trim() || !form.facilityType) return 'required';
+  if (form.name.trim().length > FACILITY_NAME_MAX) return 'name-too-long';
   const numbers = [...BED_FIELDS, ...STAFF_FIELDS].map(f => form[f.key]);
   if (numbers.some(n => !Number.isFinite(n) || n < 0)) return 'beds-negative';
   if (form.icuBeds + form.maternityBeds + form.pediatricBeds > form.totalBeds && form.totalBeds > 0) {

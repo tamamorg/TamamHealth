@@ -642,7 +642,7 @@ export default function SurveillancePage() {
                   </div>
                 )}
                 {filteredAlerts.length > 0 && (
-                  <table className="w-full ov-table">
+                  <table className="w-full ov-table surv-alerts-table">
                     <thead>
                       <tr>
                         <th className="text-start">{t('surveillance.colDisease')}</th>

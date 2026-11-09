@@ -66,6 +66,13 @@ describe('facility creation resolves the organisation', () => {
       });
   });
 
+  test('a facility name over 100 characters is refused, naming the field', async () => {
+    await expect(createHospital(facility({ name: 'A'.repeat(101) })))
+      .rejects.toMatchObject({ name: 'ValidationError', fields: { name: expect.stringContaining('100') } });
+    const ok = await createHospital(facility({ name: 'A'.repeat(100) }));
+    expect(ok.name).toHaveLength(100);
+  });
+
   test('a refused creation writes nothing', async () => {
     await expect(createHospital(facility({ orgId: undefined }))).rejects.toThrow();
     const saved = await createHospital(facility());

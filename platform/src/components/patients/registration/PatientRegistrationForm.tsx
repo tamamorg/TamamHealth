@@ -102,7 +102,9 @@ export function PatientRegistrationForm({
   const goBack = useGoBack(safeReturnTo(returnTo, '/patients'));
   const { patients, create: createPatient } = usePatients();
   const { currentUser } = useAuth();
-  const { showToast } = useToast();
+  const { showToast, dismissToast } = useToast();
+  /** The "complete the required fields" toast, taken down once validation passes. */
+  const requiredToastId = useRef<number | null>(null);
   // "Register & check in" hands off to the appointments page's walk-in dialog
   // — or to `onCheckIn`, when an embedded host wants to route it itself.
   // Roles that can register a patient but cannot book (lab, pharmacy, records,
@@ -451,6 +453,10 @@ export function PatientRegistrationForm({
     const perSection = VALIDATED_SECTIONS.map(section => [section, validateSection(section)] as const);
     const allErrors = Object.assign({}, ...perSection.map(([, errs]) => errs));
     if (Object.keys(allErrors).length === 0) {
+      if (requiredToastId.current !== null) {
+        dismissToast?.(requiredToastId.current);
+        requiredToastId.current = null;
+      }
       setErrorSections(new Set());
       return true;
     }
@@ -460,7 +466,7 @@ export function PatientRegistrationForm({
     // A failure found from the review page has to put the form back on screen,
     // otherwise the scroll below targets a section that is not rendered.
     setReviewMode(false);
-    showToast(t('patientNew.toastFillRequired'), 'error');
+    requiredToastId.current = showToast(t('patientNew.toastFillRequired'), 'error');
     const [firstSection, firstErrors] = failed[0];
     const firstField = Object.keys(firstErrors)[0];
     // Deferred a frame: when we have just come back from review the form is

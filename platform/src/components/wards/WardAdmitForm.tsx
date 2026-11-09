@@ -286,7 +286,7 @@ function WardRequestForm({ form, setForm, wards, wardsLoading, wardLabel, beds, 
     const missing = o3MissingRequired(pages, values);
     if (missing.length) {
       setInvalid(new Set(missing.map(f => f.id)));
-      setNotice(t('o3form.missingRequired', { count: missing.length }));
+      setNotice(t('o3form.missingRequiredNoUnspecified', { count: missing.length }));
       return;
     }
     onSave();

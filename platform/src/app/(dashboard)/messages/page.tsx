@@ -22,12 +22,12 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 /* ─────────────────────────── constants ─────────────────────────── */
 
 const PRESENCE: Record<StaffPresence, { label: string; color: string }> = {
-  active: { label: 'Active', color: 'var(--color-success)' },
-  busy: { label: 'Busy', color: 'var(--color-danger)' },
-  away: { label: 'Away', color: 'var(--color-warning)' },
-  on_call: { label: 'On Call', color: 'var(--accent-primary)' },
-  in_clinic: { label: 'In Clinic', color: 'var(--accent-primary)' },
-  offline: { label: 'Offline', color: 'var(--text-muted)' },
+  active: { label: 'msgs.presenceActive', color: 'var(--color-success)' },
+  busy: { label: 'msgs.presenceBusy', color: 'var(--color-danger)' },
+  away: { label: 'msgs.presenceAway', color: 'var(--color-warning)' },
+  on_call: { label: 'msgs.presenceOnCall', color: 'var(--accent-primary)' },
+  in_clinic: { label: 'msgs.presenceInClinic', color: 'var(--accent-primary)' },
+  offline: { label: 'msgs.presenceOffline', color: 'var(--text-muted)' },
 };
 const QUICK_REACTIONS = ['👍', '✅', '❤️', '👀', '🙏', '😀'];
 
@@ -150,12 +150,12 @@ export default function MessagesPage() {
   useEffect(() => { setMenuOpen(false); setEditingId(null); setReplyTo(null); setRevealed(new Set()); }, [activeId]);
 
   const convTitle = (c: ConversationDoc): string => {
-    if (c.kind === 'group') return c.name || 'Group chat';
+    if (c.kind === 'group') return c.name || t('msgs.groupChat');
     const i = c.participantIds.findIndex(id => id !== meId);
-    return c.participantNames?.[i] || c.participantNames?.[0] || 'Direct message';
+    return c.participantNames?.[i] || c.participantNames?.[0] || t('msgs.directMessage');
   };
   const convSubtitle = (c: ConversationDoc): string => {
-    if (c.kind === 'group') return `${c.participantIds.length} members`;
+    if (c.kind === 'group') return t('msgs.memberCount', { count: c.participantIds.length });
     const otherId = c.participantIds.find(id => id !== meId) || '';
     const u = userInfo.get(otherId);
     return [u ? (ROLE_LABEL[u.role] || '') : '', u?.department].filter(Boolean).join(' · ');
@@ -236,13 +236,13 @@ export default function MessagesPage() {
             {hasUnread && !muted && <span className="msgs-unread-dot" />}
           </span>
         </span>
-        <p className="msgs-conv-preview">{c.lastMessagePreview || 'No messages yet'}</p>
+        <p className="msgs-conv-preview">{c.lastMessagePreview || t('messages.emptyTitle')}</p>
       </button>
     );
   };
 
   const participants = activeConversation?.participantIds.map((id, i) => ({
-    id, name: activeConversation.participantNames?.[i] || 'Member', role: roleLabelFor(id), presence: presenceFor(id),
+    id, name: activeConversation.participantNames?.[i] || t('msgs.member'), role: roleLabelFor(id), presence: presenceFor(id),
   })) || [];
 
   return (
@@ -286,7 +286,7 @@ export default function MessagesPage() {
                 <span className="min-w-0 flex-1">
                   <p className="msgs-me-name">{currentUser.name}</p>
                   <p className="msgs-me-state">
-                    <span className="msgs-presence-dot" style={{ background: PRESENCE[myPresence].color }} /> {PRESENCE[myPresence].label}
+                    <span className="msgs-presence-dot" style={{ background: PRESENCE[myPresence].color }} /> {t(PRESENCE[myPresence].label)}
                   </p>
                 </span>
                 <ChevronDown className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--ehr-muted)', transform: presenceOpen ? 'none' : 'rotate(180deg)' }} />
@@ -295,7 +295,7 @@ export default function MessagesPage() {
                 <div className="msgs-me-menu">
                   {(Object.keys(PRESENCE) as StaffPresence[]).map(p => (
                     <button key={p} onClick={() => { setPresence(p); setPresenceOpen(false); }}>
-                      <span className="msgs-presence-dot" style={{ background: PRESENCE[p].color }} /> {PRESENCE[p].label}
+                      <span className="msgs-presence-dot" style={{ background: PRESENCE[p].color }} /> {t(PRESENCE[p].label)}
                     </button>
                   ))}
                 </div>
@@ -321,7 +321,7 @@ export default function MessagesPage() {
                 </div>
                 {menuOpen && (
                   <div className="msgs-menu">
-                    <button onClick={() => { setMenuOpen(false); togglePin(activeConversation._id); }}><ShieldCheck className="w-4 h-4" /> {activeConversation.pinnedBy?.includes(meId) ? 'Unpin' : 'Pin to top'}</button>
+                    <button onClick={() => { setMenuOpen(false); togglePin(activeConversation._id); }}><ShieldCheck className="w-4 h-4" /> {activeConversation.pinnedBy?.includes(meId) ? t('msgs.unpin') : t('msgs.pinToTop')}</button>
                     {activeConversation.kind === 'group' && (
                       <>
                         <button onClick={() => { setMenuOpen(false); setInfoOpen(true); }}><Settings className="w-4 h-4" /> {t('ui.groupSettings')}</button>
@@ -356,14 +356,14 @@ export default function MessagesPage() {
                           const grouped = Object.entries(reactions.reduce((acc, r) => { acc[r.emoji] = (acc[r.emoji] || 0) + 1; return acc; }, {} as Record<string, number>));
                           const meta = [
                             clockTime(m.sentAt),
-                            m.editedAt && !m.deleted ? 'edited' : '',
-                            isLastOwn ? (readByOther ? 'Read' : 'Sent') : '',
+                            m.editedAt && !m.deleted ? t('msgs.edited') : '',
+                            isLastOwn ? (readByOther ? t('msgs.read') : t('msgs.sent')) : '',
                           ].filter(Boolean).join(' · ');
                           return (
                             <div key={m._id} className="msgs-msg">
                               {replied && (
                                 <div className="msgs-quote">
-                                  {replied.fromDoctorName}: {replied.deleted ? 'removed message' : replied.body.slice(0, 60)}
+                                  {replied.fromDoctorName}: {replied.deleted ? t('msgs.removedMessage') : replied.body.slice(0, 60)}
                                 </div>
                               )}
                               <div className="msgs-msg-row">
@@ -384,9 +384,9 @@ export default function MessagesPage() {
                                   >
                                     {m.deleted ? (
                                       <>
-                                        {mine ? 'You removed this message' : `${m.deletedByName || m.fromDoctorName} removed this message`}
+                                        {mine ? t('msgs.youRemoved') : t('msgs.removedBy', { name: m.deletedByName || m.fromDoctorName })}
                                         <span className="msgs-bubble-time">
-                                          {[clockTime(m.sentAt), m.deletedAt ? `removed ${clockTime(m.deletedAt)}` : '', 'kept on record'].filter(Boolean).join(' · ')}
+                                          {[clockTime(m.sentAt), m.deletedAt ? t('msgs.removedAt', { time: clockTime(m.deletedAt) }) : '', t('msgs.keptOnRecord')].filter(Boolean).join(' · ')}
                                         </span>
                                       </>
                                     ) : renderBody(m.body)}
@@ -396,8 +396,8 @@ export default function MessagesPage() {
                                 {(m.deleted || history.length > 0) && editingId !== m._id && (
                                   <button type="button" className="msgs-record-toggle" aria-expanded={shown} onClick={() => toggleRevealed(m._id)}>
                                     {m.deleted
-                                      ? (shown ? 'Hide original' : 'Show original')
-                                      : (shown ? 'Hide earlier versions' : 'Show earlier versions')}
+                                      ? (shown ? t('msgs.hideOriginal') : t('msgs.showOriginal'))
+                                      : (shown ? t('msgs.hideEarlier') : t('msgs.showEarlier'))}
                                   </button>
                                 )}
 
@@ -425,7 +425,7 @@ export default function MessagesPage() {
                                   {m.deleted && (
                                     <p>
                                       <span className="msgs-record-when">{clockTime(m.editedAt || m.sentAt)}</span>
-                                      {m.body || (m.attachments?.length ? `${m.attachments.length} attachment${m.attachments.length === 1 ? '' : 's'}` : 'No text was kept for this message.')}
+                                      {m.body || (m.attachments?.length ? t('msgs.attachmentCount', { count: m.attachments.length }) : t('msgs.noTextKept'))}
                                     </p>
                                   )}
                                 </div>
@@ -478,7 +478,7 @@ export default function MessagesPage() {
                             <span className="ehr-patient-icon ehr-patient-icon--sm">{initials(p.name)}</span>
                             <div className="min-w-0 flex-1">
                               <p className="text-[12px] font-semibold truncate" style={{ color: 'var(--ehr-text)' }}>{p.name}{p.id === meId ? ' (you)' : ''}</p>
-                              <p className="text-[10px] truncate" style={{ color: 'var(--ehr-muted)' }}>{p.role || PRESENCE[p.presence].label}</p>
+                              <p className="text-[10px] truncate" style={{ color: 'var(--ehr-muted)' }}>{p.role || t(PRESENCE[p.presence].label)}</p>
                             </div>
                             {activeConversation.kind === 'group' && p.id !== meId
                               && (!activeConversation.createdById || activeConversation.createdById === meId) && (
@@ -610,7 +610,7 @@ function StaffPickerModal({
             <div className="grid grid-cols-2 gap-1 p-1 mb-3 rounded-xl keep-cols" style={{ background: 'var(--ehr-head)', border: '1px solid var(--ehr-border-soft)' }}>
               {(['dm', 'group'] as const).map(m => (
                 <button key={m} onClick={() => setTab(m)} className="py-1.5 rounded-lg text-[12px] font-semibold transition-colors" style={{ background: tab === m ? 'var(--accent-primary)' : 'transparent', color: tab === m ? '#fff' : 'var(--ehr-muted)' }}>
-                  {m === 'dm' ? 'Direct message' : 'Group chat'}
+                  {m === 'dm' ? t('msgs.directMessage') : t('msgs.groupChat')}
                 </button>
               ))}
             </div>
