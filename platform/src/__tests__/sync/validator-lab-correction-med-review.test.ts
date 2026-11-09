@@ -77,7 +77,6 @@ describe('validate_doc_update', () => {
   // The app's two-tech rule, held by the server too: a device cannot approve
   // its own user's correction or put someone else's name on a proposal.
   it('refuses the proposer approving their own correction', () => {
-    const proposed = lab({ _rev: '3-a', pendingCorrection: correction() });
     const approval = lab({
       _rev: '4-a', result: 'oenc:v1:b3JnLWE:aXY:Y29ycmVjdGVk', amended: true, amendedAt: '2026-11-07T11:00:00.000Z',
       amendedBy: 'Achol Lab', amendedFrom: SEALED, amendmentReason: SEALED,
