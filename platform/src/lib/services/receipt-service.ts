@@ -1,6 +1,7 @@
 /**
  * Receipt Service — generates printable and emailable receipts for payments.
  */
+import { formatInFacilityZone } from '@/lib/time-juba';
 import type { PaymentDoc } from '../db-types-payments';
 import { escapeHtml, openIsolatedHtmlWindow } from '../safe-html';
 import { buildClinicalPrintDocument, printFields } from '../print-document';
@@ -22,6 +23,9 @@ export interface ReceiptData {
   processedBy: string;
   facilityName: string;
   notes?: string;
+  /** Cash handed over and the change given back, when the patient paid more than was owed. */
+  tendered?: number;
+  changeGiven?: number;
 }
 
 function getMethodLabel(method: string): string {
@@ -45,8 +49,8 @@ export function buildReceiptData(payment: PaymentDoc, facilityName?: string, hos
     receiptNumber: payment.reference || payment._id,
     patientName: payment.patientName,
     patientId: hospitalNumber?.trim() || payment.patientId,
-    date: date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-    time: date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    date: formatInFacilityZone(date, { year: 'numeric', month: 'long', day: 'numeric' }, 'en-US'),
+    time: formatInFacilityZone(date, { hour: '2-digit', minute: '2-digit' }, 'en-US'),
     dateIso: printDate(date),
     method: payment.method,
     methodLabel: getMethodLabel(payment.method),
@@ -56,6 +60,7 @@ export function buildReceiptData(payment: PaymentDoc, facilityName?: string, hos
     processedBy: payment.processedByName,
     facilityName: facilityName || 'TamamHealth Health Facility',
     notes: payment.notes,
+    ...(payment.changeGiven ? { tendered: payment.tendered, changeGiven: payment.changeGiven } : {}),
   };
 }
 
@@ -73,7 +78,9 @@ export function generateReceiptHTML(receipt: ReceiptData): string {
         { label: 'Notes', value: receipt.notes },
       ])}
       <div class="totals">
+        ${receipt.changeGiven ? `<div class="total-row"><span>Cash received</span><strong>${escapeHtml((receipt.tendered ?? 0).toLocaleString())} ${escapeHtml(receipt.currency)}</strong></div>` : ''}
         <div class="total-row grand"><strong>Amount Paid</strong><strong>${escapeHtml(receipt.amount.toLocaleString())} ${escapeHtml(receipt.currency)}</strong></div>
+        ${receipt.changeGiven ? `<div class="total-row"><span>Change given</span><strong>${escapeHtml(receipt.changeGiven.toLocaleString())} ${escapeHtml(receipt.currency)}</strong></div>` : ''}
         <div class="total-row"><span>Status</span><strong class="status">Paid</strong></div>
       </div>
     </section>`;

@@ -27,6 +27,8 @@ import type {
   AdjustmentType,
 } from '@/lib/db-types-payments';
 import Select from '@/components/Select';
+import ManagerOverrideFields from '@/components/payments/ManagerOverrideFields';
+import type { ManagerApproval } from '@/lib/billing/manager-override-policy';
 import { escapeHtml, openIsolatedHtmlWindow } from '@/lib/safe-html';
 import { buildClinicalPrintDocument } from '@/lib/print-document';
 import { printDate } from '@/lib/print-identity';
@@ -152,7 +154,7 @@ function buildStatementHTML(opts: {
   const totalRow = (label: string, value: string) => `<div class="total-row"><span>${e(label)}</span><strong>${e(value)}</strong></div>`;
   const body = `
     <section class="section">
-      <h2 class="section-title">Account Activity</h2>
+      <h2 class="section-title">${t('billing.accountActivity')}</h2>
       <table><thead><tr><th>${t('billing.activityColumn.date')}</th><th>${t('ui.description')}</th><th>${t('billing.activityColumn.type')}</th><th class="num">${t('billing.activityColumn.amount')}</th><th class="num">${t('financialReview.due')}</th></tr></thead><tbody>${activityRows}</tbody></table>
     </section>
     <div class="totals">
@@ -295,10 +297,13 @@ export default function BillingTab({
     adjustmentType: 'write_off', amount: 0, reason: '', reasonCode: '',
   });
   const [processingAdj, setProcessingAdj] = useState(false);
+  // A second person approves every adjustment (manager override).
+  const [adjApproval, setAdjApproval] = useState<ManagerApproval | null>(null);
 
   const handleCreateAdjustment = async () => {
     if (!adjForm.reason.trim()) { showToast(t('billing.reasonRequired') || t('billing.reasonRequired'), 'error'); return; }
     if (adjForm.amount <= 0) { showToast(t('billing.invalidAmount') || t('billing.invalidAmount'), 'error'); return; }
+    if (!adjApproval) { showToast(t('override.required'), 'error'); return; }
     setProcessingAdj(true);
     try {
       const svc = await import('@/lib/services/payment-service');
@@ -309,20 +314,25 @@ export default function BillingTab({
         amount: adjForm.amount,
         reason: adjForm.reason.trim(),
         reasonCode: adjForm.reasonCode.trim() || undefined,
-        approvedBy: currentUser?._id ?? '',
-        approvedByName: currentUser?.name ?? '',
+        createdBy: currentUser?._id ?? '',
+        createdByName: currentUser?.name ?? '',
+        approvedBy: adjApproval.approvedBy,
+        approvedByName: adjApproval.approvedByName,
+        approvedByRole: adjApproval.approvedByRole,
+        approvalToken: adjApproval.approvalToken,
         facilityId,
         orgId,
       });
       showToast(t('billing.adjustmentCreated') || t('billing.adjustmentCreated'), 'success');
       setShowAdjustment(false);
       setAdjForm({ adjustmentType: 'write_off', amount: 0, reason: '', reasonCode: '' });
+      setAdjApproval(null);
       setLineInHand(null);
       reloadPayments();
       loadAll();
     } catch (err) {
       console.error('Failed to create adjustment:', err);
-      showToast(t('billing.adjustmentFailed') || t('billing.adjustmentFailed'), 'error');
+      showToast(err instanceof Error && err.name === 'AdjustmentError' ? err.message : t('billing.adjustmentFailed'), 'error');
     }
     setProcessingAdj(false);
   };
@@ -737,7 +747,7 @@ export default function BillingTab({
                   <td className="tamam-num">{formatDate(line.date)}</td>
                   <td>
                     <button type="button" className="bl-line-open" onClick={event => { event.stopPropagation(); setOpenLineId(line.id); }}>{accountLineTitle(line, t)}</button>
-                    <div className="tamam-cell-sub">{[...line.categories, ...(formatDate(line.updatedAt) !== formatDate(line.date) ? [t('billing.lineUpdated', { date: formatDate(line.updatedAt) })] : [])].join(' · ')}</div>
+                    <div className="tamam-cell-sub">{[...line.categories.map(c => c.replace(/_/g, ' ')), ...(formatDate(line.updatedAt) !== formatDate(line.date) ? [t('billing.lineUpdated', { date: formatDate(line.updatedAt) })] : [])].join(' · ')}</div>
                   </td>
                   <td><span className={activityBadge(line.status)}>{t(`billing.lineStatus.${line.status}`)}</span></td>
                   <td className="tamam-num tamam-cell-amount">{formatMoney(line.charged, { currency: line.currency })}</td>
@@ -946,6 +956,15 @@ export default function BillingTab({
             <div className="bl-field">
               <label htmlFor="bl-adj-reason">{t('billing.reason')}</label>
               <textarea id="bl-adj-reason" rows={2} value={adjForm.reason} onChange={e => setAdjForm({ ...adjForm, reason: e.target.value })} placeholder={t('billing.reasonPlaceholder')} />
+            </div>
+            <div className="bl-field">
+              <ManagerOverrideFields
+                purpose={`${adjForm.adjustmentType} of ${adjForm.amount} ${defaultCurrency()}`}
+                subjectId={patient._id}
+                amount={adjForm.amount || undefined}
+                approval={adjApproval}
+                onApproval={setAdjApproval}
+              />
             </div>
           </div>
         </FormSlider>

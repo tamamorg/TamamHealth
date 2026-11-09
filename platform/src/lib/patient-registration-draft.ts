@@ -2,7 +2,9 @@ import type { CapturedFingerprint } from '@/components/FingerprintCapture';
 import {
   EMPTY_REGISTRATION_FORM,
   MAX_ADDITIONAL_NOK,
+  MAX_REPORTED_ALLERGIES,
   type AdditionalNok,
+  type ReportedAllergy,
   type RegistrationForm,
 } from '@/components/patients/registration/registration-form';
 import { dropDraft, loadDraft, saveDraft } from '@/lib/draft-storage';
@@ -17,6 +19,8 @@ export interface PatientRegistrationDraft {
   version: 1;
   form: RegistrationForm;
   additionalNok: AdditionalNok[];
+  /** Absent on drafts saved before the field existed. */
+  reportedAllergies?: ReportedAllergy[];
   fingerprints: CapturedFingerprint[];
   patientPhotoUrl: string | null;
   reviewMode: boolean;
@@ -78,6 +82,9 @@ export function normalizePatientRegistrationDraft(raw: unknown): PatientRegistra
   const additionalNok = Array.isArray(raw.additionalNok)
     ? raw.additionalNok.slice(0, MAX_ADDITIONAL_NOK).filter(isAdditionalNok)
     : [];
+  const reportedAllergies = Array.isArray(raw.reportedAllergies)
+    ? raw.reportedAllergies.slice(0, MAX_REPORTED_ALLERGIES).filter(isReportedAllergy)
+    : [];
   const fingerprints = Array.isArray(raw.fingerprints)
     ? raw.fingerprints.slice(0, 10).filter(isCapturedFingerprint)
     : [];
@@ -86,6 +93,7 @@ export function normalizePatientRegistrationDraft(raw: unknown): PatientRegistra
     version: 1,
     form: Object.fromEntries(formEntries) as unknown as RegistrationForm,
     additionalNok,
+    ...(reportedAllergies.length > 0 ? { reportedAllergies } : {}),
     fingerprints,
     patientPhotoUrl: typeof raw.patientPhotoUrl === 'string' ? raw.patientPhotoUrl : null,
     reviewMode: raw.reviewMode === true,
@@ -107,6 +115,10 @@ function isAdditionalNok(value: unknown): value is AdditionalNok {
     && typeof value.relationship === 'string'
     && typeof value.phone === 'string'
     && typeof value.address === 'string';
+}
+
+function isReportedAllergy(value: unknown): value is ReportedAllergy {
+  return isRecord(value) && typeof value.substance === 'string' && typeof value.reaction === 'string';
 }
 
 function isCapturedFingerprint(value: unknown): value is CapturedFingerprint {

@@ -40,6 +40,7 @@ import { TRANSFER_WRITE_ROLES } from '../services/patient-transfer-permissions';
 import { MULTI_FACILITY_ROLES } from './facility-entitlements';
 import { DATABASE_DOCUMENT_TYPES } from './sync-config';
 import { CARE_TEAM_ASSIGNMENT_ROLES } from '../care-team-permissions';
+import { LAB_CORRECTION_CLINICIAN_APPROVERS } from '../lab-correction-approvers';
 import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_SCHEDULING_ROLES, canRoleMoveAppointment } from '../appointment-status';
 import type { AppointmentStatus } from '../db-types';
 import phiCatalog from '../phi-field-catalog.json';
@@ -77,12 +78,27 @@ export const BILLING: readonly UserRole[] = [
   'medical_superintendent',
 ];
 /**
+ * Who may approve a waiver or adjustment as the second person ("manager
+ * override"): the facility's own management and the admins. A cashier is never
+ * on this list, and nobody approves their own waiver whatever their role.
+ * There is no finance-manager role; `hospital_manager` is the closest.
+ */
+export const WAIVER_APPROVERS: readonly UserRole[] = [
+  'super_admin', 'org_admin', 'hospital_manager', 'medical_superintendent',
+];
+/**
  * BILLING without the front desk: the records that move money. Reception keeps
  * insurance capture and the claim it raises, but it holds neither /payments nor
  * `canCollectPayments`, so a bill or payment from that role was a write no
  * screen could make and only a hand-crafted replica could.
  */
 export const COLLECTIONS: readonly UserRole[] = BILLING.filter(role => role !== 'front_desk');
+/**
+ * Roles that take and move money at the till. They may waive only through a
+ * manager's approval, so they cannot write a fresh bill that is already waived
+ * (the exempt-visit path belongs to the clinical roles that raise the charge).
+ */
+export const MONEY_HANDLERS: readonly UserRole[] = ['cashier', 'medical_biller'];
 /**
  * Roles whose clinical work raises a charge as a side effect: a prescription,
  * a lab order and an admission deposit each write the bill and its ledger
@@ -506,7 +522,7 @@ export const DOC_UPDATE_ONLY_FIELDS: Readonly<Record<string, readonly string[]>>
   prescription: [
     'status', 'orderStatus', 'dispensedAt', 'dispensedBy', 'dispensedByName',
     'quantityDispensed', 'dispenseAllocations', 'dispenseLock', 'dispenseOutcome',
-    'dispenseNote', 'dispenseAllergyReview', 'dispenseReversals', 'controlledLogId', 'counselledAt', 'counselledBy',
+    'dispenseNote', 'dispenseAllergyReview', 'dispensedBeforePayment', 'dispenseReversals', 'controlledLogId', 'counselledAt', 'counselledBy',
     'counselledPoints', 'counsellingNote', 'updatedAt', 'offlineSync',
   ],
   admission: [
@@ -837,6 +853,7 @@ export function buildValidateDocUpdateFn(
   const patientCareTeamFieldsJson = JSON.stringify(PATIENT_CARE_TEAM_FIELDS);
   const careTeamRolesJson = JSON.stringify(CARE_TEAM_ASSIGNMENT_ROLES);
   const transferWriteRolesJson = JSON.stringify(TRANSFER_WRITE_ROLES);
+  const referralReceiverRolesJson = JSON.stringify(CLINICIANS);
   const sealedFieldsJson = JSON.stringify(sealedFields);
 
   return `function (newDoc, oldDoc, userCtx, secObj) {
@@ -913,7 +930,8 @@ export function buildValidateDocUpdateFn(
 
   // ── Lab result corrections: four eyes ──────────────────────────────────
   // A correction to a filed result is proposed by one lab tech and approved
-  // by another. The app checks this; the server must too, or a device could
+  // by another lab tech or a clinician at the same facility (the facility
+  // scope check below applies to the write). The proposer never approves. The app checks this; the server must too, or a device could
   // approve its own user's correction. Identity comes from the user: role.
   if (!isDelete && oldDoc && docType === 'lab_result') {
     var labActor = null;
@@ -939,8 +957,12 @@ export function buildValidateDocUpdateFn(
     var filedResult = !!oldDoc.completedAt || oldDoc.status === 'completed'
       || contains(['resulted', 'reviewed_by_clinician', 'acted_upon', 'communicated_to_patient'], oldDoc.orderStatus);
     var correctionWrite = correctionStateChanged || (filedResult && resultChanged);
-    if (correctionWrite && actingRole !== 'lab_tech') {
-      throw({ forbidden: 'Only a lab tech may propose, approve or reject a filed lab result correction' });
+    // A clinician may only review (approve/reject) a correction that is already
+    // waiting: never propose one, never change the filed value any other way.
+    var clinicianReviewer = contains(${JSON.stringify(LAB_CORRECTION_CLINICIAN_APPROVERS)}, actingRole)
+      && !!priorCorrection && !nextCorrection;
+    if (correctionWrite && actingRole !== 'lab_tech' && !clinicianReviewer) {
+      throw({ forbidden: 'Only a lab tech may propose a filed lab result correction; only a lab tech or a clinician may approve or reject one' });
     }
     if (correctionWrite && !labActor) {
       throw({ forbidden: 'Lab result correction writes require a provisioned user identity claim' });
@@ -959,7 +981,7 @@ export function buildValidateDocUpdateFn(
       && newDoc.correctionVerifiedAt !== oldDoc.correctionVerifiedAt;
     if (approvedNow) {
       if (priorCorrection.proposedById && priorCorrection.proposedById === labActor) {
-        throw({ forbidden: 'A lab result correction must be approved by a second lab tech, not the one who proposed it' });
+        throw({ forbidden: 'A lab result correction must be approved by another lab tech or a clinician, not the one who proposed it' });
       }
       if (newDoc.correctionVerifiedById !== labActor) {
         throw({ forbidden: 'correctionVerifiedById must be the user approving the correction' });
@@ -995,12 +1017,65 @@ export function buildValidateDocUpdateFn(
         || !sameLabValue(rejection.proposedById, priorCorrection.proposedById)
         || !sameLabValue(rejection.proposedAt, priorCorrection.proposedAt)
         || resultChanged) {
-        throw({ forbidden: 'Rejecting a correction requires a second lab tech and an immutable audit entry' });
+        throw({ forbidden: 'Rejecting a correction requires another lab tech or a clinician and an immutable audit entry' });
       }
     } else if (filedResult && resultChanged) {
       throw({ forbidden: 'A filed lab result may change only through an approved pending correction' });
     } else if (!sameLabValue(nextRejected, oldRejected)) {
       throw({ forbidden: 'Rejected lab result corrections are immutable' });
+    }
+  }
+
+  // ── Waivers and payments: separation of duties, never over the balance ──
+  // A waiver (an adjustment, or a payment taken as a waiver) is approved by a
+  // second person holding an approver role, never by who entered it. A payment
+  // never exceeds what the patient owed when it was taken: the cash handed over
+  // may, and the difference is recorded as change.
+  if (!isDelete && !oldDoc && (docType === 'adjustment' || (docType === 'payment' && newDoc.method === 'waiver'))) {
+    var moneyActor = null;
+    for (var ma = 0; ma < roles.length; ma++) if (roles[ma].indexOf('user:') === 0) moneyActor = roles[ma].substring(5);
+    if (!newDoc.approvedBy || typeof newDoc.approvedBy !== 'string') {
+      throw({ forbidden: 'A waiver or adjustment must name the manager who approved it' });
+    }
+    if (newDoc.approvedBy === newDoc.createdBy || newDoc.approvedBy === newDoc.processedBy || (moneyActor && newDoc.approvedBy === moneyActor)) {
+      throw({ forbidden: 'A waiver or adjustment cannot be approved by the person who entered it' });
+    }
+    if (!contains(${JSON.stringify(WAIVER_APPROVERS)}, newDoc.approvedByRole)) {
+      throw({ forbidden: 'A waiver or adjustment must be approved by a manager or administrator' });
+    }
+  }
+  if (!isDelete && docType === 'billing' && newDoc.status === 'waived' && (!oldDoc || oldDoc.status !== 'waived')) {
+    var billActor = null;
+    for (var ba = 0; ba < roles.length; ba++) if (roles[ba].indexOf('user:') === 0) billActor = roles[ba].substring(5);
+    var humanWaiverApproved = !!newDoc.waiverApprovedBy && !(billActor && newDoc.waiverApprovedBy === billActor)
+      && contains(${JSON.stringify(WAIVER_APPROVERS)}, newDoc.waiverApprovedByRole);
+    if (oldDoc) {
+      // A human waiver: an existing bill moved to waived needs a second person.
+      if (!humanWaiverApproved) {
+        throw({ forbidden: 'A waived bill must be approved by a manager other than the person who waived it' });
+      }
+    } else if (!humanWaiverApproved) {
+      // A bill CREATED waived is how an exempt visit (non-paying, under-5,
+      // maternal, emergency, registered exempt) is recorded: nothing is owed,
+      // so no manager is involved. It must say why, carry no money, and not
+      // come from the till: the cashier and biller waive only through the
+      // approved path, never by writing a fresh waived bill.
+      var noMoney = !(newDoc.amountPaid > 0) && !(newDoc.payments && newDoc.payments.length > 0);
+      if (typeof newDoc.exemptReason !== 'string' || !newDoc.exemptReason.trim() || !noMoney
+        || contains(${JSON.stringify(MONEY_HANDLERS)}, actingRole)) {
+        throw({ forbidden: 'A waived bill must be approved by a manager other than the person who waived it' });
+      }
+    }
+  }
+  if (!isDelete && !oldDoc && docType === 'payment') {
+    if (typeof newDoc.balanceBefore === 'number' && Math.round(newDoc.amount * 100) > Math.max(Math.round(newDoc.balanceBefore * 100), 0)) {
+      throw({ forbidden: 'A payment cannot be more than the balance owed' });
+    }
+    if (newDoc.changeGiven !== undefined || newDoc.tendered !== undefined) {
+      if (newDoc.method !== 'cash' || typeof newDoc.tendered !== 'number' || typeof newDoc.changeGiven !== 'number'
+        || Math.round((newDoc.amount + newDoc.changeGiven) * 100) !== Math.round(newDoc.tendered * 100)) {
+        throw({ forbidden: 'Cash tendered must equal the amount paid plus the change given' });
+      }
     }
   }
 
@@ -1256,6 +1331,7 @@ export function buildValidateDocUpdateFn(
     var CARE_TEAM_FIELDS = ${patientCareTeamFieldsJson};
     var CARE_TEAM_ROLES = ${careTeamRolesJson};
     var TRANSFER_ROLES = ${transferWriteRolesJson};
+    var REFERRAL_RECEIVER_ROLES = ${referralReceiverRolesJson};
     var careTeamChanged = false;
     for (var ct = 0; ct < CARE_TEAM_FIELDS.length; ct++) {
       var careField = CARE_TEAM_FIELDS[ct];
@@ -1293,7 +1369,46 @@ export function buildValidateDocUpdateFn(
         && newDoc.assignmentTransferId !== oldDoc.assignmentTransferId
         && !nursingChanged;
 
-      if (!terminalCleanup && !transferChange) {
+      // Accepting a referral keeps the SENDING facility's access to the chart,
+      // the way a transfer does: the receiving clinician adds the facilities to
+      // transferFacilityIds. Only that read list may change on this path, and
+      // only by GROWING: no existing entry may be dropped, and no assignment
+      // field moves, so it can widen who sees the chart to the two facilities
+      // of a referral but never re-route care or withdraw anyone's access.
+      var referralKeep = false;
+      if (contains(REFERRAL_RECEIVER_ROLES, actingRole)) {
+        var onlyReadListChanged = true;
+        for (var rk = 0; rk < CARE_TEAM_FIELDS.length; rk++) {
+          if (CARE_TEAM_FIELDS[rk] === 'transferFacilityIds') continue;
+          if (JSON.stringify(newDoc[CARE_TEAM_FIELDS[rk]]) !== JSON.stringify(oldDoc[CARE_TEAM_FIELDS[rk]])) { onlyReadListChanged = false; break; }
+        }
+        var oldFacilityIds = oldDoc.transferFacilityIds || [];
+        var newFacilityIds = newDoc.transferFacilityIds || [];
+        var keepsEvery = Array.isArray(newFacilityIds) && Array.isArray(oldFacilityIds);
+        for (var kf = 0; keepsEvery && kf < oldFacilityIds.length; kf++) {
+          if (newFacilityIds.indexOf(oldFacilityIds[kf]) === -1) keepsEvery = false;
+        }
+        // Only the two facilities of a referral may be ADDED: the accepting
+        // facility (the writer's own) and the sender already on the chart
+        // (acceptReferral keeps registrationHospital, and lastVisitHospital is
+        // where the patient was last seen before the move). Any other id would
+        // hand an unrelated facility read access to the chart.
+        var addsOnlyReferralFacilities = Array.isArray(newFacilityIds);
+        for (var af = 0; addsOnlyReferralFacilities && af < newFacilityIds.length; af++) {
+          var addedFacility = newFacilityIds[af];
+          if (oldFacilityIds.indexOf(addedFacility) !== -1) continue;
+          var allowedAdd = contains(MULTI_FACILITY, actingRole)
+            || addedFacility === oldDoc.registrationHospital || addedFacility === oldDoc.lastVisitHospital
+            || addedFacility === oldDoc.hospitalId;
+          for (var wf = 0; !allowedAdd && wf < roles.length; wf++) {
+            if (roles[wf].indexOf('facility:') === 0 && roles[wf].substring(9) === addedFacility) allowedAdd = true;
+          }
+          if (!allowedAdd) addsOnlyReferralFacilities = false;
+        }
+        referralKeep = onlyReadListChanged && keepsEvery && addsOnlyReferralFacilities;
+      }
+
+      if (!terminalCleanup && !transferChange && !referralKeep) {
         throw({ forbidden: 'role ' + actingRole + ' may not change patient care-team assignment fields' });
       }
     }

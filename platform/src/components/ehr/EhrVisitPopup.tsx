@@ -135,6 +135,7 @@ export default function EhrVisitPopup({
   onLwbs,
   onReturnToDesk,
   onCreateNote,
+  onFinishVisit,
   nurseActions,
   stationBody,
   creatingNote = false,
@@ -203,6 +204,8 @@ export default function EhrVisitPopup({
    * all of it.
    */
   onCreateNote?: (noteType: import('@/lib/clinical-notes/note-catalog').NoteTypeId) => void;
+  /** The clinician's part is over: the visit moves on to clinic checkout. Offered only while the patient is with the clinician. */
+  onFinishVisit?: () => void;
   /** Role-specific actions that belong beside the visit tabs. */
   nurseActions?: React.ReactNode;
   /**
@@ -413,6 +416,11 @@ export default function EhrVisitPopup({
                 disabled={creatingNote}
                 onCreate={onCreateNote}
               />
+            )}
+            {onFinishVisit && (
+              <button type="button" className="ehr-visit-pop-icon ehr-visit-pop-labelled" onClick={onFinishVisit} title={t('finishVisit.hint')}>
+                <Check className="w-4 h-4" aria-hidden /> {t('finishVisit.action')}
+              </button>
             )}
             {nurseActions}
             <EhrVisitMoreMenu label={t('visitActions.more')} items={moreItems} />

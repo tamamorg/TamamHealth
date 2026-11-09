@@ -37,6 +37,7 @@ import {
 } from '@/components/icons/lucide';
 import { useSettings, useSettingsContext } from '@/lib/settings/SettingsProvider';
 import { getFacilitySettings, saveFacilitySettings } from '@/lib/settings/settings-service';
+import { normalizeHospitalPrefix } from '@/lib/settings/facility-settings';
 import {
   type FacilitySettings,
   type EncounterStationKey,
@@ -317,7 +318,8 @@ export function FacilitySettingsView({
                 <input
                   className="fs-input"
                   value={draft.hospitalNumberPrefix}
-                  onChange={e => setDraft({ ...draft, hospitalNumberPrefix: e.target.value })}
+                  maxLength={6}
+                  onChange={e => setDraft({ ...draft, hospitalNumberPrefix: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') })}
                   placeholder={t('ui.eGTab')}
                 />
               </Field>
@@ -332,10 +334,16 @@ export function FacilitySettingsView({
             </div>
             <SaveBar
               saving={saving === 'identity'}
-              onSave={() => saveSection({
+              onSave={() => {
+                if (!normalizeHospitalPrefix(draft.hospitalNumberPrefix)) {
+                  showToast(t('msg.hospitalPrefixInvalid'), 'error');
+                  return;
+                }
+                return saveSection({
                 hospitalNumberPrefix: draft.hospitalNumberPrefix,
                 reporting: { ...draft.reporting, dhis2OrgUnitId: draft.reporting.dhis2OrgUnitId },
-              }, 'identity')}
+              }, 'identity');
+              }}
             />
           </SectionCard>
         );

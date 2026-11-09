@@ -15,6 +15,7 @@
  * gets a single "as needed" column.
  */
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { useState, useMemo } from 'react';
 import { formatRxSig } from '@/lib/format-utils';
 import { useParams, useRouter } from 'next/navigation';
@@ -97,7 +98,7 @@ function MARCell({ rx, day, time, onRecord, onCorrect }: CellProps) {
           border: `1px solid ${tint.ring}`,
           minHeight: 52,
         }}
-        title={t('mar.cellTooltip', { status: t(STATUS_LABEL_KEY[adm.status]), name: adm.administeredByName, time: new Date(adm.recordedAt).toLocaleTimeString() })}
+        title={t('mar.cellTooltip', { status: t(STATUS_LABEL_KEY[adm.status]), name: adm.administeredByName, time: formatInFacilityZone(new Date(adm.recordedAt), { hour: 'numeric', minute: '2-digit', second: '2-digit' }) })}
         aria-label={t('mar.correctEntryAria', { status: t(STATUS_LABEL_KEY[adm.status]), name: adm.administeredByName })}
       >
         <div className="text-[10.5px] font-bold uppercase" style={{ letterSpacing: '0.04em' }}>

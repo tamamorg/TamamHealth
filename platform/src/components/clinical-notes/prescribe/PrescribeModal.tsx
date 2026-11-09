@@ -453,7 +453,7 @@ export default function PrescribeModal({
       : '<li>No interaction or formulary warning was surfaced by the current check.</li>';
     const body = `
       <p class="notice status-alert"><strong>DRAFT — NOT YET ISSUED.</strong> ${t('ui.thisPaperDoesNotReplace')}</p>
-      <section class="section keep"><h2 class="section-title">Medication Order</h2>
+      <section class="section keep"><h2 class="section-title">${t('prescribe.medicationOrder')}</h2>
         ${printFields([
           { label: t('hospitals.colMedication'), value: draft.drug.name },
           { label: 'Dose / Form', value: `${doseFrom(draft.drug.name)}${draft.drug.form ? ` · ${draft.drug.form}` : ''}` },
@@ -467,7 +467,7 @@ export default function PrescribeModal({
           { label: 'Pharmacy Instructions', value: draft.pharmacyNote.trim() },
         ])}
       </section>
-      <section class="section"><h2 class="section-title">Safety Context</h2>
+      <section class="section"><h2 class="section-title">${t('prescribe.safetyContext')}</h2>
         <p><strong>${t('ui.recordedAllergies')}</strong> ${e(allergyNames.join(', ') || 'None recorded')}</p><ul>${safetyRows}</ul>
       </section>
       <div class="signatures"><div><div class="signature"></div><div class="signature-label">Prescriber signature · ${e(userName)}</div></div><div><div class="signature"></div><div class="signature-label">${t('ui.dateAndTimeIssued')}</div></div></div>`;

@@ -971,9 +971,8 @@ select.cn-select {
   margin-bottom: 12px;
 }
 
-/* These filters share the row with the Create clinical note capsule
-   (`.cn-split .cn-btn-primary`, fully rounded 999px ends), so they take the
-   same pill ends and the row reads as one control family. The app shell
+/* These filters share the row with the Create clinical note button, and keep
+   the pill ends they have always had. The app shell
    squares every select to 4px (`.tamam-ehr-app select { border-radius: 0   !important }`), so the corner needs its own !important at higher
    specificity to take that trap. */
 .tamam-ehr-app .cn-list-toolbar .cn-select,
@@ -1111,36 +1110,22 @@ select.cn-select {
   padding-right: 10px;
 }
 
-/* The primary split reads as one salmon capsule: flat rose fill, dark ink
-   label, fully rounded ends, hairline ink divider ahead of the caret. Scoped
-   under .cn-split so the note editor's Sign/Save .cn-btn-primary keeps the
-   standard action color; the neutral (toolbar) tone keeps its square look. */
-.cn-split .cn-btn-primary {
-  --cn-split-fill: #f26d64;
-  --cn-split-fill-hover: #f26d64;
-  --cn-split-ink: #2e4969;
-  background: var(--cn-split-fill);
-  border-color: var(--cn-split-fill);
-  color: var(--cn-split-ink);
-}
-.cn-split .cn-btn-primary:hover:not(:disabled) {
-  background: var(--cn-split-fill-hover);
-  border-color: var(--cn-split-fill-hover);
-  filter: none;
-}
+/* The primary split is the standard blue action button, square corners, one
+   hairline divider ahead of the caret: the same look as the chart's other
+   action buttons. The fill comes from .cn-btn-primary. */
 .cn-split .cn-btn-primary.cn-split-main {
-  border-radius: 999px 0 0 999px;
+  border-radius: 0;
   padding-left: 16px;
-  border-right-color: rgba(46, 73, 105, 0.28);
+  border-right-color: rgba(255, 255, 255, 0.35);
 }
 .cn-split .cn-btn-primary.cn-split-caret {
-  border-radius: 0 999px 999px 0;
+  border-radius: 0;
   padding-right: 12px;
 }
 
 /* The icon set writes its colour out as a literal `stroke` attribute, so the
-   note glyph and the caret arrived brand-blue on the salmon fill — legible only
-   because the fill is light. Repaint both to the capsule's own ink. */
+   note glyph and the caret would arrive brand-blue on the blue fill and vanish.
+   Repaint both to the button's own ink. */
 .cn-split .cn-btn svg.lucide,
 .cn-split .cn-btn svg.lucide * {
   color: inherit;

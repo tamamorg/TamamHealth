@@ -393,8 +393,9 @@ export async function recordReferralIntake(
 }
 
 /**
- * Accept a referral: transfer the patient to the receiving hospital AND
- * mark the referral status `seen`.
+ * Accept a referral: bring the patient to the receiving hospital (the sender
+ * keeps read access to the chart, as on a transfer) AND mark the referral
+ * status `seen`.
  *
  * Ordering rationale (atomicity):
  * The two writes (patient transfer, referral status) cannot be wrapped in a
@@ -454,9 +455,11 @@ export async function acceptReferral(referralId: string): Promise<ReferralDoc | 
       // already in the destination org is the idempotent re-run case. This
       // throws (outside the swallow below) so the referral is NOT marked seen.
       let currentOrgId: string | undefined;
+      let currentPatient: { orgId?: string; transferFacilityIds?: string[] } | undefined;
       {
         try {
-          currentOrgId = ((await patientsDB().get(referral.patientId)) as { orgId?: string }).orgId;
+          currentPatient = (await patientsDB().get(referral.patientId)) as { orgId?: string; transferFacilityIds?: string[] };
+          currentOrgId = currentPatient.orgId;
         } catch {
           currentOrgId = undefined;
         }
@@ -466,9 +469,20 @@ export async function acceptReferral(referralId: string): Promise<ReferralDoc | 
       }
       try {
         const { updatePatient } = await import('./patient-service');
+        // The sending facility keeps its chart, as it does on a transfer:
+        // `registrationHospital` is where the patient was registered and is
+        // never overwritten (it used to be, which dropped the chart from the
+        // sender's list); the receiver is reached through `lastVisitHospital`;
+        // and both facilities go on `transferFacilityIds`, so a later visit
+        // elsewhere does not push either of them out.
+        const keepsAccess = [...new Set([
+          ...(currentPatient?.transferFacilityIds ?? []),
+          ...(referral.fromHospitalId ? [referral.fromHospitalId] : []),
+          referral.toHospitalId,
+        ])];
         await updatePatient(referral.patientId, {
-          registrationHospital: referral.toHospitalId,
           lastVisitHospital: referral.toHospitalId,
+          transferFacilityIds: keepsAccess,
           ...(toOrgId ? { orgId: toOrgId } : {}),
         }, orgOnlyScope(currentOrgId), { allowRehome: true });
       } catch (err) {

@@ -3,6 +3,7 @@
  * (/billing bill list + /billing/[id] bill detail).
  */
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { formatDate } from '@/lib/format-utils';
 import type { BillingDoc, BillingStatus, ChargeCategory, PaymentMethod } from '@/lib/db-types-billing';
 
@@ -11,7 +12,7 @@ export function formatBillDate(iso?: string): string {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const time = formatInFacilityZone(d, { hour: 'numeric', minute: '2-digit' }, 'en-US');
   const now = new Date();
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);

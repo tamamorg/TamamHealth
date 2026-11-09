@@ -30,7 +30,7 @@ import { teardownTestDBs } from '../helpers/test-db';
 import { createLabResult, getLabResultById } from '@/lib/services/lab-service';
 import { useLabWorkflow, type LabWorkflowController } from '@/components/lab/workflow/useLabWorkflow';
 import { correctionReviewState } from '@/components/lab/workflow/lab-workflow-types';
-import { toPortalLabResult } from '@/lib/patient-portal-labs';
+import { toPortalLabResult, isReleasedToPatient } from '@/lib/patient-portal-labs';
 import type { LabResultDoc } from '@/lib/db-types';
 
 const flush = () => new Promise<void>(resolve => setTimeout(resolve, 0));
@@ -215,11 +215,11 @@ it('the proposer can withdraw their own correction; a second tech cannot withdra
   });
 });
 
-it('a clinician sees the correction but cannot approve it', async () => {
+it('a nurse sees the correction but cannot approve it', async () => {
   const order = await filed();
   await propose(order._id, 'Negative', 'Transcription error');
 
-  await mountAs(DOCTOR, order._id);
+  await mountAs({ _id: 'user-nurse', name: 'Nurse Ayen', role: 'nurse' }, order._id);
   expect(harness.controller!.correctionReview).toBe('view');
   await act(async () => { expect(await harness.controller!.approveCorrection()).toBe(false); });
   expect((await getLabResultById(order._id))!.pendingCorrection).toBeDefined();
@@ -241,7 +241,11 @@ describe('correctionReviewState', () => {
     expect(correctionReviewState(pending, TECH_A)).toBe('own');
     expect(correctionReviewState(pending, { _id: 'user-lab-c', role: 'lab_tech' })).toBe('can_review');
     expect(correctionReviewState(pending, TECH_B, false)).toBe('view');
-    expect(correctionReviewState(pending, DOCTOR)).toBe('view');
+    // A clinician at the same facility reviews too (single-lab-tech facility).
+    expect(correctionReviewState(pending, DOCTOR)).toBe('can_review');
+    expect(correctionReviewState(pending, DOCTOR, false)).toBe('can_review');
+    expect(correctionReviewState({ ...pending, hospitalId: 'h-1' }, { ...DOCTOR, hospitalId: 'h-2' })).toBe('view');
+    expect(correctionReviewState(pending, { _id: 'u-n', role: 'nurse' })).toBe('view');
     expect(correctionReviewState(pending, { role: 'lab_tech' })).toBe('view');
   });
 });
@@ -281,4 +285,46 @@ it('never sends a pending correction to the patient portal', async () => {
   expect(portal.result).toBeUndefined();
   expect(portal.awaitingReview).toBe(true);
   expect(JSON.stringify(portal)).not.toMatch(/pendingCorrection|Transcription error|Negative/);
+});
+
+describe('a clinician approves when the facility has one lab tech', () => {
+  it('approves with their own id, name and time on the trail', async () => {
+    const order = await filed();
+    await propose(order._id, 'Negative', 'Transcription error');
+
+    await mountAs(DOCTOR, order._id);
+    expect(harness.controller!.correctionReview).toBe('can_review');
+    await act(async () => { expect(await harness.controller!.approveCorrection()).toBe(true); });
+    const saved = (await getLabResultById(order._id))!;
+    expect(saved).toMatchObject({
+      result: 'Negative', amended: true, amendedBy: 'Achol Lab',
+      correctionVerifiedBy: 'Dr. James Wani Igga', correctionVerifiedById: 'user-dr-wani',
+    });
+    expect(saved.correctionVerifiedAt).toBeTruthy();
+    expect(saved.pendingCorrection).toBeUndefined();
+  });
+
+  it('rejects with a reason, and the proposer still cannot approve their own', async () => {
+    const order = await filed();
+    await propose(order._id, 'Negative', 'Transcription error');
+    await mountAs(DOCTOR, order._id);
+    act(() => { harness.controller!.setCorrectionRejectReason('Result stands'); });
+    await act(async () => { expect(await harness.controller!.rejectCorrection()).toBe(true); });
+    const saved = (await getLabResultById(order._id))!;
+    expect(saved.result).toBe('Positive (P. falciparum)');
+    expect(saved.rejectedCorrections![0]).toMatchObject({ rejectedById: 'user-dr-wani', rejectedBy: 'Dr. James Wani Igga' });
+
+    await propose(order._id, 'Invalid', 'Wrong cassette');
+    await mountAs(TECH_A, order._id);
+    await act(async () => { expect(await harness.controller!.approveCorrection()).toBe(false); });
+    expect(harness.controller!.error).toBe('labFlow.errOwnCorrection');
+  });
+
+  it('keeps the portal hold-back while the correction is pending', async () => {
+    const order = await filed();
+    await propose(order._id, 'Negative', 'Transcription error');
+    const saved = (await getLabResultById(order._id))!;
+    expect(saved.pendingCorrection).toBeDefined();
+    expect(isReleasedToPatient(saved)).toBe(false);
+  });
 });

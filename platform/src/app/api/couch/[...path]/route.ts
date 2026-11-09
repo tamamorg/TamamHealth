@@ -12,6 +12,7 @@ import {
   type CouchLeaf,
 } from '@/lib/sync/sync-gateway';
 import { isAppendOnlyDatabase } from '@/lib/sync/write-permissions';
+import { moneyApprovalRefusal } from '@/lib/billing/approval-token';
 import { logAuditSafe } from '@/lib/services/audit-service';
 import type { PatientDoc, PatientTransferDoc } from '@/lib/db-types';
 import { tenantDatabaseName } from '@/lib/sync/tenant-database';
@@ -208,6 +209,27 @@ async function handler(request: NextRequest, context: { params: Promise<{ path: 
         for (const entry of rewritten) refused.set(entry.index, entry.id);
         logBlockedWrite('sync.gateway.append_only_rewrite_blocked', auth, database, rewritten.map(entry => entry.id));
       }
+    }
+
+    // A waiver, an adjustment or a human bill waiver carries the manager's
+    // approval as a token only the server can sign (approval-token.ts). The
+    // CouchDB validator can check who the approval NAMES; it cannot check that
+    // the manager typed their password, so that is checked here, against the
+    // server's own copy of the bill. MONEY_APPROVAL_ENFORCEMENT=off is the
+    // rollout switch for devices still carrying records written without one.
+    if (isMutatingWrite && parsed && process.env.MONEY_APPROVAL_ENFORCEMENT !== 'off'
+        && ['tamamhealth_adjustments', 'tamamhealth_payments', 'tamamhealth_billing'].includes(config.localName)) {
+      const live = liveDocsInBody(parsed, pathAfterDatabase[0]);
+      const current = await readCouchDocuments(databaseUrl, live.map(entry => entry.id), authorization);
+      const unverified: string[] = [];
+      for (const entry of live) {
+        if (refused.has(entry.index)) continue;
+        const reason = moneyApprovalRefusal(entry.doc as Record<string, unknown>, (current.get(entry.id) as Record<string, unknown> | undefined) ?? null);
+        if (!reason) continue;
+        refused.set(entry.index, entry.id);
+        unverified.push(entry.id);
+      }
+      if (unverified.length > 0) logBlockedWrite('sync.gateway.money_approval_unverified', auth, database, unverified);
     }
 
     // Patient-portal credentials on a patient document are the server's to

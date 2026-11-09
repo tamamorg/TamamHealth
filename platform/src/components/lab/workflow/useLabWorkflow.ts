@@ -357,7 +357,7 @@ export function useLabWorkflow(
 
   /**
    * Propose a correction to a filed value. Nothing on the filed result moves:
-   * the correction waits on the document until a second lab tech approves it,
+   * the correction waits on the document until another lab tech or a clinician approves it,
    * because a clinician may already have acted on the value it would replace.
    * One at a time — a second proposal would bury the first unreviewed.
    */
@@ -409,10 +409,11 @@ export function useLabWorkflow(
   }, [currentUser, order._id]);
 
   /**
-   * A second lab tech approves: the correction becomes the result, with the
+   * Another lab tech, or a clinician at the facility, approves (not through
+   * `run`: a clinician has no bench role). The correction becomes the result, with the
    * amendment stamps every reader already shows, plus who verified it.
    */
-  const approveCorrection = useCallback(() => run(async () => {
+  const approveCorrection = useCallback(() => execute(async () => {
     const { latest, pending } = await pendingForReview();
     const previous = resultWithUnit(latest.result, latest.unit) || '—';
     await update(order._id, {
@@ -435,10 +436,10 @@ export function useLabWorkflow(
       pendingCorrection: undefined,
     });
     if (pending.critical) await sendCriticalAlert(pending.result, pending.unit, pending.referenceRange);
-  }), [currentUser, order._id, pendingForReview, run, sendCriticalAlert, update]);
+  }), [currentUser, execute, order._id, pendingForReview, sendCriticalAlert, update]);
 
-  /** A second lab tech turns the correction down. The filed value stands. */
-  const rejectCorrection = useCallback(() => run(async () => {
+  /** Another lab tech or a clinician turns the correction down. The filed value stands. */
+  const rejectCorrection = useCallback(() => execute(async () => {
     const reason = correctionRejectReason.trim();
     if (!reason) throw new Error('labFlow.errCorrectionRejectReason');
     const { latest, pending } = await pendingForReview();
@@ -456,7 +457,7 @@ export function useLabWorkflow(
       ],
     });
     setCorrectionRejectReason('');
-  }), [correctionRejectReason, currentUser, order._id, pendingForReview, run, update]);
+  }), [correctionRejectReason, currentUser, execute, order._id, pendingForReview, update]);
 
   /**
    * The proposer takes their own correction back (audit 2026-11-08). Without

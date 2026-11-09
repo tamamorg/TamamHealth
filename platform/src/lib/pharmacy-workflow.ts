@@ -1,6 +1,8 @@
 import type { PrescriptionStatus } from './clinical-flow/order-lifecycles';
 import type { PrescriptionDoc } from './db-types';
 import { isTier1 } from './clinical-flow/medication-tiers';
+import { isStatFrequency } from './clinical-flow/medication-schedule';
+import type { VisitBilling } from './visits/visit-details';
 
 export function pharmacyStage(rx: Pick<PrescriptionDoc, 'orderStatus' | 'status'>): PrescriptionStatus {
   // Mirrors effectivePrescriptionStatus in prescription-service.ts: `status`
@@ -110,18 +112,57 @@ export function isFinanciallyCleared(balance?: number): boolean {
 }
 
 /**
+ * Why a dispense may go ahead with the charge still open. Pay-before-dispense
+ * is the default; these are the cases where holding the medicine would be
+ * holding care: a life-sustaining (Tier 1) medicine, a STAT order, an
+ * emergency (red triage, or an emergency exemption), and a patient who does
+ * not pay at the till (exempt/waived, or covered by insurance).
+ */
+export type PaymentRelease = 'life_sustaining' | 'stat' | 'emergency' | 'exempt' | 'insured';
+
+/** What the visit says about who pays and how urgent it is. */
+export interface PaymentReleaseContext {
+  triagePriority?: string;
+  visitBilling?: Pick<VisitBilling, 'payment' | 'method' | 'exemption'>;
+  /**
+   * What the patient still owes themselves for this visit's insured charges
+   * (the copay), when known. An insured patient with a copay to pay is held
+   * like any other; unknown is treated as owed.
+   */
+  insuredCopayOwed?: number;
+}
+
+export function paymentReleaseFor(
+  rx: Pick<PrescriptionDoc, 'medication' | 'criticalityTier' | 'frequency'>,
+  ctx: PaymentReleaseContext = {},
+): PaymentRelease | null {
+  if (isTier1(rx)) return 'life_sustaining';
+  if (isStatFrequency(rx.frequency || '')) return 'stat';
+  if (ctx.triagePriority === 'RED' || ctx.visitBilling?.exemption === 'emergency') return 'emergency';
+  if (ctx.visitBilling?.payment === 'non_paying') return 'exempt';
+  // Insurance releases only what the insurer covers: a patient who still owes
+  // a copay on this visit is held as routine until it is paid.
+  if (ctx.visitBilling?.payment === 'paying' && ctx.visitBilling.method === 'insurance'
+      && ctx.insuredCopayOwed !== undefined && ctx.insuredCopayOwed <= 0) return 'insured';
+  return null;
+}
+
+/**
  * Whether a dispense must wait for payment: `'due'` when money is owed,
  * `'unknown'` when the balance could not be read (`null` — fail closed, an
  * unread balance is never treated as paid), or `null` to go ahead.
  *
- * A life-sustaining (Tier 1) medicine is never held: the Tier-1 rule outranks
- * payment status outright, and the balance still shows at checkout.
+ * A release (see `paymentReleaseFor`) is never held, owed or unread: the
+ * charge stays open on the bill and the dispense is marked as made before
+ * payment. A life-sustaining (Tier 1) medicine is always released — the
+ * Tier-1 rule outranks payment status outright.
  */
 export function paymentHoldFor(
   rx: Pick<PrescriptionDoc, 'medication' | 'criticalityTier'>,
   balance: number | null,
+  release: PaymentRelease | null = null,
 ): 'due' | 'unknown' | null {
-  if (isTier1(rx)) return null;
+  if (isTier1(rx) || release) return null;
   if (balance === null) return 'unknown';
   return isFinanciallyCleared(balance) ? null : 'due';
 }

@@ -9,6 +9,9 @@ import { logAuditSafe } from '../audit-service';
 import { emitSyncEvent } from '../sync-event-service';
 import { createLedgerEntry } from '../ledger-service';
 import { assertRefExists, paymentsDB, toBillingPaymentMethod } from './shared';
+import type { UserRole } from '../../db-types';
+import { WAIVER_APPROVERS } from '../../sync/write-permissions';
+import type { ManagerApproval } from '../../billing/manager-override-policy';
 import { reconcilePaymentLinkState } from './payment-links';
 import { processedRefundsFor } from './refunds';
 import type { RefundErrorCode } from './refunds';
@@ -26,19 +29,115 @@ export interface CollectPaymentInput {
   mobileMoneyPhone?: string;
   cardLast4?: string;
   allocations?: PaymentAllocation[];
+  /**
+   * Cash handed over. When it is more than the balance, `amount` is the
+   * balance and the difference is change; both are kept for the receipt.
+   */
+  tendered?: number;
   notes?: string;
+  /** Required for method 'waiver': a manager other than `processedBy`. */
+  approval?: ManagerApproval;
   processedBy: string;
   processedByName: string;
   facilityId: string;
   orgId?: string;
 }
 
+const cents = (n: number) => Math.round(n * 100);
+
+/** Bill statuses that still carry money the patient (or their insurer) owes. */
+const OPEN_BILL_STATUSES: readonly string[] = ['pending', 'partial', 'insurance_pending', 'insurance_approved', 'insurance_rejected'];
+
+/**
+ * What the patient owes right now: the larger of the ledger balance and the sum
+ * of their open bills' balanceDue, both within the caller's tenant. A user with
+ * no organisation cannot read the ledger (it fails closed), so the bills are
+ * read at the cashier's own facility instead.
+ */
+export async function owedByPatient(input: Pick<CollectPaymentInput, 'patientId' | 'orgId' | 'facilityId'>): Promise<number> {
+  const { getPatientBalance } = await import('../ledger-service');
+  const ledger = input.orgId ? await getPatientBalance(input.patientId, orgOnlyScope(input.orgId)) : 0;
+  let billed = 0;
+  try {
+    type OpenBill = { status: string; balanceDue?: number; facilityId?: string; chargeReversedAt?: string };
+    let bills: OpenBill[];
+    if (input.orgId) {
+      const { getBillsByPatient } = await import('../billing-service');
+      bills = await getBillsByPatient(input.patientId, orgOnlyScope(input.orgId));
+    } else {
+      const { getDB } = await import('../../db');
+      bills = (await findByType<OpenBill>(getDB('tamamhealth_billing'), 'billing', { patientId: input.patientId }, { indexFields: ['type', 'patientId'] }))
+        .filter(b => !!input.facilityId && b.facilityId === input.facilityId);
+    }
+    billed = bills
+      .filter(b => OPEN_BILL_STATUSES.includes(b.status) && !b.chargeReversedAt)
+      .reduce((sum, b) => sum + Math.max(cents(b.balanceDue || 0), 0), 0) / 100;
+  } catch (err) {
+    // The ledger figure still stands; the bills are the second opinion.
+    console.warn('[payments] could not read the open bills (using the ledger):', err);
+  }
+  // Write-offs and waivers sit on the ledger, not on the bills, so they come
+  // off the bills' figure; the ledger figure already carries them.
+  let credited = 0;
+  if (input.orgId && billed > 0) {
+    try {
+      const { getPatientLedger } = await import('../ledger-service');
+      credited = (await getPatientLedger(input.patientId, undefined, orgOnlyScope(input.orgId)))
+        .filter(e => e.referenceType === 'adjustment' && e.amount < 0)
+        .reduce((sum, e) => sum + cents(-e.amount), 0) / 100;
+    } catch { /* the ledger figure still stands */ }
+  }
+  return Math.max(ledger, Math.max(billed - credited, 0));
+}
+
 export async function collectPayment(input: CollectPaymentInput): Promise<PaymentDoc> {
   const db = paymentsDB();
   const now = new Date().toISOString();
+  if (!Number.isFinite(input.amount) || input.amount <= 0) {
+    throw new PaymentOperationError('INVALID_AMOUNT', 'Payment not recorded. Enter an amount above zero.');
+  }
   // Don't post a payment against an encounter/invoice that doesn't exist.
   await assertRefExists('tamamhealth_encounters', input.encounterId, 'Encounter');
   await assertRefExists('tamamhealth_invoices', input.invoiceId, 'Invoice');
+
+  // A waiver is the facility forgiving money: a second person approves it.
+  if (input.method === 'waiver') {
+    const a = input.approval;
+    if (!a?.approvedBy || !a.approvedByRole) {
+      throw new PaymentOperationError('APPROVER_REQUIRED', 'Waiver not recorded. A manager must approve it with their own password.');
+    }
+    if (a.approvedBy === input.processedBy) {
+      throw new PaymentOperationError('SELF_APPROVAL', 'Waiver not recorded. You cannot approve your own waiver. Ask another manager.');
+    }
+    if (!WAIVER_APPROVERS.includes(a.approvedByRole as UserRole)) {
+      throw new PaymentOperationError('APPROVER_ROLE', 'Waiver not recorded. The approver must be a manager or administrator.');
+    }
+  }
+
+  // Record what is owed, give change: a payment can never exceed what is owed.
+  // The figure is read here, not trusted from the screen. Owed is the larger of
+  // the ledger (the whole account, tenant-wide, the figure settlement pays down)
+  // and the patient's open bills: a charge raised on another device that has not
+  // reached this one's ledger, or whose ledger mirror failed, is still owed.
+  const balanceBefore = await owedByPatient(input);
+  if (cents(input.amount) > Math.max(cents(balanceBefore), 0)) {
+    throw new PaymentOperationError(
+      'OVERPAYMENT',
+      balanceBefore > 0
+        ? `Payment not recorded. The balance is ${balanceBefore}. Enter that amount or less.`
+        : 'Payment not recorded. No charge for this patient is on this device yet. Sync, then try again.',
+    );
+  }
+  let changeGiven: number | undefined;
+  if (input.tendered !== undefined) {
+    if (input.method !== 'cash') {
+      throw new PaymentOperationError('OVERPAYMENT', 'Payment not recorded. Only cash can be handed over in excess; enter the exact amount.');
+    }
+    if (!Number.isFinite(input.tendered) || cents(input.tendered) < cents(input.amount)) {
+      throw new PaymentOperationError('INVALID_AMOUNT', 'Payment not recorded. The cash handed over is less than the amount paid.');
+    }
+    changeGiven = cents(input.tendered) > cents(input.amount) ? (cents(input.tendered) - cents(input.amount)) / 100 : undefined;
+  }
 
   const doc: PaymentDoc = {
     _id: `pmt-${uuidv4()}`,
@@ -55,6 +154,15 @@ export async function collectPayment(input: CollectPaymentInput): Promise<Paymen
     mobileMoneyPhone: input.mobileMoneyPhone,
     cardLast4: input.cardLast4,
     status: 'posted' as PaymentStatus,
+    balanceBefore,
+    ...(changeGiven !== undefined ? { tendered: input.tendered, changeGiven } : {}),
+    ...(input.method === 'waiver' && input.approval ? {
+      approvedBy: input.approval.approvedBy,
+      approvedByName: input.approval.approvedByName,
+      approvedByRole: input.approval.approvedByRole,
+      approvedAt: input.approval.approvedAt,
+      ...(input.approval.approvalToken ? { approvalToken: input.approval.approvalToken } : {}),
+    } : {}),
     processedAt: now,
     processedBy: input.processedBy,
     processedByName: input.processedByName,
@@ -323,7 +431,8 @@ export async function updatePaymentStatus(
 }
 
 export type PaymentReversalErrorCode =
-  | 'PAYMENT_NOT_REVERSIBLE' | 'PAYMENT_REFUNDED';
+  | 'PAYMENT_NOT_REVERSIBLE' | 'PAYMENT_REFUNDED'
+  | 'OVERPAYMENT' | 'INVALID_AMOUNT' | 'APPROVER_REQUIRED' | 'SELF_APPROVAL' | 'APPROVER_ROLE';
 
 export class PaymentOperationError extends Error {
   constructor(public readonly code: PaymentReversalErrorCode | RefundErrorCode, message: string) {

@@ -579,3 +579,32 @@ describe('assembleDoctorWorklist — outstanding: follow-ups due', () => {
     expect(item?.tone).toBe('neutral');
   });
 });
+
+describe('assembleDoctorWorklist — walk-ins the clinician saw', () => {
+  const walkIn = (over = {}) => makeAppointment({
+    _id: 'appt-walkin', providerId: '', providerName: '', appointmentType: 'walk_in', status: 'completed', ...over,
+  });
+
+  test('a provider-less walk-in booking reaches the Finished lane when the visit names this clinician', () => {
+    const encounters = [{ _id: 'enc-1', appointmentId: 'appt-walkin', clinicianId: 'doctor-1', assignedClinicianId: '' }] as never;
+    const result = assembleDoctorWorklist(baseInput({ appointments: [walkIn()], encounters }));
+    expect(result.appointments.map(a => a._id)).toEqual(['appt-walkin']);
+  });
+
+  test("another clinician's walk-in stays off the board", () => {
+    const encounters = [{ _id: 'enc-1', appointmentId: 'appt-walkin', clinicianId: 'doctor-9', assignedClinicianId: 'doctor-9' }] as never;
+    const result = assembleDoctorWorklist(baseInput({ appointments: [walkIn()], encounters }));
+    expect(result.appointments).toEqual([]);
+  });
+
+  test('with no visit thread, the triage handoff to this clinician on the same day claims it', () => {
+    const triages = [makeTriage({ patientId: 'patient-1', assignedProviderId: 'doctor-1', triagedAt: '2026-08-04T08:30:00.000Z', status: 'discharged' as never })];
+    const result = assembleDoctorWorklist(baseInput({ appointments: [walkIn()], triages }));
+    expect(result.appointments.map(a => a._id)).toEqual(['appt-walkin']);
+  });
+
+  test('an unattributed walk-in is not claimed by every doctor', () => {
+    const result = assembleDoctorWorklist(baseInput({ appointments: [walkIn()] }));
+    expect(result.appointments).toEqual([]);
+  });
+});

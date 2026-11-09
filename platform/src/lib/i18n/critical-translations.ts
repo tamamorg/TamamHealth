@@ -69,6 +69,10 @@ export const CRITICAL_TRANSLATIONS: Record<Locale, TranslationMap> = {
     'login.termsAndConditions': 'Terms & Conditions',
     'login.useDifferentAccount': 'Sign in as a different account',
     'login.usernameLabel': 'Username or Staff ID',
+    'errorScreen.title': 'This page could not be loaded',
+    'errorScreen.retry': 'Try again',
+    'errorScreen.reload': 'Reload page',
+    'errorScreen.body': 'TamamHealth hit an unexpected problem. Records that were already saved are not affected. Reload the page, and contact your administrator if it happens again.',
   },
   apd: {
     'welcome.title': 'مرحب بيك',
@@ -130,5 +134,9 @@ export const CRITICAL_TRANSLATIONS: Record<Locale, TranslationMap> = {
     'login.termsAndConditions': 'الشروط والأحكام',
     'login.useDifferentAccount': 'ادخل بحساب تاني',
     'login.usernameLabel': 'اسم المستخدم ولا رقم الموظف',
+    'errorScreen.title': 'الصفحة دي ما قدرت تفتح',
+    'errorScreen.retry': 'جرّب تاني',
+    'errorScreen.reload': 'افتح الصفحة من جديد',
+    'errorScreen.body': 'حصلت مشكلة ما متوقعة في تمام هيلث. السجلات البتحفظت قبل كدا ما اتأثرت. افتح الصفحة من جديد، ولو المشكلة اتكررت كلّم الإداري بتاعك.',
   },
 };

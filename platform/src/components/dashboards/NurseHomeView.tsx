@@ -1,5 +1,6 @@
 'use client';
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { useAuth } from '@/lib/context';
 import { usePostConsultQueue } from '@/modules/post-consult/client';
 import { useTranslation } from '@/lib/i18n/useTranslation';
@@ -78,7 +79,7 @@ export interface NurseWorklistResult {
 }
 
 function shortDate(iso?: string): string {
-  return iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
+  return iso ? formatInFacilityZone(new Date(iso), { month: 'short', day: 'numeric' }) : '';
 }
 
 /**

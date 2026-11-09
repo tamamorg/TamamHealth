@@ -1,5 +1,6 @@
 'use client';
 
+import { formatInFacilityZone } from '@/lib/time-juba';
 import { useState, useEffect } from 'react';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import '@/components/billing/billing.css';
@@ -62,8 +63,8 @@ export default function PaymentHistoryTimeline({ patientId, limit = 20 }: Paymen
             const isCredit = entry.amount < 0;
             const valueClass = entry.entryType === 'refund' ? '' : isCredit ? 'bl-stat-value--good' : '';
             const date = new Date(entry.createdAt);
-            const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            const dateStr = formatInFacilityZone(date, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US');
+            const timeStr = formatInFacilityZone(date, { hour: '2-digit', minute: '2-digit' }, 'en-US');
 
             return (
               <tr key={entry._id}>

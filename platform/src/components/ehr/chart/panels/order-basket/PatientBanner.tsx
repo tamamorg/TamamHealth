@@ -17,7 +17,7 @@ export function AllergyLine({ patient }: { patient: PatientDoc }) {
   // Same three states as the chart header: allergies on record (structured,
   // else the legacy list), an assessment that found none, or not asked yet.
   const active = patient.structuredAllergies !== undefined
-    ? patient.structuredAllergies.filter(a => a.status === 'active').map(a => a.substance)
+    ? patient.structuredAllergies.filter(a => a.status === 'active').map(a => (a.verified === false ? `${a.substance} (${t('allergy.unverified')})` : a.substance))
     : (patient.allergies || []).filter(a => a && !isNoAllergySentinel(a));
   const assessed = patient.structuredAllergies !== undefined || !!patient.noKnownDrugAllergies;
   const value = active.length

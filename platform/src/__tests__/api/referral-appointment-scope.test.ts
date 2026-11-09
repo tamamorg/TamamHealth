@@ -164,9 +164,12 @@ describe('BUG 1 — /api/referrals accept / update_status scope guard', () => {
     const persisted = await getReferralById(referral._id);
     expect(persisted?.status).toBe('seen');
     // Legitimate cross-org referral: the patient is re-homed into the receiver.
-    const moved = await patientsDB().get('pat-2') as unknown as { orgId?: string; registrationHospital?: string };
+    const moved = await patientsDB().get('pat-2') as unknown as { orgId?: string; registrationHospital?: string; lastVisitHospital?: string; transferFacilityIds?: string[] };
     expect(moved.orgId).toBe(ORG_B);
-    expect(moved.registrationHospital).toBe(HOSP_B);
+    // Registered where they were; seen at the receiver; both facilities kept on the chart.
+    expect(moved.registrationHospital).toBe(HOSP_A);
+    expect(moved.lastVisitHospital).toBe(HOSP_B);
+    expect(moved.transferFacilityIds).toEqual(expect.arrayContaining([HOSP_A, HOSP_B]));
   });
 
   test('the SENDING org cannot accept its own outbound cross-org referral', async () => {

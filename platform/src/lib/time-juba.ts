@@ -113,6 +113,27 @@ export function clinicalClockTime(value: string | number | Date | undefined | nu
   return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: activeCountry().timeZone });
 }
 
+/** The facility's IANA time zone (the active country's; Africa/Juba by default). */
+export function facilityTimeZone(): string {
+  return activeCountry().timeZone || 'Africa/Juba';
+}
+
+/**
+ * Display-only formatting of an instant in the facility zone, whatever zone the
+ * device is set to. Stored values stay ISO UTC; this never feeds a query key.
+ */
+export function formatInFacilityZone(
+  date: Date,
+  options: Intl.DateTimeFormatOptions,
+  locale?: string | string[],
+): string {
+  try {
+    return new Intl.DateTimeFormat(locale, { ...options, timeZone: facilityTimeZone() }).format(date);
+  } catch {
+    return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'Africa/Juba' }).format(date);
+  }
+}
+
 /** The UTC instant of a clinical wall-clock moment, given as if it were UTC. */
 export function wallClockToUtcMs(wallMs: number): number {
   return wallMs - zoneOffsetMs(new Date(wallMs));

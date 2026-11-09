@@ -29,6 +29,9 @@ const labTech: Ctx = { name: 'lab', roles: ['org:org-a', 'role:lab_tech', 'user:
 /** The lab tech who proposes the corrections below (proposedById u-lab-a). */
 const proposer: Ctx = { name: 'lab-a', roles: ['org:org-a', 'role:lab_tech', 'user:u-lab-a', 'facility:h-1'] };
 const triageNurse: Ctx = { name: 'nurse', roles: ['org:org-a', 'role:triage_nurse', 'user:u-nurse', 'facility:h-1'] };
+const pharmacist: Ctx = { name: 'ph', roles: ['org:org-a', 'role:pharmacist', 'user:u-ph', 'facility:h-1'] };
+const clinicalOfficer: Ctx = { name: 'co', roles: ['org:org-a', 'role:clinical_officer', 'user:u-co', 'facility:h-1'] };
+const superintendent: Ctx = { name: 'ms', roles: ['org:org-a', 'role:medical_superintendent', 'user:u-ms', 'facility:h-1'] };
 const doctor: Ctx = { name: 'doctor', roles: ['org:org-a', 'role:doctor', 'user:u-doctor', 'facility:h-1'] };
 
 const lab = (over: Record<string, unknown> = {}) => ({
@@ -50,6 +53,18 @@ const triage = (over: Record<string, unknown> = {}) => ({
   airway: 'clear', breathing: 'normal', circulation: 'normal', consciousness: 'alert',
   triagedBy: 'u-nurse', triagedByName: 'Nurse Ayen', triagedAt: '2026-11-07T08:00:00.000Z',
   ...over,
+});
+
+const NEW_RESULT = 'oenc:v1:b3JnLWE:aXY:Y29ycmVjdGVk';
+const pendingResult = lab({ _rev: '3-a', pendingCorrection: correction({ result: NEW_RESULT }) });
+const approvalBy = (id: string) => lab({
+  _rev: '4-a', result: NEW_RESULT, abnormal: false, amended: true, amendedAt: '2026-11-07T11:00:00.000Z',
+  amendedBy: 'Achol Lab', amendedFrom: SEALED, amendmentReason: SEALED,
+  correctionVerifiedBy: 'Reviewer', correctionVerifiedById: id, correctionVerifiedAt: '2026-11-07T11:00:00.000Z',
+});
+const rejectionBy = (id: string) => lab({
+  _rev: '4-a',
+  rejectedCorrections: [{ ...correction(), rejectedBy: 'Reviewer', rejectedById: id, rejectedAt: '2026-11-07T11:00:00.000Z', rejectionReason: SEALED }],
 });
 
 const review = (over: Record<string, unknown> = {}) => ({
@@ -82,7 +97,7 @@ describe('validate_doc_update', () => {
       amendedBy: 'Achol Lab', amendedFrom: SEALED, amendmentReason: SEALED,
       correctionVerifiedBy: 'Achol Lab', correctionVerifiedById: 'u-lab-a', correctionVerifiedAt: '2026-11-07T11:00:00.000Z',
     });
-    expect(reason(approval, lab({ _rev: '3-a', pendingCorrection: correction({ result: 'oenc:v1:b3JnLWE:aXY:Y29ycmVjdGVk' }) }), proposer)).toMatch(/second lab tech/);
+    expect(reason(approval, lab({ _rev: '3-a', pendingCorrection: correction({ result: 'oenc:v1:b3JnLWE:aXY:Y29ycmVjdGVk' }) }), proposer)).toMatch(/another lab tech or a clinician|someone other than/);
   });
 
   it('refuses an approval that names someone other than the approver', () => {
@@ -98,17 +113,39 @@ describe('validate_doc_update', () => {
       .toMatch(/must name the user proposing it/);
   });
 
-  it('refuses non-lab roles proposing, approving or rejecting corrections', () => {
-    const before = lab();
+  it('refuses non-lab, non-clinician roles proposing, approving or rejecting corrections', () => {
     const proposed = lab({ _rev: '3-a', pendingCorrection: correction() });
-    expect(reason(proposed, before, doctor)).toMatch(/Only a lab tech/);
-    expect(reason(lab({
-      _rev: '4-a', result: 'oenc:v1:b3JnLWE:aXY:Y29ycmVjdGVk', amended: true, amendedAt: '2026-11-07T11:00:00.000Z',
-      amendedBy: 'Achol Lab', amendmentReason: SEALED, correctionVerifiedById: 'u-doctor', correctionVerifiedAt: '2026-11-07T11:00:00.000Z',
-    }), proposed, doctor)).toMatch(/Only a lab tech/);
-    expect(reason(lab({
-      _rev: '4-a', rejectedCorrections: [{ ...correction(), rejectedById: 'u-doctor', rejectedAt: 'x', rejectionReason: SEALED }],
-    }), proposed, doctor)).toMatch(/Only a lab tech/);
+    for (const actor of [triageNurse, pharmacist]) {
+      expect(reason(proposed, lab(), actor)).toMatch(/Only a lab tech/);
+      expect(reason(approvalBy('u-nurse'), pendingResult, actor)).toMatch(/Only a lab tech/);
+      expect(reason(rejectionBy('u-nurse'), proposed, actor)).toMatch(/Only a lab tech/);
+    }
+  });
+
+  // A facility with one lab tech must still be able to correct a result:
+  // a clinician at the facility reviews it. Four eyes still holds.
+  describe('clinician approval of a correction (single-lab-tech facility)', () => {
+    it('lets a doctor, clinical officer or superintendent approve or reject', () => {
+      for (const actor of [doctor, clinicalOfficer, superintendent]) {
+        const id = actor.roles.find(r => r.startsWith('user:'))!.substring(5);
+        expect(reason(approvalBy(id), pendingResult, actor)).toBeNull();
+        expect(reason(rejectionBy(id), lab({ _rev: '3-a', pendingCorrection: correction() }), actor)).toBeNull();
+      }
+    });
+    it('refuses a clinician proposing a correction', () => {
+      expect(reason(lab({ _rev: '3-a', pendingCorrection: correction({ proposedById: 'u-doctor' }) }), lab(), doctor)).toMatch(/Only a lab tech may propose/);
+    });
+    it('refuses a clinician changing the filed value without a pending correction', () => {
+      expect(reason(lab({ result: 'oenc:v1:b3JnLWE:aXY:Y29ycmVjdGVk' }), lab(), doctor)).toMatch(/Only a lab tech/);
+    });
+    it('refuses a clinician approving under someone else\'s id, or applying a different value', () => {
+      expect(reason(approvalBy('u-lab-b'), pendingResult, doctor)).toMatch(/correctionVerifiedById must be the user approving/);
+      expect(reason({ ...approvalBy('u-doctor'), result: SEALED }, pendingResult, doctor)).toMatch(/pending value/);
+    });
+    it('refuses a clinician at another facility', () => {
+      const elsewhere: Ctx = { name: 'dr', roles: ['org:org-a', 'role:doctor', 'user:u-doctor', 'facility:h-2'] };
+      expect(reason(approvalBy('u-doctor'), pendingResult, elsewhere)).not.toBeNull();
+    });
   });
 
   it('refuses direct changes to a filed value without an approved pending correction', () => {
@@ -121,7 +158,7 @@ describe('validate_doc_update', () => {
     expect(reason(lab({ _rev: '4-a' }), proposed, labTech)).toMatch(/Rejecting a correction requires/);
     expect(reason(lab({
       _rev: '4-a', rejectedCorrections: [{ ...correction(), rejectedById: 'u-lab-a', rejectedAt: 'x', rejectionReason: SEALED }],
-    }), proposed, proposer)).toMatch(/second lab tech/);
+    }), proposed, proposer)).toMatch(/another lab tech or a clinician|someone other than/);
     expect(reason(lab({ _rev: '4-a', pendingCorrection: correction({ proposedAt: 'changed' }) }), proposed, proposer))
       .toMatch(/immutable until it is approved or rejected/);
   });

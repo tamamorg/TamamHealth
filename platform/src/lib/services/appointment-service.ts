@@ -336,7 +336,10 @@ export async function assertNoBookingConflicts(
     const sameDayOpen = existing.find(a =>
       a._id !== excludeAppointmentId &&
       a.appointmentDate === data.appointmentDate &&
-      holdsSlot(a));
+      holdsSlot(a) &&
+      // A visit that was checked out is over: it must not keep the patient from
+      // coming back the same day (it still holds its own time slot above).
+      a.status !== 'completed');
     if (sameDayOpen) {
       throw new BookingConflictError(
         `${data.patientName || 'This patient'} already has an open visit on ${sameDayOpen.appointmentDate} at ${sameDayOpen.appointmentTime}` +
