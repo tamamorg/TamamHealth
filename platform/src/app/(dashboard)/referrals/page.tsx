@@ -764,7 +764,7 @@ export default function ReferralsPage() {
                       )}
                       <div className="ehr-appointment-main appointment-card-patient">
                         {hasPatientChart ? (
-                          <Link href={`/patients/${ref.patientId}?tab=referrals`} {...stopsClickPropagation}>{shortenPersonName(ref.patientName)}</Link>
+                          <Link href={`/patients/${ref.receiverPatientId && ref.toOrgId === currentUser?.orgId ? ref.receiverPatientId : ref.patientId}?tab=referrals`} {...stopsClickPropagation}>{shortenPersonName(ref.patientName)}</Link>
                         ) : (
                           <strong>{shortenPersonName(ref.patientName)}</strong>
                         )}

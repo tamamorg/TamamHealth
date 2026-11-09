@@ -67,8 +67,8 @@ export function useReferrals() {
   }, [loadReferrals]);
 
   const accept = useCallback(async (id: string) => {
-    const { acceptReferral } = await import('../services/referral-service');
-    if (!(await acceptReferral(id))) throw new Error('Referral not accepted');
+    const { acceptReferralFromDevice } = await import('../services/referral-service');
+    if (!(await acceptReferralFromDevice(id))) throw new Error('Referral not accepted');
     await loadReferrals();
   }, [loadReferrals]);
 

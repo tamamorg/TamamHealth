@@ -653,6 +653,12 @@ export const PATIENT_CARE_TEAM_FIELDS = [
 ] as const;
 
 /**
+ * Patient fields that link the two copies of a chart after a cross-organisation
+ * referral. Only the server writes them (the validator refuses any device).
+ */
+export const PATIENT_REFERRAL_LINK_FIELDS = ['referredOut', 'referredFrom'] as const;
+
+/**
  * Fields naming the facility that OWNS a document.
  *
  * Deliberately just these two. `facility-entitlements.ts` lists seven fields for
@@ -1337,6 +1343,24 @@ export function buildValidateDocUpdateFn(
   // Care-team routing is a protected sub-resource of the patient document.
   // A broad right to update patient demographics must not imply a right to
   // move clinical accountability.
+  // ── Patient: the cross-organisation referral link is the server's ──────
+  // Accepting a referral across organisations leaves the sender its own chart
+  // marked \`referredOut\` and gives the receiver a copy marked \`referredFrom\`.
+  // Both are written by the server (an _admin write, which returned at the top)
+  // after it has checked the caller is on the receiving side. A device may not
+  // set, change or clear either one: setting \`referredOut\` would lock the
+  // chart, and forging \`referredFrom\` would claim a referral that never
+  // happened. Everything else about a patient is judged as before.
+  if (!isDelete && docType === 'patient') {
+    var LINK_FIELDS = ${JSON.stringify(PATIENT_REFERRAL_LINK_FIELDS)};
+    for (var lf = 0; lf < LINK_FIELDS.length; lf++) {
+      var linkBefore = oldDoc ? oldDoc[LINK_FIELDS[lf]] : undefined;
+      if (JSON.stringify(newDoc[LINK_FIELDS[lf]]) !== JSON.stringify(linkBefore)) {
+        throw({ forbidden: LINK_FIELDS[lf] + ' is written by the server when a referral is accepted' });
+      }
+    }
+  }
+
   if (oldDoc && !isDelete && docType === 'patient') {
     var CARE_TEAM_FIELDS = ${patientCareTeamFieldsJson};
     var CARE_TEAM_ROLES = ${careTeamRolesJson};

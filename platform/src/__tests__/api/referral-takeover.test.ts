@@ -5,8 +5,8 @@
  *   - a referral can only be raised for a patient inside the caller's scope;
  *   - accept / acknowledge are RECEIVER actions, never the sender's;
  *   - cancel is a SENDER action;
- *   - a legitimate cross-org referral accepted by the receiver still re-homes
- *     the patient, and only when the sending org owned the patient.
+ *   - a legitimate cross-org referral accepted by the receiver still splits the chart
+ *     into a linked receiver copy, and only when the sending org owned the patient.
  */
 jest.mock('@/lib/audit/with-audit', () => ({
   AUDIT_ACTION_HEADER: 'x-audit-action',

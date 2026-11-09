@@ -1,6 +1,6 @@
 import { captureException } from '@/lib/observability';
-import { referralsDB, hospitalsDB, medicalRecordsDB, patientsDB } from '../db';
-import type { ReferralDoc, HospitalDoc, MedicalRecordDoc } from '../db-types';
+import { referralsDB, hospitalsDB, medicalRecordsDB, patientsDB, organizationsDB } from '../db';
+import type { ReferralDoc, HospitalDoc, MedicalRecordDoc, PatientDoc } from '../db-types';
 import type { DataScope } from './data-scope';
 import { filterByScope, orgOnlyScope } from './data-scope';
 import type { Attachment, ReferralOutcome } from '@/data/mock';
@@ -177,6 +177,15 @@ export async function getReferralsByPatient(patientId: string, scope?: DataScope
     { patientId },
     { indexFields: ['type', 'patientId'] },
   );
+  // The receiving organisation's chart is a linked copy (see
+  // splitPatientAcrossOrgs): its referral names the SENDER's patient id.
+  const arrived = await findByType<ReferralDoc>(
+    referralsDB(),
+    'referral',
+    { receiverPatientId: patientId },
+    { indexFields: ['type', 'receiverPatientId'] },
+  );
+  for (const r of arrived) if (!rows.some(x => x._id === r._id)) rows.push(r);
   const visible = scope ? filterByScope(rows, scope) : rows;
   return visible.sort((a, b) => (b.referralDate || '').localeCompare(a.referralDate || ''));
 }
@@ -330,7 +339,9 @@ export async function updateReferralNotes(
  */
 export async function recordReferralIntake(
   referral: ReferralDoc,
-  toOrgId?: string
+  toOrgId?: string,
+  /** The receiving organisation's own patient document, after a cross-organisation referral. */
+  receiverPatientId?: string,
 ): Promise<MedicalRecordDoc | null> {
   if (!referral.patientId || !referral.toHospitalId) return null;
   const db = medicalRecordsDB();
@@ -347,7 +358,7 @@ export async function recordReferralIntake(
   const doc: MedicalRecordDoc = withPendingOfflineSync({
     _id: intakeId,
     type: 'medical_record',
-    patientId: referral.patientId,
+    patientId: receiverPatientId || referral.patientId,
     hospitalId: referral.toHospitalId,
     hospitalName: referral.toHospital,
     orgId: toOrgId,
@@ -392,6 +403,112 @@ export async function recordReferralIntake(
   }
 }
 
+/** Fields that belong to the sending side and must never reach the receiver's copy of a chart. */
+const NOT_COPIED_TO_RECEIVER = [
+  '_id', '_rev', '_revisions', '_attachments', 'offlineSync', 'syncStatus',
+  // The receiver's own accounts, not the sender's.
+  'portalUsername', 'portalPasswordHash', 'portalPasswordSetAt', 'portalCredentialEpoch',
+  'portalInviteTokenHash', 'portalInviteExpiresAt', 'portalDisabledAt', 'portalEnabledAt',
+  'portalEnabledBy', 'portalLastLoginAt',
+  // Sender staff and routing: names people in another organisation.
+  'assignedDoctor', 'assignedDoctorName', 'assignedDepartment', 'assignedAt', 'assignedBy',
+  'assignedByName', 'assignmentNote', 'assignmentStatus', 'assignmentAcceptedAt',
+  'assignmentAcceptedBy', 'assignmentAcceptedByName', 'assignmentSource', 'assignmentTransferId',
+  'assignedNurse', 'assignedNurseName', 'assignedNurseAt', 'assignedNurseBy', 'assignedNurseByName',
+  'careTeam', 'stationAssignments', 'transferFacilityIds',
+  // Duplicate links and referral links are the sender's own.
+  'duplicateOf', 'duplicateMarkedAt', 'duplicateMarkedBy', 'duplicateMarkedByName', 'duplicateReason',
+  'referredOut', 'referredFrom', 'toOrgId',
+] as const;
+
+/**
+ * Hand a cross-organisation referral its two charts.
+ *
+ * Both organisations end up with a patient document of their own, linked to
+ * each other, and neither is removed:
+ *   - the SENDER's document keeps its id (its notes, labs and prescriptions
+ *     point at it) and is marked `referredOut`, so its chart still opens,
+ *     read-only, with "Referred to X";
+ *   - the RECEIVER gets a copy under a deterministic id (so re-running
+ *     acceptance never makes a second one), `referredFrom` pointing back. It is
+ *     written through the encrypted database layer under the receiver's own
+ *     organisation id, so its PHI is sealed with the receiver's key and never
+ *     carries the sender's ciphertext.
+ * The sender's records are not copied: each side keeps its own.
+ *
+ * A referral back to an organisation that already holds a linked copy reuses
+ * that copy and lifts its `referredOut`, instead of creating a third chart.
+ */
+async function splitPatientAcrossOrgs(referral: ReferralDoc, sender: PatientDoc, toOrgId: string): Promise<string> {
+  const { mutatePatient } = await import('./patient-service');
+  const now = new Date().toISOString();
+  const orgName = async (orgId: string | undefined) => {
+    if (!orgId) return undefined;
+    try { return ((await organizationsDB().get(orgId)) as { name?: string }).name; } catch { return undefined; }
+  };
+  const [fromOrgName, toOrgName] = await Promise.all([orgName(sender.orgId), orgName(toOrgId)]);
+  const receiverId = sender.referredFrom?.orgId === toOrgId
+    ? sender.referredFrom.patientId
+    : `${sender._id}--${toOrgId}`;
+
+  // 1. The receiver's chart.
+  let existing: PatientDoc | null = null;
+  try { existing = await patientsDB().get(receiverId) as PatientDoc; } catch { existing = null; }
+  if (!existing) {
+    const copy: Record<string, unknown> = { ...(sender as unknown as Record<string, unknown>) };
+    for (const field of NOT_COPIED_TO_RECEIVER) delete copy[field];
+    const doc = withPendingOfflineSync({
+      ...copy,
+      _id: receiverId,
+      type: 'patient',
+      orgId: toOrgId,
+      registrationHospital: referral.toHospitalId,
+      lastVisitHospital: referral.toHospitalId,
+      transferFacilityIds: [referral.toHospitalId],
+      referredFrom: {
+        referralId: referral._id,
+        patientId: sender._id,
+        orgId: sender.orgId as string,
+        hospitalId: referral.fromHospitalId,
+        ...(referral.fromHospital ? { hospitalName: referral.fromHospital } : {}),
+        ...(fromOrgName ? { orgName: fromOrgName } : {}),
+        at: now,
+      },
+      createdAt: now,
+      updatedAt: now,
+    } as unknown as PatientDoc, now);
+    const resp = await patientsDB().put(doc);
+    doc._rev = resp.rev;
+    await logAuditSafe('CREATE_PATIENT', undefined, undefined,
+      `Created patient ${doc._id} for referral ${referral._id} (linked copy of ${sender._id})`);
+    emitSyncEvent({
+      resourceType: 'patient', resourceId: doc._id, operation: 'create',
+      resourceVersion: doc._rev, orgId: doc.orgId, hospitalId: doc.registrationHospital,
+    });
+  } else if (existing.referredOut) {
+    // The patient is coming back to a chart that was referred out: reopen it.
+    await mutatePatient(receiverId, p => ({
+      referredOut: undefined,
+      lastVisitHospital: referral.toHospitalId,
+      transferFacilityIds: [...new Set([...(p.transferFacilityIds ?? []), referral.toHospitalId])],
+    }));
+  }
+
+  // 2. The sender's chart stays, marked as referred out. Idempotent per referral.
+  await mutatePatient(sender._id, p => (p.referredOut?.referralId === referral._id ? null : {
+    referredOut: {
+      referralId: referral._id,
+      toOrgId,
+      toHospitalId: referral.toHospitalId,
+      ...(referral.toHospital ? { toHospitalName: referral.toHospital } : {}),
+      ...(toOrgName ? { toOrgName } : {}),
+      receiverPatientId: receiverId,
+      at: now,
+    },
+  }));
+  return receiverId;
+}
+
 /**
  * Accept a referral: bring the patient to the receiving hospital (the sender
  * keeps read access to the chart, as on a transfer) AND mark the referral
@@ -418,6 +535,7 @@ export class ReferralTenantError extends Error {
 
 export async function acceptReferral(referralId: string): Promise<ReferralDoc | null> {
   const db = referralsDB();
+  let receiverPatientId: string | undefined;
   try {
     const referral = await db.get(referralId) as ReferralDoc;
 
@@ -434,31 +552,33 @@ export async function acceptReferral(referralId: string): Promise<ReferralDoc | 
     // The clinician can always re-run acceptance, which re-attempts the
     // transfer; the referral list reflects the action either way.
     if (referral.patientId && referral.toHospitalId) {
-      // Re-home the patient to the receiving hospital AND its org. Passing
-      // only the hospital fields is not enough for a cross-org referral:
-      // updatePatient keeps the existing orgId, and data-scope filters on
-      // orgId first — so the patient would stay invisible to the receiving
-      // org's users. Look up the destination org and hand it over explicitly.
+      // Cross-organisation referrals SPLIT the chart; they never move it.
+      // Each organisation is its own tenant database, so one document cannot
+      // belong to both: moving it in place (the old behaviour) emptied the
+      // sender's chart. The sender keeps its document, marked `referredOut`;
+      // the receiver gets its own linked copy (see splitPatientAcrossOrgs).
       let toOrgId: string | undefined;
       try {
         const to = await hospitalsDB().get(referral.toHospitalId) as HospitalDoc;
         toOrgId = to?.orgId;
       } catch {
-        // Destination hospital unreachable (offline) — fall back to leaving
-        // the orgId as-is; same-org referrals are unaffected.
+        // Destination hospital unreachable (offline) — a same-org referral is
+        // unaffected; a cross-org one falls back to the referral's own toOrgId.
+        toOrgId = referral.toOrgId;
       }
-      // Tenant guard (the cross-org takeover fix). Re-homing moves a patient
-      // into another organisation, so it is only legitimate when the patient
+      // Tenant guard (the cross-org takeover fix). Splitting hands a copy of the
+      // chart to another organisation, so it is only legitimate when the patient
       // CURRENTLY belongs to the org that was entitled to refer them -- the
       // referral's sending org. A referral stamped by an org that never owned
-      // the patient (forged via a known patient id) must not move it. A patient
-      // already in the destination org is the idempotent re-run case. This
-      // throws (outside the swallow below) so the referral is NOT marked seen.
+      // the patient (forged via a known patient id) must not copy it. A patient
+      // already in the destination org (a chart moved before this split
+      // existed) is the idempotent re-run case. This throws (outside the swallow
+      // below) so the referral is NOT marked seen.
       let currentOrgId: string | undefined;
-      let currentPatient: { orgId?: string; transferFacilityIds?: string[] } | undefined;
+      let currentPatient: PatientDoc | undefined;
       {
         try {
-          currentPatient = (await patientsDB().get(referral.patientId)) as { orgId?: string; transferFacilityIds?: string[] };
+          currentPatient = (await patientsDB().get(referral.patientId)) as PatientDoc;
           currentOrgId = currentPatient.orgId;
         } catch {
           currentOrgId = undefined;
@@ -468,23 +588,25 @@ export async function acceptReferral(referralId: string): Promise<ReferralDoc | 
         }
       }
       try {
-        const { updatePatient } = await import('./patient-service');
-        // The sending facility keeps its chart, as it does on a transfer:
-        // `registrationHospital` is where the patient was registered and is
-        // never overwritten (it used to be, which dropped the chart from the
-        // sender's list); the receiver is reached through `lastVisitHospital`;
-        // and both facilities go on `transferFacilityIds`, so a later visit
-        // elsewhere does not push either of them out.
-        const keepsAccess = [...new Set([
-          ...(currentPatient?.transferFacilityIds ?? []),
-          ...(referral.fromHospitalId ? [referral.fromHospitalId] : []),
-          referral.toHospitalId,
-        ])];
-        await updatePatient(referral.patientId, {
-          lastVisitHospital: referral.toHospitalId,
-          transferFacilityIds: keepsAccess,
-          ...(toOrgId ? { orgId: toOrgId } : {}),
-        }, orgOnlyScope(currentOrgId), { allowRehome: true });
+        if (currentPatient && toOrgId && currentOrgId && toOrgId !== currentOrgId) {
+          receiverPatientId = await splitPatientAcrossOrgs(referral, currentPatient, toOrgId);
+        } else {
+          const { updatePatient } = await import('./patient-service');
+          // The sending facility keeps its chart, as it does on a transfer:
+          // `registrationHospital` is where the patient was registered and is
+          // never overwritten; the receiver is reached through
+          // `lastVisitHospital`; and both facilities go on `transferFacilityIds`,
+          // so a later visit elsewhere does not push either of them out.
+          const keepsAccess = [...new Set([
+            ...(currentPatient?.transferFacilityIds ?? []),
+            ...(referral.fromHospitalId ? [referral.fromHospitalId] : []),
+            referral.toHospitalId,
+          ])];
+          await updatePatient(referral.patientId, {
+            lastVisitHospital: referral.toHospitalId,
+            transferFacilityIds: keepsAccess,
+          }, orgOnlyScope(currentOrgId));
+        }
       } catch (err) {
         console.error('Failed to transfer patient on referral acceptance:', err);
         captureException(err, { tag: 'Failed to transfer patient on referral acceptance:' });
@@ -494,7 +616,7 @@ export async function acceptReferral(referralId: string): Promise<ReferralDoc | 
       // here must not block acceptance — the patient transfer above is the
       // user-visible outcome, and re-running acceptance re-attempts this.
       try {
-        await recordReferralIntake(referral, toOrgId);
+        await recordReferralIntake(referral, toOrgId, receiverPatientId);
       } catch (err) {
         console.error('Failed to record referral intake encounter:', err);
         captureException(err, { tag: 'Failed to record referral intake encounter:' });
@@ -504,7 +626,12 @@ export async function acceptReferral(referralId: string): Promise<ReferralDoc | 
     // Step 2: mark referral as seen. Runs after transfer succeeded (or the
     // transfer was a no-op due to missing fields). If this fails, the
     // patient is at the new facility and the user can re-run acceptance.
-    const updated = withPendingOfflineSync({ ...referral, status: 'seen' as const, updatedAt: new Date().toISOString() });
+    const updated = withPendingOfflineSync({
+      ...referral,
+      status: 'seen' as const,
+      ...(receiverPatientId ? { receiverPatientId } : {}),
+      updatedAt: new Date().toISOString(),
+    });
     const resp = await db.put(updated);
     updated._rev = resp.rev;
 
@@ -522,6 +649,30 @@ export async function acceptReferral(referralId: string): Promise<ReferralDoc | 
   }
 }
 
+
+/**
+ * Accept a referral from a signed-in browser.
+ *
+ * A same-organisation referral is accepted on the device, as always. A
+ * cross-organisation one cannot be: the chart belongs to ANOTHER organisation's
+ * database, which this device neither holds nor may write (the sync validator
+ * refuses it), so the server does the split with its own access, after checking
+ * that the caller is on the receiving side. Returns null when it was not done.
+ */
+export async function acceptReferralFromDevice(referralId: string): Promise<ReferralDoc | null> {
+  const referral = await referralsDB().get(referralId).catch(() => null) as ReferralDoc | null;
+  if (!referral) return null;
+  if (!referral.toOrgId || referral.toOrgId === referral.orgId) return acceptReferral(referralId);
+  const { apiFetch } = await import('../api-fetch');
+  const res = await apiFetch('/api/referrals', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'accept', referralId }),
+  });
+  if (!res.ok) return null;
+  const body = await res.json() as { referral?: ReferralDoc };
+  return body.referral ?? null;
+}
 
 /**
  * Destination org for a referral, or undefined when the hand-off stays inside

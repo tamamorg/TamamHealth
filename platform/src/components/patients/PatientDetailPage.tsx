@@ -43,6 +43,8 @@ import { TransferArriving, TransferBanner, TransferredRecords } from '@/componen
 import TransferPatientModal from '@/components/patients/TransferPatientModal';
 import CareAlertsBanner from '@/components/patients/CareAlertsBanner';
 import DuplicateRecordBanner from '@/components/patients/DuplicateRecordBanner';
+import ReferralLinkBanner from '@/components/patients/ReferralLinkBanner';
+import { isReferredOut } from '@/lib/patient-referral-link';
 import { useProblems } from '@/lib/hooks/useProblems';
 import type { MedicalRecordDoc, PatientDoc } from '@/lib/db-types';
 
@@ -419,7 +421,25 @@ export default function PatientDetailPage() {
     () => [...patientTriages].sort((a, b) => (b.triagedAt || b.createdAt || '').localeCompare(a.triagedAt || a.createdAt || ''))[0],
     [patientTriages],
   );
-  const { canConsult, canViewClinical, canOrderLabs, canEnterLabResults, canDispense, canPrescribe, canBookAppointments, canManageReferrals, canRecordVitalEvents, canRegisterPatients, canEnrollPrograms, canRecordMedicationHistory, canCheckInAppointments } = usePermissions();
+  const rolePermissions = usePermissions();
+  const { canViewClinical } = rolePermissions;
+  // A chart that was referred to another organisation is the sender's
+  // read-only copy: every write is switched off here (the receiving
+  // organisation works from its own linked copy). Reading is untouched.
+  const chartReadOnly = !!patient && isReferredOut(patient);
+  const unlessReferredOut = (allowed: boolean) => allowed && !chartReadOnly;
+  const canConsult = unlessReferredOut(rolePermissions.canConsult);
+  const canOrderLabs = unlessReferredOut(rolePermissions.canOrderLabs);
+  const canEnterLabResults = unlessReferredOut(rolePermissions.canEnterLabResults);
+  const canDispense = unlessReferredOut(rolePermissions.canDispense);
+  const canPrescribe = unlessReferredOut(rolePermissions.canPrescribe);
+  const canBookAppointments = unlessReferredOut(rolePermissions.canBookAppointments);
+  const canManageReferrals = unlessReferredOut(rolePermissions.canManageReferrals);
+  const canRecordVitalEvents = unlessReferredOut(rolePermissions.canRecordVitalEvents);
+  const canRegisterPatients = unlessReferredOut(rolePermissions.canRegisterPatients);
+  const canEnrollPrograms = unlessReferredOut(rolePermissions.canEnrollPrograms);
+  const canRecordMedicationHistory = unlessReferredOut(rolePermissions.canRecordMedicationHistory);
+  const canCheckInAppointments = unlessReferredOut(rolePermissions.canCheckInAppointments);
   // Prescribe and Order labs open the chart's order basket (O3): build the
   // orders there, sign them together. The basket is a clinical workspace
   // panel, so a role outside the clinical panels keeps the stand-alone forms.
@@ -431,7 +451,7 @@ export default function PatientDetailPage() {
     if (canViewClinical) setChartPanelRequest('order-basket:lab');
     else setShowOrderLabModal(true);
   };
-  const canAssignPatients = ['front_desk', 'central_registration_clerk', 'clinic_clerk'].includes(currentUser?.role ?? '');
+  const canAssignPatients = !chartReadOnly && ['front_desk', 'central_registration_clerk', 'clinic_clerk'].includes(currentUser?.role ?? '');
 
   // Which tabs this viewer may open at all: clinicians get the chart, lab
   // technicians get identity + labs, everyone else gets the admin set.
@@ -439,8 +459,8 @@ export default function PatientDetailPage() {
   // array for restricted roles, and an unmemoized one would re-run the bounce
   // effect below on every render.
   const allowedTabIds = useMemo(
-    () => allowedChartTabIds({ canViewClinical, canEnterLabResults, canDispense, role: currentUser?.role }),
-    [canViewClinical, canEnterLabResults, canDispense, currentUser?.role],
+    () => allowedChartTabIds({ canViewClinical, canEnterLabResults: rolePermissions.canEnterLabResults, canDispense: rolePermissions.canDispense, role: currentUser?.role }),
+    [canViewClinical, rolePermissions.canEnterLabResults, rolePermissions.canDispense, currentUser?.role],
   );
 
   // Defence in depth: if a restricted viewer lands on (or deep-links to) a tab
@@ -1044,6 +1064,7 @@ export default function PatientDetailPage() {
               because a clinician who doesn't know a transfer is pending can
               start work the receiving team is about to take over. */}
           {patient && <DuplicateRecordBanner patient={patient} />}
+          {patient && <ReferralLinkBanner patient={patient} />}
           {patient && (
             <TransferBanner
               patient={patient}
