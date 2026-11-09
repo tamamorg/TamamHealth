@@ -839,6 +839,8 @@ const apd: TranslationMap = {
   'rxFlow.okReversed': 'الصرف اتعكس. المخزون رجع.',
   'rxFlow.errReverseReason': 'الرجوع ما اتعمل. اكتب ليه الدوا بيرجع.',
   'rxFlow.safetyAllergy': 'حساسية: {{allergy}} ({{criticality}}){{reaction}}',
+  'rxFlow.severityNotRecorded': 'شدة التفاعل ما اتسجلت',
+  'rxFlow.severityLabel': 'تفاعل {{severity}}',
   'rxFlow.safetyInteraction': '{{drugs}} ({{severity}}): {{advice}}',
   'rxFlow.safetyDuplicate': 'مكرر مع {{medication}}',
   'rxFlow.safetyJustified': 'تبرير الدكتور، {{name}}: {{reason}}',

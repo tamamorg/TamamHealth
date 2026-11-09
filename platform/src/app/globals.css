@@ -24554,7 +24554,7 @@ table.patient-data-table.patient-data-table {
 /* Alert rows — the EWARS overview preview and the full Alerts tab share
    this row language. The list scrolls inside a bounded height instead of
    clipping; a footer link is added only when more rows exist than fit. */
-.epi-alert-list { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
+.epi-alert-list { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .epi-alert-row {
   display: flex;
   align-items: center;
@@ -37116,3 +37116,9 @@ html.tm-slider-open .messaging-dock-launcher { visibility: hidden; }
 .surv-alerts-table td:nth-child(4) { width: 104px; }
 .surv-alerts-table th:nth-child(5),
 .surv-alerts-table td:nth-child(5) { width: 44px; padding-inline: 4px; }
+
+/* The floating messages button (56px, 24px off the corner) sits over the
+   bottom-right of the right rail; the rail ends clear of it so the last
+   card's text can scroll out from under the button. */
+.ehr-right-rail { padding-bottom: 80px; }
+

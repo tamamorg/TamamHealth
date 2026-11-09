@@ -43,3 +43,19 @@ describe('RxSafetyNotice', () => {
     expect(html).toContain('<textarea');
   });
 });
+
+describe('RxSafetyNotice stored duplicate warning', () => {
+  const dupRx = { ...rx, medicationSafety: { ...rx.medicationSafety, acknowledgement: undefined, allergyWarnings: [], duplicateWarnings: ['Coartem 80/480mg'] } } as unknown as PrescriptionDoc;
+  it('drops the duplicate once the other order is no longer active', () => {
+    expect(renderToStaticMarkup(<RxSafetyNotice rx={dupRx} activeMedications={[]} />)).toBe('');
+  });
+  it('keeps it while the other order is still active', () => {
+    expect(renderToStaticMarkup(<RxSafetyNotice rx={dupRx} activeMedications={['Coartem 20mg']} />)).toContain('Coartem');
+  });
+  it('says severity not recorded instead of "unknown"', () => {
+    const unk = { ...rx, medicationSafety: { ...rx.medicationSafety, allergyWarnings: [{ ...rx.medicationSafety!.allergyWarnings[0], criticality: 'unknown' }] } } as unknown as PrescriptionDoc;
+    const html = renderToStaticMarkup(<RxSafetyNotice rx={unk} />);
+    expect(html).toContain('severityNotRecorded');
+    expect(html).not.toContain('(unknown)');
+  });
+});

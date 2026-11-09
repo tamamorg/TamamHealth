@@ -134,7 +134,7 @@ export default function ResultsSection({ patientId, canOrderLabs, onAdd, focusId
           <span className="block mt-1">{t('results.openToCloseLoop')}</span>
         </div>
       )}
-      <table data-sort="data" className="tamam-table tamam-table--fixed tamam-table--interactive">
+      <table data-sort="data" className="tamam-table tamam-table--fixed tamam-table--interactive tamam-table--results">
           <colgroup>
             <col /><col /><col /><col /><col /><col /><col />
           </colgroup>

@@ -170,3 +170,30 @@ body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-table--notes th:nth
 html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-table--notes th:nth-child(4) { width: 18%; }
 body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-table--notes th:nth-child(5),
 html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-table--notes th:nth-child(5) { width: 18%; }
+
+/* Results: the Result column holds a whole panel's values (an 11-analyte
+   blood count), so it takes the widest share. Equal columns left it about
+   60px beside a docked slider, one word per line, with the Actions column cut
+   off. The table keeps a 720px floor even where the squeezed-column rule above
+   would release it, and its section scrolls sideways below that. Shares sum
+   to 94%; the remainder is the fixed 72px Actions column. */
+body .tamam-root .tamam-table--results th:nth-child(1) { width: 17%; }
+body .tamam-root .tamam-table--results th:nth-child(2) { width: 30%; }
+body .tamam-root .tamam-table--results th:nth-child(3) { width: 13%; }
+body .tamam-root .tamam-table--results th:nth-child(4) { width: 12%; }
+body .tamam-root .tamam-table--results th:nth-child(5) { width: 10%; }
+body .tamam-root .tamam-table--results th:nth-child(6) { width: 12%; }
+body .tamam-root .tamam-section-body > .tamam-table.tamam-table--results,
+body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-section-body > .tamam-table.tamam-table--results,
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-section-body > .tamam-table.tamam-table--results {
+  min-width: 720px;
+}
+/* The 720px floor above can overflow the squeezed column at 1400px and wider,
+   where the sticky Actions rule (below 1400px only) is off: pin it here. */
+body .tamam-root .tamam-main-col:has(+ .tamam-drawer) .tamam-section-body > .tamam-table--results :is(thead th, tbody td):last-child,
+html.tm-slider-open:not(.tm-drawer-over) .tamam-root .tamam-main-col .tamam-section-body > .tamam-table--results :is(thead th, tbody td):last-child {
+  position: sticky;
+  right: 0;
+  background: var(--bg-card-solid) !important;
+  box-shadow: -1px 0 0 var(--border-light);
+}

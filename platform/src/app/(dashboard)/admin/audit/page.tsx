@@ -303,9 +303,9 @@ export default function AuditLogsPage() {
           )}
           <button type="button" className="tm-ghost-btn flex-shrink-0" onClick={exportCsv}>{t('adminMgmt.exportCsv')}</button>
         </div>
-        {/* No pager: every matching event lives in one scroll area, and the
+        {/* No pager: every matching event lives in the page's own scroll, and the
             head's "Showing X of Y" meta states the count. */}
-        <div className="sadb-edge-aligned-table" style={{ maxHeight: 620, overflowY: 'auto' }}>
+        <div className="sadb-edge-aligned-table" style={{ overflowX: 'auto' }}>
           <SaTable
             columns={[
               t('admin.colUser'), t('transfers.when'), t('adminMgmt.colOrg'), t('admin.colAction'),

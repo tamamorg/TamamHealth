@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import InlineBanner from '@/components/overlay/InlineBanner';
 import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTranslation } from '@/lib/i18n/useTranslation';
-import type { StructuredAllergyAlert } from '@/lib/services/drug-interaction-service';
+import { findDuplicateMedications, type StructuredAllergyAlert } from '@/lib/services/drug-interaction-service';
 import type { PrescriptionDoc } from '@/lib/db-types';
 
 interface DispenseConflicts { allergies: StructuredAllergyAlert[]; interactions: string[] }
@@ -33,8 +33,21 @@ export function useUnreviewedConflicts(rx: PrescriptionDoc): DispenseConflicts {
   return conflicts;
 }
 
-export default function RxSafetyNotice({ rx, conflicts = [], interactionConflicts = [], review, onReview }: {
+/**
+ * The duplicate warnings stored at prescribing, minus the ones whose other
+ * order has since been discontinued. Without the list of current orders the
+ * stored warnings stand as they were.
+ */
+export function standingDuplicateWarnings(stored: string[] | undefined, activeMedications?: string[]): string[] {
+  const warnings = stored || [];
+  if (!activeMedications) return warnings;
+  return warnings.filter(medication => findDuplicateMedications([medication, ...activeMedications]).includes(medication));
+}
+
+export default function RxSafetyNotice({ rx, conflicts = [], interactionConflicts = [], review, onReview, activeMedications }: {
   rx: PrescriptionDoc;
+  /** The patient's other current orders, to check the stored duplicate warnings against. */
+  activeMedications?: string[];
   conflicts?: StructuredAllergyAlert[];
   /** Contraindicated pairs nobody has answered. */
   interactionConflicts?: string[];
@@ -48,12 +61,13 @@ export default function RxSafetyNotice({ rx, conflicts = [], interactionConflict
     ...conflicts.map(c => t('rxFlow.newAllergyConflict', { allergy: c.allergy })),
     ...interactionConflicts.map(drugs => t('rxFlow.newInteractionConflict', { drugs })),
     ...(safety?.allergyWarnings || []).map(w => t('rxFlow.safetyAllergy', {
-      allergy: w.allergy, criticality: w.criticality, reaction: w.reaction ? `, ${w.reaction}` : '',
+      allergy: w.allergy,
+      criticality: w.criticality === 'unknown' ? t('rxFlow.severityNotRecorded') : t('rxFlow.severityLabel', { severity: w.criticality }), reaction: w.reaction ? `, ${w.reaction}` : '',
     })),
     ...(safety?.interactionWarnings || []).map(i => t('rxFlow.safetyInteraction', {
       drugs: `${i.drug1} + ${i.drug2}`, severity: i.severity, advice: i.clinicalAdvice,
     })),
-    ...(safety?.duplicateWarnings || []).map(medication => t('rxFlow.safetyDuplicate', { medication })),
+    ...standingDuplicateWarnings(safety?.duplicateWarnings, activeMedications).map(medication => t('rxFlow.safetyDuplicate', { medication })),
     ...(safety?.acknowledgement ? [t('rxFlow.safetyJustified', { name: safety.acknowledgement.reviewedBy, reason: safety.acknowledgement.reason })] : []),
     ...(rx.dispenseAllergyReview ? [t('rxFlow.safetyPharmacistReview', { name: rx.dispenseAllergyReview.reviewedBy, reason: rx.dispenseAllergyReview.reason })] : []),
   ];

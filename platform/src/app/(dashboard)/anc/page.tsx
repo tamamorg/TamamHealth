@@ -123,13 +123,15 @@ export default function ANCPage() {
                 return (
                   <div key={step.key} className="flex items-center gap-3">
                     <span className="text-xs font-bold w-44 text-end" style={{ color: 'var(--text-secondary)' }}>{step.label}</span>
-                    <div className="flex-1 h-7 rounded-md overflow-hidden" style={{ background: 'var(--overlay-light)' }}>
+                    <div className="flex-1 h-7 rounded-md overflow-hidden flex items-center" style={{ background: 'var(--overlay-light)' }}>
                       <div
-                        className="h-full rounded-md flex items-center justify-end pe-2 transition-all duration-700"
+                        className="h-full rounded-md flex items-center justify-end pe-2 transition-all duration-700 flex-shrink-0"
                         style={{ width: `${Math.max(pct, 4)}%`, background: barColor }}
                       >
-                        <span className="text-[10px] font-bold text-white">{step.count} ({pct}%)</span>
+                        {/* A short bar cannot hold its own label: it sits beside the bar instead of being cut off. */}
+                        {pct >= 60 && <span className="text-[10px] font-bold text-white whitespace-nowrap">{step.count} ({pct}%)</span>}
                       </div>
+                      {pct < 60 && <span className="text-[10px] font-bold ps-2 whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>{step.count} ({pct}%)</span>}
                     </div>
                     {i > 0 && dropoff > 0 ? (
                       <span className="text-[10px] font-mono w-16 text-end" style={{ color: 'var(--color-danger-text)' }}>{t('anc.dropCount', { count: dropoff })}</span>

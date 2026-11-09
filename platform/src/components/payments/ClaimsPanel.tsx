@@ -295,7 +295,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
 
   return (
     <>
-      <div style={{ overflow: 'auto', flex: 1, minHeight: 0, marginTop: 12 }}>
+      <div style={{ overflowX: 'auto', marginTop: 12 }}>
         <table className="bl-table bl-table--even bl-table--rows-open bl-workqueue-table" style={{ minWidth: 980 }}>
           {/* `bl-table--even` is table-layout: fixed — equal shares of the
               full width, stable as rows load. */}

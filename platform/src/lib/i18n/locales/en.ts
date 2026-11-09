@@ -829,6 +829,8 @@ const en: TranslationMap = {
   'rxFlow.okReversed': 'Dispense reversed. Stock returned.',
   'rxFlow.errReverseReason': 'Reversal not done. Write why the medicine is being returned.',
   'rxFlow.safetyAllergy': 'Allergy: {{allergy}} ({{criticality}}){{reaction}}',
+  'rxFlow.severityNotRecorded': 'reaction severity not recorded',
+  'rxFlow.severityLabel': '{{severity}} reaction',
   'rxFlow.safetyInteraction': '{{drugs}} ({{severity}}): {{advice}}',
   'rxFlow.safetyDuplicate': 'Duplicate of {{medication}}',
   'rxFlow.safetyJustified': 'Prescriber justification, {{name}}: {{reason}}',

@@ -108,6 +108,7 @@ export default function PharmacyWorkflowPanel({
         <RxSafetyNotice
           rx={rx}
           conflicts={conflicts.allergies}
+          activeMedications={activeMedications}
           interactionConflicts={conflicts.interactions}
           review={!filled && !intent ? draft.allergyReview : undefined}
           onReview={!filled && !intent ? allergyReview => setDraft({ ...draft, allergyReview }) : undefined}
