@@ -10,7 +10,7 @@ import EhrMissionCard from './EhrMissionCard';
 import EhrPanelTitle from './EhrPanelTitle';
 import ProgressFeedCard from '@/components/ehr/ProgressFeedCard';
 import PrintListDialog, { printableTime, type PrintListSection } from '@/components/PrintListDialog';
-import EhrMiniCalendar, { formatDateTitle, parseIsoDate, startOfMonth, toIsoDate } from '@/components/ehr/EhrMiniCalendar';
+import EhrMiniCalendar, { formatDateTitle, parseIsoDate, startOfMonth } from '@/components/ehr/EhrMiniCalendar';
 import { EhrWeekActivityChart, type DayStatsItem } from '@/components/ehr/EhrDayStatsChart';
 import EhrStageDonut from '@/components/ehr/EhrStageDonut';
 import { PRIORITY_META } from '@/lib/clinical/triage-display';
