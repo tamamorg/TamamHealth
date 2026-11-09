@@ -1,5 +1,6 @@
 'use client';
 
+import { clinicalClockTime } from '@/lib/time-juba';
 import { chartFormHref } from '@/components/ehr/chart/panels/role-form-access';
 import { Clock, Eye, ClipboardList, CheckCircle2, LogIn, Send, LogOut, AlertTriangle, X } from '@/components/icons/lucide';
 import { ACCENT } from '../shared';
@@ -104,7 +105,7 @@ export function TriageRecentList({ f }: { f: TriageFormState }) {
 
                     <div className="ehr-queue-cell ehr-queue-num-col">
                       <div className="ehr-queue-wait">
-                        <strong>{new Date(ti.triagedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</strong>
+                        <strong>{clinicalClockTime(ti.triagedAt)}</strong>
                         <small>{waitLabel(minutesAgo)}</small>
                       </div>
                     </div>

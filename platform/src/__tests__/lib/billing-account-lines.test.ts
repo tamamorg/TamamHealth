@@ -125,6 +125,47 @@ describe('buildAccountLines', () => {
     expect(line.charged).toBe(8000);
   });
 
+  it('takes a cancelled bill off Billed so Billed, Paid and Balance agree', () => {
+    // Two Coartem orders on one visit; the second is discontinued (bill
+    // cancelled, charge taken back by a ledger adjustment) and the patient
+    // then pays what is left.
+    const entries = [
+      entry('c1', 20, 'charge', 44500, { encounterId: 'e1', referenceId: 'bill-1', referenceType: 'billing' }),
+      entry('c2', 20, 'charge', 24000, { encounterId: 'e1', referenceId: 'bill-2', referenceType: 'billing' }),
+      entry('a1', 21, 'adjustment', -24000, { encounterId: 'e1', referenceId: 'bill-2', referenceType: 'billing', description: 'Bill cancelled — INV-2' }),
+      entry('p1', 22, 'payment', -44500, { encounterId: 'e1', referenceId: 'pay-1', referenceType: 'payment' }),
+    ];
+    const item = (id: string, price: number) => ({ id, category: 'pharmacy', description: 'Coartem', quantity: 1, unitPrice: price, totalPrice: price });
+    const bills = [
+      { _id: 'bill-1', status: 'paid', items: [item('a', 44500)] },
+      { _id: 'bill-2', status: 'cancelled', items: [item('a', 24000)] },
+    ] as BillingDoc[];
+    const [line] = build({ entries, bills, payments: [payment('pay-1', { amount: 44500 })] });
+    expect(line).toMatchObject({ charged: 44500, paid: 44500, adjusted: 0, balance: 0, status: 'paid' });
+    expect(line.items.find(i => i.id === 'bill-2:a')?.withdrawn).toBe(true);
+    expect(line.items.find(i => i.id === 'bill-1:a')?.withdrawn).toBeUndefined();
+  });
+
+  it('shows a paid order discontinued afterwards as a credit owed back', () => {
+    const entries = [
+      entry('c1', 20, 'charge', 24000, { encounterId: 'e1', referenceId: 'bill-2', referenceType: 'billing' }),
+      entry('p1', 21, 'payment', -24000, { encounterId: 'e1', referenceId: 'pay-1', referenceType: 'payment' }),
+      entry('a1', 22, 'adjustment', -24000, { encounterId: 'e1', referenceId: 'bill-2', referenceType: 'billing', description: 'Charge reversed — INV-2 (stopped); refund due' }),
+    ];
+    const bills = [{ _id: 'bill-2', status: 'paid', chargeReversedAt: 'x', items: [] }] as unknown as BillingDoc[];
+    const [line] = build({ entries, bills, payments: [payment('pay-1', { amount: 24000 })] });
+    expect(line).toMatchObject({ charged: 0, paid: 24000, balance: -24000, status: 'credit' });
+  });
+
+  it('still treats a discount on a live bill as an adjustment', () => {
+    const entries = [
+      entry('c1', 20, 'charge', 1000, { encounterId: 'e1', referenceId: 'bill-1', referenceType: 'billing' }),
+      entry('a1', 21, 'adjustment', -200, { encounterId: 'e1', referenceId: 'bill-1', referenceType: 'billing', description: 'Discount' }),
+    ];
+    const bills = [{ _id: 'bill-1', status: 'pending', items: [] }] as unknown as BillingDoc[];
+    expect(build({ entries, bills })[0]).toMatchObject({ charged: 1000, adjusted: 200, balance: 800 });
+  });
+
   it('does not pay a voided line', () => {
     const entries = [
       entry('c1', 10, 'charge', 100, { encounterId: 'e1', referenceId: 'chg-1' }),

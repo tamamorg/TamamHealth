@@ -92,13 +92,14 @@ export default function BillingLinePanel({ line, patientName, payments, refundab
             <ul className="bl-line-list">
               {line.items.map(item => (
                 <li key={item.id}>
-                  <span>{item.description}</span>
-                  <strong>{money(item.total)}</strong>
+                  <span style={item.withdrawn ? { textDecoration: 'line-through' } : undefined}>{item.description}</span>
+                  <strong style={item.withdrawn ? { textDecoration: 'line-through' } : undefined}>{money(item.total)}</strong>
                   <p className="bl-line-sub">
                     {[
                       item.unitPrice !== undefined ? `${item.quantity} × ${money(item.unitPrice)}` : undefined,
                       item.category,
                       item.status ? humanizeStatus(item.status) : undefined,
+                      item.withdrawn ? t('billing.itemWithdrawn') : undefined,
                     ].filter(Boolean).join(' · ')}
                   </p>
                 </li>

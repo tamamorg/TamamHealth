@@ -35,7 +35,8 @@ const createPrescription = (data: Parameters<typeof createPrescriptionScoped>[0]
   createPrescriptionScoped(data, TEST_SCOPE);
 import { getEncounter } from '@/lib/services/encounter-service';
 import { reversePaidBillCharge } from '@/lib/services/billing-service';
-import { createLedgerEntry, getPatientBalance } from '@/lib/services/ledger-service';
+import { buildAccountLines } from '@/lib/billing-account-lines';
+import { createLedgerEntry, getPatientBalance, getPatientLedger } from '@/lib/services/ledger-service';
 import { holdsVisitAtPharmacy } from '@/lib/pharmacy-workflow';
 import { isScriptable, scriptableOnly, buildPrescriptionText } from '@/lib/prescription-script';
 import { isControlledMedicine } from '@/lib/data/formulary';
@@ -150,6 +151,32 @@ describe('re-routing an on-site order to an outside pharmacy', () => {
     const after = await bill(prescription._id);
     expect(after.status).toBe('cancelled');
     expect(after.balanceDue).toBe(0);
+  });
+
+  it('reads one story on the visit line after a duplicate order is discontinued and the rest is paid', async () => {
+    // Found in the 2026-11-08 sweep: Billed 68,500 / Paid 44,500 / Balance 0 / Paid,
+    // with the withdrawn Coartem still counted in Billed.
+    await seedVisit();
+    const { prescription: first } = await createPrescription(order({ medication: 'Coartem' }));
+    const { prescription: dup } = await createPrescription(order({ medication: 'Coartem' }));
+    await seedCharge(first._id, { totalAmount: 44500, subtotal: 44500, balanceDue: 44500, status: 'pending' });
+    await seedCharge(dup._id, { totalAmount: 24000, subtotal: 24000, balanceDue: 24000, status: 'pending' });
+    await createLedgerEntry({ ...LEDGER, entryType: 'charge', amount: 44500, description: 'Invoice 1', referenceId: `bill-${first._id}`, referenceType: 'billing' });
+    await createLedgerEntry({ ...LEDGER, entryType: 'charge', amount: 24000, description: 'Invoice 2', referenceId: `bill-${dup._id}`, referenceType: 'billing' });
+
+    await updatePrescription(dup._id, {
+      status: 'discontinued', stoppedAt: new Date().toISOString(), stoppedBy: 'user-1',
+      stoppedByName: 'Dr. James Wani', stoppedSource: 'clinician', stoppedReason: 'Duplicate order',
+    });
+    expect((await bill(dup._id)).status).toBe('cancelled');
+    expect(await getPatientBalance('pat-1', SUPER)).toBe(44500);
+
+    await createLedgerEntry({ ...LEDGER, entryType: 'payment', amount: -44500, description: 'Cash' });
+    const [line] = buildAccountLines({
+      entries: await getPatientLedger('pat-1', undefined, SUPER), charges: [], payments: [], refunds: [],
+      bills: [await bill(first._id), await bill(dup._id)],
+    });
+    expect(line).toMatchObject({ charged: 44500, paid: 44500, adjusted: 0, balance: 0, status: 'paid' });
   });
 
   it('leaves the charge of an order that was already dispensed', async () => {

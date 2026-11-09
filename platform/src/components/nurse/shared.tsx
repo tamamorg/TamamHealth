@@ -1,6 +1,7 @@
 // Shared utilities, types, and hooks for the nurse workflow components.
 // Not a component itself — consumers ('use client') import from here.
 
+import { clinicalClockTime } from '@/lib/time-juba';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth, useUi } from '@/lib/context';
 import { usePatients } from '@/lib/hooks/usePatients';
@@ -225,7 +226,7 @@ export function useMarEntries() {
           id: `mar-${rx._id}-${time}`,
           time: time === 'PRN'
             ? 'PRN'
-            : new Date(scheduledFor).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            : clinicalClockTime(scheduledFor),
           patientId: rx.patientId,
           patientName: rx.patientName,
           medication: rx.medication,

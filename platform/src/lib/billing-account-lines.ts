@@ -33,6 +33,8 @@ export interface AccountLineItem {
   total: number;
   /** Claim status of a charge document; bills carry none per item. */
   status?: string;
+  /** The bill this item was on was cancelled or its charge reversed: no longer owed. */
+  withdrawn?: boolean;
 }
 
 /** One ledger entry, as far as it landed on this line. */
@@ -161,8 +163,18 @@ export function buildAccountLines({ entries, charges, payments, refunds, bills }
     return line;
   };
 
+  // A cancelled bill (or a paid one whose charge was reversed) takes its charge
+  // back with a ledger adjustment. That is a withdrawn charge, not a discount:
+  // Billed drops by it, so Billed, Paid and Balance still read as one story.
+  const withdrawnBill = (entry: Entry): BillingDoc | undefined => {
+    if (entry.entryType !== 'adjustment' || entry.referenceType !== 'billing' || !entry.referenceId) return undefined;
+    if (!(Number(entry.amount) < 0) || !/^(Bill cancelled|Charge reversed)/.test(entry.description || '')) return undefined;
+    const bill = billById.get(entry.referenceId);
+    return bill && (bill.status === 'cancelled' || bill.chargeReversedAt) ? bill : undefined;
+  };
+
   const post = (line: AccountLine, entry: Entry, amount: number, whole: number) => {
-    const bucket = BUCKET[entry.entryType];
+    const bucket: Bucket = withdrawnBill(entry) ? 'charged' : BUCKET[entry.entryType];
     line[bucket] = round(line[bucket] + (bucket === 'charged' || bucket === 'refunded' ? amount : -amount));
     line.balance = round(line.balance + amount);
     if (entry.createdAt > line.updatedAt) line.updatedAt = entry.createdAt;
@@ -226,6 +238,14 @@ export function buildAccountLines({ entries, charges, payments, refunds, bills }
     const amount = Number(entry.amount) || 0;
     const whole = amount;
     const named = namedLine(entry);
+
+    const withdrawn = withdrawnBill(entry);
+    if (withdrawn) {
+      const line = named ?? lastResort(entry);
+      for (const item of line.items) if (item.id.startsWith(`${withdrawn._id}:`)) item.withdrawn = true;
+      post(line, entry, amount, whole);
+      continue;
+    }
 
     if (amount < 0) {
       let left = -amount;

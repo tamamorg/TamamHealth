@@ -101,6 +101,18 @@ export function jubaTime(): string {
   return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
 }
 
+/**
+ * A moment's time of day in the deployment's clinical zone ("08:30 AM"), not the
+ * browser's. Nurse dashboard and handoff times use this so they match the
+ * bedside MAR whatever zone the device is set to. '' for an unreadable date.
+ */
+export function clinicalClockTime(value: string | number | Date | undefined | null): string {
+  if (value === undefined || value === null || value === '') return '';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: activeCountry().timeZone });
+}
+
 /** The UTC instant of a clinical wall-clock moment, given as if it were UTC. */
 export function wallClockToUtcMs(wallMs: number): number {
   return wallMs - zoneOffsetMs(new Date(wallMs));
