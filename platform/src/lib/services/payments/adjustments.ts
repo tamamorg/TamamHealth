@@ -62,11 +62,26 @@ export async function createAdjustment(input: {
     throw new AdjustmentError('APPROVER_ROLE', 'Adjustment not recorded. The approver must be a manager or administrator.');
   }
 
+  // An adjustment taken from the account page names no visit. Tie it to the
+  // oldest visit still owing so the checkout of THAT visit sees it.
+  let encounterId = input.encounterId;
+  if (!encounterId && input.orgId) {
+    try {
+      const { getBillsByPatient } = await import('../billing-service');
+      const { orgOnlyScope } = await import('../data-scope');
+      const open = (await getBillsByPatient(input.patientId, orgOnlyScope(input.orgId)))
+        .filter(b => ['pending', 'partial', 'insurance_pending', 'insurance_approved', 'insurance_rejected'].includes(b.status)
+          && !b.chargeReversedAt && (b.balanceDue || 0) > 0 && !!b.encounterId)
+        .sort((x, y) => String(x.createdAt).localeCompare(String(y.createdAt)));
+      encounterId = open[0]?.encounterId;
+    } catch { /* an adjustment with no visit still counts on the account */ }
+  }
+
   const doc: AdjustmentDoc = {
     _id: `adj-${uuidv4()}`,
     type: 'adjustment',
     patientId: input.patientId,
-    encounterId: input.encounterId,
+    encounterId,
     chargeId: input.chargeId,
     claimId: input.claimId,
     adjustmentType: input.adjustmentType,
@@ -91,7 +106,7 @@ export async function createAdjustment(input: {
   // Create ledger entry (negative = credit = balance decreases)
   await createLedgerEntry({
     patientId: input.patientId,
-    encounterId: input.encounterId,
+    encounterId,
     entryType: input.adjustmentType === 'write_off' || input.adjustmentType === 'bad_debt' ? 'write_off' : 'adjustment',
     amount: -input.amount,
     description: `${input.adjustmentType}: ${input.reason}`,

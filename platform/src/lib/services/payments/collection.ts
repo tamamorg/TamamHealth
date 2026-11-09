@@ -76,7 +76,18 @@ export async function owedByPatient(input: Pick<CollectPaymentInput, 'patientId'
     // The ledger figure still stands; the bills are the second opinion.
     console.warn('[payments] could not read the open bills (using the ledger):', err);
   }
-  return Math.max(ledger, billed);
+  // Write-offs and waivers sit on the ledger, not on the bills, so they come
+  // off the bills' figure; the ledger figure already carries them.
+  let credited = 0;
+  if (input.orgId && billed > 0) {
+    try {
+      const { getPatientLedger } = await import('../ledger-service');
+      credited = (await getPatientLedger(input.patientId, undefined, orgOnlyScope(input.orgId)))
+        .filter(e => e.referenceType === 'adjustment' && e.amount < 0)
+        .reduce((sum, e) => sum + cents(-e.amount), 0) / 100;
+    } catch { /* the ledger figure still stands */ }
+  }
+  return Math.max(ledger, Math.max(billed - credited, 0));
 }
 
 export async function collectPayment(input: CollectPaymentInput): Promise<PaymentDoc> {

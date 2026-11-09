@@ -39,7 +39,15 @@ export async function encounterPatientOwed(
   const { getBillsByPatient } = await import('./billing-service');
   const bills = (await getBillsByPatient(patientId, scope)).filter(b => b.encounterId === encounter._id && b.status !== 'draft');
   if (bills.length > 0) {
-    return bills.reduce((sum, b) => sum + cents(patientShareDue(b)), 0) / 100;
+    const due = bills.reduce((sum, b) => sum + cents(patientShareDue(b)), 0);
+    // A manager-approved write-off or waiver is posted to the ledger against the
+    // visit, not onto the bill, so it has to come off the bills' total here or a
+    // waived amount would still block checkout.
+    const { getEncounterLedger: ledgerFor } = await import('./ledger-service');
+    const credited = filterByScope(await ledgerFor(encounter._id), scope)
+      .filter(e => e.referenceType === 'adjustment' && e.amount < 0)
+      .reduce((sum, e) => sum + cents(-e.amount), 0);
+    return Math.max(due - credited, 0) / 100;
   }
   // No bill for the visit: a charge posted straight to the ledger under the
   // visit's id still counts (never the patient's other visits).
