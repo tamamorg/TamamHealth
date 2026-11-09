@@ -485,6 +485,12 @@ export const DOC_CREATE_ONLY_ROLES: Readonly<Record<string, readonly UserRole[]>
   // other right to the type: they may not edit or complete anyone's task, and
   // they are deliberately absent from DOC_WRITE_ROLES.
   clinician_task: ['lab_tech', 'radiologist', 'pharmacist'],
+  // Reception closes visits at checkout, so it may carry a visit's balance as
+  // a debt to the account (recordDebtToAccount), with a written reason. That
+  // moves no money: the balance stays owed on the ledger. The required values
+  // below bind the grant to that shape, so reception can't open an ordinary
+  // instalment plan or edit any plan afterwards.
+  payment_plan: ['front_desk'],
 };
 
 /**
@@ -504,6 +510,10 @@ export const DOC_CREATE_ONLY_REQUIRED_VALUES: Readonly<Record<string, Readonly<R
   ledger_entry: {
     entryType: ['charge', 'insurance_payment', 'adjustment'],
     referenceType: ['billing', 'charge'],
+  },
+  payment_plan: {
+    planKind: ['debt_at_checkout'],
+    status: ['active'],
   },
 };
 

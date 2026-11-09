@@ -25,6 +25,7 @@ export async function createPaymentPlan(input: {
   autoPayMethodId?: string;
   /** Set for a debt carried at checkout (see recordDebtToAccount). */
   reason?: string;
+  planKind?: PaymentPlanDoc['planKind'];
   createdByStaff: string;
   createdByStaffName: string;
   facilityId: string;
@@ -85,6 +86,7 @@ export async function createPaymentPlan(input: {
     autoPayMethodId: input.autoPayMethodId,
     encounterIds: input.encounterIds,
     ...(input.reason ? { reason: input.reason } : {}),
+    ...(input.planKind ? { planKind: input.planKind } : {}),
     installments,
     createdByStaff: input.createdByStaff,
     createdByStaffName: input.createdByStaffName,
@@ -208,6 +210,7 @@ export async function recordDebtToAccount(input: {
     termMonths: 1,
     encounterIds: [input.encounterId],
     reason,
+    planKind: 'debt_at_checkout',
     createdByStaff: input.recordedBy,
     createdByStaffName: input.recordedByName,
     facilityId: input.facilityId,

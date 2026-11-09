@@ -58,6 +58,7 @@ export default function CheckoutModal({
   onClose,
   onComplete,
   canCollectPayment,
+  canRecordDebt = canCollectPayment,
   onCollectPayment,
 }: {
   target: CheckoutTarget;
@@ -68,6 +69,8 @@ export default function CheckoutModal({
     disposition?: import('@/lib/services/encounter-service').DischargeDisposition,
   ) => Promise<void>;
   canCollectPayment: boolean;
+  /** Reception may carry the balance as a debt without being able to take money. */
+  canRecordDebt?: boolean;
   onCollectPayment: (patientId: string) => void;
 }) {
   const scope = useDataScope();
@@ -314,7 +317,7 @@ export default function CheckoutModal({
                   <p className="text-[12px] font-semibold" style={{ color: 'var(--text-primary)' }}>
                     {t('checkout.balanceBlocked', { amount: formatMoney(balance) })}
                   </p>
-                  {canCollectPayment && (
+                  {canRecordDebt && (
                     <div className="mt-2 space-y-2">
                       <label className="block" style={{ textTransform: 'none', letterSpacing: 'normal' }}>
                         <span className="text-[11px] font-semibold" style={{ color: 'var(--text-muted)' }}>{t('checkout.debtReason')}</span>

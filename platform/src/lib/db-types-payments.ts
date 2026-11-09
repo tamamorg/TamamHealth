@@ -314,6 +314,12 @@ export interface PaymentPlanDoc extends BaseDoc {
   nextDueDate?: string;
   /** Why the visit's balance was carried on the account ("bill to account"). */
   reason?: string;
+  /**
+   * 'debt_at_checkout' for the one-instalment plan recordDebtToAccount writes
+   * when a visit closes with money owed. It is the only plan shape reception
+   * may create (DOC_CREATE_ONLY_REQUIRED_VALUES.payment_plan).
+   */
+  planKind?: 'debt_at_checkout';
   paidToDate: number;
   remainingBalance: number;
   missedPayments: number;

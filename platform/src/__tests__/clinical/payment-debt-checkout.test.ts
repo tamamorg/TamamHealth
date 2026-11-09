@@ -59,6 +59,16 @@ describe('payment_status_determined', () => {
     expect((await paymentItem()).satisfied).toBe(true);
   });
 
+  test('a debt recorded by reception is the debt-at-checkout plan shape the validator grants it', async () => {
+    await owe(70);
+    const plan = await recordDebtToAccount({
+      patientId: 'pat-1', patientName: 'Test Patient', encounterId: 'enc-1', balance: 70, reason: 'family pays Friday',
+      recordedBy: 'desk-1', recordedByName: 'Reception', facilityId: 'hosp-1', orgId: 'org-a',
+    });
+    expect(plan).toMatchObject({ planKind: 'debt_at_checkout', status: 'active', encounterIds: ['enc-1'] });
+    expect((await paymentItem()).satisfied).toBe(true);
+  });
+
   test('is met once the balance is paid', async () => {
     await owe(70);
     await collectPayment({
