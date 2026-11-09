@@ -4,7 +4,7 @@ import {
   APPOINTMENT_STATUS_GROUPS,
   type AppointmentStatusGroup,
 } from '@/lib/appointment-status';
-import { resolveOperationalVisitState, type VisitLane } from '@/lib/clinical-flow/visit-state';
+import { resolveOperationalVisitState } from '@/lib/clinical-flow/visit-state';
 import { resolveVisitDisplay } from '@/lib/visit-display-status';
 import { PRIORITY_META, appointmentTriage } from '@/lib/clinical/triage-display';
 import { formatAppointmentTimeUntil, formatClockTime } from '@/lib/format-utils';
