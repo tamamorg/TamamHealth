@@ -94,6 +94,12 @@ export const WAIVER_APPROVERS: readonly UserRole[] = [
  */
 export const COLLECTIONS: readonly UserRole[] = BILLING.filter(role => role !== 'front_desk');
 /**
+ * Roles that take and move money at the till. They may waive only through a
+ * manager's approval, so they cannot write a fresh bill that is already waived
+ * (the exempt-visit path belongs to the clinical roles that raise the charge).
+ */
+export const MONEY_HANDLERS: readonly UserRole[] = ['cashier', 'medical_biller'];
+/**
  * Roles whose clinical work raises a charge as a side effect: a prescription,
  * a lab order and an admission deposit each write the bill and its ledger
  * mirror as whoever is signed in, and the pharmacy's pay-first gate reads that
@@ -1041,9 +1047,24 @@ export function buildValidateDocUpdateFn(
   if (!isDelete && docType === 'billing' && newDoc.status === 'waived' && (!oldDoc || oldDoc.status !== 'waived')) {
     var billActor = null;
     for (var ba = 0; ba < roles.length; ba++) if (roles[ba].indexOf('user:') === 0) billActor = roles[ba].substring(5);
-    if (!newDoc.waiverApprovedBy || (billActor && newDoc.waiverApprovedBy === billActor)
-      || !contains(${JSON.stringify(WAIVER_APPROVERS)}, newDoc.waiverApprovedByRole)) {
-      throw({ forbidden: 'A waived bill must be approved by a manager other than the person who waived it' });
+    var humanWaiverApproved = !!newDoc.waiverApprovedBy && !(billActor && newDoc.waiverApprovedBy === billActor)
+      && contains(${JSON.stringify(WAIVER_APPROVERS)}, newDoc.waiverApprovedByRole);
+    if (oldDoc) {
+      // A human waiver: an existing bill moved to waived needs a second person.
+      if (!humanWaiverApproved) {
+        throw({ forbidden: 'A waived bill must be approved by a manager other than the person who waived it' });
+      }
+    } else if (!humanWaiverApproved) {
+      // A bill CREATED waived is how an exempt visit (non-paying, under-5,
+      // maternal, emergency, registered exempt) is recorded: nothing is owed,
+      // so no manager is involved. It must say why, carry no money, and not
+      // come from the till: the cashier and biller waive only through the
+      // approved path, never by writing a fresh waived bill.
+      var noMoney = !(newDoc.amountPaid > 0) && !(newDoc.payments && newDoc.payments.length > 0);
+      if (typeof newDoc.exemptReason !== 'string' || !newDoc.exemptReason.trim() || !noMoney
+        || contains(${JSON.stringify(MONEY_HANDLERS)}, actingRole)) {
+        throw({ forbidden: 'A waived bill must be approved by a manager other than the person who waived it' });
+      }
     }
   }
   if (!isDelete && !oldDoc && docType === 'payment') {
@@ -1367,7 +1388,24 @@ export function buildValidateDocUpdateFn(
         for (var kf = 0; keepsEvery && kf < oldFacilityIds.length; kf++) {
           if (newFacilityIds.indexOf(oldFacilityIds[kf]) === -1) keepsEvery = false;
         }
-        referralKeep = onlyReadListChanged && keepsEvery;
+        // Only the two facilities of a referral may be ADDED: the accepting
+        // facility (the writer's own) and the sender already on the chart
+        // (acceptReferral keeps registrationHospital, and lastVisitHospital is
+        // where the patient was last seen before the move). Any other id would
+        // hand an unrelated facility read access to the chart.
+        var addsOnlyReferralFacilities = Array.isArray(newFacilityIds);
+        for (var af = 0; addsOnlyReferralFacilities && af < newFacilityIds.length; af++) {
+          var addedFacility = newFacilityIds[af];
+          if (oldFacilityIds.indexOf(addedFacility) !== -1) continue;
+          var allowedAdd = contains(MULTI_FACILITY, actingRole)
+            || addedFacility === oldDoc.registrationHospital || addedFacility === oldDoc.lastVisitHospital
+            || addedFacility === oldDoc.hospitalId;
+          for (var wf = 0; !allowedAdd && wf < roles.length; wf++) {
+            if (roles[wf].indexOf('facility:') === 0 && roles[wf].substring(9) === addedFacility) allowedAdd = true;
+          }
+          if (!allowedAdd) addsOnlyReferralFacilities = false;
+        }
+        referralKeep = onlyReadListChanged && keepsEvery && addsOnlyReferralFacilities;
       }
 
       if (!terminalCleanup && !transferChange && !referralKeep) {

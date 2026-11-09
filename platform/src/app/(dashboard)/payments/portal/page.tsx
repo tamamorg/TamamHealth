@@ -1,6 +1,5 @@
 'use client';
 
-import { formatInFacilityZone } from '@/lib/time-juba';
 import { defaultCurrency } from '@/lib/country/country-pack';
 import { useState, useEffect, useMemo } from 'react';
 import DemoModeBanner from '@/components/DemoModeBanner';
@@ -14,7 +13,7 @@ import { useDataScope } from '@/lib/hooks/useDataScope';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import type { BillingDoc } from '@/lib/db-types-billing';
 import type { PaymentMethodType, PaymentStatus } from '@/lib/db-types-payments';
-import { formatMoney } from '@/lib/format-utils';
+import { formatMoney, formatDate } from '@/lib/format-utils';
 import '@/components/billing/billing.css';
 import NumberInput from '@/components/forms/NumberInput';
 
@@ -377,7 +376,7 @@ export default function PatientPortalPage() {
                               <div className="bl-muted" style={{ fontSize: 11.5 }}>{bill.id}</div>
                             </td>
                             <td className="bl-muted" style={{ whiteSpace: 'nowrap' }}>
-                              {formatInFacilityZone(new Date(bill.date), { month: 'short', day: 'numeric', year: 'numeric' })}
+                              {formatDate(bill.date)}
                             </td>
                             <td className="bl-num bl-right">{formatMoney(bill.amount)}</td>
                             <td>

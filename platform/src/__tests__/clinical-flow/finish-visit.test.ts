@@ -56,6 +56,17 @@ describe('finishVisit', () => {
     expect(mockTransition).not.toHaveBeenCalled();
   });
 
+  it('refuses while a procedure is still outstanding, and finishes once it is settled', async () => {
+    mockGetEncounter.mockResolvedValue({ _id: 'e1', patientId: 'p1', status: 'awaiting_procedure' });
+    mockOutstanding.mockResolvedValue(true);
+    await expect(finishVisit('e1', actor)).rejects.toThrow(/procedure is still in progress/);
+    expect(mockOutstanding).toHaveBeenCalledWith('awaiting_procedure', 'e1', 'p1');
+    expect(mockTransition).not.toHaveBeenCalled();
+    mockOutstanding.mockResolvedValue(false);
+    await finishVisit('e1', actor);
+    expect(mockTransition).toHaveBeenCalledWith('e1', 'ready_for_clinic_checkout', expect.anything());
+  });
+
   it('finishes a parked visit once its work is done', async () => {
     mockGetEncounter.mockResolvedValue({ _id: 'e1', patientId: 'p1', status: 'awaiting_pharmacy' });
     mockOutstanding.mockResolvedValue(false);

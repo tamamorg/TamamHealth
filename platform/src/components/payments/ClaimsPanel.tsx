@@ -32,7 +32,7 @@ import { patientFullName, shortenPersonName } from '@/lib/patient-utils';
 import { computeAdjudicatedStatus } from '@/lib/services/payment-service';
 import type { ClaimDoc, ClaimStatus, InsurancePolicyDoc } from '@/lib/db-types-payments';
 import type { BillingDoc } from '@/lib/db-types-billing';
-import { formatMoney } from '@/lib/format-utils';
+import { formatMoney, formatDate } from '@/lib/format-utils';
 import { stopsClickPropagation } from '@/lib/a11y';
 import { PAYER_LABEL_KEYS } from './claims-filter';
 import { ClaimEvidence } from '@/modules/insurance/client';
@@ -352,7 +352,7 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                 <td className="bl-num bl-right">{formatMoney(claim.status === 'paid' ? claim.settlement?.amount ?? claim.totalApproved ?? 0 : 0, { currency: claim.currency || defaultCurrency(), decimals: 2 })}</td>
                 <td><span className={`bl-chip ${CLAIM_STATUS_CHIP[claim.status]}`}>{t(`claims.status_${claim.status}`)}</span></td>
                 <td style={{ whiteSpace: 'nowrap' }}>
-                  {claim.submittedDate ? formatInFacilityZone(new Date(claim.submittedDate), { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                  {formatDate(claim.submittedDate)}
                 </td>
               </tr>
             ))}
@@ -411,12 +411,12 @@ export default function ClaimsPanel({ claims, visibleClaims, onChanged, newClaim
                   </div>
                   <div className="bl-totals-row">
                     <dt>{t('claims.colSubmittedDate')}</dt>
-                    <dd>{openClaim.submittedDate ? formatInFacilityZone(new Date(openClaim.submittedDate), {}) : '—'}</dd>
+                    <dd>{formatDate(openClaim.submittedDate)}</dd>
                   </div>
                   {openClaim.adjudicatedDate && (
                     <div className="bl-totals-row">
                       <dt>{t('claims.adjudicated')}</dt>
-                      <dd>{formatInFacilityZone(new Date(openClaim.adjudicatedDate), {})}{openClaim.adjudicatedBy ? ` · ${openClaim.adjudicatedBy}` : ''}</dd>
+                      <dd>{formatDate(openClaim.adjudicatedDate)}{openClaim.adjudicatedBy ? ` · ${openClaim.adjudicatedBy}` : ''}</dd>
                     </div>
                   )}
                   {!!openClaim.resubmissionCount && (

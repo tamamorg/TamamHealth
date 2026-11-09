@@ -542,6 +542,8 @@ export default function PaymentPanel({
                   </div>
                   <ManagerOverrideFields
                     purpose={`waiver of ${amount} ${currency}`}
+                    subjectId={patientId}
+                    amount={parseFloat(amount) || undefined}
                     approval={approval}
                     onApproval={setApproval}
                   />

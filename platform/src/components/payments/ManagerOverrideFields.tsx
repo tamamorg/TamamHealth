@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Loader2 } from '@/components/icons/lucide';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { humanizeStatus } from '@/lib/format-utils';
@@ -19,9 +19,13 @@ const LABEL_STYLE = { fontSize: 12, fontWeight: 600, color: 'var(--text-muted)',
  * /api/auth/manager-override); the password is not kept. Needs a connection,
  * because this device holds no other staff member's credentials.
  */
-export default function ManagerOverrideFields({ purpose, approval, onApproval }: {
+export default function ManagerOverrideFields({ purpose, subjectId, amount, approval, onApproval }: {
   /** What is being approved, for the audit trail ("waiver of 50 SSP"). */
   purpose: string;
+  /** The patient the waiver or adjustment is for; the signed approval is bound to it. */
+  subjectId?: string;
+  /** The amount being approved; the signed approval is bound to it. */
+  amount?: number;
   approval: ManagerApproval | null;
   onApproval: (approval: ManagerApproval | null) => void;
 }) {
@@ -30,6 +34,14 @@ export default function ManagerOverrideFields({ purpose, approval, onApproval }:
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // The signed approval covers one patient and one amount: changing either
+  // after the manager approved asks for a fresh approval, not a refused sync.
+  const boundTo = useRef<string | null>(null);
+  const binding = `${subjectId ?? ''}|${amount ?? ''}`;
+  useEffect(() => {
+    if (approval && boundTo.current !== null && boundTo.current !== binding) onApproval(null);
+    if (!approval) boundTo.current = null;
+  }, [binding, approval, onApproval]);
   const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
 
   const verify = async () => {
@@ -41,10 +53,11 @@ export default function ManagerOverrideFields({ purpose, approval, onApproval }:
       const res = await apiFetch('/api/auth/manager-override', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username.trim(), password, purpose }),
+        body: JSON.stringify({ username: username.trim(), password, purpose, subjectId, amount }),
       });
       const body = await res.json().catch(() => ({})) as { approval?: ManagerApproval; error?: string };
       if (res.ok && body.approval) {
+        boundTo.current = binding;
         onApproval(body.approval);
         setPassword('');
       } else {

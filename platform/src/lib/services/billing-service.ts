@@ -247,6 +247,7 @@ export async function createBill(data: CreateBillInput): Promise<BillingDoc> {
     insuranceCoveragePercent: data.insuranceCoveragePercent,
     insuranceClaimStatus: 'none',
     status: data.exemptReason ? 'waived' : 'pending',
+    ...(data.exemptReason ? { exemptReason: data.exemptReason } : {}),
     generatedBy: data.generatedBy,
     generatedByName: data.generatedByName,
     invoiceNumber,
@@ -1029,6 +1030,9 @@ export async function waiveBill(
   bill.waiverApprovedByName = approval.approvedByName;
   bill.waiverApprovedByRole = approval.approvedByRole;
   bill.waiverApprovedAt = approval.approvedAt;
+  if (approval.approvalToken) bill.waiverApprovalToken = approval.approvalToken;
+  bill.waivedBy = waivedBy;
+  bill.waivedAt = new Date().toISOString();
   bill.balanceDue = 0;
   bill.updatedAt = new Date().toISOString();
   const resp = await db.put(bill);

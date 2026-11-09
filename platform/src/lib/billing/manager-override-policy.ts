@@ -47,4 +47,6 @@ export interface ManagerApproval {
   approvedByName: string;
   approvedByRole: string;
   approvedAt: string;
+  /** Server signature over this approval (approval-token.ts). The device cannot mint one. */
+  approvalToken?: string;
 }

@@ -62,12 +62,14 @@ export async function finishVisit(
   if (!canFinishVisit(enc.status)) {
     throw new FinishVisitError('Visit not finished. The patient is not with a clinician.');
   }
-  if (enc.status === 'awaiting_labs' || enc.status === 'awaiting_imaging' || enc.status === 'awaiting_pharmacy') {
+  if (enc.status === 'awaiting_labs' || enc.status === 'awaiting_imaging' || enc.status === 'awaiting_pharmacy' || enc.status === 'awaiting_procedure') {
     const { hasOutstandingParkedWork } = await import('../clinical-notes/note-service');
     if (await hasOutstandingParkedWork(enc.status, enc._id, enc.patientId)) {
       throw new FinishVisitError(enc.status === 'awaiting_pharmacy'
         ? 'Visit not finished. A prescription is still waiting at the pharmacy.'
-        : 'Visit not finished. Results are still pending.');
+        : enc.status === 'awaiting_procedure'
+          ? 'Visit not finished. A procedure is still in progress.'
+          : 'Visit not finished. Results are still pending.');
     }
   }
   const opts = { actorId: actor.id, actorRole: actor.role };

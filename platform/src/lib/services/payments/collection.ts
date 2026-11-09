@@ -45,6 +45,40 @@ export interface CollectPaymentInput {
 
 const cents = (n: number) => Math.round(n * 100);
 
+/** Bill statuses that still carry money the patient (or their insurer) owes. */
+const OPEN_BILL_STATUSES: readonly string[] = ['pending', 'partial', 'insurance_pending', 'insurance_approved', 'insurance_rejected'];
+
+/**
+ * What the patient owes right now: the larger of the ledger balance and the sum
+ * of their open bills' balanceDue, both within the caller's tenant. A user with
+ * no organisation cannot read the ledger (it fails closed), so the bills are
+ * read at the cashier's own facility instead.
+ */
+export async function owedByPatient(input: Pick<CollectPaymentInput, 'patientId' | 'orgId' | 'facilityId'>): Promise<number> {
+  const { getPatientBalance } = await import('../ledger-service');
+  const ledger = input.orgId ? await getPatientBalance(input.patientId, orgOnlyScope(input.orgId)) : 0;
+  let billed = 0;
+  try {
+    type OpenBill = { status: string; balanceDue?: number; facilityId?: string; chargeReversedAt?: string };
+    let bills: OpenBill[];
+    if (input.orgId) {
+      const { getBillsByPatient } = await import('../billing-service');
+      bills = await getBillsByPatient(input.patientId, orgOnlyScope(input.orgId));
+    } else {
+      const { getDB } = await import('../../db');
+      bills = (await findByType<OpenBill>(getDB('tamamhealth_billing'), 'billing', { patientId: input.patientId }, { indexFields: ['type', 'patientId'] }))
+        .filter(b => !!input.facilityId && b.facilityId === input.facilityId);
+    }
+    billed = bills
+      .filter(b => OPEN_BILL_STATUSES.includes(b.status) && !b.chargeReversedAt)
+      .reduce((sum, b) => sum + Math.max(cents(b.balanceDue || 0), 0), 0) / 100;
+  } catch (err) {
+    // The ledger figure still stands; the bills are the second opinion.
+    console.warn('[payments] could not read the open bills (using the ledger):', err);
+  }
+  return Math.max(ledger, billed);
+}
+
 export async function collectPayment(input: CollectPaymentInput): Promise<PaymentDoc> {
   const db = paymentsDB();
   const now = new Date().toISOString();
@@ -69,17 +103,18 @@ export async function collectPayment(input: CollectPaymentInput): Promise<Paymen
     }
   }
 
-  // Record what is owed, give change: a payment can never exceed the balance.
-  // The balance is read here, not trusted from the screen. It is the whole
-  // account (tenant-wide), the same figure settlement pays down.
-  const { getPatientBalance } = await import('../ledger-service');
-  const balanceBefore = await getPatientBalance(input.patientId, orgOnlyScope(input.orgId));
+  // Record what is owed, give change: a payment can never exceed what is owed.
+  // The figure is read here, not trusted from the screen. Owed is the larger of
+  // the ledger (the whole account, tenant-wide, the figure settlement pays down)
+  // and the patient's open bills: a charge raised on another device that has not
+  // reached this one's ledger, or whose ledger mirror failed, is still owed.
+  const balanceBefore = await owedByPatient(input);
   if (cents(input.amount) > Math.max(cents(balanceBefore), 0)) {
     throw new PaymentOperationError(
       'OVERPAYMENT',
       balanceBefore > 0
         ? `Payment not recorded. The balance is ${balanceBefore}. Enter that amount or less.`
-        : 'Payment not recorded. This patient owes nothing.',
+        : 'Payment not recorded. No charge for this patient is on this device yet. Sync, then try again.',
     );
   }
   let changeGiven: number | undefined;
@@ -115,6 +150,7 @@ export async function collectPayment(input: CollectPaymentInput): Promise<Paymen
       approvedByName: input.approval.approvedByName,
       approvedByRole: input.approval.approvedByRole,
       approvedAt: input.approval.approvedAt,
+      ...(input.approval.approvalToken ? { approvalToken: input.approval.approvalToken } : {}),
     } : {}),
     processedAt: now,
     processedBy: input.processedBy,

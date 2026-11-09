@@ -319,6 +319,7 @@ export default function BillingTab({
         approvedBy: adjApproval.approvedBy,
         approvedByName: adjApproval.approvedByName,
         approvedByRole: adjApproval.approvedByRole,
+        approvalToken: adjApproval.approvalToken,
         facilityId,
         orgId,
       });
@@ -959,6 +960,8 @@ export default function BillingTab({
             <div className="bl-field">
               <ManagerOverrideFields
                 purpose={`${adjForm.adjustmentType} of ${adjForm.amount} ${defaultCurrency()}`}
+                subjectId={patient._id}
+                amount={adjForm.amount || undefined}
                 approval={adjApproval}
                 onApproval={setAdjApproval}
               />

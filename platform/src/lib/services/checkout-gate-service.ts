@@ -311,14 +311,18 @@ export async function evaluateCheckoutGate(
   }
 
   // ── Payment status determined ─────────────────────────────────────────
-  // A balance blocks the visit from closing until it is cleared, waived (a
+  // A balance on THIS visit blocks it from closing until it is cleared, waived (a
   // manager-approved waiver clears it) or the cashier records it as a debt
   // ("bill to account") with a written reason. A walk-out is the one exit that
   // cannot be held (see assertDischargeAllowed).
   try {
     if (!scope) throw new Error('no tenant scope');
-    const { getPatientBalance } = await import('./ledger-service');
-    const balance = await getPatientBalance(patientId, scope);
+    // This visit's own figure, never the whole account: an old unpaid visit
+    // does not hold a later one, and an insurer's share is not the patient's.
+    const { encounterPatientOwed } = await import('./encounter-balance');
+    const balance = encounter?._id
+      ? await encounterPatientOwed(patientId, encounter as { _id: string; visitBilling?: { payment?: string } }, scope)
+      : 0;
     let satisfied = balance <= 0;
     let debtRecorded = false;
     if (!satisfied && encounter?._id) {

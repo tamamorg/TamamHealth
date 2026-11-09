@@ -98,12 +98,16 @@ export default function CheckoutModal({
     }
     let cancelled = false;
     const load = async () => {
-      try {
-        const { getPatientBalance } = await import('@/lib/services/ledger-service');
-        const b = await getPatientBalance(target.patientId, scope);
-        if (!cancelled) setBalance(b);
-      } catch {
-        if (!cancelled) setBalance(null);
+      // The whole account only until the visit is known; the figure that holds
+      // checkout is this visit's own (encounterPatientOwed), set below.
+      if (!target.encounterId) {
+        try {
+          const { getPatientBalance } = await import('@/lib/services/ledger-service');
+          const b = await getPatientBalance(target.patientId, scope);
+          if (!cancelled) setBalance(b);
+        } catch {
+          if (!cancelled) setBalance(null);
+        }
       }
       // Itemized fee ticket for this visit so the desk sees what was billed.
       try {
@@ -112,6 +116,13 @@ export default function CheckoutModal({
           ? await getEncounter(target.encounterId)
           : await getOpenEncounterForPatient(target.patientId);
         if (enc) {
+          try {
+            const { encounterPatientOwed } = await import('@/lib/services/encounter-balance');
+            const owed = await encounterPatientOwed(target.patientId, enc, scope);
+            if (!cancelled) setBalance(owed);
+          } catch {
+            if (!cancelled) setBalance(null);
+          }
           const { getChargesByEncounter } = await import('@/lib/services/payment-service');
           const ch = await getChargesByEncounter(enc._id);
           if (!cancelled) setCharges(ch.map(c => ({ description: c.description, amount: c.billedAmount })));

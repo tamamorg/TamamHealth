@@ -118,11 +118,17 @@ function noteId(): string {
  * push it toward checkout on a guess.
  */
 export async function hasOutstandingParkedWork(
-  status: 'awaiting_pharmacy' | 'awaiting_labs' | 'awaiting_imaging',
+  status: 'awaiting_pharmacy' | 'awaiting_labs' | 'awaiting_imaging' | 'awaiting_procedure',
   encounterId: string,
   patientId: string,
 ): Promise<boolean> {
   try {
+    if (status === 'awaiting_procedure') {
+      // A procedure of this visit that has not reached a settled status.
+      const { getProceduresByPatient, isProcedureSettled } = await import('../services/procedure-service');
+      const procedures = await getProceduresByPatient(patientId);
+      return procedures.some(p => p.encounterId === encounterId && !isProcedureSettled(p));
+    }
     if (status === 'awaiting_pharmacy') {
       const { getPrescriptionsByPatient } = await import('../services/prescription-service');
       const { holdsVisitAtPharmacy } = await import('../pharmacy-workflow');

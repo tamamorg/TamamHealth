@@ -110,8 +110,9 @@ const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'S
  *
  * - '' for empty input; the raw string when it can't be parsed.
  * - A leading `YYYY-MM-DD` is read literally, so a date-only value can't slip
- *   a day across the UTC offset. Anything else resolves to its local
- *   calendar day, the same convention as `toIsoDate`.
+ *   a day across the UTC offset, and so is a zone-less datetime (already
+ *   facility wall time). A datetime with a zone is an instant and resolves to
+ *   its facility-zone calendar day.
  */
 export function formatShortDate(value?: string | Date | null, opts?: { year?: boolean }): string {
   if (!value) return '';
@@ -120,7 +121,10 @@ export function formatShortDate(value?: string | Date | null, opts?: { year?: bo
   let day: number;
   if (typeof value === 'string') {
     const parts = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    const instant = /T\d{2}:\d{2}/.test(value) && !!parts;
+    // A datetime with a zone (Z or an offset) is an instant. One without is
+    // already wall-clock time at the facility: its date is read as written, not
+    // parsed as the device's local time and then converted to the facility's.
+    const instant = /T\d{2}:\d{2}/.test(value) && !!parts && /(Z|[+-]\d{2}(:?\d{2})?)$/i.test(value.replace(/^\d{4}-\d{2}-\d{2}/, ''));
     if (parts && !instant) {
       year = Number(parts[1]);
       month = Number(parts[2]);

@@ -22,6 +22,10 @@ export async function verifyManagerOverride(input: {
   requester: Pick<AuthPayload, 'sub' | 'username' | 'name' | 'orgId' | 'hospitalId'> & { role: string };
   /** What is being approved, for the audit row ("waiver of 50 SSP"). */
   purpose: string;
+  /** The patient (waiver payment, adjustment) or bill the approval is for. Bound into the signed token. */
+  subjectId?: string;
+  /** The amount approved, if any. Bound into the signed token. */
+  amount?: number;
 }): Promise<ManagerOverrideResult> {
   const username = input.username.trim().toLowerCase();
   const { requester } = input;
@@ -47,6 +51,10 @@ export async function verifyManagerOverride(input: {
   const approval: ManagerApproval = {
     approvedBy: user._id, approvedByName: user.name, approvedByRole: user.role, approvedAt: new Date().toISOString(),
   };
+  if (input.subjectId) {
+    const { signApproval } = await import('../billing/approval-token');
+    approval.approvalToken = signApproval(approval, { requesterId: requester.sub, subjectId: input.subjectId, amount: input.amount });
+  }
   await logAuditSafe('manager_override_granted', user._id, user.name,
     `${user.name} approved ${input.purpose} at the device of ${requester.name} (${requester.sub})`, true);
   return { ok: true, approval };

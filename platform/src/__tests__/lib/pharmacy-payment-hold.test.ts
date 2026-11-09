@@ -55,8 +55,16 @@ describe('pay-before-dispense never blocks emergency care', () => {
 
   it('releases a patient exempt from payment and an insured patient', () => {
     expect(paymentReleaseFor(routine, { visitBilling: { payment: 'non_paying', exemption: 'under_five' } })).toBe('exempt');
-    expect(paymentReleaseFor(routine, { visitBilling: { payment: 'paying', method: 'insurance' } })).toBe('insured');
+    expect(paymentReleaseFor(routine, { visitBilling: { payment: 'paying', method: 'insurance' }, insuredCopayOwed: 0 })).toBe('insured');
     expect(paymentReleaseFor(routine, { visitBilling: { payment: 'paying', method: 'cash' } })).toBeNull();
+  });
+
+  it('holds an insured patient who still owes a copay, or whose copay is unknown, as routine', () => {
+    const insured = { payment: 'paying', method: 'insurance' } as const;
+    expect(paymentReleaseFor(routine, { visitBilling: insured, insuredCopayOwed: 20 })).toBeNull();
+    expect(paymentReleaseFor(routine, { visitBilling: insured })).toBeNull();
+    // Urgent care is still released whatever the copay.
+    expect(paymentReleaseFor(routine, { visitBilling: insured, insuredCopayOwed: 20, triagePriority: 'RED' })).toBe('emergency');
   });
 
   it('marks a life-sustaining medicine as released too', () => {

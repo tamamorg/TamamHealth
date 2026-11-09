@@ -42,6 +42,8 @@ export async function createAdjustment(input: {
   approvedBy: string;
   approvedByName: string;
   approvedByRole: string;
+  /** The server's signature over the approval, from /api/auth/manager-override. */
+  approvalToken?: string;
   facilityId: string;
   orgId?: string;
 }): Promise<AdjustmentDoc> {
@@ -74,6 +76,7 @@ export async function createAdjustment(input: {
     approvedBy: input.approvedBy,
     approvedByName: input.approvedByName,
     approvedByRole: input.approvedByRole,
+    ...(input.approvalToken ? { approvalToken: input.approvalToken } : {}),
     facilityId: input.facilityId,
     orgId: input.orgId,
     approvedDate: now,

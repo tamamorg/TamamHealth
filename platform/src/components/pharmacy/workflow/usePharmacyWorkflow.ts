@@ -249,6 +249,14 @@ export function usePharmacyWorkflow(
         const { getEncounter } = await import('@/lib/services/encounter-service');
         const enc = await getEncounter(rx.encounterId);
         if (enc?.visitBilling) ctx.visitBilling = enc.visitBilling;
+        // An insured visit releases only what the insurer covers: read what the
+        // patient still owes on it (the copay) so paymentReleaseFor can tell.
+        if (enc?.visitBilling?.payment === 'paying' && enc.visitBilling.method === 'insurance' && scope) {
+          try {
+            const { encounterPatientOwed } = await import('@/lib/services/encounter-balance');
+            ctx.insuredCopayOwed = await encounterPatientOwed(rx.patientId, enc, scope);
+          } catch { /* unknown copay is treated as owed */ }
+        }
         const { getTriageByEncounter } = await import('@/lib/services/triage-service');
         const triage = await getTriageByEncounter(rx.encounterId).catch(() => null);
         if (triage?.priority) ctx.triagePriority = triage.priority;

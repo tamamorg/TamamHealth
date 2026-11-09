@@ -43,7 +43,7 @@ describe('overpayment', () => {
   });
 
   test('refuses a payment from a patient who owes nothing', async () => {
-    await expect(pay({ amount: 10 })).rejects.toMatchObject({ code: 'OVERPAYMENT', message: expect.stringContaining('owes nothing') });
+    await expect(pay({ amount: 10 })).rejects.toMatchObject({ code: 'OVERPAYMENT', message: expect.stringContaining('on this device yet') });
   });
 
   test('accepts the exact balance and a part payment', async () => {
@@ -77,6 +77,42 @@ describe('overpayment', () => {
     await owe(70);
     await expect(pay({ method: 'mpesa', amount: 70, tendered: 100 })).rejects.toMatchObject({ code: 'OVERPAYMENT' });
     await expect(pay({ amount: 70, tendered: 50 })).rejects.toMatchObject({ code: 'INVALID_AMOUNT' });
+  });
+});
+
+describe('owed is the larger of the ledger and the open bills', () => {
+  const billDoc = (over: Record<string, unknown> = {}) => ({
+    _id: 'bill-x', type: 'billing', patientId: 'pat-1', orgId: 'org-a', facilityId: 'hosp-1', status: 'pending',
+    balanceDue: 60, totalAmount: 60, payments: [], createdAt: '2026-11-08T08:00:00.000Z', updatedAt: '2026-11-08T08:00:00.000Z', ...over,
+  });
+  const putBill = async (over: Record<string, unknown> = {}) => (await import('@/lib/db')).getDB('tamamhealth_billing').put(billDoc(over) as never);
+
+  test('a charge from another device that has not reached the ledger can still be paid', async () => {
+    await putBill();
+    const pmt = await pay({ amount: 60 });
+    expect(pmt.balanceBefore).toBe(60);
+  });
+
+  test('the cap is the larger figure: over the bill is refused, over the ledger is refused', async () => {
+    await putBill({ balanceDue: 60 });
+    await owe(40);
+    await expect(pay({ amount: 60.01 })).rejects.toMatchObject({ code: 'OVERPAYMENT' });
+    await owe(80); // ledger now 120, bills 60: the ledger is larger
+    expect((await pay({ amount: 120 })).balanceBefore).toBe(120);
+  });
+
+  test('a paid, waived or cancelled bill is not owed', async () => {
+    await putBill({ _id: 'b1', status: 'paid', balanceDue: 0 });
+    await putBill({ _id: 'b2', status: 'waived', balanceDue: 0 });
+    await putBill({ _id: 'b3', status: 'cancelled', balanceDue: 60 });
+    await expect(pay({ amount: 10 })).rejects.toMatchObject({ code: 'OVERPAYMENT', message: expect.stringContaining('on this device yet') });
+  });
+
+  test('a user with no organisation is paid from the bills at their own facility', async () => {
+    await putBill();
+    await putBill({ _id: 'bill-other', facilityId: 'hosp-9', balanceDue: 500 });
+    const pmt = await pay({ amount: 60, orgId: undefined });
+    expect(pmt.balanceBefore).toBe(60);
   });
 });
 
@@ -119,6 +155,32 @@ describe('waiver approval', () => {
     await expect(adjustment({ approvedBy: '' })).rejects.toMatchObject({ code: 'APPROVER_REQUIRED' });
     await expect(adjustment({ approvedByRole: 'cashier' })).rejects.toMatchObject({ code: 'APPROVER_ROLE' });
     expect(await getPatientBalance('pat-1', SCOPE)).toBe(40);
+  });
+
+  test('the server-signed approval token is kept on the waiver payment, the adjustment and the waived bill', async () => {
+    const signed = { ...MANAGER, approvalToken: 'signed.token' };
+    await owe(200);
+    expect(await pay({ method: 'waiver', amount: 50, approval: signed })).toMatchObject({ approvalToken: 'signed.token' });
+    expect(await adjustment({ approvalToken: 'signed.token' })).toMatchObject({ approvalToken: 'signed.token' });
+    const bill = await createBill({
+      patientId: 'pat-1', patientName: 'Test Patient', facilityId: 'hosp-1', facilityName: 'F', facilityLevel: 'clinic',
+      encounterDate: '2026-08-08',
+      items: [{ id: 'li-1', category: 'consultation', description: 'Consult', quantity: 1, unitPrice: 100, totalPrice: 100 } as never],
+      generatedBy: 'cashier-1', generatedByName: 'Cashier', state: 'CES', orgId: 'org-a',
+    });
+    expect(await waiveBill(bill._id, 'cashier-1', 'Cashier', 'hardship', signed))
+      .toMatchObject({ waiverApprovalToken: 'signed.token', waivedBy: 'cashier-1' });
+  });
+
+  test('a bill created exempt records why, owes nothing and is already waived', async () => {
+    const bill = await createBill({
+      patientId: 'pat-1', patientName: 'Test Patient', facilityId: 'hosp-1', facilityName: 'F', facilityLevel: 'clinic',
+      encounterDate: '2026-08-08', exemptReason: 'Exempt visit: Child under five',
+      items: [{ id: 'li-1', category: 'consultation', description: 'Consult', quantity: 1, unitPrice: 100, totalPrice: 100 } as never],
+      generatedBy: 'dr-1', generatedByName: 'Doc', state: 'CES', orgId: 'org-a',
+    });
+    expect(bill).toMatchObject({ status: 'waived', balanceDue: 0, exemptReason: 'Exempt visit: Child under five' });
+    expect(bill.waiverApprovedBy).toBeUndefined();
   });
 
   test('waiving a bill needs a second approver too', async () => {

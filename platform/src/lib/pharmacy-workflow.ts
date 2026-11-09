@@ -124,6 +124,12 @@ export type PaymentRelease = 'life_sustaining' | 'stat' | 'emergency' | 'exempt'
 export interface PaymentReleaseContext {
   triagePriority?: string;
   visitBilling?: Pick<VisitBilling, 'payment' | 'method' | 'exemption'>;
+  /**
+   * What the patient still owes themselves for this visit's insured charges
+   * (the copay), when known. An insured patient with a copay to pay is held
+   * like any other; unknown is treated as owed.
+   */
+  insuredCopayOwed?: number;
 }
 
 export function paymentReleaseFor(
@@ -134,7 +140,10 @@ export function paymentReleaseFor(
   if (isStatFrequency(rx.frequency || '')) return 'stat';
   if (ctx.triagePriority === 'RED' || ctx.visitBilling?.exemption === 'emergency') return 'emergency';
   if (ctx.visitBilling?.payment === 'non_paying') return 'exempt';
-  if (ctx.visitBilling?.payment === 'paying' && ctx.visitBilling.method === 'insurance') return 'insured';
+  // Insurance releases only what the insurer covers: a patient who still owes
+  // a copay on this visit is held as routine until it is paid.
+  if (ctx.visitBilling?.payment === 'paying' && ctx.visitBilling.method === 'insurance'
+      && ctx.insuredCopayOwed !== undefined && ctx.insuredCopayOwed <= 0) return 'insured';
   return null;
 }
 

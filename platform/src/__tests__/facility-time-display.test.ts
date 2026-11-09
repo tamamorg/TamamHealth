@@ -39,6 +39,20 @@ describe('facility-zone display on a non-Juba device', () => {
     expect(formatShortDate('2026-08-24')).toBe('24 Aug');
   });
 
+  it('formatShortDate reads a zone-less datetime as facility wall time, not the device clock', () => {
+    // 23:30 in New York would be 25 Aug in Juba if it were parsed as device time.
+    expect(formatShortDate('2026-08-24T23:30')).toBe('24 Aug');
+    expect(formatShortDate('2026-08-24T10:00:00')).toBe('24 Aug');
+    // With a zone it is still an instant.
+    expect(formatShortDate('2026-08-24T22:30:00+00:00')).toBe('25 Aug');
+    expect(formatShortDate('2026-08-24T22:30:00-02:00')).toBe('25 Aug');
+  });
+
+  it('date-only record fields stay on their own day', () => {
+    // immunization.dateGiven, bill.date, claim.submittedDate go through formatDate.
+    expect(formatDate('2026-08-24')).toBe('Aug 24, 2026');
+  });
+
   it('formatLongDate uses the Juba day', () => {
     expect(formatLongDate('2026-08-24T22:30:00Z')).toBe('Tuesday, 25 August 2026');
   });

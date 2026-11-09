@@ -179,6 +179,8 @@ export interface AdjustmentDoc extends BaseDoc {
   /** Role of the approver at approval time (manager override). */
   approvedByRole?: string;
   approvedDate?: string;
+  /** Server signature over the approval (approval-token.ts). */
+  approvalToken?: string;
   facilityId: string;
   orgId?: string;
 }
@@ -245,6 +247,8 @@ export interface PaymentDoc extends BaseDoc {
   approvedByName?: string;
   approvedByRole?: string;
   approvedAt?: string;
+  /** Server signature over the approval (approval-token.ts). */
+  approvalToken?: string;
 }
 
 export interface PaymentAllocation {

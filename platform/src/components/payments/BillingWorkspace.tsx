@@ -19,7 +19,6 @@
  * than on which URL the user arrived through.
  */
 
-import { formatInFacilityZone } from '@/lib/time-juba';
 import { defaultCurrency } from '@/lib/country/country-pack';
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
@@ -54,7 +53,7 @@ import { billingDB, claimsDB, paymentPlansDB, paymentsDB } from '@/lib/db';
 import VisitStatusPicker from '@/components/appointments/VisitStatusPicker';
 import { APPOINTMENT_SLOT_RELEASED_STATUSES } from '@/lib/appointment-status';
 import type { EncounterStatus } from '@/lib/clinical-flow/encounter-journey';
-import { formatMoney, humanizeStatus } from '@/lib/format-utils';
+import { formatMoney, humanizeStatus, formatDate } from '@/lib/format-utils';
 import { shortenPersonName } from '@/lib/patient-utils';
 import '@/components/billing/billing.css';
 import { useNow } from '@/lib/hooks/useNow';
@@ -904,7 +903,7 @@ export default function BillingWorkspace({ initialTab = 'accounts' }: { initialT
                           {canSeeClaims && <td className="bl-num bl-right">{line.openClaims > 0 ? line.openClaims : '—'}</td>}
                           <td className="bl-num bl-right">{line.activePlans > 0 ? line.activePlans : '—'}</td>
                           <td className="bl-muted" style={{ whiteSpace: 'nowrap' }}>
-                            {line.lastActivity ? formatInFacilityZone(new Date(line.lastActivity), { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                            {formatDate(line.lastActivity)}
                           </td>
                           <td>
                             {todaysVisitByPatient.has(line.patientId) ? (

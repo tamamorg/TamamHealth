@@ -128,6 +128,7 @@ async function postHandler(request: NextRequest) {
       const { verifyManagerOverride } = await import('@/lib/services/manager-override-service');
       const override = await verifyManagerOverride({
         username: approver.username, password: approver.password, purpose: `waiver of bill ${String(body.billId).slice(0, 64)}`,
+        subjectId: String(body.billId),
         requester: { sub: auth.sub, username: auth.username, name: auth.name, role: auth.role, orgId: auth.orgId, hospitalId: auth.hospitalId },
       });
       if (!override.ok) {
