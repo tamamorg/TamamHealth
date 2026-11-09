@@ -40,6 +40,7 @@ import { TRANSFER_WRITE_ROLES } from '../services/patient-transfer-permissions';
 import { MULTI_FACILITY_ROLES } from './facility-entitlements';
 import { DATABASE_DOCUMENT_TYPES } from './sync-config';
 import { CARE_TEAM_ASSIGNMENT_ROLES } from '../care-team-permissions';
+import { LAB_CORRECTION_CLINICIAN_APPROVERS } from '../lab-correction-approvers';
 import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_SCHEDULING_ROLES, canRoleMoveAppointment } from '../appointment-status';
 import type { AppointmentStatus } from '../db-types';
 import phiCatalog from '../phi-field-catalog.json';
@@ -913,7 +914,8 @@ export function buildValidateDocUpdateFn(
 
   // ── Lab result corrections: four eyes ──────────────────────────────────
   // A correction to a filed result is proposed by one lab tech and approved
-  // by another. The app checks this; the server must too, or a device could
+  // by another lab tech or a clinician at the same facility (the facility
+  // scope check below applies to the write). The proposer never approves. The app checks this; the server must too, or a device could
   // approve its own user's correction. Identity comes from the user: role.
   if (!isDelete && oldDoc && docType === 'lab_result') {
     var labActor = null;
@@ -939,8 +941,12 @@ export function buildValidateDocUpdateFn(
     var filedResult = !!oldDoc.completedAt || oldDoc.status === 'completed'
       || contains(['resulted', 'reviewed_by_clinician', 'acted_upon', 'communicated_to_patient'], oldDoc.orderStatus);
     var correctionWrite = correctionStateChanged || (filedResult && resultChanged);
-    if (correctionWrite && actingRole !== 'lab_tech') {
-      throw({ forbidden: 'Only a lab tech may propose, approve or reject a filed lab result correction' });
+    // A clinician may only review (approve/reject) a correction that is already
+    // waiting: never propose one, never change the filed value any other way.
+    var clinicianReviewer = contains(${JSON.stringify(LAB_CORRECTION_CLINICIAN_APPROVERS)}, actingRole)
+      && !!priorCorrection && !nextCorrection;
+    if (correctionWrite && actingRole !== 'lab_tech' && !clinicianReviewer) {
+      throw({ forbidden: 'Only a lab tech may propose a filed lab result correction; only a lab tech or a clinician may approve or reject one' });
     }
     if (correctionWrite && !labActor) {
       throw({ forbidden: 'Lab result correction writes require a provisioned user identity claim' });
@@ -959,7 +965,7 @@ export function buildValidateDocUpdateFn(
       && newDoc.correctionVerifiedAt !== oldDoc.correctionVerifiedAt;
     if (approvedNow) {
       if (priorCorrection.proposedById && priorCorrection.proposedById === labActor) {
-        throw({ forbidden: 'A lab result correction must be approved by a second lab tech, not the one who proposed it' });
+        throw({ forbidden: 'A lab result correction must be approved by another lab tech or a clinician, not the one who proposed it' });
       }
       if (newDoc.correctionVerifiedById !== labActor) {
         throw({ forbidden: 'correctionVerifiedById must be the user approving the correction' });
@@ -995,7 +1001,7 @@ export function buildValidateDocUpdateFn(
         || !sameLabValue(rejection.proposedById, priorCorrection.proposedById)
         || !sameLabValue(rejection.proposedAt, priorCorrection.proposedAt)
         || resultChanged) {
-        throw({ forbidden: 'Rejecting a correction requires a second lab tech and an immutable audit entry' });
+        throw({ forbidden: 'Rejecting a correction requires another lab tech or a clinician and an immutable audit entry' });
       }
     } else if (filedResult && resultChanged) {
       throw({ forbidden: 'A filed lab result may change only through an approved pending correction' });

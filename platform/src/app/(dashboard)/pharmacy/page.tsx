@@ -45,10 +45,11 @@ import type { PharmacyInventoryDoc } from '@/lib/db-types';
 import { RX_STAGE_PILL_CLASS, prescriptionSig, stockRequiresWitness, type PharmacyTab } from '@/components/pharmacy/pharmacy-helpers';
 
 import { useUrlView } from '@/lib/navigation/use-url-view';
+import { buildReorderRows, type ReorderRow } from '@/lib/pharmacy-reorder';
 
 /** Expired stock is not on the shelf: it never counts as available and is handled under Expiry. */
 function isExpiredItem(i: { status: string; expiryDate?: string }): boolean {
-  return i.status === 'expired' || (!!i.expiryDate && i.expiryDate <= todayIso());
+  return i.status === 'expired' || (!!i.expiryDate && i.expiryDate < todayIso());
 }
 
 export default function PharmacyPage() {
@@ -348,27 +349,24 @@ export default function PharmacyPage() {
     date ? Math.ceil((new Date(date).getTime() - new Date(todayStr).getTime()) / 86400000) : Infinity;
 
   // Expired stock is not on the shelf: it never counts as available, and it
-  // is handled under Expiry (it needs disposing of, not topping up).
+  // is disposed of under Expiry. Reorder still lists a medicine whose shelf is
+  // partly or wholly expired ("N expired, replace") so it gets replaced.
 
   // Reorder: anything at or below its reorder level (low or critical), neediest
   // first. The pharmacist's "Reorder trigger" (`stock.reorder`) widens this to
   // anything with less than that many days of cover, using the item's reorder
   // level as the daily-usage proxy the inventory record actually carries.
   const reorderList = useMemo(() =>
-    inventory
-      .filter(i => !isExpiredItem(i))
-      .filter(i => i.status === 'low' || i.status === 'critical'
-        || (reorderCoverDays > 0 && i.reorderLevel > 0
-            && i.stockLevel < (i.reorderLevel / 30) * reorderCoverDays))
-      .filter(i => !q || i.medicationName.toLowerCase().includes(q.toLowerCase()) || i.category.toLowerCase().includes(q.toLowerCase()))
-      .filter(i => categoryFilter === 'all' || i.category === categoryFilter)
-      .filter(i => statusFilter === 'all' || i.status === statusFilter)
-      .sort((a, b) => a.stockLevel - b.stockLevel),
-  [inventory, q, categoryFilter, statusFilter, reorderCoverDays]);
+    buildReorderRows(inventory, { today: todayStr, reorderCoverDays })
+      .filter(r => !q || r.item.medicationName.toLowerCase().includes(q.toLowerCase()) || r.item.category.toLowerCase().includes(q.toLowerCase()))
+      .filter(r => categoryFilter === 'all' || r.item.category === categoryFilter)
+      .filter(r => statusFilter === 'all' || r.status === statusFilter)
+      .sort((a, b) => a.onHand - b.onHand),
+  [inventory, q, categoryFilter, statusFilter, reorderCoverDays, todayStr]);
 
   // The order quantity a reorder line should request: enough to reach double
   // its reorder level, never less than the reorder level itself.
-  const orderQtyFor = (item: typeof inventory[number]) => Math.max(item.reorderLevel * 2 - item.stockLevel, item.reorderLevel);
+  const orderQtyFor = (row: ReorderRow) => Math.max(row.item.reorderLevel * 2 - row.onHand, row.item.reorderLevel);
 
   // Expiry (FEFO): soonest-to-expire first.
   const expiryList = useMemo(() =>
@@ -433,8 +431,8 @@ export default function PharmacyPage() {
 
   // Print a reorder / purchase order from the items currently needing restock.
   const handlePrintReorder = () => {
-    const rows = reorderList.map(i =>
-      `<tr><td>${escapeHtml(i.medicationName)}</td><td>${escapeHtml(i.category)}</td><td>${escapeHtml(`${i.stockLevel} ${i.unit}`)}</td><td>${escapeHtml(i.reorderLevel)}</td><td>${escapeHtml(orderQtyFor(i))}</td></tr>`
+    const rows = reorderList.map(r =>
+      `<tr><td>${escapeHtml(r.item.medicationName)}${r.expiredQty > 0 ? ` (${escapeHtml(t('pharmacy.expiredReplace', { count: r.expiredQty }))})` : ''}</td><td>${escapeHtml(r.item.category)}</td><td>${escapeHtml(`${r.onHand} ${r.item.unit}`)}</td><td>${escapeHtml(r.item.reorderLevel)}</td><td>${escapeHtml(orderQtyFor(r))}</td></tr>`
     ).join('');
     const body = `${reorderList.length === 0 ? '<p class="notice">No medicines currently require restocking.</p>' : `<section class="section"><h2 class="section-title">${escapeHtml(t('pharmacy.purchaseOrderRestock'))}</h2><table><thead><tr>
         <th>${escapeHtml(t('pharmacy.medication'))}</th><th>${escapeHtml(t('pharmacy.category'))}</th><th>${escapeHtml(t('pharmacy.currentStock'))}</th><th>${escapeHtml(t('pharmacy.reorderLevel'))}</th><th>${escapeHtml(t('pharmacy.orderQty'))}</th>
@@ -489,9 +487,10 @@ export default function PharmacyPage() {
         break;
       case 'reorder':
         header = [t('pharmacy.medication'), t('pharmacy.category'), t('pharmacy.stockLabel'), t('pharmacy.reorderLevel'), t('pharmacy.orderQty'), t('pharmacy.statusLabel')];
-        rows = reorderList.map(i => [
-          i.medicationName, i.category, `${i.stockLevel} ${i.unit}`, i.reorderLevel,
-          `${orderQtyFor(i)} ${i.unit}`, t(`pharmacy.invStatus_${i.status}`),
+        rows = reorderList.map(r => [
+          r.item.medicationName, r.item.category, `${r.onHand} ${r.item.unit}`, r.item.reorderLevel,
+          `${orderQtyFor(r)} ${r.item.unit}`,
+          [t(`pharmacy.invStatus_${r.status}`), r.expiredQty > 0 ? t('pharmacy.expiredReplace', { count: r.expiredQty }) : ''].filter(Boolean).join(' - '),
         ]);
         break;
       case 'expiry':
@@ -842,30 +841,35 @@ export default function PharmacyPage() {
               <tbody>
                 {reorderList.length === 0 ? (
                   <tr><td colSpan={canDispense ? 7 : 6} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>{t('pharmacy.allStockAdequate')}</td></tr>
-                ) : reorderList.map(item => (
+                ) : reorderList.map(row => { const item = row.item; return (
                   <tr key={item._id}>
                     <td className="font-semibold text-sm">
                       <div className="flex items-center gap-2">
                         <div className="icon-box-sm">
-                          {item.status === 'critical'
+                          {row.status === 'critical' || row.status === 'expired'
                             ? <AlertOctagon className="w-3.5 h-3.5" style={{ color: 'var(--color-danger)' }} />
                             : <AlertTriangle className="w-3.5 h-3.5" style={{ color: 'var(--color-warning-text)' }} />}
                         </div>
                         {item.medicationName}
                       </div>
+                      {row.expiredQty > 0 && (
+                        <div className="text-xs font-semibold" style={{ color: 'var(--color-danger-text)', marginTop: 2 }}>
+                          {t('pharmacy.expiredReplace', { count: row.expiredQty })}
+                        </div>
+                      )}
                     </td>
                     <td><span className="text-xs px-2 py-0.5 rounded" style={{ background: 'var(--overlay-medium)', color: 'var(--text-secondary)' }}>{item.category}</span></td>
-                    <td className="font-semibold text-sm" style={{ color: item.status === 'critical' ? 'var(--color-danger-text)' : 'var(--color-warning-text)' }}>{item.stockLevel} <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{item.unit}</span></td>
+                    <td className="font-semibold text-sm" style={{ color: row.status === 'critical' || row.status === 'expired' ? 'var(--color-danger-text)' : 'var(--color-warning-text)' }}>{row.onHand} <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{item.unit}</span></td>
                     <td className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.reorderLevel}</td>
-                    <td className="font-semibold text-sm" style={{ color: 'var(--accent-primary)' }}>{orderQtyFor(item)} {item.unit}</td>
+                    <td className="font-semibold text-sm" style={{ color: 'var(--accent-primary)' }}>{orderQtyFor(row)} {item.unit}</td>
                     <td>
-                      <span className={`badge text-[10px] ${item.status === 'low' ? 'badge-warning' : 'badge-emergency'}`}>
-                        {t(`pharmacy.invStatus_${item.status}`)}
+                      <span className={`badge text-[10px] ${row.status === 'low' ? 'badge-warning' : 'badge-emergency'}`}>
+                        {t(`pharmacy.invStatus_${row.status}`)}
                       </span>
                     </td>
                     {canDispense && <td><RowActionsMenu ariaLabel={t('pharmacy.itemActionsAria', { name: item.medicationName })} actions={itemActions(item)} /></td>}
                   </tr>
-                ))}
+                ); })}
               </tbody>
             </table>
           </div>
