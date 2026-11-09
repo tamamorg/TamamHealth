@@ -747,7 +747,7 @@ export default function BillingTab({
                   <td className="tamam-num">{formatDate(line.date)}</td>
                   <td>
                     <button type="button" className="bl-line-open" onClick={event => { event.stopPropagation(); setOpenLineId(line.id); }}>{accountLineTitle(line, t)}</button>
-                    <div className="tamam-cell-sub">{[...line.categories, ...(formatDate(line.updatedAt) !== formatDate(line.date) ? [t('billing.lineUpdated', { date: formatDate(line.updatedAt) })] : [])].join(' · ')}</div>
+                    <div className="tamam-cell-sub">{[...line.categories.map(c => c.replace(/_/g, ' ')), ...(formatDate(line.updatedAt) !== formatDate(line.date) ? [t('billing.lineUpdated', { date: formatDate(line.updatedAt) })] : [])].join(' · ')}</div>
                   </td>
                   <td><span className={activityBadge(line.status)}>{t(`billing.lineStatus.${line.status}`)}</span></td>
                   <td className="tamam-num tamam-cell-amount">{formatMoney(line.charged, { currency: line.currency })}</td>

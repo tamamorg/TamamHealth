@@ -23,6 +23,17 @@ const CLOSES_CLINIC_PORTION_OR_LATER = new Set<string>([
 ]);
 
 /**
+ * Whether a gate's "Resolve" link goes somewhere this viewer can open. A chart
+ * link follows the viewer's chart tabs; the payments screen follows who can
+ * collect payment. Reception cannot open /payments, so the link used to bounce
+ * them straight back to the dashboard.
+ */
+export function resolveLinkOpensForViewer(href: string, chartTabs: string[] | null, canCollectPayment: boolean): boolean {
+  if (href.startsWith('/payments') && !canCollectPayment) return false;
+  return chartHrefOpensForViewer(href, chartTabs);
+}
+
+/**
  * True when checkout is blocked only by records the clinician has already
  * produced but this device has not received: the encounter is at or past
  * clinic checkout (signing a note is what moves it there), and every blocker
@@ -367,7 +378,7 @@ export default function CheckoutModal({
                   <li key={condition.key} className="text-[12px]" style={{ color: 'var(--text-primary)' }}>
                     <span className="font-semibold">{condition.label}</span>
                     {condition.detail && <span style={{ color: 'var(--text-secondary)' }}> — {condition.detail}</span>}
-                    {condition.resolveHref && chartHrefOpensForViewer(condition.resolveHref, chartTabs) && (
+                    {condition.resolveHref && resolveLinkOpensForViewer(condition.resolveHref, chartTabs, canCollectPayment) && (
                       <Link href={condition.resolveHref} className="ms-1.5 font-semibold underline" style={{ color: 'var(--accent-primary)' }}>
                         {t('feedback.resolve')}
                       </Link>

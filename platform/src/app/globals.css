@@ -35333,6 +35333,13 @@ button.tm-dialog__section-head:focus-visible { outline: 2px solid var(--focus-ri
   background: var(--action-secondary-hover);
 }
 
+/* The chart dialog skin outlines every .btn-secondary on hover (blue ink); on
+   the filled slider footer that left blue text on slate. Keep the label white. */
+.tamam-dialog .tm-dialog__foot > :is(.btn-secondary, .btn-ghost, .btn-outline):hover:not(:disabled) {
+  background: var(--action-secondary-hover);
+  color: #fff;
+}
+
 :is(.tm-action-bar__btn--primary, .tm-dialog__foot > .btn-primary,
     .obk-footer-btn--primary, .sv-footer-btn--primary,
     .nv-root--workspace .nv-footer .nv-btn--primary) {

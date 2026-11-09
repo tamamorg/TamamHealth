@@ -9,7 +9,7 @@
 
 import { activeCountry } from '@/lib/country/country-pack';
 import { countryName } from '@/lib/country/world-lists';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Icon as DuotoneIcon } from '@/components/icons';
 import { Stethoscope } from '@/components/icons/lucide';
@@ -165,6 +165,13 @@ export default function ChartHeader({
   // up to 11 buttons in two rows, several of them duplicating the right-rail
   // workspace panels under different names.
   const [menuOpen, setMenuOpen] = useState(false);
+  // Escape closes the menu, the way every other menu in the kit does.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
   const { t } = useTranslation();
   // Back for the chart: the page has no breadcrumb bar, so the way out is
   // closing the patient, as in a clinical workspace (Epic's patient tab, the
